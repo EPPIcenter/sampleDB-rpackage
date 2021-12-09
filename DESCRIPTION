@@ -1,0 +1,20 @@
+Package: sampleDB
+Title: Print Table in SQLite Database
+Version: 0.0.0.9000
+Authors@R: 
+    person(given = "Severiano",
+           family = "Villarruel",
+           role = c("aut", "cre"),
+           email = "Severiano.Villarruel@ucsf.edu",
+           comment = c(ORCID = "YOUR-ORCID-ID"))
+Description: Print table in SQLite database
+Imports:
+    dplyr,
+    RSQLite,
+    lubridate,
+    magrittr
+License: MIT + file LICENSE
+Encoding: UTF-8
+LazyData: true
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.1.1
