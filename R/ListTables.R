@@ -1,9 +1,9 @@
 #' @export
 
-CheckTable <- function(table){
+ListTables <- function(){
   conn <- RSQLite::dbConnect(RSQLite::SQLite(),
                              "~/eppicenter/library/R/shiny/sampleDB/files/example_19-Oct-21.sample_db.sqlite")
-  out_table <- RSQLite::dbGetQuery(conn, paste("SELECT * FROM", table)) %>% tibble()
+  table_names <- RSQLite::dbListTables(conn)
   RSQLite::dbDisconnect(conn)
-  return(out_table)
+  return(table_names)
 }
