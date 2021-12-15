@@ -1,7 +1,7 @@
 #' @export
 
 ModifyTable <- function(table_name, info_list, id){
-  conn <- RSQLite::dbConnect(RSQLite::SQLite(), "~/eppicenter/library/R/shiny/sampleDB/files/example_19-Oct-21.sample_db.sqlite")
+  conn <- RSQLite::dbConnect(RSQLite::SQLite(), "/Users/severianovillarruel/eppicenter/library/R/packages/sampleDB/shiny/files/example_19-Oct-21.sample_db.sqlite")
 
   update_str <- c()
   for(i in 1:length(info_list)){
