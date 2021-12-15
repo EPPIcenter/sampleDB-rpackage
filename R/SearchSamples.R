@@ -81,115 +81,56 @@ SearchSamples <- function(barcode_search_file, search_plate_uid, search_subject_
     matrix_tube_ids <- table.matrix_tube %>% filter(id %in% storage_container_id) %>% pull(id)
   }
 
-  #matrix_tube_ids for testing
-  write_csv(tibble(matrix_tube_ids = matrix_tube_ids), "~/Desktop/test_matrix_tube_ids.csv")
-
-  # matrix_tube_ids <- read_csv("~/Desktop/test_matrix_tube_ids.csv") %>% pull(matrix_tube_ids)
-
-  print("HERE1")
+  #NOTE DO we want to add lead person (or other data) to the search?
   #step 2: got to matrix_tube_ids, now get cols for search result
-  #specimen_ids
-  specimen_ids <- table.storage_container %>% filter(id %in% matrix_tube_ids) %>% pull(specimen_id)
+  #well_positions, barcodes, subject_uids, study_short_code, specimen_type_labels, location_descriptions, plate_uids
 
-  #study_subject_ids
-  #specimen_type_ids
-  tmp.table.specimen_table <- matrix(nrow = length(specimen_ids), ncol = ncol(table.specimen)) %>% as.data.frame()
-  for(i in 1:length(specimen_ids)){
-    specimen_id <- specimen_ids[i]
-    tmp.table.specimen_table[i,] <- table.specimen %>% filter(id %in% specimen_id)
-  }
-  names(tmp.table.specimen_table) <- names(table.specimen)
+  table.ref1 <- table.matrix_tube %>% filter(id %in% matrix_tube_ids)
+  well_positions <- table.ref1 %>% pull(well_position)
+  barcodes <- table.ref1 %>% pull(barcode)
 
-  study_subject_ids <- tmp.table.specimen_table %>% pull(study_subject_id)
-  specimen_type_ids <- tmp.table.specimen_table %>% pull(specimen_type_id)
-  print("HERE2")
-  #specimen type info
-  tmp.table.specimen_type <- matrix(nrow = length(specimen_type_ids), ncol = ncol(table.specimen_type)) %>% as.data.frame()
-  for(i in 1:length(specimen_type_ids)){
-    specimen_type_id <- specimen_type_ids[i]
-    tmp.table.specimen_type[i,] <- table.specimen_type %>% filter(id %in% specimen_type_id)
-  }
-  names(tmp.table.specimen_type) <- names(table.specimen_type)
-  specimen_type_labels <- tmp.table.specimen_type %>% pull(label)
-  print("HERE3")
-  #subject info
-  tmp.table.study_subject <- matrix(nrow = length(study_subject_ids), ncol = ncol(table.study_subject)) %>% as.data.frame()
-  for(i in 1:length(study_subject_ids)){
-    study_subject_id <- study_subject_ids[i]
-    tmp.table.study_subject[i,] <- table.study_subject %>% filter(id %in% study_subject_id)
-  }
-  names(tmp.table.study_subject) <- names(table.study_subject)
-  subject_uids <- tmp.table.study_subject %>% pull(uid)
-  print("HERE4")
-  #study info
-  study_ids <- tmp.table.study_subject %>% pull(study_id)
-  tmp.table.study <- matrix(nrow = length(study_ids), ncol = ncol(table.study)) %>% as.data.frame()
-  for(i in 1:length(study_ids)){
-    study_id <- study_ids[i]
-    tmp.table.study[i,] <- table.study %>% filter(id %in% study_id)
-  }
-  names(tmp.table.study) <- names(table.study)
-  study_short_code <- tmp.table.study %>% pull(short_code)
+  table.ref2 <- inner_join(table.ref1, table.matrix_plate, by = c("plate_id" = "id"))
+  plate_uids <- table.ref2 %>% pull(uid)
+  location_descriptions <- inner_join(table.ref2, table.location, by = c("location_id" = "id")) %>% pull(description)
 
-  #plate info
-  plate_ids <- table.matrix_tube %>% filter(id %in% matrix_tube_ids) %>% pull(plate_id)
+  specimen_ids <- table.storage_container %>% filter(id %in% matrix_tube_ids)
 
-  tmp.table.matrix_plate <- matrix(nrow = length(plate_ids), ncol = ncol(table.matrix_plate)) %>% as.data.frame()
-  for(i in 1:length(plate_ids)){
-    plate_id <- plate_ids[i]
-    tmp.table.matrix_plate[i,] <- table.matrix_plate %>% filter(id %in% plate_id)
-  }
-  names(tmp.table.matrix_plate) <- names(table.matrix_plate)
-  plate_uids <- tmp.table.matrix_plate %>% pull(uid)
+  table.ref3 <- inner_join(specimen_ids, table.specimen, by = c("specimen_id" = "id"))
+  study_subject_id <- table.ref3 %>% pull(study_subject_id)
+  specimen_type_ids <- table.ref3 %>% pull(specimen_type_id)
 
-  #location info
-  location_ids <- tmp.table.matrix_plate %>% pull(location_id)
-  tmp.table.location <- matrix(nrow = length(location_ids), ncol = ncol(table.location)) %>% as.data.frame()
-  for(i in 1:length(location_ids)){
-    location_id <- location_ids[i]
-    tmp.table.location[i,] <- table.location %>% filter(id %in% location_id)
-  }
-  names(tmp.table.location) <- names(table.location)
-  location_descriptions <- tmp.table.location %>% pull(description)
+  table.ref4 <- inner_join(table.ref3, table.study_subject, by = c("study_subject_id" = "id"))
+  subject_uids <- table.ref4 %>% pull(uid)
+  study_short_code <- inner_join(table.ref4, table.study, by = c("study_id" = "id")) %>% pull(short_code)
 
-  print("HERE5")
-  well_positions <- table.matrix_tube %>% filter(id %in% matrix_tube_ids) %>% pull(well_position)
-  barcodes <- table.matrix_tube %>% filter(id %in% matrix_tube_ids) %>% pull(barcode)
+  specimen_type_labels <- inner_join(table.ref3, table.specimen_type, by = c("specimen_type_id" = "id")) %>% pull(label)
 
-  # subject_uids <- table.study_subject %>% filter(id %in% study_subject_ids) %>% pull(uid)
-  # studies <- table.study %>% filter(id %in% study_ids) %>% pull(short_code)
-  # specimen_types <- table.specimen_type %>% filter(id %in% specimen_type_ids) %>% pull(label)
-  # plate_uid <- table.plate %>% filter
-  # location <- table.location %>% filter(id %in% location_id) %>% pull(description)
-
-  # print("length(well_positions)")
-  # print(length(well_positions))
-  # print("length(barcodes)")
-  # print(length(barcodes))
-  # print("length(subject_uids)")
-  # print(length(subject_uids))
-  # print("length(studies)")
-  # print(length(studies))
-  # print("length(specimen_types)")
-  # print(length(specimen_types))
-  # print("length(location)")
-  # print(length(location))
-  # print("length(search_plate_uid)")
-  # print(length(search_plate_uid))
-
+  # create results table
   search_results <- tibble(well_position = well_positions,
-                             barcode = barcodes,
-                             subject_uid = subject_uids,
-                             study = study_short_code,
-                             specimen_type = specimen_type_labels,
-                             location = location_descriptions,
-                             plate_uid = plate_uids)
+                           barcode = barcodes,
+                           subject_uid = subject_uids,
+                           study = study_short_code,
+                           specimen_type = specimen_type_labels,
+                           location = location_descriptions,
+                           plate_uid = plate_uids)
 
-  # print(search_results)
   #step 3 filter by search item(s) not used to get to matrix_tube_ids
   for(filter_term in filter_search_s){
-    print(filter_term)
-    #filtering should be easy, just use the user input strings to filter the table in a loop
+    if(filter_term == "search_plate_uid"){
+      search_results <- search_results %>% filter(plate_uid == SearchSamplesArgs[["search_plate_uid"]])
+    }
+    if(filter_term == "search_subject_uid"){
+      search_results <- search_results %>% filter(subject_uid == SearchSamplesArgs[["search_subject_uid"]])
+    }
+    if(filter_term == "search_study"){
+      search_results <- search_results %>% filter(study == SearchSamplesArgs[["search_subject_uid"]])
+    }
+    if(filter_term == "search_location"){
+      search_results <- search_results %>% filter(location == SearchSamplesArgs[["search_location"]])
+    }
+    if(filter_term == "search_specimen_type"){
+      search_results <- search_results %>% filter(specimen_type == SearchSamplesArgs[["search_specimen_type"]])
+    }
   }
 
   return(search_results)
