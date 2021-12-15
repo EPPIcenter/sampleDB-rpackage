@@ -5,7 +5,7 @@ AddToTable <- function(table_name, info_list){
 
   #open connection
   conn <-  RSQLite::dbConnect(RSQLite::SQLite(),
-                              "/Users/severianovillarruel/eppicenter/library/R/packages/sampleDB/shiny/files/example_19-Oct-21.sample_db.sqlite")
+                              "../files/example_19-Oct-21.sample_db.sqlite")
 
   # info_list <- list(plate_id = 123223, barcode = "dummy2", well_position = "A01")
   # table_name <- "matrix_tube"
