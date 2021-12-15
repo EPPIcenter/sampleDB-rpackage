@@ -84,10 +84,10 @@ UploadSamples <- function(barcode_file, barcode_type, longitudinal, plate_id, lo
       sampleDB::AddToTable("storage_container",
                            list(created = "dummy",
                                 last_updated = "dummy",
-                                type = NULL,
+                                type = NA,
                                 specimen_id = specimen_id,
-                                comments = NULL,
-                                exhausted = NULL))
+                                comments = NA,
+                                exhausted = 0))
     }else{
 
       print("subject_study_id DOES NOT exists")
@@ -112,67 +112,4 @@ UploadSamples <- function(barcode_file, barcode_type, longitudinal, plate_id, lo
                               exhausted = 0))
   }
 
-  # return("Completed Upload")
-
-  #each matrix_tube has its own storage container row...what is the specimen_id for that row?
-
-  #search specimen table for specimen id asso w study_subject_id + specimen_type_id
-  #if exists make new specimen table row with study_subject_id & specimen_type_id
-
-  #####################
-
-
-  #specimen_id in storage_container table is the "matrix_tube id"
-
-  #storage_container id columns actually corresponds to id column in matrix_tube?
-  #storage_container specimen_id corresponds to specimen table id column
-
 }
-
-# csv <- read_csv("~/eppicenter/library/R/shiny/sampleDB/files/traxer_data_example.csv") %>%
-#   drop_na() %>%
-#   mutate(barcode = `Tube ID`,
-#          well_position = paste0(substring(Position, 1, 1), substring(Position, 2))) %>%
-#   select(-c(Position:Date))
-
-#   #need to add freezer info (entry per tube)
-#   #need to add tube uid info (entry per tube)
-#   #need to add study stubject (single entry)
-#   #need to add plate uid info (single entry)
-#   #??? need to add study subject uid (entry per tube)
-#
-#
-# #ADD TO TRAXER CSV
-# #uid (subject id) column
-# #specimen type column
-# #date column (not required) (date biosample it was collected)
-#
-# #location (dropdown)
-# #plate id (textInput)
-#
-# CheckTable("matrix_tube") %>% head(2)
-#   #contains "plate_id"
-#
-#   #for each tube in upload_csv (can send multiple rows at once)
-#   sampleDB::AddToTable("matrix_tube",
-#                        list(plate_id = 123,
-#                             barcode = "barcode1",
-#                             well_position = "A01"))
-#
-# CheckTable("matrix_plate") %>% head(2)
-#   #contains "uid" (autogeneration option?)
-#   #contains "location_id"
-#   sampleDB::AddToTable("matrix_plate",
-#                        list(created = "dummy",
-#                             last_updated = "dummy",
-#                             uid = "abc",
-#                             hidden = 0,
-#                             location_id = 1))
-#
-# CheckTable("study_subject") %>% head(2)
-#   #contains "uid"
-#   #contains "study_id"
-#
-# CheckTable("specimen") %>% head(2)
-#   #contains "study_subject_id"
-#   #contains "specimen_type_id"
