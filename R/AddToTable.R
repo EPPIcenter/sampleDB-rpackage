@@ -7,14 +7,15 @@ AddToTable <- function(table_name, info_list){
   conn <-  RSQLite::dbConnect(RSQLite::SQLite(),
                               "~/eppicenter/library/R/shiny/sampleDB/files/example_19-Oct-21.sample_db.sqlite")
 
-  for(i in info_list){
-    print(i)
-    if(i == ""){
-      return()
-    }
-  }
-  # info_list <- list(created = "a", last_updated = "b", description = "")
-  # table_name <- "location"
+  # info_list <- list(plate_id = 123223, barcode = "dummy2", well_position = "A01")
+  # table_name <- "matrix_tube"
+
+  # for(i in info_list){
+  #   if(i == ""){
+  #     return()
+  #   }
+  # }
+
   #get names of columns to modify
   column_names <- paste0(names(info_list), collapse = ", ")
   #create ??? filler (required by dbSendQuery)
@@ -31,9 +32,10 @@ AddToTable <- function(table_name, info_list){
 
       #handle duplicate entry error(s)
       error=function(e){
-        if(e[1] == "UNIQUE constraint failed: location.description"){
-          return(warning("FREEZER NAMES CANNOT BE DUPLICATED"))
-        }
+        print(e)
+        # if(e[1] == "UNIQUE constraint failed: location.description"){
+          # return(warning("FREEZER NAMES CANNOT BE DUPLICATED"))
+        # }
       }
   )
 
