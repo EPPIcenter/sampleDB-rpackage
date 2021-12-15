@@ -10,6 +10,7 @@ AddToTable <- function(table_name, info_list){
   # info_list <- list(plate_id = 123223, barcode = "dummy2", well_position = "A01")
   # table_name <- "matrix_tube"
 
+  # NOTE need to file below
   # for(i in info_list){
   #   if(i == ""){
   #     return()
