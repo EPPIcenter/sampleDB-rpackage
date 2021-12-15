@@ -11,26 +11,57 @@ SearchSamples <- function(barcode_search_file, search_plate_uid, search_subject_
   table.specimen <- sampleDB::CheckTable("specimen")
   table.storage_container <- sampleDB::CheckTable("storage_container")
 
-  if(is.null(barcode_search_file) & search_plate_uid != "" & search_subject_uid == "" & search_study == "" & seach_location == "" & search_specimen_type == ""){
+  #step 0 select just one input if multiple are given
+  NULL
 
-    #well positions and barcodes
-    plate_ref_id <- table.matrix_plate %>% filter(uid == search_plate_uid) %>% pull(id)
+  #step 1 use just one input to get to matrix_tube_ids
+  #barcode_search_file to matrix_tube_ids
+  barcodes <- read_csv(barcode_search_file) %>% pull(barcode)
+  matrix_tube_ids <- table.matrix_tube %>% filter(barcode %in% barcodes) %>% pull(id)
 
-    matrix_tube_ids <- table.matrix_tube %>% filter(plate_id == plate_ref_id) %>% pull(id)
-    specimen_ids <- table.storage_container %>% filter(id %in% matrix_tube_ids) %>% pull(specimen_id)
-    study_subject_ids <- table.specimen %>% filter(id %in% specimen_ids) %>% pull(study_subject_id)
-    specimen_type_ids <- table.specimen %>% filter(id %in% specimen_ids) %>% pull(specimen_type_id)
-    study_ids <- table.study_subject %>% filter(id %in% study_subject_ids) %>% pull(study_id)
-    location_id <- table.matrix_plate %>% filter(uid %in% search_plate_uid) %>% pull(location_id)
+  #plate_uid to matrix_tube_ids
+  plate_ref_id <- table.matrix_plate %>% filter(uid == search_plate_uid) %>% pull(id)
+  matrix_tube_ids <- table.matrix_tube %>% filter(plate_id %in% plate_ref_id) %>% pull(id)
 
-    subject_uids <- table.study_subject %>% filter(id %in% study_subject_ids) %>% pull(uid)
-    studies <- table.study %>% filter(id %in% study_ids) %>% pull(short_code)
-    specimen_types <- table.specimen_type %>% filter(id %in% specimen_type_ids) %>% pull(label)
-    location_id <- table.matrix_plate %>% filter(uid %in% search_plate_uid) %>% pull(location_id)
-    well_positions <- table.matrix_tube %>% filter(plate_id == plate_ref_id) %>% pull(well_position)
-    barcodes <- table.matrix_tube %>% filter(plate_id == plate_ref_id) %>% pull(barcode)
+  #seach_location to matrix_tube_ids
+  location_ref_id <- table.location %>% filter(description %in% search_location) %>% pull(id)
+  plate_ref_id <- table.matrix_plate %>% filter(location_id %in% location_ref_id) %>% pull(id)
+  matrix_tube_ids <- table.matrix_tube %>% filter(plate_id %in% plate_ref_id) %>% pull(id)
 
-    search_results <- tibble(well_position = well_positions,
+  #search_specimen_type to matrix_tube_ids ??
+  specimen_ref_id <- table.specimen_type %>% filter(label %in% search_specimen_type) %>% pull(id)
+  specimen_ref_id <- table.specimen %>% filter(specimen_type_id %in% specimen_ref_id) %>% pull(id)
+  storage_container_id <- table.storage_container %>% filter(specimen_id %in% specimen_ref_id) %>% pull(id)
+  matrix_tube_ids <- table.matrix_tube %>% filter(id %in% storage_container_id) %>% pull(id)
+
+  #search_subject_uid to matrix_tube_ids ???
+  study_subject_ref_id <- table.study_subject %>% filter(uid %in% search_subject_uid) %>% pull(id)
+  specimen_ref_id <- table.specimen %>% filter(study_subject_id %in% study_subject_ref_id) %>% pull(id)
+  storage_container_id <- table.storage_container %>% filter(specimen_id %in% specimen_ref_id) %>% pull(id)
+  matrix_tube_ids <- table.matrix_tube %>% filter(id %in% storage_container_id) %>% pull(id)
+
+  #search_study to matrix_tube_ids ???
+  study_ref_id <- table.study %>% filter(short_code %in% search_study) %>% pull(id)
+  study_subject_ref_id <- table.study_subject %>% filter(study_id %in% study_ref_id) %>% pull(id)
+  specimen_ref_id <- table.specimen %>% filter(study_subject_id %in% study_subject_ref_id) %>% pull(id)
+  storage_container_id <- table.storage_container %>% filter(specimen_id %in% specimen_ref_id) %>% pull(id)
+  matrix_tube_ids <- table.matrix_tube %>% filter(id %in% storage_container_id) %>% pull(id)
+
+  #step 2: got to matrix_tube_ids, now get cols for search result
+  specimen_ids <- table.storage_container %>% filter(id %in% matrix_tube_ids) %>% pull(specimen_id)
+  study_subject_ids <- table.specimen %>% filter(id %in% specimen_ids) %>% pull(study_subject_id)
+  specimen_type_ids <- table.specimen %>% filter(id %in% specimen_ids) %>% pull(specimen_type_id)
+  study_ids <- table.study_subject %>% filter(id %in% study_subject_ids) %>% pull(study_id)
+  location_id <- table.matrix_plate %>% filter(uid %in% search_plate_uid) %>% pull(location_id)
+
+  subject_uids <- table.study_subject %>% filter(id %in% study_subject_ids) %>% pull(uid)
+  studies <- table.study %>% filter(id %in% study_ids) %>% pull(short_code)
+  specimen_types <- table.specimen_type %>% filter(id %in% specimen_type_ids) %>% pull(label)
+  location <- table.location %>% filter(id %in% location_id) %>% pull(description)
+  well_positions <- table.matrix_tube %>% filter(plate_id == plate_ref_id) %>% pull(well_position)
+  barcodes <- table.matrix_tube %>% filter(plate_id == plate_ref_id) %>% pull(barcode)
+
+  search_results <- tibble(well_position = well_positions,
                              barcode = barcodes,
                              subject_uid = subject_uids,
                              study = studies,
@@ -38,7 +69,7 @@ SearchSamples <- function(barcode_search_file, search_plate_uid, search_subject_
                              location = location,
                              plate_uid = search_plate_uid)
 
-  }
+  #step 3 filter by search item(s) not used to get to matrix_tube_ids
 
   return(search_results)
 }
