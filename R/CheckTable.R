@@ -1,3 +1,4 @@
+#' @import dplyr
 #' @export
 
 CheckTable <- function(table){

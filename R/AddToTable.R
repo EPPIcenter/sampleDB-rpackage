@@ -1,3 +1,4 @@
+#' @import dplyr
 #' @export
 
 #table options

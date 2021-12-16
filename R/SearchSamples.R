@@ -1,3 +1,4 @@
+#' @import dplyr
 #' @export
 
 SearchSamples <- function(barcode_search_file, search_plate_uid, search_subject_uid, search_study, search_location, search_specimen_type){

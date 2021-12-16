@@ -1,4 +1,4 @@
-
+#' @import dplyr
 #' @export
 
 DeleteFromTable <- function(table_name, id){

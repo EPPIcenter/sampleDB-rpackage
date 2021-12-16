@@ -1,3 +1,4 @@
+#' @import dplyr
 #' @export
 
 # UploadSamples <- function(barcode_file, barcode_type, longitudinal, plate_id, location){
