@@ -42,7 +42,7 @@ SearchSamples <- function(barcode_search_file, search_plate_uid, search_subject_
   #step 1 use just one input to get to matrix_tube_ids
   #barcode_search_file to matrix_tube_ids
   if(step_one_search_term == "barcode_search_file"){
-    barcodes <- read_csv(barcode_search_file) %>% pull(barcode)
+    barcodes <- read_csv(barcode_search_file) %>% dplyr::pull(barcode)
     matrix_tube_ids <- table.matrix_tube %>% filter(barcode %in% barcodes) %>% pull(id)
   }
 
