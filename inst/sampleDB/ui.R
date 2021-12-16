@@ -7,11 +7,11 @@ library(DT)
 #bc upload info is selected using dropdown for referrences
 freezer_names <- sampleDB::CheckTable("location") %>%
   select(description) %>%
-  pull()
+  dplyr::pull()
 
 specimen_type_names <- sampleDB::CheckTable("specimen_type") %>%
   select(label) %>%
-  pull()
+  dplyr::pull()
 
 navbarPage("SampleDB",
 
@@ -64,7 +64,7 @@ navbarPage("SampleDB",
                       column(
                         width = 4,
                         selectizeInput("UploadStudyShortCode",
-                                       choices = c("", CheckTable("study") %>% pull(short_code)),
+                                       choices = c("", CheckTable("study") %>% dplyr::pull(short_code)),
                                        label = "Study Short Code"),
                       ),
                     ),
@@ -100,14 +100,14 @@ navbarPage("SampleDB",
                         width = 4,
                         h5("Search By Plate ID"),
                         selectizeInput("SearchByPlateID",
-                                       choices = c("", CheckTable("matrix_plate") %>% pull(uid)),
+                                       choices = c("", CheckTable("matrix_plate") %>% dplyr::pull(uid)),
                                        label = NULL)
                       ),
                       column(
                         width = 4,
                         h5("Search By Subject (UID)"),
                         selectizeInput("SearchBySubjectUID",
-                                       choices = c("", CheckTable("study_subject") %>% unique() %>% pull(uid)),
+                                       choices = c("", CheckTable("study_subject") %>% unique() %>% dplyr::pull(uid)),
                                        label = NULL)
                       )
                     ),
@@ -117,21 +117,21 @@ navbarPage("SampleDB",
                         width = 4,
                         h5("Search By Study"),
                         selectizeInput("SearchByStudy",
-                                       choices = c("", CheckTable("study") %>% pull(short_code)),
+                                       choices = c("", CheckTable("study") %>% dplyr::pull(short_code)),
                                        label = NULL)
                       ),
                       column(
                         width = 4,
                         h5("Search By Location"),
                         selectizeInput("SearchByLocation",
-                                       choices = c("", CheckTable("location") %>% pull(description)),
+                                       choices = c("", CheckTable("location") %>% dplyr::pull(description)),
                                        label = NULL)
                       ),
                       column(
                         width = 4,
                         h5("Search By Specimen Type"),
                         selectizeInput("SearchBySpecimenType",
-                                       choices = c("", CheckTable("specimen_type") %>% pull(label)),
+                                       choices = c("", CheckTable("specimen_type") %>% dplyr::pull(label)),
                                        label = NULL)
                       )
                     ),

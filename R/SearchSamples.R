@@ -43,42 +43,42 @@ SearchSamples <- function(barcode_search_file, search_plate_uid, search_subject_
   #barcode_search_file to matrix_tube_ids
   if(step_one_search_term == "barcode_search_file"){
     barcodes <- read_csv(barcode_search_file) %>% dplyr::pull(barcode)
-    matrix_tube_ids <- table.matrix_tube %>% filter(barcode %in% barcodes) %>% pull(id)
+    matrix_tube_ids <- table.matrix_tube %>% filter(barcode %in% barcodes) %>% dplyr::pull(id)
   }
 
   #plate_uid to matrix_tube_ids
   if(step_one_search_term == "search_plate_uid"){
-  plate_ref_id <- table.matrix_plate %>% filter(uid == search_plate_uid) %>% pull(id)
-  matrix_tube_ids <- table.matrix_tube %>% filter(plate_id %in% plate_ref_id) %>% pull(id)
+  plate_ref_id <- table.matrix_plate %>% filter(uid == search_plate_uid) %>% dplyr::pull(id)
+  matrix_tube_ids <- table.matrix_tube %>% filter(plate_id %in% plate_ref_id) %>% dplyr::pull(id)
   }
   #seach_location to matrix_tube_ids
   if(step_one_search_term == "search_location"){
-    location_ref_id <- table.location %>% filter(description %in% search_location) %>% pull(id)
-    plate_ref_id <- table.matrix_plate %>% filter(location_id %in% location_ref_id) %>% pull(id)
-    matrix_tube_ids <- table.matrix_tube %>% filter(plate_id %in% plate_ref_id) %>% pull(id)
+    location_ref_id <- table.location %>% filter(description %in% search_location) %>% dplyr::pull(id)
+    plate_ref_id <- table.matrix_plate %>% filter(location_id %in% location_ref_id) %>% dplyr::pull(id)
+    matrix_tube_ids <- table.matrix_tube %>% filter(plate_id %in% plate_ref_id) %>% dplyr::pull(id)
   }
   #search_specimen_type to matrix_tube_ids ??
   if(step_one_search_term == "search_specimen_type"){
-    specimen_ref_id <- table.specimen_type %>% filter(label %in% search_specimen_type) %>% pull(id)
-    specimen_ref_id <- table.specimen %>% filter(specimen_type_id %in% specimen_ref_id) %>% pull(id)
-    storage_container_id <- table.storage_container %>% filter(specimen_id %in% specimen_ref_id) %>% pull(id)
-    matrix_tube_ids <- table.matrix_tube %>% filter(id %in% storage_container_id) %>% pull(id)
+    specimen_ref_id <- table.specimen_type %>% filter(label %in% search_specimen_type) %>% dplyr::pull(id)
+    specimen_ref_id <- table.specimen %>% filter(specimen_type_id %in% specimen_ref_id) %>% dplyr::pull(id)
+    storage_container_id <- table.storage_container %>% filter(specimen_id %in% specimen_ref_id) %>% dplyr::pull(id)
+    matrix_tube_ids <- table.matrix_tube %>% filter(id %in% storage_container_id) %>% dplyr::pull(id)
   }
   #search_subject_uid to matrix_tube_ids ???
   if(step_one_search_term == "search_subject_uid"){
-    study_subject_ref_id <- table.study_subject %>% filter(uid %in% search_subject_uid) %>% pull(id)
-    specimen_ref_id <- table.specimen %>% filter(study_subject_id %in% study_subject_ref_id) %>% pull(id)
-    storage_container_id <- table.storage_container %>% filter(specimen_id %in% specimen_ref_id) %>% pull(id)
-    matrix_tube_ids <- table.matrix_tube %>% filter(id %in% storage_container_id) %>% pull(id)
+    study_subject_ref_id <- table.study_subject %>% filter(uid %in% search_subject_uid) %>% dplyr::pull(id)
+    specimen_ref_id <- table.specimen %>% filter(study_subject_id %in% study_subject_ref_id) %>% dplyr::pull(id)
+    storage_container_id <- table.storage_container %>% filter(specimen_id %in% specimen_ref_id) %>% dplyr::pull(id)
+    matrix_tube_ids <- table.matrix_tube %>% filter(id %in% storage_container_id) %>% dplyr::pull(id)
   }
 
   #search_study to matrix_tube_ids ???
   if(step_one_search_term == "search_study"){
-    study_ref_id <- table.study %>% filter(short_code %in% search_study) %>% pull(id)
-    study_subject_ref_id <- table.study_subject %>% filter(study_id %in% study_ref_id) %>% pull(id)
-    specimen_ref_id <- table.specimen %>% filter(study_subject_id %in% study_subject_ref_id) %>% pull(id)
-    storage_container_id <- table.storage_container %>% filter(specimen_id %in% specimen_ref_id) %>% pull(id)
-    matrix_tube_ids <- table.matrix_tube %>% filter(id %in% storage_container_id) %>% pull(id)
+    study_ref_id <- table.study %>% filter(short_code %in% search_study) %>% dplyr::pull(id)
+    study_subject_ref_id <- table.study_subject %>% filter(study_id %in% study_ref_id) %>% dplyr::pull(id)
+    specimen_ref_id <- table.specimen %>% filter(study_subject_id %in% study_subject_ref_id) %>% dplyr::pull(id)
+    storage_container_id <- table.storage_container %>% filter(specimen_id %in% specimen_ref_id) %>% dplyr::pull(id)
+    matrix_tube_ids <- table.matrix_tube %>% filter(id %in% storage_container_id) %>% dplyr::pull(id)
   }
 
   #NOTE DO we want to add lead person (or other data) to the search?
@@ -86,24 +86,24 @@ SearchSamples <- function(barcode_search_file, search_plate_uid, search_subject_
   #well_positions, barcodes, subject_uids, study_short_code, specimen_type_labels, location_descriptions, plate_uids
 
   table.ref1 <- table.matrix_tube %>% filter(id %in% matrix_tube_ids)
-  well_positions <- table.ref1 %>% pull(well_position)
-  barcodes <- table.ref1 %>% pull(barcode)
+  well_positions <- table.ref1 %>% dplyr::pull(well_position)
+  barcodes <- table.ref1 %>% dplyr::pull(barcode)
 
   table.ref2 <- inner_join(table.ref1, table.matrix_plate, by = c("plate_id" = "id"))
-  plate_uids <- table.ref2 %>% pull(uid)
-  location_descriptions <- inner_join(table.ref2, table.location, by = c("location_id" = "id")) %>% pull(description)
+  plate_uids <- table.ref2 %>% dplyr::pull(uid)
+  location_descriptions <- inner_join(table.ref2, table.location, by = c("location_id" = "id")) %>% dplyr::pull(description)
 
   specimen_ids <- table.storage_container %>% filter(id %in% matrix_tube_ids)
 
   table.ref3 <- inner_join(specimen_ids, table.specimen, by = c("specimen_id" = "id"))
-  study_subject_id <- table.ref3 %>% pull(study_subject_id)
-  specimen_type_ids <- table.ref3 %>% pull(specimen_type_id)
+  study_subject_id <- table.ref3 %>% dplyr::pull(study_subject_id)
+  specimen_type_ids <- table.ref3 %>% dplyr::pull(specimen_type_id)
 
   table.ref4 <- inner_join(table.ref3, table.study_subject, by = c("study_subject_id" = "id"))
-  subject_uids <- table.ref4 %>% pull(uid)
-  study_short_code <- inner_join(table.ref4, table.study, by = c("study_id" = "id")) %>% pull(short_code)
+  subject_uids <- table.ref4 %>% dplyr::pull(uid)
+  study_short_code <- inner_join(table.ref4, table.study, by = c("study_id" = "id")) %>% dplyr::pull(short_code)
 
-  specimen_type_labels <- inner_join(table.ref3, table.specimen_type, by = c("specimen_type_id" = "id")) %>% pull(label)
+  specimen_type_labels <- inner_join(table.ref3, table.specimen_type, by = c("specimen_type_id" = "id")) %>% dplyr::pull(label)
 
   # create results table
   search_results <- tibble(well_position = well_positions,
