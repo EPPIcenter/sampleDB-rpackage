@@ -6,11 +6,11 @@ library(DT)
 #NOTE make sure these globals are updated when referrence changes are made
 #bc upload info is selected using dropdown for referrences
 freezer_names <- sampleDB::CheckTable("location") %>%
-  select(description) %>%
+  dplyr::select(description) %>%
   dplyr::pull()
 
 specimen_type_names <- sampleDB::CheckTable("specimen_type") %>%
-  select(label) %>%
+  dplyr::select(label) %>%
   dplyr::pull()
 
 navbarPage("SampleDB",

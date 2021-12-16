@@ -10,7 +10,7 @@ function(input, output, session) {
     # Upload Samples #
     ##################
     upload_plate_dup_check <- reactive({
-        even <- input$UploadPlateID %in% c(sampleDB::CheckTable("matrix_plate") %>% select(uid) %>% dplyr::pull())
+        even <- input$UploadPlateID %in% c(sampleDB::CheckTable("matrix_plate") %>% dplyr::select(uid) %>% dplyr::pull())
         shinyFeedback::feedbackWarning("UploadPlateID",
                                        even,
                                        "Plate IDs must be unique")
@@ -34,7 +34,7 @@ function(input, output, session) {
 
             # updateSelectizeInput(session = session,
             #                      "SearchByPlateID",
-            #                      choices = sampleDB::CheckTable("matrix_plate") %>% select(uid) %>% dplyr::pull(),
+            #                      choices = sampleDB::CheckTable("matrix_plate") %>% dplyr::select(uid) %>% dplyr::pull(),
             #                      label = NULL)
 
         })
@@ -46,7 +46,7 @@ function(input, output, session) {
 
             updateSelectizeInput(session = session,
                                  "SearchByPlateID",
-                                 choices = sampleDB::CheckTable("matrix_plate") %>% select(uid) %>% dplyr::pull(),
+                                 choices = sampleDB::CheckTable("matrix_plate") %>% dplyr::select(uid) %>% dplyr::pull(),
                                  label = NULL)
 
             print(CheckTable("matrix_plate") %>% tail())
@@ -142,7 +142,7 @@ function(input, output, session) {
     # add specimen types
     # prevent specimen type name duplication
     add_specimen_type_duplication_check <- reactive({
-        even <- input$AddSpecimenType %in% c(sampleDB::CheckTable("specimen_type") %>% select(label) %>% dplyr::pull())
+        even <- input$AddSpecimenType %in% c(sampleDB::CheckTable("specimen_type") %>% dplyr::select(label) %>% dplyr::pull())
         shinyFeedback::feedbackWarning("AddSpecimenType",
                                        even,
                                        "Specimen Type names must be unique")
@@ -171,7 +171,7 @@ function(input, output, session) {
 
             })
             specimen_type_names <- sampleDB::CheckTable("specimen_type") %>%
-                select(label) %>%
+                dplyr::select(label) %>%
                 dplyr::pull()
             updateSelectInput(session = session,
                               inputId = ".RenameSpecimenType1",
@@ -189,7 +189,7 @@ function(input, output, session) {
         ({
             id <- sampleDB::CheckTable("specimen_type") %>%
                 filter(label == input$.DeleteSpecimenType) %>%
-                select(id) %>% dplyr::pull()
+                dplyr::select(id) %>% dplyr::pull()
             sampleDB::DeleteFromTable(table_name = "specimen_type",
                                              id = as.character(id))
             output$TableSpecimenType <- DT::renderDataTable({
@@ -199,7 +199,7 @@ function(input, output, session) {
                     relocate(`Date Created`)
             })
             specimen_type_names <- sampleDB::CheckTable("specimen_type") %>%
-                select(label) %>%
+                dplyr::select(label) %>%
                 dplyr::pull()
             updateSelectInput(session = session,
                               inputId = ".RenameSpecimenType1",
@@ -211,7 +211,7 @@ function(input, output, session) {
     )
 
     modify_specimen_type_duplication_check <- reactive({
-        even <- input$RenameSpecimenType2 %in% c(sampleDB::CheckTable("specimen_type") %>% select(label) %>% dplyr::pull())
+        even <- input$RenameSpecimenType2 %in% c(sampleDB::CheckTable("specimen_type") %>% dplyr::select(label) %>% dplyr::pull())
         shinyFeedback::feedbackWarning("RenameSpecimenType2",
                                        even,
                                        "Specimen Type names must be unique")
@@ -230,7 +230,7 @@ function(input, output, session) {
 
             id <- sampleDB::CheckTable("specimen_type") %>%
                 filter(label == input$.RenameSpecimenType1) %>%
-                select(id) %>% dplyr::pull()
+                dplyr::select(id) %>% dplyr::pull()
 
             sampleDB::ModifyTable(table_name = "specimen_type",
                                          info_list = list(created = "dummy",
@@ -246,7 +246,7 @@ function(input, output, session) {
 
             })
             specimen_type_names <- sampleDB::CheckTable("specimen_type") %>%
-                select(label) %>%
+                dplyr::select(label) %>%
                 dplyr::pull()
             updateSelectInput(session = session,
                               inputId = ".RenameSpecimenType1",
@@ -263,7 +263,7 @@ function(input, output, session) {
     output$TableFreezer <- DT::renderDataTable({
 
         sampleDB::CheckTable("location") %>%
-            select(created, description) %>%
+            dplyr::select(created, description) %>%
             rename(`Date Created` = created, Name = description) %>%
             relocate(Name, `Date Created`)
 
@@ -272,7 +272,7 @@ function(input, output, session) {
     # add freezers
         # prevent freezer name duplication
         add_freezer_duplication_check <- reactive({
-            even <- input$AddFreezer %in% c(sampleDB::CheckTable("location") %>% select(description) %>% dplyr::pull())
+            even <- input$AddFreezer %in% c(sampleDB::CheckTable("location") %>% dplyr::select(description) %>% dplyr::pull())
             shinyFeedback::feedbackWarning("AddFreezer",
                                            even,
                                            "Freezer names must be unique")
@@ -295,13 +295,13 @@ function(input, output, session) {
             output$TableFreezer <- DT::renderDataTable({
 
                 sampleDB::CheckTable("location") %>%
-                    select(created, description) %>%
+                    dplyr::select(created, description) %>%
                     rename(`Date Created` = created, Name = description) %>%
                     relocate(Name, `Date Created`)
 
             })
             freezer_names <- sampleDB::CheckTable("location") %>%
-                select(description) %>%
+                dplyr::select(description) %>%
                 dplyr::pull()
             updateSelectInput(session = session,
                               inputId = ".RenameFreezer1",
@@ -318,19 +318,19 @@ function(input, output, session) {
         ({
             id <- sampleDB::CheckTable("location") %>%
                 filter(description == input$.DeleteFreezer) %>%
-                select(id) %>% dplyr::pull()
+                dplyr::select(id) %>% dplyr::pull()
             sampleDB::DeleteFromTable(table_name = "location",
                                              id = as.character(id))
             output$TableFreezer <- DT::renderDataTable({
 
                 sampleDB::CheckTable("location") %>%
-                    select(created, description) %>%
+                    dplyr::select(created, description) %>%
                     rename(`Date Created` = created, Name = description) %>%
                     relocate(Name, `Date Created`)
 
             })
             freezer_names <- sampleDB::CheckTable("location") %>%
-                select(description) %>%
+                dplyr::select(description) %>%
                 dplyr::pull()
             updateSelectInput(session = session,
                               inputId = ".RenameFreezer1",
@@ -343,7 +343,7 @@ function(input, output, session) {
 
     # modify freezers
         modify_freezer_duplication_check <- reactive({
-            even <- input$RenameFreezer2 %in% c(sampleDB::CheckTable("location") %>% select(description) %>% dplyr::pull())
+            even <- input$RenameFreezer2 %in% c(sampleDB::CheckTable("location") %>% dplyr::select(description) %>% dplyr::pull())
             shinyFeedback::feedbackWarning("RenameFreezer2",
                                            even,
                                            "Freezer names must be unique")
@@ -361,7 +361,7 @@ function(input, output, session) {
 
             id <- sampleDB::CheckTable("location") %>%
                 filter(description == input$.RenameFreezer1) %>%
-                select(id) %>% dplyr::pull()
+                dplyr::select(id) %>% dplyr::pull()
 
             sampleDB::ModifyTable(table_name = "location",
                                          info_list = list(created = "dummy",
@@ -372,13 +372,13 @@ function(input, output, session) {
             output$TableFreezer <- DT::renderDataTable({
 
                 sampleDB::CheckTable("location") %>%
-                    select(created, description) %>%
+                    dplyr::select(created, description) %>%
                     rename(`Date Created` = created, Name = description) %>%
                     relocate(Name, `Date Created`)
 
             })
             freezer_names <- sampleDB::CheckTable("location") %>%
-                select(description) %>%
+                dplyr::select(description) %>%
                 dplyr::pull()
             updateSelectInput(session = session,
                               inputId = ".RenameFreezer1",
@@ -395,7 +395,7 @@ function(input, output, session) {
     output$TableStudy <- DT::renderDataTable({
 
         sampleDB::CheckTable("study") %>%
-            select(-c(id, created, last_updated, hidden))
+            dplyr::select(-c(id, created, last_updated, hidden))
 
     },
     selection = 'single')
@@ -404,7 +404,7 @@ function(input, output, session) {
 
     # prevent freezer name duplication
     add_study_title_duplication_check <- reactive({
-        even <- input$AddStudyTitle %in% c(sampleDB::CheckTable("study") %>% select(title) %>% dplyr::pull())
+        even <- input$AddStudyTitle %in% c(sampleDB::CheckTable("study") %>% dplyr::select(title) %>% dplyr::pull())
         shinyFeedback::feedbackWarning("AddStudyTitle",
                                        even,
                                        "Study titles must be unique")
@@ -413,7 +413,7 @@ function(input, output, session) {
 
     # prevent freezer name duplication
     add_study_short_code_duplication_check <- reactive({
-        even <- input$AddStudyShortCode %in% c(sampleDB::CheckTable("study") %>% select(short_code) %>% dplyr::pull())
+        even <- input$AddStudyShortCode %in% c(sampleDB::CheckTable("study") %>% dplyr::select(short_code) %>% dplyr::pull())
         shinyFeedback::feedbackWarning("AddStudyShortCode",
                                        even,
                                        "Study short codes must be unique")
@@ -463,7 +463,7 @@ function(input, output, session) {
 
             output$TableStudy <- DT::renderDataTable({
                 sampleDB::CheckTable("study") %>%
-                    select(-c(id, created, last_updated, hidden))
+                    dplyr::select(-c(id, created, last_updated, hidden))
 
             })
         })
@@ -474,7 +474,7 @@ function(input, output, session) {
 
     # prevent freezer name duplication
     rename_study_title_duplication_check <- reactive({
-        even <- input$RenameStudyTitle %in% c(sampleDB::CheckTable("study") %>% select(title) %>% dplyr::pull())
+        even <- input$RenameStudyTitle %in% c(sampleDB::CheckTable("study") %>% dplyr::select(title) %>% dplyr::pull())
         shinyFeedback::feedbackWarning("RenameStudyTitle",
                                        even,
                                        "Study titles must be unique")
@@ -483,7 +483,7 @@ function(input, output, session) {
 
     # prevent freezer name duplication
     rename_study_short_code_duplication_check <- reactive({
-        even <- input$RenameStudyShortCode %in% c(sampleDB::CheckTable("study") %>% select(short_code) %>% dplyr::pull())
+        even <- input$RenameStudyShortCode %in% c(sampleDB::CheckTable("study") %>% dplyr::select(short_code) %>% dplyr::pull())
         shinyFeedback::feedbackWarning("RenameStudyShortCode",
                                        even,
                                        "Study short codes must be unique")
@@ -557,7 +557,7 @@ function(input, output, session) {
                 output$TableStudy <- DT::renderDataTable({
 
                     sampleDB::CheckTable("study") %>%
-                        select(-c(id, created, last_updated, hidden))
+                        dplyr::select(-c(id, created, last_updated, hidden))
 
                 })
             })
@@ -590,7 +590,7 @@ function(input, output, session) {
                     output$TableStudy <- DT::renderDataTable({
 
                         sampleDB::CheckTable("study") %>%
-                            select(-c(id, created, last_updated, hidden))
+                            dplyr::select(-c(id, created, last_updated, hidden))
 
                     })
                 })
