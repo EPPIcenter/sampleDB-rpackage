@@ -12,11 +12,11 @@ AddToTable <- function(table_name, info_list){
   # table_name <- "matrix_tube"
 
   # NOTE need to file below
-  # for(i in info_list){
-  #   if(i == ""){
-  #     return()
-  #   }
-  # }
+  for(i in info_list){
+    if(i == ""){
+      return()
+    }
+  }
 
   #get names of columns to modify
   column_names <- paste0(names(info_list), collapse = ", ")

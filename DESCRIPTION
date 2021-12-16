@@ -16,7 +16,6 @@ Imports:
     fastmap,
     shinyFeedback,
     DT
-    
 License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
