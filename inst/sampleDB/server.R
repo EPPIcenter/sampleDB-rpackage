@@ -588,48 +588,22 @@ function(input, output, session) {
 
 
         #remove study
-
-    # delete_study_delete_warning_check <- reactive({
-    #
-    #   info_list <- sampleDB::CheckTable("study")[input$TableStudy_rows_selected,] %>% as.list()
-    #   id <- info_list$id
-    #   print(info_list)
-    #   print(id)
-    #   # freezer_id <- CheckTable("study") %>% filter(description == input$DeleteFreezer) %>% pull(id)
-    #   even <- id %in% sampleDB::CheckTable("study_subject")$study_id
-    #   shinyFeedback::feedbackWarning("delete_study_delete_warning",
-    #                                  even,
-    #                                  "Study is currently is use")
-    #   # shinyFeedback::feedbackWarning("DeleteFreezer",
-    #   #                                even,
-    #   #                                "Freezer is currently is use")
-    # })
-    #   output$delete_study_delete_warning <- renderText(delete_study_delete_warning_check())
-
         observe({
 
             observeEvent(
                 input$DeleteStudyAction,
-                ({
 
+                ({
                     info_list <- sampleDB::CheckTable("study")[input$TableStudy_rows_selected,] %>% as.list()
-                    # print("HERE1")
-                    # print(info_list)
-                    # print("HERE2")
                     id <- info_list$id
-                    # print(id)
                     info_list <- within(info_list, rm(id))
-                    # print("HERE3")
-                    # print(info_list)
 
                     output$DeleteStudy <- renderPrint({
                       if(id %in% sampleDB::CheckTable("study_subject")$study_id){
                         print("*ERROR: Study is currently in use*")
-                      }
-                    })
+                      }})
 
-                    sampleDB::DeleteFromTable(table_name = "study",
-                                                     id = as.character(id))
+                    sampleDB::DeleteFromTable(table_name = "study", id = as.character(id))
 
                     output$TableStudy <- DT::renderDataTable({
 
