@@ -23,6 +23,13 @@ function(input, output, session) {
         input$.UploadAction,
         ({
 
+          sampleDB::UploadSamples(barcode_file = input$UploadDataSet$datapath,
+                                  barcode_type = input$CSVUploadType,
+                                  longitudinal = input$LongitudinalUpload,
+                                  plate_id = input$UploadPlateID,
+                                  location = input$UploadLocation,
+                                  study_short_code = input$UploadStudyShortCode) %>% print()
+
             output$UploadReturnMessage <- renderPrint({
 
                 sampleDB::UploadSamples(barcode_file = input$UploadDataSet$datapath,
@@ -34,10 +41,10 @@ function(input, output, session) {
 
             })
 
-            # updateSelectizeInput(session = session,
-            #                      "SearchByPlateID",
-            #                      choices = sampleDB::CheckTable("matrix_plate") %>% dplyr::select(uid) %>% dplyr::pull(),
-            #                      label = NULL)
+            updateSelectizeInput(session = session,
+                                 "SearchByPlateID",
+                                 choices = sampleDB::CheckTable("matrix_plate")$uid,
+                                 label = NULL)
 
         })
     )
@@ -48,10 +55,10 @@ function(input, output, session) {
 
             updateSelectizeInput(session = session,
                                  "SearchByPlateID",
-                                 choices = sampleDB::CheckTable("matrix_plate") %>% dplyr::select(uid) %>% dplyr::pull(),
+                                 choices = sampleDB::CheckTable("matrix_plate")$uid,
                                  label = NULL)
 
-            print(CheckTable("matrix_plate") %>% tail())
+            # print(CheckTable("matrix_plate") %>% tail())
 
         })
     )

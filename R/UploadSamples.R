@@ -53,7 +53,17 @@ UploadSamples <- function(barcode_file, barcode_type, longitudinal, plate_id, lo
     if(csv[i, "individual_id"] %in% CheckTable("study_subject")$uid){
 
       #IF INDIE ID EXISTS FETCH STUDY_SUBJECT_TABLE_ID ASSO W IT
-      study_subject_table_id <- CheckTable("study_subject") %>% filter(uid == csv[i, "individual_id"]) %>% dplyr::pull(id)
+      study_subject_table_id <- filter(CheckTable("study_subject"), uid == csv[i, ]$"individual_id")$id
+
+      #ADD SPECIMEN_ID TO  _*_STORAGE_CONTAINER_*_ TABLE IF STUDY_SUBJECT ENTRY EXISTS
+      specimen_type_id <- filter(table.specimen_type, label == csv[i, ]$"specimen_type")$id
+      sampleDB::AddToTable("storage_container",
+                           list(created = "dummy",
+                                last_updated = "dummy",
+                                type = "NA",
+                                specimen_id = CheckTable("specimen") %>% filter(study_subject_id == study_subject_table_id, specimen_type_id == specimen_type_id) %>% dplyr::pull(id),
+                                comments = "NA",
+                                exhausted = 0))
 
     #INDIE ID IS NEW
     }else{
@@ -67,40 +77,69 @@ UploadSamples <- function(barcode_file, barcode_type, longitudinal, plate_id, lo
 
       #FETCH THE NEW STUDY_SUBJECT_TABLE_ID
       study_subject_table_id <- CheckTable("study_subject") %>% tail(1) %>% dplyr::pull(id)
-    }
-
-    #ADD TO  _*_SPECIMEN_*_ TABLE AND _*_STORAGE_CONTAINER_*_ TABLE
-
-    #CHECKING TO SEE IF INDIE EXISTS; IF INDIE EXISTS SPECIMEN_ID EXISTS
-    if(csv[i, "individual_id"] %in% CheckTable("study_subject")$uid){
-
-      #ADD SPECIMEN_ID TO  _*_STORAGE_CONTAINER_*_ TABLE IF STUDY_SUBJECT ENTRY EXISTS
-      sampleDB::AddToTable("storage_container",
-                           list(created = "dummy",
-                                last_updated = "dummy",
-                                type = NA,
-                                specimen_id = CheckTable("specimen") %>% filter(study_subject_id == study_subject_table_id, specimen_type_id == filter(table.specimen_type, label == csv[i, "specimen_type"])$id) %>% dplyr::pull(id),
-                                comments = NA,
-                                exhausted = 0))
-    }else{
 
       #ADD STUDY_SUBJECT_ID AND SPECIMEN_TYPE_ID TO _*_SPECIMEN_TABLE_*_ AND ADD THE NEW SPECIMEN_ID TO _*_STORAGE_CONTAINER_*_ TABLE IF SUBJECT_STUDY ENTRY DOES NOT EXIST
       sampleDB::AddToTable("specimen",
                            list(created = "dummy",
                                 last_updated = "dummy",
                                 study_subject_id = study_subject_table_id,
-                                specimen_type_id = filter(table.specimen_type, label == csv[i, "specimen_type"])$id,
-                                collection_date = NA))
-    }
+                                specimen_type_id = filter(table.specimen_type, label == csv[i,]$"specimen_type")$id,
+                                collection_date = "NA"))
 
     #STORAGE CONTAINER TABLE
     sampleDB::AddToTable("storage_container",
                          list(created = "dummy",
                               last_updated = "dummy",
-                              type = NA,
+                              type = "NA",
                               specimen_id = CheckTable("specimen") %>% tail(1) %>% dplyr::pull(id),
-                              comments = NA,
+                              comments = "NA",
                               exhausted = 0))
+
+    }
   }
+
+    # #ADD TO  _*_SPECIMEN_*_ TABLE AND _*_STORAGE_CONTAINER_*_ TABLE
+    #
+    # #CHECKING TO SEE IF INDIE EXISTS; IF INDIE EXISTS SPECIMEN_ID EXISTS
+
+  #   specimen_type_id <- filter(table.specimen_type, label == csv[i, ]$"specimen_type")$id
+  #   print(study_subject_table_id)
+  #   print(specimen_type_id)
+  #   print(filter(CheckTable("specimen"), study_subject_id == study_subject_table_id, specimen_type_id == specimen_type_id)$id)
+  #   print(csv[i,]$"individual_id")
+  #   print(CheckTable("study_subject")$uid)
+  #   print(csv[i,]$"individual_id" %in% CheckTable("study_subject")$uid)
+  #   if(csv[i,]$"individual_id" %in% CheckTable("study_subject")$uid){
+  #
+  #     print("A")
+  #     #ADD SPECIMEN_ID TO  _*_STORAGE_CONTAINER_*_ TABLE IF STUDY_SUBJECT ENTRY EXISTS
+  #     sampleDB::AddToTable("storage_container",
+  #                          list(created = "dummy",
+  #                               last_updated = "dummy",
+  #                               type = "NA",
+  #                               specimen_id = CheckTable("specimen") %>% filter(study_subject_id == study_subject_table_id, specimen_type_id == specimen_type_id) %>% dplyr::pull(id),
+  #                               comments = "NA",
+  #                               exhausted = 0))
+  #   }else{
+  #
+  #     print("B")
+  #     #ADD STUDY_SUBJECT_ID AND SPECIMEN_TYPE_ID TO _*_SPECIMEN_TABLE_*_ AND ADD THE NEW SPECIMEN_ID TO _*_STORAGE_CONTAINER_*_ TABLE IF SUBJECT_STUDY ENTRY DOES NOT EXIST
+  #     sampleDB::AddToTable("specimen",
+  #                          list(created = "dummy",
+  #                               last_updated = "dummy",
+  #                               study_subject_id = study_subject_table_id,
+  #                               specimen_type_id = filter(table.specimen_type, label == csv[i,]$"specimen_type")$id,
+  #                               collection_date = "NA"))
+  #   }
+  #
+  #   #STORAGE CONTAINER TABLE
+  #   sampleDB::AddToTable("storage_container",
+  #                        list(created = "dummy",
+  #                             last_updated = "dummy",
+  #                             type = "NA",
+  #                             specimen_id = CheckTable("specimen") %>% tail(1) %>% dplyr::pull(id),
+  #                             comments = "NA",
+  #                             exhausted = 0))
+  # }
 
 }

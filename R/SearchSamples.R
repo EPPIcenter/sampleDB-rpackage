@@ -14,13 +14,6 @@ SearchSamples <- function(barcode_search_file, search_plate_uid, search_subject_
 
   #step 0 select just one input if multiple are given
 
-  # barcode_search_file <- "aaa"
-  # search_plate_uid <- "bbb"
-  # search_subject_uid <- "ccc"
-  # search_study <- ""
-  # search_location <- "eee"
-  # search_specimen_type <- "fff"
-
   SearchSamplesArgs <- list(barcode_search_file = barcode_search_file,
                             search_plate_uid =  search_plate_uid,
                             search_subject_uid = search_subject_uid,
