@@ -6,6 +6,8 @@
 
 function(input, output, session) {
 
+    updateSelectizeInput(session, 'SearchBySubjectUID', choices = c("", sampleDB::CheckTable("study_subject")$uid %>% unique()), server = TRUE)
+
     ##################
     # Upload Samples #
     ##################
@@ -177,7 +179,7 @@ function(input, output, session) {
                               inputId = ".RenameSpecimenType1",
                               choices = specimen_type_names)
             updateSelectInput(session = session,
-                              inputId = ".DeleteSpecimenType",
+                              inputId = "DeleteSpecimenType",
                               choices = specimen_type_names)
         })
     )
@@ -188,7 +190,7 @@ function(input, output, session) {
         input$.DeleteSpecimenTypeAction,
         ({
             id <- sampleDB::CheckTable("specimen_type") %>%
-                filter(label == input$.DeleteSpecimenType) %>%
+                filter(label == input$DeleteSpecimenType) %>%
                 dplyr::select(id) %>% dplyr::pull()
             sampleDB::DeleteFromTable(table_name = "specimen_type",
                                              id = as.character(id))
@@ -205,7 +207,7 @@ function(input, output, session) {
                               inputId = ".RenameSpecimenType1",
                               choices = specimen_type_names)
             updateSelectInput(session = session,
-                              inputId = ".DeleteSpecimenType",
+                              inputId = "DeleteSpecimenType",
                               choices = specimen_type_names)
         })
     )
@@ -219,6 +221,16 @@ function(input, output, session) {
     output$modify_specimen_type_warning <- renderText(modify_specimen_type_duplication_check())
 
     # modify specimen type
+
+    delete_specimen_delete_warning_check <- reactive({
+      specimen_type_id <- CheckTable("specimen_type") %>% filter(label == input$DeleteSpecimenType) %>% pull(id)
+      even <- specimen_type_id %in% sampleDB::CheckTable("specimen")$specimen_type_id
+      shinyFeedback::feedbackWarning("DeleteSpecimenType",
+                                     even,
+                                     "Specimen Type is currently is use")
+    })
+    output$delete_specimen_delete_warning <- renderText(delete_specimen_delete_warning_check())
+
     observeEvent(
         input$.RenameSpecimenTypeAction,
         ({
@@ -252,7 +264,7 @@ function(input, output, session) {
                               inputId = ".RenameSpecimenType1",
                               choices = specimen_type_names)
             updateSelectInput(session = session,
-                              inputId = ".DeleteSpecimenType",
+                              inputId = "DeleteSpecimenType",
                               choices = specimen_type_names)
         })
     )
@@ -272,7 +284,7 @@ function(input, output, session) {
     # add freezers
         # prevent freezer name duplication
         add_freezer_duplication_check <- reactive({
-            even <- input$AddFreezer %in% c(sampleDB::CheckTable("location") %>% dplyr::select(description) %>% dplyr::pull())
+            even <- input$AddFreezer %in% sampleDB::CheckTable("location")$description
             shinyFeedback::feedbackWarning("AddFreezer",
                                            even,
                                            "Freezer names must be unique")
@@ -307,17 +319,27 @@ function(input, output, session) {
                               inputId = ".RenameFreezer1",
                               choices = freezer_names)
             updateSelectInput(session = session,
-                              inputId = ".DeleteFreezer",
+                              inputId = "DeleteFreezer",
                               choices = freezer_names)
         })
     )
 
     # remove freezers
+
+    delete_freezer_delete_warning_check <- reactive({
+      freezer_id <- CheckTable("location") %>% filter(description == input$DeleteFreezer) %>% pull(id)
+      even <- freezer_id %in% sampleDB::CheckTable("matrix_plate")$location_id
+      shinyFeedback::feedbackWarning("DeleteFreezer",
+                                     even,
+                                     "Freezer is currently is use")
+    })
+    output$delete_freezer_delete_warning <- renderText(delete_freezer_delete_warning_check())
+
     observeEvent(
         input$.DeleteFreezerAction,
         ({
             id <- sampleDB::CheckTable("location") %>%
-                filter(description == input$.DeleteFreezer) %>%
+                filter(description == input$DeleteFreezer) %>%
                 dplyr::select(id) %>% dplyr::pull()
             sampleDB::DeleteFromTable(table_name = "location",
                                              id = as.character(id))
@@ -336,7 +358,7 @@ function(input, output, session) {
                               inputId = ".RenameFreezer1",
                               choices = freezer_names)
             updateSelectInput(session = session,
-                              inputId = ".DeleteFreezer",
+                              inputId = "DeleteFreezer",
                               choices = freezer_names)
         })
     )
@@ -384,7 +406,7 @@ function(input, output, session) {
                               inputId = ".RenameFreezer1",
                               choices = freezer_names)
             updateSelectInput(session = session,
-                              inputId = ".DeleteFreezer",
+                              inputId = "DeleteFreezer",
                               choices = freezer_names)
         })
     )
@@ -567,6 +589,12 @@ function(input, output, session) {
 
         #remove study
 
+    # delete_freezer_delete_warning_check <- reactive({
+    #   freezer_id <- CheckTable("location") %>% filter(description == input$DeleteFreezer) %>% pull(id)
+    #   even <- freezer_id %in% sampleDB::CheckTable("matrix_plate")$location_id
+    #   shinyFeedback::feedbackWarning("DeleteFreezer",
+    #                                  even,
+    #                                  "Freezer is currently is use")
 
         observe({
 
