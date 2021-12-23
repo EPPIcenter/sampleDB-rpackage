@@ -589,28 +589,44 @@ function(input, output, session) {
 
         #remove study
 
-    # delete_freezer_delete_warning_check <- reactive({
-    #   freezer_id <- CheckTable("location") %>% filter(description == input$DeleteFreezer) %>% pull(id)
-    #   even <- freezer_id %in% sampleDB::CheckTable("matrix_plate")$location_id
-    #   shinyFeedback::feedbackWarning("DeleteFreezer",
+    # delete_study_delete_warning_check <- reactive({
+    #
+    #   info_list <- sampleDB::CheckTable("study")[input$TableStudy_rows_selected,] %>% as.list()
+    #   id <- info_list$id
+    #   print(info_list)
+    #   print(id)
+    #   # freezer_id <- CheckTable("study") %>% filter(description == input$DeleteFreezer) %>% pull(id)
+    #   even <- id %in% sampleDB::CheckTable("study_subject")$study_id
+    #   shinyFeedback::feedbackWarning("delete_study_delete_warning",
     #                                  even,
-    #                                  "Freezer is currently is use")
+    #                                  "Study is currently is use")
+    #   # shinyFeedback::feedbackWarning("DeleteFreezer",
+    #   #                                even,
+    #   #                                "Freezer is currently is use")
+    # })
+    #   output$delete_study_delete_warning <- renderText(delete_study_delete_warning_check())
 
         observe({
 
             observeEvent(
-                input$.DeleteStudyAction,
+                input$DeleteStudyAction,
                 ({
 
                     info_list <- sampleDB::CheckTable("study")[input$TableStudy_rows_selected,] %>% as.list()
-                    print("HERE1")
-                    print(info_list)
-                    print("HERE2")
+                    # print("HERE1")
+                    # print(info_list)
+                    # print("HERE2")
                     id <- info_list$id
-                    print(id)
+                    # print(id)
                     info_list <- within(info_list, rm(id))
-                    print("HERE3")
-                    print(info_list)
+                    # print("HERE3")
+                    # print(info_list)
+
+                    output$DeleteStudy <- renderPrint({
+                      if(id %in% sampleDB::CheckTable("study_subject")$study_id){
+                        print("*ERROR: Study is currently in use*")
+                      }
+                    })
 
                     sampleDB::DeleteFromTable(table_name = "study",
                                                      id = as.character(id))

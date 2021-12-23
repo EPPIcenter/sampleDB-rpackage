@@ -429,10 +429,16 @@ navbarPage("SampleDB",
                                         fluidRow(
                                           column(
                                             width = 1,
-                                            actionButton(".DeleteStudyAction",
+                                            actionButton("DeleteStudyAction",
                                                          label = "Delete",
-                                                         style="color: #fff; background-color: #337ab7; border-color: #2e6da4")))),
-                                        textOutput("delete_study_delete_warning"),
+                                                         style="color: #fff; background-color: #337ab7; border-color: #2e6da4"))),
+
+                                        h3(""),
+                                        fluidRow(
+                                          column(
+                                            width = 8,
+                                            verbatimTextOutput("DeleteStudy")
+                                          ))),
 
                                  column(8,
                                         h3("Studies"),
