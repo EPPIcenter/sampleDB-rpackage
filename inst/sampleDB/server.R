@@ -1,11 +1,8 @@
-# library(shiny)
-# library(sampleDB)
-# library(tidyverse)
-# library(DT)
-# library(shinyFeedback)
+
 
 function(input, output, session) {
 
+    #server-side dropdown saves loading time
     updateSelectizeInput(session, 'SearchBySubjectUID', choices = c("", sampleDB::CheckTable("study_subject")$uid %>% unique()), server = TRUE)
 
     ##################
@@ -23,29 +20,17 @@ function(input, output, session) {
         input$.UploadAction,
         ({
 
-          sampleDB::UploadSamples(barcode_file = input$UploadDataSet$datapath,
-                                  barcode_type = input$CSVUploadType,
-                                  longitudinal = input$LongitudinalUpload,
-                                  plate_id = input$UploadPlateID,
-                                  location = input$UploadLocation,
-                                  study_short_code = input$UploadStudyShortCode) %>% print()
-
-            output$UploadReturnMessage <- renderPrint({
+            output$UploadReturnMessage <- renderText({
 
                 sampleDB::UploadSamples(barcode_file = input$UploadDataSet$datapath,
                                         barcode_type = input$CSVUploadType,
                                         longitudinal = input$LongitudinalUpload,
                                         plate_id = input$UploadPlateID,
                                         location = input$UploadLocation,
-                                        study_short_code = input$UploadStudyShortCode)
+                                        study_short_code = input$UploadStudyShortCode,
+                                        session = session)
 
             })
-
-            updateSelectizeInput(session = session,
-                                 "SearchByPlateID",
-                                 choices = sampleDB::CheckTable("matrix_plate")$uid,
-                                 label = NULL)
-
         })
     )
 
@@ -57,8 +42,6 @@ function(input, output, session) {
                                  "SearchByPlateID",
                                  choices = sampleDB::CheckTable("matrix_plate")$uid,
                                  label = NULL)
-
-            # print(CheckTable("matrix_plate") %>% tail())
 
         })
     )

@@ -13,7 +13,7 @@ AddToTable <- function(table_name, info_list){
 
   # NOTE need to file below
   for(i in info_list){
-    print(i)
+    # print(i)
     if(i == ""){
       return()
     }

@@ -73,7 +73,7 @@ navbarPage("SampleDB",
                     fluidRow(
                       column(
                         width = 4,
-                        verbatimTextOutput("UploadReturnMessage")))),
+                        span(textOutput("UploadReturnMessage"), style="font-size: 28px")))),
 
            tabPanel("Search Existing Samples",
 
