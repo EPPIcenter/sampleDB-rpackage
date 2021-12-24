@@ -20,14 +20,7 @@ navbarPage("SampleDB",
                                      "Instrument",
                                      choices = c("Traxer" = "traxer",
                                                  "Vision Mate" = "vision_mate"),
-                                     selected = "vision_mate")),
-                      column(
-                        width = 2,
-                        radioButtons("LongitudinalUpload",
-                                     "Longitudinal",
-                                     choices = c("True" = "true_longitudinal",
-                                                 "False" = "false_longitudinal"),
-                                     selected = "false_longitudinal"))),
+                                     selected = "vision_mate"))),
 
                     fluidRow(
                       column(
@@ -98,12 +91,12 @@ navbarPage("SampleDB",
                                        "Search By Specimen Type",
                                        choices = c("", sampleDB::CheckTable("specimen_type")$label)))),
 
-                    fluidRow(
-                      column(
-                        width = 12,
-                        actionButton(".SearchAction",
-                                     label = "Search Dataset",
-                                     style="color: #fff; background-color: #337ab7; border-color: #2e6da4"))),
+                    # fluidRow(
+                    #   column(
+                    #     width = 12,
+                    #     actionButton(".SearchAction",
+                    #                  label = "Search Dataset",
+                    #                  style="color: #fff; background-color: #337ab7; border-color: #2e6da4"))),
 
                     h3(""),
                     fluidRow(

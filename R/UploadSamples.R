@@ -3,12 +3,15 @@
 #' @export
 
 # UploadSamples <- function(barcode_file, barcode_type, longitudinal, plate_id, location){
-UploadSamples <- function(barcode_file, barcode_type, longitudinal, plate_id, location, study_short_code, session){
+UploadSamples <- function(barcode_file, barcode_type, plate_id, location, study_short_code, session){
 
   #OBTAIN TABLES AS THEY ARE IN THE DATABASE RIGHT NOW (SNAPSHOT)
   table.location <- sampleDB::CheckTable("location")
   table.study <- sampleDB::CheckTable("study")
   table.specimen_type <- sampleDB::CheckTable("specimen_type")
+
+  #UNTIL READING THE COLNAMES ASSUME DATE IS NOT LONGITUDINAL
+  toggle.is_longitudinal <- FALSE
 
   #READIN CSV FROM USER WITH VISIONMATE/TRAXER BARCODES,
   if(barcode_type == "traxer"){
@@ -18,8 +21,9 @@ UploadSamples <- function(barcode_file, barcode_type, longitudinal, plate_id, lo
       mutate(barcode = `Tube ID`,
              well_position = paste0(substring(Position, 1, 1), substring(Position, 2))) %>%
       select(-c(Position:Date))
-    if(longitudinal == "true_longitudinal"){
+    if("dates" %in% names(csv)){
       dates <- drop_na(read_csv(barcode_file))$dates
+      toggle.is_longitudinal <- TRUE
     }
   }else{
 
@@ -29,8 +33,9 @@ UploadSamples <- function(barcode_file, barcode_type, longitudinal, plate_id, lo
              well_position = paste0(LocationRow, LocationColumn)) %>%
       select(-c(LocationRow, LocationColumn, TubeCode))
 
-    if(longitudinal == "true_longitudinal"){
+    if("dates" %in% names(csv)){
       dates <- drop_na(read_csv(barcode_file))$dates
+      toggle.is_longitudinal <- TRUE
     }
   }
 
@@ -50,6 +55,7 @@ UploadSamples <- function(barcode_file, barcode_type, longitudinal, plate_id, lo
                               well_position = csv[i,]$"well_position"))
   }
 
+  message <- NULL
   #IF THE INDIVIDUAL_ID DOES NOT EXIST ADD IT TO THE _*_STUDY_SUBJECT_*_ TABLE
   for(i in 1:nrow(csv)){
 
@@ -61,21 +67,25 @@ UploadSamples <- function(barcode_file, barcode_type, longitudinal, plate_id, lo
 
 
       #ADD TO NEW SPECIMEN _*_SPECIMEN_*_ TABLE -- IF THE INDIE ID ALREADY EXISTS THEN IT MUST BE PART OF A LONGITUDINAL STUDY
-      sampleDB::AddToTable("specimen",
-                           list(created = lubridate::now("UTC") %>% as.character(),
-                                last_updated = lubridate::now("UTC") %>% as.character(),
-                                study_subject_id = study_subject_table_id,
-                                specimen_type_id = filter(table.specimen_type, label == csv[i, ]$"specimen_type")$id,
-                                collection_date = as.character(dates[i]))) #dates need to be in y:m:d format
+      if(toggle.is_longitudinal){
+        sampleDB::AddToTable("specimen",
+                             list(created = lubridate::now("UTC") %>% as.character(),
+                                  last_updated = lubridate::now("UTC") %>% as.character(),
+                                  study_subject_id = study_subject_table_id,
+                                  specimen_type_id = filter(table.specimen_type, label == csv[i, ]$"specimen_type")$id,
+                                  collection_date = as.character(dates[i]))) #dates need to be in y:m:d format
 
-      #ADD SPECIMEN_ID TO  _*_STORAGE_CONTAINER_*_ TABLE IF STUDY_SUBJECT ENTRY EXISTS
-      sampleDB::AddToTable("storage_container",
-                           list(created = lubridate::now("UTC") %>% as.character(),
-                                last_updated = lubridate::now("UTC") %>% as.character(),
-                                type = "NA",
-                                specimen_id = filter(CheckTable("specimen"), study_subject_id == study_subject_table_id, specimen_type_id == filter(table.specimen_type, label == csv[i, ]$"specimen_type")$id)$id,
-                                comments = "NA",
-                                exhausted = 0))
+        #ADD SPECIMEN_ID TO  _*_STORAGE_CONTAINER_*_ TABLE IF STUDY_SUBJECT ENTRY EXISTS
+        sampleDB::AddToTable("storage_container",
+                             list(created = lubridate::now("UTC") %>% as.character(),
+                                  last_updated = lubridate::now("UTC") %>% as.character(),
+                                  type = "NA",
+                                  specimen_id = filter(CheckTable("specimen"), study_subject_id == study_subject_table_id, specimen_type_id == filter(table.specimen_type, label == csv[i, ]$"specimen_type")$id)$id,
+                                  comments = "NA",
+                                  exhausted = 0))
+      }else{
+        message <- "DATA IS NOT LONGITUDINAL AND IT SHOULD BE"
+      }
 
     #INDIE ID IS NEW
     }else{
@@ -91,8 +101,7 @@ UploadSamples <- function(barcode_file, barcode_type, longitudinal, plate_id, lo
       study_subject_table_id <- tail(CheckTable("study_subject"), 1)$id
 
       #ADD STUDY_SUBJECT_ID AND SPECIMEN_TYPE_ID TO _*_SPECIMEN_TABLE_*_ AND ADD THE NEW SPECIMEN_ID TO _*_STORAGE_CONTAINER_*_ TABLE IF SUBJECT_STUDY ENTRY DOES NOT EXIST
-      print("HERE1")
-      if(longitudinal == "true_longitudinal"){
+      if(toggle.is_longitudinal){
 
         sampleDB::AddToTable("specimen",
                              list(created = lubridate::now("UTC") %>% as.character(),
@@ -126,6 +135,7 @@ UploadSamples <- function(barcode_file, barcode_type, longitudinal, plate_id, lo
                        choices = sampleDB::CheckTable("matrix_plate")$uid,
                        label = NULL)
 
-  return(paste("Upload Complete", emoji('tada')))
+  message <- paste("Upload Complete", emoji('tada'))
+  return(message)
 
 }

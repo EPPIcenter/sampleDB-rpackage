@@ -24,7 +24,6 @@ function(input, output, session) {
               print(input$LongitudinalUpload)
                 sampleDB::UploadSamples(barcode_file = input$UploadDataSet$datapath,
                                         barcode_type = input$CSVUploadType,
-                                        longitudinal = input$LongitudinalUpload,
                                         plate_id = input$UploadPlateID,
                                         location = input$UploadLocation,
                                         study_short_code = input$UploadStudyShortCode,
@@ -43,33 +42,61 @@ function(input, output, session) {
     ##################
 
     #SEARCH SAMPLES
-    observeEvent(
-        input$.SearchAction,
-        ({
+    observe({
+      if(is.null(input$SearchByBarcode$datapath)){
+        barcode_search_file <- ""
+      }else{
+        barcode_search_file <- input$SearchByBarcode$datapath
+      }
 
-            if(is.null(input$SearchByBarcode$datapath)){
-                barcode_search_file <- ""
-            }else{
-                barcode_search_file <- input$SearchByBarcode$datapath
-            }
+      search_results <- sampleDB::SearchSamples(barcode_search_file = barcode_search_file,
+                                                search_plate_uid = input$SearchByPlateID,
+                                                search_subject_uid = input$SearchBySubjectUID,
+                                                search_study = input$SearchByStudy,
+                                                search_location = input$SearchByLocation,
+                                                search_specimen_type = input$SearchBySpecimenType)
 
-            output$SearchResultsTable <- DT::renderDataTable({
-              sampleDB::SearchSamples(barcode_search_file = barcode_search_file,
-                                      search_plate_uid = input$SearchByPlateID,
-                                      search_subject_uid = input$SearchBySubjectUID,
-                                      search_study = input$SearchByStudy,
-                                      search_location = input$SearchByLocation,
-                                      search_specimen_type = input$SearchBySpecimenType)
-            })
+      output$SearchResultsTable <- DT::renderDataTable({
+        search_results
+      })
 
-            output$downloadData <- downloadHandler(
-              filename = function() {
-                paste('data-', Sys.Date(), '.csv', sep='')
-              },
-              content = function(con) {
-                write.csv(search_results, con)
-              }
-            )}))
+      output$downloadData <- downloadHandler(
+                  filename = function() {
+                    paste('data-', Sys.Date(), '.csv', sep='')
+                  },
+                  content = function(con) {
+                    write.csv(search_results, con)
+                  }
+                )
+
+    })
+    # observeEvent(
+    #     input$.SearchAction,
+    #     ({
+    #
+    #         if(is.null(input$SearchByBarcode$datapath)){
+    #             barcode_search_file <- ""
+    #         }else{
+    #             barcode_search_file <- input$SearchByBarcode$datapath
+    #         }
+    #
+    #         output$SearchResultsTable <- DT::renderDataTable({
+    #           sampleDB::SearchSamples(barcode_search_file = barcode_search_file,
+    #                                   search_plate_uid = input$SearchByPlateID,
+    #                                   search_subject_uid = input$SearchBySubjectUID,
+    #                                   search_study = input$SearchByStudy,
+    #                                   search_location = input$SearchByLocation,
+    #                                   search_specimen_type = input$SearchBySpecimenType)
+    #         })
+    #
+    #         output$downloadData <- downloadHandler(
+    #           filename = function() {
+    #             paste('data-', Sys.Date(), '.csv', sep='')
+    #           },
+    #           content = function(con) {
+    #             write.csv(search_results, con)
+    #           }
+    #         )}))
 
     ##############
     # Move Tubes #
