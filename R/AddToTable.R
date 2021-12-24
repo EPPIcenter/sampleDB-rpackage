@@ -4,16 +4,12 @@
 #table options
 AddToTable <- function(table_name, info_list){
 
-  #open connection
+  #OPEN THE DATABASE CONNECTION
   conn <-  RSQLite::dbConnect(RSQLite::SQLite(),
                               "../files/example_19-Oct-21.sample_db.sqlite")
 
-  # info_list <- list(plate_id = 123223, barcode = "dummy2", well_position = "A01")
-  # table_name <- "matrix_tube"
-
-  # NOTE need to file below
+  #PREVENT EMPTY ADDITIONS TO DATABASE
   for(i in info_list){
-    # print(i)
     if(i == ""){
       return()
     }

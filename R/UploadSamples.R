@@ -34,14 +34,14 @@ UploadSamples <- function(barcode_file, barcode_type, longitudinal, plate_id, lo
                             last_updated = "dummy",
                             uid = plate_id,
                             hidden = 0,
-                            location_id = table.location %>% filter(description == location) %>% dplyr::pull(id)))
+                            location_id = filter(table.location, description == location)$id))
 
   #ADD PLATE_ID, BARCODE AND WELL POSITION TO _*_MATRIX TUBE_*_ TABLE
   for(i in 1:nrow(csv)){
     sampleDB::AddToTable("matrix_tube",
-                         list(plate_id = sampleDB::CheckTable("matrix_plate") %>% tail(1) %>% dplyr::pull(id),
-                              barcode = csv %>% slice(i) %>% dplyr::pull(barcode) %>% as.character(),
-                              well_position = csv %>% slice(i) %>% dplyr::pull(well_position)))
+                         list(plate_id = tail(sampleDB::CheckTable("matrix_plate"), 1)$id,
+                              barcode = csv[i,]$"barcode" %>% as.character(),
+                              well_position = csv[i,]$"well_position"))
   }
 
   #IF THE INDIVIDUAL_ID DOES NOT EXIST ADD IT TO THE _*_STUDY_SUBJECT_*_ TABLE
@@ -59,7 +59,7 @@ UploadSamples <- function(barcode_file, barcode_type, longitudinal, plate_id, lo
                            list(created = "dummy",
                                 last_updated = "dummy",
                                 type = "NA",
-                                specimen_id = CheckTable("specimen") %>% filter(study_subject_id == study_subject_table_id, specimen_type_id == filter(table.specimen_type, label == csv[i, ]$"specimen_type")$id) %>% dplyr::pull(id),
+                                specimen_id = filter(CheckTable("specimen"), study_subject_id == study_subject_table_id, specimen_type_id == filter(table.specimen_type, label == csv[i, ]$"specimen_type")$id)$id,
                                 comments = "NA",
                                 exhausted = 0))
 
@@ -71,10 +71,10 @@ UploadSamples <- function(barcode_file, barcode_type, longitudinal, plate_id, lo
                            list(created = "dummy",
                                 last_updated = "dummy",
                                 uid = csv %>% slice(i) %>% dplyr::pull(individual_id),
-                                study_id = CheckTable("study") %>% filter(short_code == study_short_code) %>% dplyr::pull(id)))
+                                study_id = filter(CheckTable("study"), short_code == study_short_code)$id))
 
       #FETCH THE NEW STUDY_SUBJECT_TABLE_ID
-      study_subject_table_id <- CheckTable("study_subject") %>% tail(1) %>% dplyr::pull(id)
+      study_subject_table_id <- tail(CheckTable("study_subject"), 1)$id
 
       #ADD STUDY_SUBJECT_ID AND SPECIMEN_TYPE_ID TO _*_SPECIMEN_TABLE_*_ AND ADD THE NEW SPECIMEN_ID TO _*_STORAGE_CONTAINER_*_ TABLE IF SUBJECT_STUDY ENTRY DOES NOT EXIST
       sampleDB::AddToTable("specimen",
@@ -89,10 +89,9 @@ UploadSamples <- function(barcode_file, barcode_type, longitudinal, plate_id, lo
                          list(created = "dummy",
                               last_updated = "dummy",
                               type = "NA",
-                              specimen_id = CheckTable("specimen") %>% tail(1) %>% dplyr::pull(id),
+                              specimen_id = tail(CheckTable("specimen"), 1)$id,
                               comments = "NA",
                               exhausted = 0))
-
     }
   }
 

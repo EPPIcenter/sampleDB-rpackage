@@ -1,17 +1,4 @@
-#make an app that allows user to modify the freezer table
-library(markdown)
-library(sampleDB)
-library(DT)
 
-#NOTE make sure these globals are updated when referrence changes are made
-#bc upload info is selected using dropdown for referrences
-# freezer_names <- sampleDB::CheckTable("location") %>%
-#   dplyr::select(description) %>%
-#   dplyr::pull()
-#
-# specimen_type_names <- sampleDB::CheckTable("specimen_type") %>%
-#   dplyr::select(label) %>%
-#   dplyr::pull()
 
 navbarPage("SampleDB",
 
