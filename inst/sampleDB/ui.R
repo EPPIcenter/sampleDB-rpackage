@@ -13,26 +13,7 @@ navbarPage("SampleDB",
                         fileInput("UploadDataSet",
                                   "Choose CSV File",
                                   multiple = TRUE,
-                                  accept = c("text/csv", "text/comma-separated-values,text/plain", ".csv"))),
-                      column(
-                        width = 2,
-                        radioButtons("CSVUploadType",
-                                     "Instrument",
-                                     choices = c("Traxer" = "traxer",
-                                                 "Vision Mate" = "vision_mate"),
-                                     selected = "vision_mate"))),
-
-                    fluidRow(
-                      column(
-                        width = 4,
-                        textInput("UploadPlateID",
-                                  label = "Unique Plate ID")),
-                      column(
-                        width = 4,
-                        selectInput("UploadLocation",
-                                  label = "Location",
-                                  choices = sampleDB::CheckTable("location")$description))),
-                    textOutput("upload_plate_dup_warning"),
+                                  accept = c("text/csv", "text/comma-separated-values,text/plain", ".csv")))),
 
                     fluidRow(
                       column(
@@ -40,6 +21,20 @@ navbarPage("SampleDB",
                         selectizeInput("UploadStudyShortCode",
                                        choices = c("", sampleDB::CheckTable("study")$short_code),
                                        label = "Study Short Code"))),
+
+                    fluidRow(
+                      column(
+                        width = 4,
+                        textInput("UploadPlateID",
+                                  label = "Unique Plate ID"))),
+                    textOutput("upload_plate_dup_warning"),
+
+                    fluidRow(
+                      column(
+                        width = 4,
+                        selectInput("UploadLocation",
+                                    label = "Location",
+                                    choices = sampleDB::CheckTable("location")$description))),
 
                     fluidRow(
                       column(

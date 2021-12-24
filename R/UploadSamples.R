@@ -3,7 +3,7 @@
 #' @export
 
 # UploadSamples <- function(barcode_file, barcode_type, longitudinal, plate_id, location){
-UploadSamples <- function(barcode_file, barcode_type, plate_id, location, study_short_code, session){
+UploadSamples <- function(barcode_file, plate_id, location, study_short_code, session){
 
   #OBTAIN TABLES AS THEY ARE IN THE DATABASE RIGHT NOW (SNAPSHOT)
   table.location <- sampleDB::CheckTable("location")
@@ -14,9 +14,10 @@ UploadSamples <- function(barcode_file, barcode_type, plate_id, location, study_
   toggle.is_longitudinal <- FALSE
 
   #READIN CSV FROM USER WITH VISIONMATE/TRAXER BARCODES,
-  if(barcode_type == "traxer"){
+  csv <- read_csv(barcode_file)
 
-    csv <- read_csv(barcode_file) %>%
+  if(!("LocationRow" %in% names(csv))){
+    csv <- csv %>%
       drop_na() %>%
       mutate(barcode = `Tube ID`,
              well_position = paste0(substring(Position, 1, 1), substring(Position, 2))) %>%
@@ -27,7 +28,7 @@ UploadSamples <- function(barcode_file, barcode_type, plate_id, location, study_
     }
   }else{
 
-    csv <- read_csv(barcode_file) %>%
+    csv <- csv %>%
       drop_na() %>%
       mutate(barcode = TubeCode,
              well_position = paste0(LocationRow, LocationColumn)) %>%
