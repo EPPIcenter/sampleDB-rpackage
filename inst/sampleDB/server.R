@@ -12,14 +12,12 @@ function(input, output, session) {
         even <- input$UploadPlateID %in% c(sampleDB::CheckTable("matrix_plate") %>% dplyr::select(uid) %>% dplyr::pull())
         shinyFeedback::feedbackWarning("UploadPlateID",
                                        even,
-                                       "Plate IDs must be unique")
-    })
+                                       "Plate IDs must be unique")})
     output$upload_plate_dup_warning <- renderText(upload_plate_dup_check())
 
     observeEvent(
         input$.UploadAction,
         ({
-
             output$UploadReturnMessage <- renderText({
 
                 sampleDB::UploadSamples(barcode_file = input$UploadDataSet$datapath,
@@ -28,23 +26,15 @@ function(input, output, session) {
                                         plate_id = input$UploadPlateID,
                                         location = input$UploadLocation,
                                         study_short_code = input$UploadStudyShortCode,
-                                        session = session)
-
-            })
-        })
-    )
+                                        session = session)})}))
 
     observeEvent(
         input$.UploadAction,
         ({
-
             updateSelectizeInput(session = session,
                                  "SearchByPlateID",
                                  choices = sampleDB::CheckTable("matrix_plate")$uid,
-                                 label = NULL)
-
-        })
-    )
+                                 label = NULL)}))
 
     ##################
     # Search Samples #
