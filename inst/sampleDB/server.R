@@ -21,6 +21,7 @@ function(input, output, session) {
         ({
             output$UploadReturnMessage <- renderText({
 
+              print(input$LongitudinalUpload)
                 sampleDB::UploadSamples(barcode_file = input$UploadDataSet$datapath,
                                         barcode_type = input$CSVUploadType,
                                         longitudinal = input$LongitudinalUpload,

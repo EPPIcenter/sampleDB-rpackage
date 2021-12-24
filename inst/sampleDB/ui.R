@@ -45,7 +45,7 @@ navbarPage("SampleDB",
                       column(
                         width = 4,
                         selectizeInput("UploadStudyShortCode",
-                                       choices = c("", CheckTable("study")$short_code),
+                                       choices = c("", sampleDB::CheckTable("study")$short_code),
                                        label = "Study Short Code"))),
 
                     fluidRow(
@@ -74,7 +74,7 @@ navbarPage("SampleDB",
                         width = 4,
                         selectizeInput("SearchByPlateID",
                                        "Search By Plate ID",
-                                       choices = c("", CheckTable("matrix_plate")$uid))),
+                                       choices = c("", sampleDB::CheckTable("matrix_plate")$uid))),
                       column(
                         width = 4,
                         selectizeInput("SearchBySubjectUID",
@@ -86,17 +86,17 @@ navbarPage("SampleDB",
                         width = 4,
                         selectizeInput("SearchByStudy",
                                        "Search By Study",
-                                       choices = c("", CheckTable("study")$short_code))),
+                                       choices = c("", sampleDB::CheckTable("study")$short_code))),
                       column(
                         width = 4,
                         selectizeInput("SearchByLocation",
                                        "Search By Location",
-                                       choices = c("", CheckTable("location")$description))),
+                                       choices = c("", sampleDB::CheckTable("location")$description))),
                       column(
                         width = 4,
                         selectizeInput("SearchBySpecimenType",
                                        "Search By Specimen Type",
-                                       choices = c("", CheckTable("specimen_type")$label)))),
+                                       choices = c("", sampleDB::CheckTable("specimen_type")$label)))),
 
                     fluidRow(
                       column(
@@ -149,7 +149,7 @@ navbarPage("SampleDB",
                       column(
                         width = 4,
                         selectizeInput("MovePlateIDExisting",
-                                       c("", CheckTable("matrix_plate")$uid),
+                                       c("", sampleDB::CheckTable("matrix_plate")$uid),
                                        label = "Existing Plate ID")),
 
                       column(
@@ -163,7 +163,7 @@ navbarPage("SampleDB",
                       column(
                         width = 4,
                         selectizeInput("MoveStudyShortCode",
-                                       choices = c("", CheckTable("study")$short_code),
+                                       choices = c("", sampleDB::CheckTable("study")$short_code),
                                        label = "Study Short Code"))),
 
                     fluidRow(
@@ -207,7 +207,7 @@ navbarPage("SampleDB",
                                             width = 12,
                                             selectInput(".RenameFreezer1",
                                                         label = h3("Rename a Freezer"),
-                                                        choices = c("", CheckTable("location")$description),
+                                                        choices = c("", sampleDB::CheckTable("location")$description),
                                                         selected = 1))),
 
                                         fluidRow(
@@ -231,7 +231,7 @@ navbarPage("SampleDB",
                                             width = 12,
                                             selectInput("DeleteFreezer",
                                                         label = NULL,
-                                                        choices = c("", CheckTable("location")$description),
+                                                        choices = c("", sampleDB::CheckTable("location")$description),
                                                         selected = 1))),
                                         textOutput("delete_freezer_delete_warning"),
 

@@ -10,7 +10,7 @@ AddToTable <- function(table_name, info_list){
 
   #PREVENT EMPTY ADDITIONS TO DATABASE
   for(i in info_list){
-    if(i == ""){
+    if(as.character(i) == ""){
       return()
     }
   }

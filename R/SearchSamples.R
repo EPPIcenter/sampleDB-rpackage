@@ -79,6 +79,7 @@ SearchSamples <- function(barcode_search_file, search_plate_uid, search_subject_
   table.ref3 <- inner_join(specimen_ids, table.specimen, by = c("specimen_id" = "id"))
   study_subject_id <- table.ref3$study_subject_id
   specimen_type_ids <- table.ref3$specimen_type_id
+  collection_date <- table.ref3$collection_date
 
   table.ref4 <- inner_join(table.ref3, table.study_subject, by = c("study_subject_id" = "id"))
   subject_uids <- table.ref4$uid
@@ -93,7 +94,8 @@ SearchSamples <- function(barcode_search_file, search_plate_uid, search_subject_
                            study = study_short_code,
                            specimen_type = specimen_type_labels,
                            location = location_descriptions,
-                           plate_uid = plate_uids)
+                           plate_uid = plate_uids,
+                           collection_date = collection_date)
 
   #FILTER BY FILTER TERMS
   for(filter_term in filter_terms){
