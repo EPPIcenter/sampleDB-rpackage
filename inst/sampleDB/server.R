@@ -91,8 +91,8 @@ function(input, output, session) {
       input$.AddFreezerAction,
       ({
         sampleDB::AddToTable("location",
-                             list(created = "dummy",
-                                  last_updated = "dummy",
+                             list(created = lubridate::now("UTC"),
+                                  last_updated = lubridate::now("UTC"),
                                   description = input$AddFreezer))
 
         output$TableFreezer <- DT::renderDataTable({
@@ -115,9 +115,11 @@ function(input, output, session) {
     observeEvent(
       input$.RenameFreezerAction,
       ({
+
+        #NOTE: GET THE ENTRY'S "CREATED" DATE SO THAT IT CAN BE PASSED ON IN THE MODIFICATION
         sampleDB::ModifyTable(table_name = "location",
-                              info_list = list(created = "dummy",
-                                               last_updated = "dummy",
+                              info_list = list(created = as.character(filter(sampleDB::CheckTable("location"), description == input$.RenameFreezer1)$created),
+                                               last_updated = lubridate::now("UTC"),
                                                description = input$RenameFreezer2),
                               id = as.character(filter(sampleDB::CheckTable("location"), description == input$.RenameFreezer1)$id))
 
@@ -179,8 +181,8 @@ function(input, output, session) {
         input$.AddSpecimenTypeAction,
         ({
             sampleDB::AddToTable("specimen_type",
-                                        list(created = "dummy",
-                                             last_updated = "dummy",
+                                        list(created = lubridate::now("UTC"),
+                                             last_updated = lubridate::now("UTC"),
                                              label = input$AddSpecimenType))
 
             output$TableSpecimenType <- DT::renderDataTable({
@@ -202,9 +204,10 @@ function(input, output, session) {
     observeEvent(
       input$.RenameSpecimenTypeAction,
       ({
+        #NOTE: GET THE ENTRY'S "CREATED" DATE SO THAT IT CAN BE PASSED ON IN THE MODIFICATION
         sampleDB::ModifyTable(table_name = "specimen_type",
-                              info_list = list(created = "dummy",
-                                               last_updated = "dummy",
+                              info_list = list(created = as.character(filter(sampleDB::CheckTable("specimen_type"), label == input$.RenameSpecimenType1)$created),
+                                               last_updated = lubridate::now("UTC"),
                                                label = input$RenameSpecimenType2),
                               id = as.character(filter(sampleDB::CheckTable("specimen_type"), label == input$.RenameSpecimenType1)$id))
 
@@ -268,8 +271,8 @@ function(input, output, session) {
         input$.AddStudyAction,
         ({
             sampleDB::AddToTable("study",
-                                        list(created = "dummy",
-                                             last_updated = "dummy",
+                                        list(created = lubridate::now("UTC"),
+                                             last_updated = lubridate::now("UTC"),
                                              title = input$AddStudyTitle,
                                              description = input$AddStudyDescription,
                                              short_code = input$AddStudyShortCode,
