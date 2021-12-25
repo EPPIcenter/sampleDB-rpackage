@@ -86,13 +86,6 @@ navbarPage("SampleDB",
                                        "Search By Specimen Type",
                                        choices = c("", sampleDB::CheckTable("specimen_type")$label)))),
 
-                    # fluidRow(
-                    #   column(
-                    #     width = 12,
-                    #     actionButton(".SearchAction",
-                    #                  label = "Search Dataset",
-                    #                  style="color: #fff; background-color: #337ab7; border-color: #2e6da4"))),
-
                     h3(""),
                     fluidRow(
                       column(
@@ -112,53 +105,28 @@ navbarPage("SampleDB",
                         fileInput("MoveDataSet",
                                   "Choose CSV File",
                                   multiple = TRUE,
-                                  accept = c("text/csv", "text/comma-separated-values,text/plain", ".csv"))),
-                      column(
-                        width = 2,
-                        radioButtons("CSVMoveType",
-                                     "Instrument",
-                                     choices = c("Traxer" = "traxer",
-                                                 "Vision Mate" = "vision_mate"),
-                                     selected = "vision_mate")),
-                      column(
-                        width = 2,
-                        radioButtons("LongitudinalMove",
-                                     "Longitudinal",
-                                     choices = c("True" = "true_longitudinal",
-                                                 "False" = "false_longitudinal"),
-                                     selected = "false_longitudinal"))),
+                                  accept = c("text/csv", "text/comma-separated-values,text/plain", ".csv")))),
 
                     fluidRow(
                       column(
                         width = 4,
-                        textInput("MovePlateIDNew",
-                                  label = "Unique Plate ID")),
-
-                      column(
-                        width = 4,
-                        selectizeInput("MovePlateIDExisting",
-                                       c("", sampleDB::CheckTable("matrix_plate")$uid),
-                                       label = "Existing Plate ID")),
-
-                      column(
-                        width = 4,
-                        selectInput("MoveLocation",
-                                    label = "Location",
-                                    choices = sampleDB::CheckTable("location")$description))),
+                        textInput("MovePlateID",
+                                  label = "New Unique Plate ID"))),
                     textOutput("move_plate_dup_warning"),
 
                     fluidRow(
                       column(
                         width = 4,
-                        selectizeInput("MoveStudyShortCode",
-                                       choices = c("", sampleDB::CheckTable("study")$short_code),
-                                       label = "Study Short Code"))),
+                        selectInput("MoveLocation",
+                                    label = "Location",
+                                    choices = sampleDB::CheckTable("location")$description))
+                    ),
 
                     fluidRow(
                       column(
                         width = 12,
                         actionButton(".MoveAction",
-                                     label = "Upload Dataset",
+                                     label = "Move Samples",
                                      style="color: #fff; background-color: #337ab7; border-color: #2e6da4"))),
 
                     h3(""),
@@ -228,7 +196,12 @@ navbarPage("SampleDB",
                                             width = 1,
                                             actionButton(".DeleteFreezerAction",
                                                          label = "Delete",
-                                                         style="color: #fff; background-color: #337ab7; border-color: #2e6da4")))
+                                                         style="color: #fff; background-color: #337ab7; border-color: #2e6da4"))),
+
+                                        fluidRow(
+                                          column(
+                                            width = 4,
+                                            span(textOutput("FreezerReturnMessage"), style="font-size: 28px"))),
 
                                         ),
 
@@ -292,7 +265,13 @@ navbarPage("SampleDB",
                                             width = 1,
                                             actionButton(".DeleteSpecimenTypeAction",
                                                          label = "Delete",
-                                                         style="color: #fff; background-color: #337ab7; border-color: #2e6da4")))),
+                                                         style="color: #fff; background-color: #337ab7; border-color: #2e6da4"))),
+
+                                        fluidRow(
+                                          column(
+                                            width = 4,
+                                            span(textOutput("SpecimenReturnMessage"), style="font-size: 28px"))),
+                                        ),
 
                                  column(8,
                                    h3("Specimen Types"),
@@ -407,6 +386,11 @@ navbarPage("SampleDB",
                                             actionButton("DeleteStudyAction",
                                                          label = "Delete",
                                                          style="color: #fff; background-color: #337ab7; border-color: #2e6da4"))),
+
+                                        fluidRow(
+                                          column(
+                                            width = 4,
+                                            span(textOutput("StudyReturnMessage"), style="font-size: 28px"))),
 
                                         h3(""),
                                         fluidRow(

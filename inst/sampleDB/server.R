@@ -39,6 +39,12 @@ function(input, output, session) {
     # Search Samples #
     ##################
 
+    #CHECK PLATE_ID IS UNIQUE
+    move_plate_dup_check <- reactive({
+      toggle <- input$MovePlateID %in% c(sampleDB::CheckTable("matrix_plate")$uid)
+      shinyFeedback::feedbackWarning("MovePlateID", toggle, "Plate IDs must be unique")})
+    output$move_plate_dup_warning <- renderText(move_plate_dup_check())
+
     #SEARCH SAMPLES
     observe({
       if(is.null(input$SearchByBarcode$datapath)){
@@ -68,37 +74,28 @@ function(input, output, session) {
                 )
 
     })
-    # observeEvent(
-    #     input$.SearchAction,
-    #     ({
-    #
-    #         if(is.null(input$SearchByBarcode$datapath)){
-    #             barcode_search_file <- ""
-    #         }else{
-    #             barcode_search_file <- input$SearchByBarcode$datapath
-    #         }
-    #
-    #         output$SearchResultsTable <- DT::renderDataTable({
-    #           sampleDB::SearchSamples(barcode_search_file = barcode_search_file,
-    #                                   search_plate_uid = input$SearchByPlateID,
-    #                                   search_subject_uid = input$SearchBySubjectUID,
-    #                                   search_study = input$SearchByStudy,
-    #                                   search_location = input$SearchByLocation,
-    #                                   search_specimen_type = input$SearchBySpecimenType)
-    #         })
-    #
-    #         output$downloadData <- downloadHandler(
-    #           filename = function() {
-    #             paste('data-', Sys.Date(), '.csv', sep='')
-    #           },
-    #           content = function(con) {
-    #             write.csv(search_results, con)
-    #           }
-    #         )}))
 
     ##############
     # Move Tubes #
     ##############
+
+    #UPLOAD PLATE
+    observeEvent(
+      input$.MoveAction,
+      ({
+
+        sampleDB::MoveTubes(barcode_file = input$MoveDataSet$datapath,
+                                new_plate_id = input$MovePlateID,
+                                location = input$MoveLocation)
+
+
+        output$UploadReturnMessage <- renderText({
+
+          sampleDB::MoveTubes(barcode_file = input$MoveDataSet$datapath,
+                                  new_plate_id = input$MovePlateID,
+                                  location = input$MoveLocation)})
+        })
+      )
 
     #REFERENCES#################################################################################
 
@@ -129,7 +126,10 @@ function(input, output, session) {
 
         updateTextInput(session, "AddFreezer", value = "", placeholder = "New Name")
         updateSelectInput(session, ".RenameFreezer1", choices = sampleDB::CheckTable("location")$description)
-        updateSelectInput(session, "DeleteFreezer", choices =  sampleDB::CheckTable("location")$description)}))
+        updateSelectInput(session, "DeleteFreezer", choices =  sampleDB::CheckTable("location")$description)
+
+        output$FreezerReturnMessage <- renderText({paste("Freezer Added", emoji('tada'))})
+      }))
 
     #PREVENT DUPLICATION OF FREEZER NAMES
     modify_freezer_duplication_check <- reactive({
@@ -157,7 +157,10 @@ function(input, output, session) {
 
         updateTextInput(session = session, "RenameFreezer2", value = "", placeholder = "New Name")
         updateSelectInput(session = session, inputId = ".RenameFreezer1", choices = sampleDB::CheckTable("location")$description)
-        updateSelectInput(session = session, inputId = "DeleteFreezer", choices = sampleDB::CheckTable("location")$description)}))
+        updateSelectInput(session = session, inputId = "DeleteFreezer", choices = sampleDB::CheckTable("location")$description)
+
+        output$FreezerReturnMessage <- renderText({paste("Modified Freezer", input$RenameFreezer1, "to", input$.RenameFreezer2, emoji('tada'))})
+        }))
 
     #PREVENT DELETION OF FREEZER THAT IS IN USE
     delete_freezer_delete_warning_check <- reactive({
@@ -181,6 +184,8 @@ function(input, output, session) {
 
         updateSelectInput(session, inputId = ".RenameFreezer1", choices = sampleDB::CheckTable("location")$description)
         updateSelectInput(session, inputId = "DeleteFreezer", choices =  sampleDB::CheckTable("location")$description)
+
+        output$FreezerReturnMessage <- renderText({paste("Deleted", input$DeleteFreezer, emoji('tada'))})
       })
     )
 
@@ -218,7 +223,10 @@ function(input, output, session) {
 
             updateTextInput(session = session, "AddSpecimenType", value = "", placeholder = "New Name")
             updateSelectInput(session = session, inputId = ".RenameSpecimenType1", choices = sampleDB::CheckTable("specimen_type")$label)
-            updateSelectInput(session = session, inputId = "DeleteSpecimenType", choices = sampleDB::CheckTable("specimen_type")$label)}))
+            updateSelectInput(session = session, inputId = "DeleteSpecimenType", choices = sampleDB::CheckTable("specimen_type")$label)
+
+            output$SpecimenReturnMessage <- renderText({paste("Added Specimen Type", emoji('tada'))})
+            }))
 
     #PREVENT REPLICATE SPECIMEN TYPE NAMES
     modify_specimen_type_duplication_check <- reactive({
@@ -244,7 +252,10 @@ function(input, output, session) {
 
         updateTextInput(session = session, "RenameSpecimenType2", value = "", placeholder = "New Name")
         updateSelectInput(session = session, inputId = ".RenameSpecimenType1", choices = sampleDB::CheckTable("specimen_type")$label)
-        updateSelectInput(session = session, inputId = "DeleteSpecimenType", choices = sampleDB::CheckTable("specimen_type")$label)}))
+        updateSelectInput(session = session, inputId = "DeleteSpecimenType", choices = sampleDB::CheckTable("specimen_type")$label)
+
+        output$SpecimenReturnMessage <- renderText({paste("Modified Specimen Type", input$.RenameSpecimenType1, "to", input$.RenameSpecimenType2, emoji('tada'))})
+        }))
 
     #PROTECT AGAINST DELETION OF SPECIMEN TYPE IN USE
     delete_specimen_delete_warning_check <- reactive({
@@ -266,7 +277,10 @@ function(input, output, session) {
                     relocate(`Date Created`)})
 
             updateSelectInput(session = session, inputId = ".RenameSpecimenType1", choices = sampleDB::CheckTable("specimen_type")$label)
-            updateSelectInput(session = session, inputId = "DeleteSpecimenType", choices = sampleDB::CheckTable("specimen_type")$label)}))
+            updateSelectInput(session = session, inputId = "DeleteSpecimenType", choices = sampleDB::CheckTable("specimen_type")$label)
+
+            output$SpecimenReturnMessage <- renderText({paste("Deleted Specimen Type", input$DeleteSpecimenType, emoji('tada'))})
+            }))
 
     #IDLY PRESENT SPECIMEN TYPES
     output$TableSpecimenType <- DT::renderDataTable({
@@ -316,6 +330,8 @@ function(input, output, session) {
             updateTextInput(session = session, "AddStudyShortCode", value = "", placeholder = "New Short Code")
             updateCheckboxInput(session = session, "AddStudyIsLongitudinal", value = FALSE)
             updateCheckboxInput(session = session, "AddStudyIsHidden", value = FALSE)
+
+            output$StudyReturnMessage <- renderText({paste("Added Study to the Database", emoji('tada'))})
         })
     )
 
@@ -357,7 +373,10 @@ function(input, output, session) {
 
               output$TableStudy <- DT::renderDataTable({
                   sampleDB::CheckTable("study") %>%
-                      dplyr::select(-c(id, created, last_updated, hidden))})}))})
+                      dplyr::select(-c(id, created, last_updated, hidden))})
+
+              output$StudyReturnMessage <- renderText({paste("Modified Study", emoji('tada'))})
+              }))})
 
         #REMOVE A STUDY FROM THE DATABASE
         observe({
@@ -373,7 +392,11 @@ function(input, output, session) {
 
                     output$TableStudy <- DT::renderDataTable({
                         sampleDB::CheckTable("study") %>%
-                            dplyr::select(-c(id, created, last_updated, hidden))})}))})
+                            dplyr::select(-c(id, created, last_updated, hidden))})
+
+                    output$StudyReturnMessage <- renderText({paste("Deleted Study", emoji('tada'))})
+                    })
+              )})
 
         #IDLY SHOW STUDIES
         output$TableStudy <- DT::renderDataTable({
