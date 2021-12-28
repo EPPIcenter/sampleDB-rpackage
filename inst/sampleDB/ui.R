@@ -1,4 +1,6 @@
 
+library(tidyverse)
+library(sampleDB)
 
 navbarPage("SampleDB",
 
