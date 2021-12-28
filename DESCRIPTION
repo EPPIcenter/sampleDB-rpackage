@@ -7,12 +7,14 @@ Authors@R:
            role = c("aut", "cre"),
            email = "Severiano.Villarruel@ucsf.edu",
            comment = c(ORCID = "YOUR-ORCID-ID"))
-Description: Print table in SQLite database
+Description: Functions to imterface with EPPIcenter SampleDB database
 Imports:
-    tidyverse,
+    dplyr,
+    shiny,
     RSQLite,
     lubridate,
     magrittr,
+    emojifont,
     fastmap,
     shinyFeedback,
     DT

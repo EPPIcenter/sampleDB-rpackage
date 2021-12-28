@@ -1,6 +1,9 @@
-
-library(tidyverse)
+library(dplyr)
 library(sampleDB)
+library(DT)
+library(shinyFeedback)
+library(shiny)
+library(markdown)
 
 navbarPage("SampleDB",
 

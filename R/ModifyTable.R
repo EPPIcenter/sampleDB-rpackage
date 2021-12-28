@@ -1,4 +1,5 @@
 #' @import dplyr
+#' @import RSQLite
 #' @export
 
 ModifyTable <- function(table_name, info_list, id){

@@ -1,5 +1,10 @@
-library(tidyverse)
+library(dplyr)
 library(sampleDB)
+library(DT)
+library(shinyFeedback)
+library(shiny)
+library(markdown)
+library(lubridate)
 
 function(input, output, session) {
 

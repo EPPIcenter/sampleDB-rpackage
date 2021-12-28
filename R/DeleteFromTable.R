@@ -1,4 +1,5 @@
 #' @import dplyr
+#' @import RSQLite
 #' @export
 
 DeleteFromTable <- function(table_name, id){

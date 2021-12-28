@@ -1,4 +1,9 @@
-#' @import shiny tidyverse DT shinyFeedback markdown
+#' @import dplyr
+#' @import shiny
+#' @import DT
+#' @import shinyFeedback
+#' @import markdown
+#' @import lubridate
 #' @export
 
 Run_SampleDB <- function(){

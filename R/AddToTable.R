@@ -1,4 +1,6 @@
 #' @import dplyr
+#' @import emojifont
+#' @import RSQLite
 #' @export
 
 #table options
