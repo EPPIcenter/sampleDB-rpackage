@@ -34,8 +34,8 @@
 
 
 NOTE: making sure the app is
-	- version controlled
-	- accessible
-	- able to reliably interact with the database
-	- able to back up the database
-	- handling/preventing database manipulation by multiple users at once
+- version controlled
+- accessible
+- able to reliably interact with the database
+- able to back up the database
+- handling/preventing database manipulation by multiple users at once
