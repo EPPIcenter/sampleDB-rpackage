@@ -1,18 +1,20 @@
 #' @import dplyr
 #' @import RSQLite
 #' @import emojifont
+#' @import readr
+#' @import tidyr
 #' @export
 
 #DO WE WANT USERS TO BE ABLE TO CHANGE THE STUDY CODE ASSO W TUBES?
 #DO WE WANT USERS TO BE ABLE TO DELETE TUBES FROM THE DATABASE?
 
-MoveTubes <- function(barcode_file, new_plate_id, location){
+MoveTubes <- function(database, barcode_file, new_plate_id, location){
 
 
   #OBTAIN TABLES AS THEY ARE IN THE DATABASE RIGHT NOW (SNAPSHOT)
-  table.location <- sampleDB::CheckTable("location")
-  table.study <- sampleDB::CheckTable("study")
-  table.specimen_type <- sampleDB::CheckTable("specimen_type")
+  table.location <- sampleDB::CheckTable(database = database, "location")
+  table.study <- sampleDB::CheckTable(database = database, "study")
+  table.specimen_type <- sampleDB::CheckTable(database = database, "specimen_type")
 
   #UNTIL READING THE COLNAMES ASSUME DATE IS NOT LONGITUDINAL
   toggle.is_longitudinal <- FALSE
@@ -46,14 +48,14 @@ MoveTubes <- function(barcode_file, new_plate_id, location){
 
   #FIND PLATE_ID ASSO W EXISTING BARCODES
   for (i in  1:nrow(csv)){
-    filter(CheckTable("matrix_tube"), barcode == csv[i,]$"barcode")$id %>% print()
+    filter(CheckTable(database = database, "matrix_tube"), barcode == csv[i,]$"barcode")$id %>% print()
 
     #modify matrix_tube table to swap out new_plate_id and well position with usr input new_plate and well poisiton
-    sampleDB::ModifyTable("matrix_tube",
+    sampleDB::ModifyTable(database = database, "matrix_tube",
                           info_list = list(plate_id = new_plate_id,
                                            barcode = csv[i,]$"barcode",
                                            well_position = csv[i,]$"well_position"),
-                          id = filter(CheckTable("matrix_tube"), barcode == csv[i,]$"barcode")$id)
+                          id = filter(CheckTable(database = database, "matrix_tube"), barcode == csv[i,]$"barcode")$id)
   }
 
 
@@ -68,7 +70,7 @@ MoveTubes <- function(barcode_file, new_plate_id, location){
   # #ADD PLATE_ID, BARCODE AND WELL POSITION TO _*_MATRIX TUBE_*_ TABLE
   # for(i in 1:nrow(csv)){
   #   sampleDB::AddToTable("matrix_tube",
-  #                        list(plate_id = tail(sampleDB::CheckTable("matrix_plate"), 1)$id,
+  #                        list(plate_id = tail(sampleDB::CheckTable(database = database, "matrix_plate"), 1)$id,
   #                             barcode = csv[i,]$"barcode" %>% as.character(),
   #                             well_position = csv[i,]$"well_position"))
   # }
@@ -78,10 +80,10 @@ MoveTubes <- function(barcode_file, new_plate_id, location){
   # for(i in 1:nrow(csv)){
   #
   #   #CHECKING TO SEE IF INDIE ID EXISTS
-  #   if(csv[i, "individual_id"] %in% CheckTable("study_subject")$uid){
+  #   if(csv[i, "individual_id"] %in% CheckTable(database = database, "study_subject")$uid){
   #
   #     #IF INDIE ID EXISTS FETCH STUDY_SUBJECT_TABLE_ID ASSO W IT
-  #     study_subject_table_id <- filter(CheckTable("study_subject"), uid == csv[i, ]$"individual_id")$id
+  #     study_subject_table_id <- filter(CheckTable(database = database, "study_subject"), uid == csv[i, ]$"individual_id")$id
   #
   #
   #     #ADD TO NEW SPECIMEN _*_SPECIMEN_*_ TABLE -- IF THE INDIE ID ALREADY EXISTS THEN IT MUST BE PART OF A LONGITUDINAL STUDY
@@ -98,7 +100,7 @@ MoveTubes <- function(barcode_file, new_plate_id, location){
   #                            list(created = lubridate::now("UTC") %>% as.character(),
   #                                 last_updated = lubridate::now("UTC") %>% as.character(),
   #                                 type = "NA",
-  #                                 specimen_id = filter(CheckTable("specimen"), study_subject_id == study_subject_table_id, specimen_type_id == filter(table.specimen_type, label == csv[i, ]$"specimen_type")$id)$id,
+  #                                 specimen_id = filter(CheckTable(database = database, "specimen"), study_subject_id == study_subject_table_id, specimen_type_id == filter(table.specimen_type, label == csv[i, ]$"specimen_type")$id)$id,
   #                                 comments = "NA",
   #                                 exhausted = 0))
   #     }else{
@@ -113,10 +115,10 @@ MoveTubes <- function(barcode_file, new_plate_id, location){
   #                          list(created = lubridate::now("UTC") %>% as.character(),
   #                               last_updated = lubridate::now("UTC") %>% as.character(),
   #                               uid = csv[i,]$individual_id,
-  #                               study_id = filter(CheckTable("study"), short_code == study_short_code)$id))
+  #                               study_id = filter(CheckTable(database = database, "study"), short_code == study_short_code)$id))
   #
   #     #FETCH THE NEW STUDY_SUBJECT_TABLE_ID
-  #     study_subject_table_id <- tail(CheckTable("study_subject"), 1)$id
+  #     study_subject_table_id <- tail(CheckTable(database = database, "study_subject"), 1)$id
   #
   #     #ADD STUDY_SUBJECT_ID AND SPECIMEN_TYPE_ID TO _*_SPECIMEN_TABLE_*_ AND ADD THE NEW SPECIMEN_ID TO _*_STORAGE_CONTAINER_*_ TABLE IF SUBJECT_STUDY ENTRY DOES NOT EXIST
   #     if(toggle.is_longitudinal){
@@ -142,7 +144,7 @@ MoveTubes <- function(barcode_file, new_plate_id, location){
   #                          list(created = lubridate::now("UTC") %>% as.character(),
   #                               last_updated = lubridate::now("UTC") %>% as.character(),
   #                               type = "NA",
-  #                               specimen_id = tail(sampleDB::CheckTable("specimen"), 1)$id,
+  #                               specimen_id = tail(sampleDB::CheckTable(database = database, "specimen"), 1)$id,
   #                               comments = "NA",
   #                               exhausted = 0))
   #   }
@@ -150,7 +152,7 @@ MoveTubes <- function(barcode_file, new_plate_id, location){
   #
   # updateSelectizeInput(session = session,
   #                      "SearchByPlateID",
-  #                      choices = sampleDB::CheckTable("matrix_plate")$uid,
+  #                      choices = sampleDB::CheckTable(database = database, "matrix_plate")$uid,
   #                      label = NULL)
   #
   # message <- paste("Upload Complete", emoji('tada'))

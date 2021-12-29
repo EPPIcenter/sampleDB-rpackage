@@ -2,8 +2,8 @@
 #' @import RSQLite
 #' @export
 
-ModifyTable <- function(table_name, info_list, id){
-  conn <- RSQLite::dbConnect(RSQLite::SQLite(), "../files/example_19-Oct-21.sample_db.sqlite")
+ModifyTable <- function(database, table_name, info_list, id){
+  conn <- RSQLite::dbConnect(RSQLite::SQLite(), database)
 
   update_str <- c()
   for(i in 1:length(info_list)){

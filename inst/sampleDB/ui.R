@@ -5,6 +5,10 @@ library(shinyFeedback)
 library(shiny)
 library(markdown)
 
+
+#SET PATH TO SQLITE DATABASE
+database <- "example_19-Oct-21.sample_db.sqlite"
+
 navbarPage("SampleDB",
 
            tabPanel("Upload New Samples",
@@ -24,7 +28,7 @@ navbarPage("SampleDB",
                       column(
                         width = 4,
                         selectizeInput("UploadStudyShortCode",
-                                       choices = c("", sampleDB::CheckTable("study")$short_code),
+                                       choices = c("", sampleDB::CheckTable(database = database, "study")$short_code),
                                        label = "Study Short Code"))),
 
                     fluidRow(
@@ -39,7 +43,7 @@ navbarPage("SampleDB",
                         width = 4,
                         selectInput("UploadLocation",
                                     label = "Location",
-                                    choices = sampleDB::CheckTable("location")$description))),
+                                    choices = sampleDB::CheckTable(database = database, "location")$description))),
 
                     fluidRow(
                       column(
@@ -67,7 +71,7 @@ navbarPage("SampleDB",
                         width = 4,
                         selectizeInput("SearchByPlateID",
                                        "Search By Plate ID",
-                                       choices = c("", sampleDB::CheckTable("matrix_plate")$uid))),
+                                       choices = c("", sampleDB::CheckTable(database = database, "matrix_plate")$uid))),
                       column(
                         width = 4,
                         selectizeInput("SearchBySubjectUID",
@@ -79,17 +83,17 @@ navbarPage("SampleDB",
                         width = 4,
                         selectizeInput("SearchByStudy",
                                        "Search By Study",
-                                       choices = c("", sampleDB::CheckTable("study")$short_code))),
+                                       choices = c("", sampleDB::CheckTable(database = database, "study")$short_code))),
                       column(
                         width = 4,
                         selectizeInput("SearchByLocation",
                                        "Search By Location",
-                                       choices = c("", sampleDB::CheckTable("location")$description))),
+                                       choices = c("", sampleDB::CheckTable(database = database, "location")$description))),
                       column(
                         width = 4,
                         selectizeInput("SearchBySpecimenType",
                                        "Search By Specimen Type",
-                                       choices = c("", sampleDB::CheckTable("specimen_type")$label)))),
+                                       choices = c("", sampleDB::CheckTable(database = database, "specimen_type")$label)))),
 
                     h3(""),
                     fluidRow(
@@ -124,7 +128,7 @@ navbarPage("SampleDB",
                         width = 4,
                         selectInput("MoveLocation",
                                     label = "Location",
-                                    choices = sampleDB::CheckTable("location")$description))
+                                    choices = sampleDB::CheckTable(database = database, "location")$description))
                     ),
 
                     fluidRow(
@@ -168,7 +172,7 @@ navbarPage("SampleDB",
                                             width = 12,
                                             selectInput(".RenameFreezer1",
                                                         label = h3("Rename a Freezer"),
-                                                        choices = c("", sampleDB::CheckTable("location")$description),
+                                                        choices = c("", sampleDB::CheckTable(database = database, "location")$description),
                                                         selected = 1))),
 
                                         fluidRow(
@@ -192,7 +196,7 @@ navbarPage("SampleDB",
                                             width = 12,
                                             selectInput("DeleteFreezer",
                                                         label = NULL,
-                                                        choices = c("", sampleDB::CheckTable("location")$description),
+                                                        choices = c("", sampleDB::CheckTable(database = database, "location")$description),
                                                         selected = 1))),
                                         textOutput("delete_freezer_delete_warning"),
 
@@ -238,7 +242,7 @@ navbarPage("SampleDB",
                                             width = 12,
                                             selectInput(".RenameSpecimenType1",
                                                         label = h3("Rename a Specimen Type"),
-                                                        choices = c("", sampleDB::CheckTable("specimen_type")$label),
+                                                        choices = c("", sampleDB::CheckTable(database = database, "specimen_type")$label),
                                                         selected = 1))),
 
                                         fluidRow(
@@ -261,7 +265,7 @@ navbarPage("SampleDB",
                                             width = 12,
                                             selectInput("DeleteSpecimenType",
                                                         label = NULL,
-                                                        choices = c("", sampleDB::CheckTable("specimen_type")$label),
+                                                        choices = c("", sampleDB::CheckTable(database = database, "specimen_type")$label),
                                                         selected = 1))),
                                         textOutput("delete_specimen_delete_warning"),
 

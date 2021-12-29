@@ -4,11 +4,11 @@
 #' @export
 
 #table options
-AddToTable <- function(table_name, info_list){
+AddToTable <- function(database, table_name, info_list){
 
   #OPEN THE DATABASE CONNECTION
   conn <-  RSQLite::dbConnect(RSQLite::SQLite(),
-                              "../files/example_19-Oct-21.sample_db.sqlite")
+                              database)
 
   #PREVENT EMPTY ADDITIONS TO DATABASE
   for(i in info_list){

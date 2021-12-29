@@ -1,9 +1,9 @@
 #' @import dplyr
 #' @export
 
-CheckTable <- function(table){
+CheckTable <- function(database, table){
   conn <- RSQLite::dbConnect(RSQLite::SQLite(),
-                             "../files/example_19-Oct-21.sample_db.sqlite")
+                             database)
   out_table <- RSQLite::dbGetQuery(conn, paste("SELECT * FROM", table)) %>% tibble()
   RSQLite::dbDisconnect(conn)
   return(out_table)

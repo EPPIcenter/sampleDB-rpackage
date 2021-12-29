@@ -1,18 +1,21 @@
 #' @import dplyr
 #' @import RSQLite
 #' @import emojifont
+#' @import purrr
+#' @import readr
+#' @import tidyr
 #' @export
 
-SearchSamples <- function(barcode_search_file, search_plate_uid, search_subject_uid, search_study, search_location, search_specimen_type){
+SearchSamples <- function(database, barcode_search_file, search_plate_uid, search_subject_uid, search_study, search_location, search_specimen_type){
 
-  table.location <- sampleDB::CheckTable("location")
-  table.study <- sampleDB::CheckTable("study")
-  table.specimen_type <- sampleDB::CheckTable("specimen_type")
-  table.matrix_plate <- sampleDB::CheckTable("matrix_plate")
-  table.matrix_tube <- sampleDB::CheckTable("matrix_tube")
-  table.study_subject <- sampleDB::CheckTable("study_subject")
-  table.specimen <- sampleDB::CheckTable("specimen")
-  table.storage_container <- sampleDB::CheckTable("storage_container")
+  table.location <- sampleDB::CheckTable(database = database, "location")
+  table.study <- sampleDB::CheckTable(database = database, "study")
+  table.specimen_type <- sampleDB::CheckTable(database = database, "specimen_type")
+  table.matrix_plate <- sampleDB::CheckTable(database = database, "matrix_plate")
+  table.matrix_tube <- sampleDB::CheckTable(database = database, "matrix_tube")
+  table.study_subject <- sampleDB::CheckTable(database = database, "study_subject")
+  table.specimen <- sampleDB::CheckTable(database = database, "specimen")
+  table.storage_container <- sampleDB::CheckTable(database = database, "storage_container")
 
   #CREATE A LIST OUT OF THE FUNCTION ARGS
   SearchFilters <- list(barcode_search_file = barcode_search_file,

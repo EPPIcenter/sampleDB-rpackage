@@ -2,8 +2,8 @@
 #' @import RSQLite
 #' @export
 
-DeleteFromTable <- function(table_name, id){
-  conn <- RSQLite::dbConnect(RSQLite::SQLite(), "../files/example_19-Oct-21.sample_db.sqlite")
+DeleteFromTable <- function(database, table_name, id){
+  conn <- RSQLite::dbConnect(RSQLite::SQLite(), database)
 
   #check and see if table is a reference table. if it is make sure the reference being deleted is not in use
   if(table_name == "location"){
