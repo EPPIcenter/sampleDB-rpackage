@@ -20,7 +20,11 @@ MoveTubes <- function(database, barcode_file, new_plate_id, location){
   toggle.is_longitudinal <- FALSE
 
   #READIN CSV FROM USER WITH VISIONMATE/TRAXER BARCODES,
-  csv <- read_csv(barcode_file)
+  # csv <- read_csv(barcode_file)
+
+  #TESTING VARS
+  csv <- read_csv("~/Desktop/move_samples_example/visionmate_no_date-newuid.csv")
+  database <- "example_19-Oct-21.sample_db.sqlite"
 
   if(!("LocationRow" %in% names(csv))){
     csv <- csv %>%
@@ -48,114 +52,20 @@ MoveTubes <- function(database, barcode_file, new_plate_id, location){
 
   #FIND PLATE_ID ASSO W EXISTING BARCODES
   for (i in  1:nrow(csv)){
-    filter(CheckTable(database = database, "matrix_tube"), barcode == csv[i,]$"barcode")$id %>% print()
 
-    #modify matrix_tube table to swap out new_plate_id and well position with usr input new_plate and well poisiton
-    sampleDB::ModifyTable(database = database, "matrix_tube",
-                          info_list = list(plate_id = new_plate_id,
-                                           barcode = csv[i,]$"barcode",
-                                           well_position = csv[i,]$"well_position"),
-                          id = filter(CheckTable(database = database, "matrix_tube"), barcode == csv[i,]$"barcode")$id)
+    id <- filter(sampleDB::CheckTable(database = database, "matrix_tube"), barcode == csv[i,]$"barcode")$id
+    print(id)
+
   }
 
-
-  # #ADD PLATE_ID AND FREEZER LOCATION TO _*_MATRIX PLATE_*_ TABLE
-  # sampleDB::AddToTable("matrix_plate",
-  #                      list(created = lubridate::now("UTC") %>% as.character(),
-  #                           last_updated = lubridate::now("UTC") %>% as.character(),
-  #                           uid = plate_id,
-  #                           hidden = 0,
-  #                           location_id = filter(table.location, description == location)$id))
+  # {
+  #   filter(CheckTable(database = database, "matrix_tube"), barcode == csv[i,]$"barcode")$id %>% print()
   #
-  # #ADD PLATE_ID, BARCODE AND WELL POSITION TO _*_MATRIX TUBE_*_ TABLE
-  # for(i in 1:nrow(csv)){
-  #   sampleDB::AddToTable("matrix_tube",
-  #                        list(plate_id = tail(sampleDB::CheckTable(database = database, "matrix_plate"), 1)$id,
-  #                             barcode = csv[i,]$"barcode" %>% as.character(),
-  #                             well_position = csv[i,]$"well_position"))
+  #   #modify matrix_tube table to swap out new_plate_id and well position with usr input new_plate and well poisiton
+  #   sampleDB::ModifyTable(database = database, "matrix_tube",
+  #                         info_list = list(plate_id = new_plate_id,
+  #                                          barcode = csv[i,]$"barcode",
+  #                                          well_position = csv[i,]$"well_position"),
+  #                         id = filter(CheckTable(database = database, "matrix_tube"), barcode == csv[i,]$"barcode")$id)
   # }
-  #
-  # message <- NULL
-  # #IF THE INDIVIDUAL_ID DOES NOT EXIST ADD IT TO THE _*_STUDY_SUBJECT_*_ TABLE
-  # for(i in 1:nrow(csv)){
-  #
-  #   #CHECKING TO SEE IF INDIE ID EXISTS
-  #   if(csv[i, "individual_id"] %in% CheckTable(database = database, "study_subject")$uid){
-  #
-  #     #IF INDIE ID EXISTS FETCH STUDY_SUBJECT_TABLE_ID ASSO W IT
-  #     study_subject_table_id <- filter(CheckTable(database = database, "study_subject"), uid == csv[i, ]$"individual_id")$id
-  #
-  #
-  #     #ADD TO NEW SPECIMEN _*_SPECIMEN_*_ TABLE -- IF THE INDIE ID ALREADY EXISTS THEN IT MUST BE PART OF A LONGITUDINAL STUDY
-  #     if(toggle.is_longitudinal){
-  #       sampleDB::AddToTable("specimen",
-  #                            list(created = lubridate::now("UTC") %>% as.character(),
-  #                                 last_updated = lubridate::now("UTC") %>% as.character(),
-  #                                 study_subject_id = study_subject_table_id,
-  #                                 specimen_type_id = filter(table.specimen_type, label == csv[i, ]$"specimen_type")$id,
-  #                                 collection_date = as.character(dates[i]))) #dates need to be in y:m:d format
-  #
-  #       #ADD SPECIMEN_ID TO  _*_STORAGE_CONTAINER_*_ TABLE IF STUDY_SUBJECT ENTRY EXISTS
-  #       sampleDB::AddToTable("storage_container",
-  #                            list(created = lubridate::now("UTC") %>% as.character(),
-  #                                 last_updated = lubridate::now("UTC") %>% as.character(),
-  #                                 type = "NA",
-  #                                 specimen_id = filter(CheckTable(database = database, "specimen"), study_subject_id == study_subject_table_id, specimen_type_id == filter(table.specimen_type, label == csv[i, ]$"specimen_type")$id)$id,
-  #                                 comments = "NA",
-  #                                 exhausted = 0))
-  #     }else{
-  #       message <- "DATA IS NOT LONGITUDINAL AND IT SHOULD BE"
-  #     }
-  #
-  #     #INDIE ID IS NEW
-  #   }else{
-  #
-  #     #CREATE A NEW STUDY_STUBJECT_TABLE ENTRY
-  #     sampleDB::AddToTable("study_subject",
-  #                          list(created = lubridate::now("UTC") %>% as.character(),
-  #                               last_updated = lubridate::now("UTC") %>% as.character(),
-  #                               uid = csv[i,]$individual_id,
-  #                               study_id = filter(CheckTable(database = database, "study"), short_code == study_short_code)$id))
-  #
-  #     #FETCH THE NEW STUDY_SUBJECT_TABLE_ID
-  #     study_subject_table_id <- tail(CheckTable(database = database, "study_subject"), 1)$id
-  #
-  #     #ADD STUDY_SUBJECT_ID AND SPECIMEN_TYPE_ID TO _*_SPECIMEN_TABLE_*_ AND ADD THE NEW SPECIMEN_ID TO _*_STORAGE_CONTAINER_*_ TABLE IF SUBJECT_STUDY ENTRY DOES NOT EXIST
-  #     if(toggle.is_longitudinal){
-  #
-  #       sampleDB::AddToTable("specimen",
-  #                            list(created = lubridate::now("UTC") %>% as.character(),
-  #                                 last_updated = lubridate::now("UTC") %>% as.character(),
-  #                                 study_subject_id = study_subject_table_id,
-  #                                 specimen_type_id = filter(table.specimen_type, label == csv[i,]$"specimen_type")$id,
-  #                                 collection_date = as.character(dates[i]))) %>% print() #date is in y:m:d format
-  #
-  #     }else{
-  #       sampleDB::AddToTable("specimen",
-  #                            list(created = lubridate::now("UTC") %>% as.character(),
-  #                                 last_updated = lubridate::now("UTC") %>% as.character(),
-  #                                 study_subject_id = study_subject_table_id,
-  #                                 specimen_type_id = filter(table.specimen_type, label == csv[i,]$"specimen_type")$id,
-  #                                 collection_date = "NA"))
-  #     }
-  #
-  #     #STORAGE CONTAINER TABLE
-  #     sampleDB::AddToTable("storage_container",
-  #                          list(created = lubridate::now("UTC") %>% as.character(),
-  #                               last_updated = lubridate::now("UTC") %>% as.character(),
-  #                               type = "NA",
-  #                               specimen_id = tail(sampleDB::CheckTable(database = database, "specimen"), 1)$id,
-  #                               comments = "NA",
-  #                               exhausted = 0))
-  #   }
-  # }
-  #
-  # updateSelectizeInput(session = session,
-  #                      "SearchByPlateID",
-  #                      choices = sampleDB::CheckTable(database = database, "matrix_plate")$uid,
-  #                      label = NULL)
-  #
-  # message <- paste("Upload Complete", emoji('tada'))
-  # return(message)
-
 }
