@@ -8,20 +8,15 @@
 # UploadSamples <- function(barcode_file, barcode_type, longitudinal, plate_id, location){
 UploadSamples <- function(database, barcode_file, plate_id, location, study_short_code, session){
 
-  #OBTAIN TABLES AS THEY ARE IN THE DATABASE RIGHT NOW (SNAPSHOT)
-  table.location <- sampleDB::CheckTable(database = database, "location")
-  table.study <- sampleDB::CheckTable(database = database, "study")
-  table.specimen_type <- sampleDB::CheckTable(database = database, "specimen_type")
-
   #UNTIL READING THE COLNAMES ASSUME DATE IS NOT LONGITUDINAL
   toggle.is_longitudinal <- FALSE
 
   #READIN CSV FROM USER WITH VISIONMATE/TRAXER BARCODES,
   csv <- read_csv(barcode_file)
 
+  #REFORMAT CSV -- IF LOCATIONROW IS A COLUMN THEN THE DATA CAME OFF VISIONMATE
   if(!("LocationRow" %in% names(csv))){
-    csv <- csv %>%
-      drop_na() %>%
+    csv <- drop_na(csv) %>%
       mutate(barcode = `Tube ID`,
              well_position = paste0(substring(Position, 1, 1), substring(Position, 2))) %>%
       select(-c(Position:Date))
@@ -31,8 +26,7 @@ UploadSamples <- function(database, barcode_file, plate_id, location, study_shor
     }
   }else{
 
-    csv <- csv %>%
-      drop_na() %>%
+    csv <- drop_na(csv) %>%
       mutate(barcode = TubeCode,
              well_position = paste0(LocationRow, LocationColumn)) %>%
       select(-c(LocationRow, LocationColumn, TubeCode))
@@ -49,7 +43,7 @@ UploadSamples <- function(database, barcode_file, plate_id, location, study_shor
                             last_updated = lubridate::now("UTC") %>% as.character(),
                             uid = plate_id,
                             hidden = 0,
-                            location_id = filter(table.location, description == location)$id))
+                            location_id = filter(CheckTable(database = database, "location"), description == location)$id))
 
   #ADD PLATE_ID, BARCODE AND WELL POSITION TO _*_MATRIX TUBE_*_ TABLE
   for(i in 1:nrow(csv)){
@@ -63,77 +57,96 @@ UploadSamples <- function(database, barcode_file, plate_id, location, study_shor
   #IF THE INDIVIDUAL_ID DOES NOT EXIST ADD IT TO THE _*_STUDY_SUBJECT_*_ TABLE
   for(i in 1:nrow(csv)){
 
-    #CHECKING TO SEE IF INDIE ID EXISTS
-    if(csv[i, "individual_id"] %in% CheckTable(database = database, "study_subject")$uid){
+    #GET SPECIMEN TYPE ID, STUDY_ID, STUDY_SUBJ_ID AND COLLECTION_DATE ASSO W THE TUBE
+    specimen_type_id <- csv[i, ]$"specimen_type"
+    study_id <- filter(CheckTable(database = database, "study"), short_code == study_short_code)$id
+    uid <- csv[i, ]$"individual_id"
+    if(toggle.is_longitudinal){
+      collection_date <- dates[i]
+    }else{
+      collection_date <- NA
+    }
 
-      #IF INDIE ID EXISTS FETCH STUDY_SUBJECT_TABLE_ID ASSO W IT
-      study_subject_table_id <- filter(CheckTable(database = database, "study_subject"), uid == csv[i, ]$"individual_id")$id
+    #CHECK TO SEE IF STUDY_SUBJECT_ID/STUDY_ID EXISTS
+    if(nrow(inner_join(CheckTable(database = database, "study_subject")[, c("uid", "study_id")], tibble(uid = uid, study_id = study_id))) > 0){
 
+      #IF STUDY_SUBJECT_ID/STUDY_ID EXISTS FETCH STUDY_SUBJECT_TABLE ENTRY'S ID
+      study_subject_id <- filter(CheckTable(database = database, "study_subject"), uid == uid & study_id == study_id)$id
 
-      #ADD TO NEW SPECIMEN _*_SPECIMEN_*_ TABLE -- IF THE INDIE ID ALREADY EXISTS THEN IT MUST BE PART OF A LONGITUDINAL STUDY
-      if(toggle.is_longitudinal){
+      #CHECK TO SEE THERE IS A SPECIMEN ENTRY WITH THE SAME STUDY_SUBJECT_ID/STUDY_ID, SPECIMEN_TYPE AND COLLECTION DATE INFO
+      if(nrow(inner_join(CheckTable(database = database, "specimen")[,c("study_subject_id", "specimen_type_id", "collection_date")], tibble(study_subject_id = study_subject_id, specimen_type_id = specimen_type_id, collection_date = collection_date ))) > 0){
+
+        #IF THERE IS AN EXISTING ENTRY GET THE SPECIMEN ID
+        if(is.na(collection_id)){
+          specimen_id <- filter(CheckTable(databae = database, "specimen"),
+                                study_subject_id == study_subject_id,
+                                specimen_type_id == specimen_type_id,
+                                is.na(collection_date))$id
+        }else{
+          specimen_id <- filter(CheckTable(databae = database, "specimen"),
+                                study_subject_id == study_subject_id,
+                                specimen_type_id == specimen_type_id,
+                                collection_date == collection_date)$id
+        }
+
+      }else{
+
+        #IF AN ENTRY DOES NOT EXIST CREATE A NEW SPECIMEN_ID ENTRY WITH STUDY_SUBJECT_ID/STUDY_ID, SPECIMEN_TYPE AND COLLECTION DATE INFO
         sampleDB::AddToTable(database = database, "specimen",
                              list(created = lubridate::now("UTC") %>% as.character(),
                                   last_updated = lubridate::now("UTC") %>% as.character(),
-                                  study_subject_id = study_subject_table_id,
-                                  specimen_type_id = filter(table.specimen_type, label == csv[i, ]$"specimen_type")$id,
-                                  collection_date = as.character(dates[i]))) #dates need to be in y:m:d format
+                                  study_subject_id = study_subject_id,
+                                  specimen_type_id = specimen_type_id,
+                                  collection_date = collection_date)) #dates need to be in y:m:d format
 
-        #ADD SPECIMEN_ID TO  _*_STORAGE_CONTAINER_*_ TABLE IF STUDY_SUBJECT ENTRY EXISTS
-        sampleDB::AddToTable(database = database, "storage_container",
-                             list(created = lubridate::now("UTC") %>% as.character(),
-                                  last_updated = lubridate::now("UTC") %>% as.character(),
-                                  type = "NA",
-                                  specimen_id = filter(CheckTable(database = database, "specimen"), study_subject_id == study_subject_table_id, specimen_type_id == filter(table.specimen_type, label == csv[i, ]$"specimen_type")$id)$id,
-                                  comments = "NA",
-                                  exhausted = 0))
-      }else{
-        message <- "DATA IS NOT LONGITUDINAL AND IT SHOULD BE"
+        #GET THE SPECIMEN ID
+        specimen_id <- tail(CheckTable(database = database, "specimen"), 1)
+
       }
 
-    #INDIE ID IS NEW
+      #ADD SPECIMEN INFORMATION TO STORAGE CONTAINER TABLE
+      sampleDB::AddToTable(database = database, "storage_container",
+                           list(created = lubridate::now("UTC") %>% as.character(),
+                                last_updated = lubridate::now("UTC") %>% as.character(),
+                                type = "matrix_tube",
+                                specimen_id = specimen_id,
+                                comments = "NA",
+                                exhausted = 0))
+
+    #IF THE STUDY_SUBJ_ID/STUDY_ID DOES NOT EXIST
     }else{
 
       #CREATE A NEW STUDY_STUBJECT_TABLE ENTRY
       sampleDB::AddToTable(database = database, "study_subject",
                            list(created = lubridate::now("UTC") %>% as.character(),
                                 last_updated = lubridate::now("UTC") %>% as.character(),
-                                uid = csv[i,]$individual_id,
-                                study_id = filter(CheckTable(database = database, "study"), short_code == study_short_code)$id))
+                                uid = uid,
+                                study_id = study_id))
 
       #FETCH THE NEW STUDY_SUBJECT_TABLE_ID
-      study_subject_table_id <- tail(CheckTable(database = database, "study_subject"), 1)$id
+      study_subject_id <- tail(CheckTable(database = database, "study_subject"), 1)$id
 
-      #ADD STUDY_SUBJECT_ID AND SPECIMEN_TYPE_ID TO _*_SPECIMEN_TABLE_*_ AND ADD THE NEW SPECIMEN_ID TO _*_STORAGE_CONTAINER_*_ TABLE IF SUBJECT_STUDY ENTRY DOES NOT EXIST
-      if(toggle.is_longitudinal){
-
-        sampleDB::AddToTable(database = database, "specimen",
-                             list(created = lubridate::now("UTC") %>% as.character(),
-                                  last_updated = lubridate::now("UTC") %>% as.character(),
-                                  study_subject_id = study_subject_table_id,
-                                  specimen_type_id = filter(table.specimen_type, label == csv[i,]$"specimen_type")$id,
-                                  collection_date = as.character(dates[i]))) %>% print() #date is in y:m:d format
-
-      }else{
-        sampleDB::AddToTable(database = database, "specimen",
-                             list(created = lubridate::now("UTC") %>% as.character(),
-                                  last_updated = lubridate::now("UTC") %>% as.character(),
-                                  study_subject_id = study_subject_table_id,
-                                  specimen_type_id = filter(table.specimen_type, label == csv[i,]$"specimen_type")$id,
-                                  collection_date = "NA"))
-      }
+      #ADD STUDY_SUBJECT_ID AND SPECIMEN_TYPE_ID TO _*_SPECIMEN_TABLE_*_
+      sampleDB::AddToTable(database = database, "specimen",
+                           list(created = lubridate::now("UTC") %>% as.character(),
+                                last_updated = lubridate::now("UTC") %>% as.character(),
+                                study_subject_id = study_subject_id,
+                                specimen_type_id = specimen_type_id,
+                                collection_date = collection_date)) #date is in y:m:d format
+      specimen_id <- tail(CheckTable(database = database, "specimen"), 1)
 
     #STORAGE CONTAINER TABLE
     sampleDB::AddToTable(database = database, "storage_container",
                          list(created = lubridate::now("UTC") %>% as.character(),
                               last_updated = lubridate::now("UTC") %>% as.character(),
-                              type = "NA",
-                              specimen_id = tail(sampleDB::CheckTable(database = database, "specimen"), 1)$id,
-                              comments = "NA",
+                              type = "matrix_tube",
+                              specimen_id = specimen_id,
+                              comments = NA,
                               exhausted = 0))
     }
   }
 
+  #UPDATE THE SEARCH DROPDOWNS
   updateSelectizeInput(session = session,
                        "SearchByPlateID",
                        choices = sampleDB::CheckTable(database = database, "matrix_plate")$uid,

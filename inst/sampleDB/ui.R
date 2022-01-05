@@ -95,7 +95,6 @@ navbarPage("SampleDB",
                                        "Search By Specimen Type",
                                        choices = c("", sampleDB::CheckTable(database = database, "specimen_type")$label)))),
 
-                    h3(""),
                     fluidRow(
                       column(
                         width = 12,
@@ -106,8 +105,10 @@ navbarPage("SampleDB",
                         width = 12,
                         downloadButton("downloadData", "Download")))),
 
-           tabPanel("Move Samples",
+           tabPanel("Move Tubes",
 
+                    h3("TUBES MUST BE MOVED TO A PLATE THAT IS EMPTY."),
+                    h3("TUBES MUST EXIST IN THE DATABASE BEFORE BEING MOVED."),
                     fluidRow(
                       column(
                         width = 4,
@@ -147,7 +148,7 @@ navbarPage("SampleDB",
                     ),
 
            #navbarMenu allows for drop downs
-           navbarMenu("Referrences",
+           navbarMenu("References",
 
                       tabPanel("Freezers",
 

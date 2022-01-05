@@ -1,6 +1,7 @@
 #' @import dplyr
 #' @import emojifont
 #' @import RSQLite
+#' @import purrr
 #' @export
 
 #table options
@@ -10,8 +11,8 @@ AddToTable <- function(database, table_name, info_list){
   conn <-  RSQLite::dbConnect(RSQLite::SQLite(),
                               database)
 
-  #PREVENT EMPTY ADDITIONS TO DATABASE
-  for(i in info_list){
+  #PREVENT EMPTY ADDITIONS TO DATABASE -- REMOVE NAs FROM THIS EVALUATION
+  for(i in discard(info_list, is.na)){
     if(as.character(i) == ""){
       return()
     }

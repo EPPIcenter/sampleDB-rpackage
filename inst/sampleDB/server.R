@@ -90,25 +90,31 @@ function(input, output, session) {
     # Move Tubes #
     ##############
 
-    #UPLOAD PLATE
+    #CHECK PLATE_ID IS UNIQUE
+    move_plate_dup_check <- reactive({
+      toggle <- input$MovePlateID %in% c(sampleDB::CheckTable(database = database, "matrix_plate")$uid)
+      shinyFeedback::feedbackWarning("MovePlateID", toggle, "Plate IDs must be unique")})
+    output$move_plate_dup_warning <- renderText(move_plate_dup_check())
+
     observeEvent(
       input$.MoveAction,
       ({
 
-        sampleDB::MoveTubes(database = database,
-                            barcode_file = input$MoveDataSet$datapath,
-                            new_plate_id = input$MovePlateID,
-                            location = input$MoveLocation)
-
-
         output$UploadReturnMessage <- renderText({
 
           sampleDB::MoveTubes(database = database,
-                              barcode_file = input$MoveDataSet$datapath,
-                              new_plate_id = input$MovePlateID,
-                              location = input$MoveLocation)})
-        })
-      )
+                            barcode_file = input$MoveDataSet$datapath,
+                            new_plate_uid = input$MovePlateID,
+                            location = input$MoveLocation,
+                            session = session)})}))
+
+    observeEvent(
+      input$.MoveAction,
+      ({
+        updateSelectizeInput(session = session,
+                             "SearchByPlateID",
+                             choices = sampleDB::CheckTable(database = database, "matrix_plate")$uid,
+                             label = NULL)}))
 
     #REFERENCES#################################################################################
 

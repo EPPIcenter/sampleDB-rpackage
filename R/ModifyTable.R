@@ -5,6 +5,13 @@
 ModifyTable <- function(database, table_name, info_list, id){
   conn <- RSQLite::dbConnect(RSQLite::SQLite(), database)
 
+  #PREVENT EMPTY ADDITIONS TO DATABASE -- REMOVE NAs FROM THIS EVALUATION
+  for(i in discard(info_list, is.na)){
+    if(as.character(i) == ""){
+      return()
+    }
+  }
+
   update_str <- c()
   for(i in 1:length(info_list)){
     if(i != length(info_list)){
