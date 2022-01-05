@@ -28,14 +28,14 @@ function(input, output, session) {
     observeEvent(
         input$.UploadAction,
         ({
-            output$UploadReturnMessage <- renderText({
+          output$UploadReturnMessage <- renderText({
 
-                sampleDB::UploadSamples(database = database,
-                                        barcode_file = input$UploadDataSet$datapath,
-                                        plate_id = input$UploadPlateID,
-                                        location = input$UploadLocation,
-                                        study_short_code = input$UploadStudyShortCode,
-                                        session = session)})}))
+              sampleDB::UploadSamples(database = database,
+                                      barcode_file = input$UploadDataSet$datapath,
+                                      plate_id = input$UploadPlateID,
+                                      location = input$UploadLocation,
+                                      study_short_code = input$UploadStudyShortCode,
+                                      session = session)})}))
 
     observeEvent(
         input$.UploadAction,
