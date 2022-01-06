@@ -17,32 +17,37 @@ navbarPage("SampleDB",
                     includeCSS("app.css"),
 
                     fluidRow(
+                      column(4,
+
+                    HTML("<h4><b>Upload Samples Form</b></h4>"),
+                    br(),
+                    fluidRow(
                       column(
-                        width = 4,
+                        width = 12,
                         fileInput("UploadDataSet",
-                                  "Choose CSV File",
+                                  "SampleDB UploadCSV",
                                   multiple = TRUE,
                                   accept = c("text/csv", "text/comma-separated-values,text/plain", ".csv")))),
 
                     fluidRow(
                       column(
-                        width = 4,
+                        width = 12,
                         selectizeInput("UploadStudyShortCode",
                                        choices = c("", sampleDB::CheckTable(database = database, "study")$short_code),
-                                       label = "Study Short Code"))),
+                                       label = "Study Name"))),
 
                     fluidRow(
                       column(
-                        width = 4,
+                        width = 12,
                         textInput("UploadPlateID",
-                                  label = "Unique Plate ID"))),
+                                  label = "Unique Plate Name"))),
                     textOutput("upload_plate_dup_warning"),
 
                     fluidRow(
                       column(
-                        width = 4,
+                        width = 12,
                         selectInput("UploadLocation",
-                                    label = "Location",
+                                    label = "Storage Location",
                                     choices = sampleDB::CheckTable(database = database, "location")$description))),
 
                     fluidRow(
@@ -56,16 +61,38 @@ navbarPage("SampleDB",
 
                     fluidRow(
                       column(
-                        width = 4,
+                        width = 12,
                         span(textOutput("UploadReturnMessage"), style="font-size: 28px")))),
+
+                    column(8,
+
+                           fluidRow(
+                             br(),
+                             HTML("<h4>This is an <b>Example SampleDB UploadCSV</b> from VisionMate</h4>"),
+                             column(12,
+                                    verbatimTextOutput("uploadcsv_nodate_example"),
+                                    br()),
+                             h4("When uploading samples, nowhere do you need to specify the micronix instrument that was used."),
+                             HTML("<h4>All you need to do is append <code>study_subject_id</code> and <code>specimen_type</code> information to the raw micronix CSV, select the CSV you just created using the <b>Upload Samples Form</b>, fill out the form and your set.</h4>")),
+
+                           fluidRow(
+                             br(),
+                             HTML("<h4>If you are uploading <b>longitudinal samples</b> then you will need to append <code>collection_date</code> information to the CSV as well.</h4>"),
+                             HTML("<h4><b>Example SampleDB UploadCSV</b> with <b>Collection_Date</b> from VisionMate</h4>"),
+                             column(12,
+                                    verbatimTextOutput("uploadcsv_date_example")
+                             ))))),
 
            tabPanel("Search Existing Samples",
 
+                    h4("Searching for samples is now super easy", align = "center"),
+                    h4("Just adjust the filters and the corresponding samples will populate in the table below", align = "center"),
+                    br(),
                     fluidRow(
                       column(
                         width = 4,
                         fileInput("SearchByBarcode",
-                                  "Search By Barcode",
+                                  "Search By Barcode -- single column named barcode",
                                    multiple = FALSE)),
                       column(
                         width = 4,

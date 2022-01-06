@@ -2,9 +2,11 @@
 
 
 
+# Stable Version
+1. CSV for searching the database is a table with one column named "barcode" which needs to contain all barcodes for searching
+2. what do upload csvs looks like?
 
-
-
+# Unstable Version
 # there is still quite a bit that needs to be done for this app
 1. finish writing the app
 	first and foremost the function to move samples to a new plate needs to be written

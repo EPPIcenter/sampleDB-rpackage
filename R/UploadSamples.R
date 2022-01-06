@@ -13,6 +13,9 @@ UploadSamples <- function(database, barcode_file, plate_id, location, study_shor
 
   #READIN CSV FROM USER WITH VISIONMATE/TRAXER BARCODES,
   csv <- read_csv(barcode_file)
+  if("collection_date" %in% names(csv)){
+    toggle.is_longitudinal <- TRUE
+  }
 
   #REFORMAT CSV -- IF LOCATIONROW IS A COLUMN THEN THE DATA CAME OFF VISIONMATE
   if(!("LocationRow" %in% names(csv))){
@@ -20,21 +23,11 @@ UploadSamples <- function(database, barcode_file, plate_id, location, study_shor
       mutate(barcode = `Tube ID`,
              well_position = paste0(substring(Position, 1, 1), substring(Position, 2))) %>%
       select(-c(Position:Date))
-    if("dates" %in% names(csv)){
-      dates <- drop_na(read_csv(barcode_file))$dates
-      toggle.is_longitudinal <- TRUE
-    }
   }else{
-
     csv <- drop_na(csv) %>%
       mutate(barcode = TubeCode,
              well_position = paste0(LocationRow, LocationColumn)) %>%
       select(-c(LocationRow, LocationColumn, TubeCode))
-
-    if("dates" %in% names(csv)){
-      dates <- drop_na(read_csv(barcode_file))$dates
-      toggle.is_longitudinal <- TRUE
-    }
   }
 
   #ADD PLATE_ID AND FREEZER LOCATION TO _*_MATRIX PLATE_*_ TABLE
@@ -60,9 +53,9 @@ UploadSamples <- function(database, barcode_file, plate_id, location, study_shor
     #GET SPECIMEN TYPE ID, STUDY_ID, STUDY_SUBJ_ID AND COLLECTION_DATE ASSO W THE TUBE
     specimen_type_id <- csv[i, ]$"specimen_type"
     study_id <- filter(CheckTable(database = database, "study"), short_code == study_short_code)$id
-    uid <- csv[i, ]$"individual_id"
+    uid <- csv[i, ]$"study_subject_id"
     if(toggle.is_longitudinal){
-      collection_date <- dates[i]
+      collection_date <- csv[i, ]$"collection_date"
     }else{
       collection_date <- NA
     }
