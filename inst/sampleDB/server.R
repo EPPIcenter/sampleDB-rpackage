@@ -90,7 +90,10 @@ function(input, output, session) {
 
       output$SearchResultsTable <- DT::renderDataTable({
         search_results
-      })
+      }, options =
+        list(searching = T, paging = T,
+             language = list(
+               zeroRecords = "No samples match filters given")))
 
       output$downloadData <- downloadHandler(
                   filename = function() {

@@ -16,6 +16,13 @@ navbarPage("SampleDB",
                     shinyFeedback::useShinyFeedback(),
                     includeCSS("app.css"),
 
+                    tags$head(
+                      tags$style(HTML("
+                        h5 {
+                              line-height: 150%;
+                            }"))
+                    ),
+
                     fluidRow(
                       column(4,
 
@@ -57,7 +64,7 @@ navbarPage("SampleDB",
                                      label = "Upload Dataset",
                                      style="color: #fff; background-color: #337ab7; border-color: #2e6da4"))),
 
-                    h3(""),
+                    br(),
 
                     fluidRow(
                       column(
@@ -68,31 +75,41 @@ navbarPage("SampleDB",
 
                            fluidRow(
                              br(),
-                             HTML("<h4>This is an <b>Example SampleDB UploadCSV</b> from VisionMate</h4>"),
+                             HTML("<h4>This is an <b>Example SampleDB UploadCSV</b> from VisionMate.</h4>"),
                              column(12,
-                                    verbatimTextOutput("uploadcsv_nodate_example"),
-                                    br()),
-                             h4("When uploading samples, nowhere do you need to specify the micronix instrument that was used."),
-                             HTML("<h4>All you need to do is append <code>study_subject_id</code> and <code>specimen_type</code> information to the raw micronix CSV, select the CSV you just created using the <b>Upload Samples Form</b>, fill out the form and your set.</h4>")),
+                                    verbatimTextOutput("uploadcsv_nodate_example")),
+                             HTML("<h5>To create this table join the <code>LocationRow</code>,
+                                   <code>LocationColumn</code>, and <code>TubeCodes</code> from the VisionMate
+                                   CSV with <code>study_subject_id</code> and <code>specimen_type</code> information,
+                                   where the <code>study_subject_id</code> and <code>specimen_type</code>
+                                   corresponds to the study subject id and specimen type associated with each sample</h5>")),
 
                            fluidRow(
+                             HTML("<h4><b>Alternatives to VisionMate Format</b></h4>"),
+                             HTML("<h5>If your data is was formatted using a different micronix instrument the process for
+                                  creating a SampleDB UploadCSV is the same. Simply add the <code>study_subject_id</code>
+                                  and <code>specimen_type</code> columns to your existing columns and the CSV is ready for upload.
+                                  In other words uploading is agnostic with respect to the format of the micronix information</h5>")),
+
+                           fluidRow(
+                             HTML("<h4><b>Longitudinal Data</b></h4>"),
+                             HTML("<h5>Simply append a column named <code>collection_date</code> to your CSV in order to add
+                                  longitudinal information to the samples. (Date format is YMD.)</h5>"),
                              br(),
-                             HTML("<h4>If you are uploading <b>longitudinal samples</b> then you will need to append <code>collection_date</code> information to the CSV as well.</h4>"),
-                             HTML("<h4><b>Example SampleDB UploadCSV</b> with <b>Collection_Date</b> from VisionMate</h4>"),
+                             HTML("<center><h4><b>Example SampleDB UploadCSV</b> with <code>collection_date</code> Column</h4></center>"),
                              column(12,
                                     verbatimTextOutput("uploadcsv_date_example")
                              ))))),
 
            tabPanel("Search Existing Samples",
 
-                    h4("Searching for samples is now super easy", align = "center"),
-                    h4("Just adjust the filters and the corresponding samples will populate in the table below", align = "center"),
+                    h4("Use Filters Below to Populate the Search Results Table", align = "center"),
                     br(),
                     fluidRow(
                       column(
                         width = 4,
                         fileInput("SearchByBarcode",
-                                  "Search By Barcode -- single column named barcode",
+                                  HTML("Search By Barcode - single column named \"barcode\""),
                                    multiple = FALSE)),
                       column(
                         width = 4,
@@ -122,17 +139,20 @@ navbarPage("SampleDB",
                                        "Search By Specimen Type",
                                        choices = c("", sampleDB::CheckTable(database = database, "specimen_type")$label)))),
 
+                    hr(),
                     fluidRow(
                       column(
                         width = 12,
+                        HTML("<center><h3><b>Search Results</b></h3></center>"),
                         DT::dataTableOutput("SearchResultsTable"))),
 
+                    br(),
                     fluidRow(
                       column(
                         width = 12,
                         downloadButton("downloadData", "Download")))),
 
-           tabPanel("Move Tubes",
+           tabPanel("Move Samples",
 
                     h3("TUBES MUST BE MOVED TO A PLATE THAT IS EMPTY."),
                     h3("TUBES MUST EXIST IN THE DATABASE BEFORE BEING MOVED."),
@@ -150,6 +170,12 @@ navbarPage("SampleDB",
                         textInput("MovePlateID",
                                   label = "New Unique Plate ID"))),
                     textOutput("move_plate_dup_warning"),
+
+                    fluidRow(
+                      column(
+                        width = 4,
+                        textInput("MoveExistingPlateID",
+                                  label = "Existing Plate ID"))),
 
                     fluidRow(
                       column(
