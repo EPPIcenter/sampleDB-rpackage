@@ -8,7 +8,7 @@
 
 #NOTE: THIS FUNCTIONS SHOULD BE USED TO RENAME THE PLATE A TUBE IS LINKED TO WHEN TUBE(S) ARE MOVED TO A NEW BLANK PLATE
 
-MoveTubes <- function(database, barcode_file, new_plate_uid, existing_plate_uid, location, session){
+MoveTubes <- function(database, barcode_file, plate_type, new_plate_uid, existing_plate_uid, location, session){
 
   #READIN CSV FROM USER WITH VISIONMATE/TRAXER BARCODES,
   csv <- read_csv(barcode_file)
@@ -26,7 +26,7 @@ MoveTubes <- function(database, barcode_file, new_plate_uid, existing_plate_uid,
       select(-c(LocationRow, LocationColumn, TubeCode))
   }
 
-  if(!is.NULL(new_plate_uid)){
+  if(plate_type == "new_plate"){
     #CREATE A PLATE ID FOR THE NEW BLANK PLATE
     AddToTable(database = database, "matrix_plate", list(created = lubridate::now("UTC") %>% as.character(),
                                                          last_updated = lubridate::now("UTC") %>% as.character(),

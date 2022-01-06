@@ -165,13 +165,13 @@ navbarPage("SampleDB",
                                       multiple = TRUE,
                                       accept = c("text/csv", "text/comma-separated-values,text/plain", ".csv")))),
 
-                        radioButtons("radio", label = "Move Samples to:",
-                                     choices = list("New Plate" = 1, "Existing Plate" = 2),
-                                     selected = 1),
+                        radioButtons("move_plate_type", label = "Move Samples to:",
+                                     choices = list("New Plate" = "new_plate", "Existing Plate" = "existing_plate"),
+                                     selected = "new_plate"),
 
 
                         conditionalPanel(
-                          condition = "input.radio == 1",
+                          condition = "input.move_plate_type == \"new_plate\"",
                           textInput("MovePlateID",
                                     label = "New Plate Name"),
                           textOutput("move_plate_dup_warning"),
@@ -181,7 +181,7 @@ navbarPage("SampleDB",
                           ),
 
                         conditionalPanel(
-                          condition = "input.radio == 2",
+                          condition = "input.move_plate_type == \"existing_plate\"",
                           selectizeInput("MoveExistingPlateID",
                                          choices = c("", sampleDB::CheckTable(database = database, "matrix_plate")$uid),
                                          label = "Existing Plate Name")),

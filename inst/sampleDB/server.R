@@ -122,14 +122,16 @@ function(input, output, session) {
       input$.MoveAction,
       ({
 
-        output$UploadReturnMessage <- renderText({
+        # print(input$move_plate_type)
+        output$MoveReturnMessage <- renderText({
 
           sampleDB::MoveTubes(database = database,
-                            barcode_file = input$MoveDataSet$datapath,
-                            new_plate_uid = input$MovePlateID,
-                            existing_plate_uid = input$MoveExistingPlateID,
-                            location = input$MoveLocation,
-                            session = session)})}))
+                              barcode_file = input$MoveDataSet$datapath,
+                              plate_type = input$move_plate_type,
+                              new_plate_uid = input$MovePlateID,
+                              existing_plate_uid = input$MoveExistingPlateID,
+                              location = input$MoveLocation,
+                              session = session)})}))
 
     observeEvent(
       input$.MoveAction,
