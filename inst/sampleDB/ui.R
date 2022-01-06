@@ -154,49 +154,65 @@ navbarPage("SampleDB",
 
            tabPanel("Move Samples",
 
-                    h3("TUBES MUST BE MOVED TO A PLATE THAT IS EMPTY."),
-                    h3("TUBES MUST EXIST IN THE DATABASE BEFORE BEING MOVED."),
                     fluidRow(
                       column(
                         width = 4,
-                        fileInput("MoveDataSet",
-                                  "Choose CSV File",
-                                  multiple = TRUE,
-                                  accept = c("text/csv", "text/comma-separated-values,text/plain", ".csv")))),
+                        fluidRow(
+                          column(
+                            width = 12,
+                            fileInput("MoveDataSet",
+                                      "SampleDB MoveSamplesCSV",
+                                      multiple = TRUE,
+                                      accept = c("text/csv", "text/comma-separated-values,text/plain", ".csv")))),
 
-                    fluidRow(
-                      column(
-                        width = 4,
-                        textInput("MovePlateID",
-                                  label = "New Unique Plate ID"))),
-                    textOutput("move_plate_dup_warning"),
+                        radioButtons("radio", label = "Move Samples to:",
+                                     choices = list("New Plate" = 1, "Existing Plate" = 2),
+                                     selected = 1),
 
-                    fluidRow(
-                      column(
-                        width = 4,
-                        textInput("MoveExistingPlateID",
-                                  label = "Existing Plate ID"))),
 
-                    fluidRow(
+                        conditionalPanel(
+                          condition = "input.radio == 1",
+                          textInput("MovePlateID",
+                                    label = "New Plate Name"),
+                          textOutput("move_plate_dup_warning"),
+                          selectInput("MoveLocation",
+                                      label = "Storage Location",
+                                      choices = sampleDB::CheckTable(database = database, "location")$description),
+                          ),
+
+                        conditionalPanel(
+                          condition = "input.radio == 2",
+                          selectizeInput("MoveExistingPlateID",
+                                         choices = c("", sampleDB::CheckTable(database = database, "matrix_plate")$uid),
+                                         label = "Existing Plate Name")),
+
+                        fluidRow(
+                          column(
+                            width = 12,
+                            actionButton(".MoveAction",
+                                         label = "Move Samples",
+                                         style="color: #fff; background-color: #337ab7; border-color: #2e6da4"))),
+
+                        br(),
+                        fluidRow(
+                          column(
+                            width = 12,
+                            verbatimTextOutput("MoveReturnMessage")
+                          )
+                        ),
+                      ),
                       column(
-                        width = 4,
-                        selectInput("MoveLocation",
-                                    label = "Location",
-                                    choices = sampleDB::CheckTable(database = database, "location")$description))
+                        width = 8,
+                        HTML("<h4>This is an <b>Example SampleDB MoveSamplesCSV</b> from VisionMate.</h4>"),
+                        verbatimTextOutput("movetubescsv_example"),
+                        HTML("<h5>This format is essentially just the CSV that any micronix instrument creates.
+                              No CSV reformating is required.</h5>"),
+                        HTML("<h6>*Note that no new samples can be added during moves. This is because no
+                        study subject nor specimen type information is processed during moves.</h6>"),
+                      )
                     ),
 
-                    fluidRow(
-                      column(
-                        width = 12,
-                        actionButton(".MoveAction",
-                                     label = "Move Samples",
-                                     style="color: #fff; background-color: #337ab7; border-color: #2e6da4"))),
 
-                    h3(""),
-                    fluidRow(
-                      column(
-                        width = 4,
-                        verbatimTextOutput("MoveReturnMessage"))),
 
                     ),
 

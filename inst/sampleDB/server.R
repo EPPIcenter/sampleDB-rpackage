@@ -69,7 +69,9 @@ function(input, output, session) {
     #CHECK PLATE_ID IS UNIQUE
     move_plate_dup_check <- reactive({
       toggle <- input$MovePlateID %in% c(sampleDB::CheckTable(database = database, "matrix_plate")$uid)
-      shinyFeedback::feedbackWarning("MovePlateID", toggle, "Plate IDs must be unique")})
+      shinyFeedback::feedbackWarning("MovePlateID", toggle, "Plate IDs must be unique")
+      })
+
     output$move_plate_dup_warning <- renderText(move_plate_dup_check())
 
     #SEARCH SAMPLES
@@ -125,6 +127,7 @@ function(input, output, session) {
           sampleDB::MoveTubes(database = database,
                             barcode_file = input$MoveDataSet$datapath,
                             new_plate_uid = input$MovePlateID,
+                            existing_plate_uid = input$MoveExistingPlateID,
                             location = input$MoveLocation,
                             session = session)})}))
 
@@ -135,6 +138,12 @@ function(input, output, session) {
                              "SearchByPlateID",
                              choices = sampleDB::CheckTable(database = database, "matrix_plate")$uid,
                              label = NULL)}))
+
+    output$movetubescsv_example <- renderPrint({
+      tibble(LocationRow = rep("A", 10),
+             LocationColumn = c(1:10),
+             TubeCodes = CheckTable(database = database, "matrix_tube")$barcode %>% head(10)) %>% as.data.frame()
+    })
 
     #REFERENCES#################################################################################
 
