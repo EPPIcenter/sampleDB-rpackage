@@ -26,13 +26,15 @@ MoveTubes <- function(database, barcode_file, plate_type, new_plate_uid, existin
       select(-c(LocationRow, LocationColumn, TubeCode))
   }
 
+  location_id <- filter(CheckTable(database = database, "location"), description == location)$id
+
   if(plate_type == "new_plate"){
     #CREATE A PLATE ID FOR THE NEW BLANK PLATE
     AddToTable(database = database, "matrix_plate", list(created = lubridate::now("UTC") %>% as.character(),
                                                          last_updated = lubridate::now("UTC") %>% as.character(),
                                                          uid = new_plate_uid,
                                                          hidden = 0,
-                                                         location_id = location))
+                                                         location_id = location_id))
     #GET MATRIX PLATE ID
     plate_id <- tail(CheckTable(database = database, "matrix_plate"), 1)$id
 
@@ -73,7 +75,7 @@ MoveTubes <- function(database, barcode_file, plate_type, new_plate_uid, existin
   #UPDATE THE SEARCH DROPDOWNS
   updateSelectizeInput(session = session,
                        "SearchByPlateID",
-                       choices = sampleDB::CheckTable(database = database, "matrix_plate")$uid,
+                       choices = c("", sampleDB::CheckTable(database = database, "matrix_plate")$uid),
                        label = NULL)
 
   message <- paste("Upload Complete", emoji('tada'))

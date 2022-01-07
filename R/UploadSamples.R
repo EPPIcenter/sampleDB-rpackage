@@ -51,7 +51,7 @@ UploadSamples <- function(database, barcode_file, plate_id, location, study_shor
   for(i in 1:nrow(csv)){
 
     #GET SPECIMEN TYPE ID, STUDY_ID, STUDY_SUBJ_ID AND COLLECTION_DATE ASSO W THE TUBE
-    specimen_type_id <- csv[i, ]$"specimen_type"
+    specimen_type_id <- filter(CheckTable(database = database, "specimen_type"), label == csv[i, ]$"specimen_type")$id
     study_id <- filter(CheckTable(database = database, "study"), short_code == study_short_code)$id
     uid <- csv[i, ]$"study_subject_id"
     if(toggle.is_longitudinal){
@@ -144,7 +144,7 @@ UploadSamples <- function(database, barcode_file, plate_id, location, study_shor
   #UPDATE THE SEARCH DROPDOWNS
   updateSelectizeInput(session = session,
                        "SearchByPlateID",
-                       choices = sampleDB::CheckTable(database = database, "matrix_plate")$uid,
+                       choices = c("", sampleDB::CheckTable(database = database, "matrix_plate")$uid),
                        label = NULL)
   print("HERE8")
   message <- paste("Upload Complete", emoji('tada'))

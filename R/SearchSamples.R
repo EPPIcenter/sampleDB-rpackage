@@ -102,8 +102,10 @@ SearchSamples <- function(database, barcode_search_file, search_plate_uid, searc
     subject_uids <- table.ref4$uid
     study_short_code <- inner_join(table.ref4, table.study, by = c("study_id" = "id"))$short_code
 
+    print(table.ref3 %>% as.data.frame())
     specimen_type_labels <- inner_join(table.ref3, table.specimen_type, by = c("specimen_type_id" = "id"))$label
 
+    print(specimen_type_labels)
     #STITCH TOGETHER SEARCH RESULTS
     search_results <- tibble(well_position = well_positions,
                              barcode = barcodes,

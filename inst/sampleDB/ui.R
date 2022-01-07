@@ -69,7 +69,7 @@ navbarPage("SampleDB",
                     fluidRow(
                       column(
                         width = 12,
-                        span(textOutput("UploadReturnMessage"), style="font-size: 28px")))),
+                        span(verbatimTextOutput("UploadReturnMessage"), style="font-size: 28px")))),
 
                     column(8,
 
