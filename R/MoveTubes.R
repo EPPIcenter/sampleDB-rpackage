@@ -47,29 +47,38 @@ MoveTubes <- function(database, barcode_file, plate_type, new_plate_uid, existin
     }
   }else{
 
-    #CREATE A DUMMY (-100) PLATE_ID FOR ALL THE TUBES TO GO INTO
-    for (i in  1:nrow(csv)){
-      id <- filter(sampleDB::CheckTable(database = database, "matrix_tube"), barcode == csv[i,]$"barcode")$id
+    #CLEAR SPACE IN THE EXISTING PLATE BY PUTTING ALL TUBES IN THE EXISTING PLATE INTO DUMMY PLATE -100
+    plate_id_existing <- filter(CheckTable(database = database, "matrix_plate"), uid == existing_plate_uid)$id
+    print(plate_id_existing)
+    #CREATE MATRIX WITH ALL THE TUBES ASSO W THE EXISTING PLATE
+    tube_data.existing_plate <- filter(CheckTable(database = database, "matrix_tube"), plate_id == plate_id_existing)
+    print("HERE1")
+    print(tube_data.existing_plate)
+
+    print("HERE2")
+    for(id in tube_data.existing_plate$id){
+      print(id)
+      #PUT THEM IN A DUMMY PLATE
       ModifyTable(database = database,
                   "matrix_tube",
                   info_list = list(plate_id = -100),
                   id = id)
-
     }
-
-    #GET THE PLATE_ID ASSO W THE EXISTING PLATE UID
-    plate_id <- filter(CheckTable(database = database, "matrix_plate"), plate_uid == existing_plate_uid)$id
+    print(filter(CheckTable(database = database, "matrix_tube"), plate_id == -100))
 
     #MODIFY THE TUBES TO BE ASSOCIATED WITH THE EXISTING PLATE ID
     for (i in  1:nrow(csv)){
       id <- filter(sampleDB::CheckTable(database = database, "matrix_tube"), barcode == csv[i,]$"barcode")$id
       ModifyTable(database = database,
                   "matrix_tube",
-                  info_list = list(plate_id = plate_id),
+                  info_list = list(plate_id = plate_id_existing),
                   id = id)
 
     }
 
+    #PRINT OUT THE TUBES THAT WERE ORPHANED
+    print("HERE3")
+    print(filter(CheckTable(database = database, "matrix_tube"), plate_id == plate_id_existing))
   }
 
   #UPDATE THE SEARCH DROPDOWNS
@@ -78,7 +87,7 @@ MoveTubes <- function(database, barcode_file, plate_type, new_plate_uid, existin
                        choices = c("", sampleDB::CheckTable(database = database, "matrix_plate")$uid),
                        label = NULL)
 
-  message <- paste("Upload Complete", emoji('tada'))
+  message <- paste("Successfully Moved Samples", emoji('tada'))
   return(message)
 
 }
