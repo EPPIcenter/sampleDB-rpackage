@@ -14,27 +14,26 @@ navbarPage("SampleDB",
            tabPanel("Upload New Samples",
 
                     shinyFeedback::useShinyFeedback(),
+                    shinyjs::useShinyjs(),
                     includeCSS("app.css"),
-
                     tags$head(
                       tags$style(HTML("
                         h5 {
                               line-height: 150%;
-                            }"))
-                    ),
+                            }"))),
 
                     fluidRow(
                       column(4,
 
-                    HTML("<h4><b>Upload Samples Form</b></h4>"),
-                    br(),
-                    fluidRow(
-                      column(
-                        width = 12,
-                        fileInput("UploadDataSet",
-                                  "SampleDB UploadCSV",
-                                  multiple = TRUE,
-                                  accept = c("text/csv", "text/comma-separated-values,text/plain", ".csv")))),
+                        HTML("<h4><b>Upload Samples Form</b></h4>"),
+                        br(),
+                        fluidRow(
+                          column(
+                            width = 12,
+                            fileInput("UploadDataSet",
+                                      "SampleDB UploadCSV",
+                                      multiple = TRUE,
+                                      accept = c("text/csv", "text/comma-separated-values,text/plain", ".csv")))),
 
                     fluidRow(
                       column(
@@ -48,21 +47,30 @@ navbarPage("SampleDB",
                         width = 12,
                         textInput("UploadPlateID",
                                   label = "Unique Plate Name"))),
-                    textOutput("upload_plate_dup_warning"),
+                    textOutput("WarningUploadPlate"),
 
                     fluidRow(
                       column(
                         width = 12,
                         selectInput("UploadLocation",
                                     label = "Storage Location",
-                                    choices = sampleDB::CheckTable(database = database, "location")$description))),
+                                    choices = c("", sampleDB::CheckTable(database = database, "location")$description)))),
 
                     fluidRow(
                       column(
                         width = 12,
-                        actionButton(".UploadAction",
-                                     label = "Upload Dataset",
-                                     style="color: #fff; background-color: #337ab7; border-color: #2e6da4"))),
+                        fluidRow(
+                          column(
+                            width = 4,
+                            actionButton("UploadAction",
+                                         label = "Upload Dataset",
+                                         style="color: #fff; background-color: #337ab7; border-color: #2e6da4"),
+                          ),
+                          column(
+                            width = 4,
+                            actionButton("ClearUploadForm",
+                                         label = "Clear Form"),
+                          )))),
 
                     br(),
 
@@ -71,34 +79,33 @@ navbarPage("SampleDB",
                         width = 12,
                         span(verbatimTextOutput("UploadReturnMessage"), style="font-size: 28px")))),
 
-                    column(8,
+                      column(8,
+                        fluidRow(
+                          br(),
+                          HTML("<h4>This is an <b>Example SampleDB UploadCSV</b> from VisionMate.</h4>"),
+                          column(12,
+                                 verbatimTextOutput("ExampleUploadCSVNoDate")),
+                          HTML("<h5>To create this table join the <code>LocationRow</code>,
+                               <code>LocationColumn</code>, and <code>TubeCodes</code> from the VisionMate
+                               CSV with <code>study_subject_id</code> and <code>specimen_type</code> information,
+                               where the <code>study_subject_id</code> and <code>specimen_type</code>
+                               corresponds to the study subject id and specimen type associated with each sample</h5>")),
 
-                           fluidRow(
-                             br(),
-                             HTML("<h4>This is an <b>Example SampleDB UploadCSV</b> from VisionMate.</h4>"),
-                             column(12,
-                                    verbatimTextOutput("uploadcsv_nodate_example")),
-                             HTML("<h5>To create this table join the <code>LocationRow</code>,
-                                   <code>LocationColumn</code>, and <code>TubeCodes</code> from the VisionMate
-                                   CSV with <code>study_subject_id</code> and <code>specimen_type</code> information,
-                                   where the <code>study_subject_id</code> and <code>specimen_type</code>
-                                   corresponds to the study subject id and specimen type associated with each sample</h5>")),
-
-                           fluidRow(
+                          fluidRow(
                              HTML("<h4><b>Alternatives to VisionMate Format</b></h4>"),
                              HTML("<h5>If your data is was formatted using a different micronix instrument the process for
                                   creating a SampleDB UploadCSV is the same. Simply add the <code>study_subject_id</code>
                                   and <code>specimen_type</code> columns to your existing columns and the CSV is ready for upload.
                                   In other words uploading is agnostic with respect to the format of the micronix information</h5>")),
 
-                           fluidRow(
+                          fluidRow(
                              HTML("<h4><b>Longitudinal Data</b></h4>"),
                              HTML("<h5>Simply append a column named <code>collection_date</code> to your CSV in order to add
                                   longitudinal information to the samples. (Date format is YMD.)</h5>"),
                              br(),
                              HTML("<center><h4><b>Example SampleDB UploadCSV</b> with <code>collection_date</code> Column</h4></center>"),
                              column(12,
-                                    verbatimTextOutput("uploadcsv_date_example")
+                                    verbatimTextOutput("ExampleUploadCSVDate")
                              ))))),
 
            tabPanel("Search Existing Samples",
@@ -165,33 +172,41 @@ navbarPage("SampleDB",
                                       multiple = TRUE,
                                       accept = c("text/csv", "text/comma-separated-values,text/plain", ".csv")))),
 
-                        radioButtons("move_plate_type", label = "Move Samples to:",
+                        radioButtons("MovePlateType", label = "Move Samples to:",
                                      choices = list("New Plate" = "new_plate", "Existing Plate" = "existing_plate"),
                                      selected = "new_plate"),
 
 
                         conditionalPanel(
-                          condition = "input.move_plate_type == \"new_plate\"",
+                          condition = "input.MovePlateType == \"new_plate\"",
                           textInput("MovePlateID",
                                     label = "New Plate Name"),
-                          textOutput("move_plate_dup_warning"),
+                          textOutput("WarningMovePlateDuplication"),
                           selectInput("MoveLocation",
                                       label = "Storage Location",
                                       choices = sampleDB::CheckTable(database = database, "location")$description),
                           ),
 
                         conditionalPanel(
-                          condition = "input.move_plate_type == \"existing_plate\"",
+                          condition = "input.MovePlateType == \"existing_plate\"",
                           selectizeInput("MoveExistingPlateID",
                                          choices = c("", sampleDB::CheckTable(database = database, "matrix_plate")$uid),
                                          label = "Existing Plate Name")),
-
                         fluidRow(
                           column(
                             width = 12,
-                            actionButton(".MoveAction",
-                                         label = "Move Samples",
-                                         style="color: #fff; background-color: #337ab7; border-color: #2e6da4"))),
+                            fluidRow(
+                              column(
+                                width = 4,
+                                actionButton("MoveAction",
+                                             label = "Move Samples",
+                                             style="color: #fff; background-color: #337ab7; border-color: #2e6da4"),
+                              ),
+                              column(
+                                width = 4,
+                                actionButton("ClearMoveForm",
+                                             label = "Clear Form"),
+                              )))),
 
                         br(),
                         fluidRow(
@@ -204,19 +219,13 @@ navbarPage("SampleDB",
                       column(
                         width = 8,
                         HTML("<h4>This is an <b>Example SampleDB MoveSamplesCSV</b> from VisionMate.</h4>"),
-                        verbatimTextOutput("movetubescsv_example"),
+                        verbatimTextOutput("ExampleMoveSamplesCSV"),
                         HTML("<h5>This format is essentially just the CSV that any micronix instrument creates.
                               No CSV reformating is required.</h5>"),
                         HTML("<h6>*Note that no new samples can be added during moves. This is because no
                         study subject nor specimen type information is processed during moves.</h6>"),
-                      )
-                    ),
+                      ))),
 
-
-
-                    ),
-
-           #navbarMenu allows for drop downs
            navbarMenu("References",
 
                       tabPanel("Freezers",

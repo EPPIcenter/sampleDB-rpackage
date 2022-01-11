@@ -5,6 +5,7 @@ library(shinyFeedback)
 library(shiny)
 library(markdown)
 library(lubridate)
+library(shinyjs)
 
 function(input, output, session) {
 
@@ -19,15 +20,21 @@ function(input, output, session) {
     ##################
 
     #CHECK PLATE_ID IS UNIQUE
-    upload_plate_dup_check <- reactive({
+    CheckUploadPlateDuplication <- reactive({
         toggle <- input$UploadPlateID %in% c(sampleDB::CheckTable(database = database, "matrix_plate")$uid)
         shinyFeedback::feedbackWarning("UploadPlateID", toggle, "Plate IDs must be unique")})
-    output$upload_plate_dup_warning <- renderText(upload_plate_dup_check())
+    output$WarningUploadPlate <- renderText(CheckUploadPlateDuplication())
 
     #UPLOAD PLATE
     observeEvent(
-        input$.UploadAction,
+        input$UploadAction,
         ({
+
+          req(input$UploadDataSet$datapath,
+              input$UploadPlateID,
+              input$UploadLocation,
+              input$UploadStudyShortCode)
+
           output$UploadReturnMessage <- renderText({
 
               sampleDB::UploadSamples(database = database,
@@ -36,16 +43,16 @@ function(input, output, session) {
                                       location = input$UploadLocation,
                                       study_short_code = input$UploadStudyShortCode,
                                       session = session)})}))
+#
+#     observeEvent(
+#         input$UploadAction,
+#         ({
+#             updateSelectizeInput(session = session,
+#                                  "SearchByPlateID",
+#                                  choices = sampleDB::CheckTable(database = database, "matrix_plate")$uid,
+#                                  label = NULL)}))
 
-    observeEvent(
-        input$.UploadAction,
-        ({
-            updateSelectizeInput(session = session,
-                                 "SearchByPlateID",
-                                 choices = sampleDB::CheckTable(database = database, "matrix_plate")$uid,
-                                 label = NULL)}))
-
-    output$uploadcsv_nodate_example <- renderPrint({
+    output$ExampleUploadCSVNoDate <- renderPrint({
       tibble(LocationRow = rep("A", 10),
              LocationColumn = c(1:10),
              TubeCodes = CheckTable(database = database, "matrix_tube")$barcode %>% head(10),
@@ -53,7 +60,17 @@ function(input, output, session) {
              specimen_type = "PLASMA") %>% as.data.frame()
     })
 
-    output$uploadcsv_date_example <- renderPrint({
+    observeEvent(input$ClearUploadForm,
+                 ({
+
+                   reset("UploadDataSet")
+                   reset("UploadStudyShortCode")
+                   reset("UploadPlateID")
+                   reset("UploadLocation")
+
+                 }))
+
+    output$ExampleUploadCSVDate <- renderPrint({
       tibble(LocationRow = rep("A", 10),
              LocationColumn = c(1:10),
              TubeCodes = CheckTable(database = database, "matrix_tube")$barcode %>% head(10),
@@ -66,16 +83,9 @@ function(input, output, session) {
     # Search Samples #
     ##################
 
-    #CHECK PLATE_ID IS UNIQUE
-    move_plate_dup_check <- reactive({
-      toggle <- input$MovePlateID %in% c(sampleDB::CheckTable(database = database, "matrix_plate")$uid)
-      shinyFeedback::feedbackWarning("MovePlateID", toggle, "Plate IDs must be unique")
-      })
-
-    output$move_plate_dup_warning <- renderText(move_plate_dup_check())
-
     #SEARCH SAMPLES
     observe({
+
       if(is.null(input$SearchByBarcode$datapath)){
         barcode_search_file <- ""
       }else{
@@ -91,11 +101,11 @@ function(input, output, session) {
                                                 search_specimen_type = input$SearchBySpecimenType)
 
       output$SearchResultsTable <- DT::renderDataTable({
-        search_results
-      }, options =
-        list(searching = T, paging = T,
-             language = list(
-               zeroRecords = "No samples match filters given")))
+        search_results},
+        options = list(
+          searching = T,
+          paging = T,
+          language = list(zeroRecords = "No samples match filters given")))
 
       output$downloadData <- downloadHandler(
                   filename = function() {
@@ -113,39 +123,55 @@ function(input, output, session) {
     ##############
 
     #CHECK PLATE_ID IS UNIQUE
-    move_plate_dup_check <- reactive({
+    CheckMovePlateDuplication <- reactive({
       toggle <- input$MovePlateID %in% c(sampleDB::CheckTable(database = database, "matrix_plate")$uid)
-      shinyFeedback::feedbackWarning("MovePlateID", toggle, "Plate IDs must be unique")})
-    output$move_plate_dup_warning <- renderText(move_plate_dup_check())
+      shinyFeedback::feedbackWarning("MovePlateID", toggle, "Plate IDs must be unique")
+    })
+
+    output$WarningMovePlateDuplication <- renderText(CheckMovePlateDuplication())
 
     observeEvent(
-      input$.MoveAction,
+      input$MoveAction,
       ({
 
-        # print(input$move_plate_type)
+        req(input$MoveDataSet$datapath,
+            input$MovePlateType,
+            input$MoveLocation)
+
         output$MoveReturnMessage <- renderText({
 
           sampleDB::MoveTubes(database = database,
                               barcode_file = input$MoveDataSet$datapath,
-                              plate_type = input$move_plate_type,
+                              plate_type = input$MovePlateType,
                               new_plate_uid = input$MovePlateID,
                               existing_plate_uid = input$MoveExistingPlateID,
                               location = input$MoveLocation,
                               session = session)})}))
 
-    observeEvent(
-      input$.MoveAction,
-      ({
-        updateSelectizeInput(session = session,
-                             "SearchByPlateID",
-                             choices = sampleDB::CheckTable(database = database, "matrix_plate")$uid,
-                             label = NULL)}))
 
-    output$movetubescsv_example <- renderPrint({
+    observeEvent(input$ClearMoveForm,
+                 ({
+
+                   reset("MoveDataSet")
+                   reset("MovePlateType")
+                   reset("MoveExistingPlateID")
+                   reset("MovePlateID")
+                   reset("MoveLocation")
+
+                 }))
+
+    # observeEvent(
+    #   input$MoveAction,
+    #   ({
+    #     updateSelectizeInput(session = session,
+    #                          "SearchByPlateID",
+    #                          choices = sampleDB::CheckTable(database = database, "matrix_plate")$uid,
+    #                          label = NULL)}))
+
+    output$ExampleMoveSamplesCSV <- renderPrint({
       tibble(LocationRow = rep("A", 10),
              LocationColumn = c(1:10),
-             TubeCodes = CheckTable(database = database, "matrix_tube")$barcode %>% head(10)) %>% as.data.frame()
-    })
+             TubeCodes = CheckTable(database = database, "matrix_tube")$barcode %>% head(10)) %>% as.data.frame()})
 
     #REFERENCES#################################################################################
 
