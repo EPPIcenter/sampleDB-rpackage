@@ -20,6 +20,9 @@ navbarPage("SampleDB",
                       tags$style(HTML("
                         h5 {
                               line-height: 150%;
+                            }
+                        .shiny-output-error-validation {
+                              color: #FCA211; font-weight: bold;
                             }"))),
 
                     fluidRow(
@@ -34,6 +37,8 @@ navbarPage("SampleDB",
                                       "SampleDB UploadCSV",
                                       multiple = TRUE,
                                       accept = c("text/csv", "text/comma-separated-values,text/plain", ".csv")))),
+                        textOutput("WarningUploadBarcode"),
+                        textOutput("WarningUploadBarcodeA"),
 
                     fluidRow(
                       column(
@@ -171,6 +176,8 @@ navbarPage("SampleDB",
                                       "SampleDB MoveSamplesCSV",
                                       multiple = TRUE,
                                       accept = c("text/csv", "text/comma-separated-values,text/plain", ".csv")))),
+                        textOutput("WarningMoveBarcode"),
+                        textOutput("WarningMoveBarcodeA"),
 
                         radioButtons("MovePlateType", label = "Move Samples to:",
                                      choices = list("New Plate" = "new_plate", "Existing Plate" = "existing_plate"),
@@ -184,7 +191,7 @@ navbarPage("SampleDB",
                           textOutput("WarningMovePlateDuplication"),
                           selectInput("MoveLocation",
                                       label = "Storage Location",
-                                      choices = sampleDB::CheckTable(database = database, "location")$description),
+                                      choices = c("", sampleDB::CheckTable(database = database, "location")$description)),
                           ),
 
                         conditionalPanel(

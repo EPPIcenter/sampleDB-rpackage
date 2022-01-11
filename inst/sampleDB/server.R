@@ -22,18 +22,120 @@ function(input, output, session) {
     #CHECK PLATE_ID IS UNIQUE
     CheckUploadPlateDuplication <- reactive({
         toggle <- input$UploadPlateID %in% c(sampleDB::CheckTable(database = database, "matrix_plate")$uid)
-        shinyFeedback::feedbackWarning("UploadPlateID", toggle, "Plate IDs must be unique")})
+        shinyFeedback::feedbackWarning("UploadPlateID", toggle, "Plate IDs must be unique")
+    })
+
+    #CHECK IF BARCODES ARE ALREADY IN DATABASE - TEXT
+    CheckUploadPlateUniqBarcodeConstraintA <- reactive({
+      if(!is.null(input$UploadDataSet$datapath)){
+
+        if("TubeCode" %in% names(read_csv(input$UploadDataSet$datapath))){
+          upload_barcodes <- read_csv(input$UploadDataSet$datapath)$TubeCode
+        }else{
+          upload_barcodes <- read_csv(input$UploadDataSet$datapath)$"Tube ID"
+        }
+
+        validate(
+          need(!(upload_barcodes %in% c(sampleDB::CheckTable(database = database, "matrix_tube")$barcode)),
+               "Failed: Barcode Unique Constraint")
+        )
+      }
+    })
+
+    #CHECK IF BARCODES ARE ALREADY IN DATABASE - FILEINPUT
+    CheckUploadPlateUniqBarcodeConstraint <- reactive({
+      if(!is.null(input$UploadDataSet$datapath)){
+
+        if("TubeCode" %in% names(read_csv(input$UploadDataSet$datapath))){
+          upload_barcodes <- read_csv(input$UploadDataSet$datapath)$TubeCode
+        }else{
+          upload_barcodes <- read_csv(input$UploadDataSet$datapath)$"Tube ID"
+        }
+
+        upload_barcodes <- read_csv(input$UploadDataSet$datapath)$TubeCode
+        toggle <- upload_barcodes %in% c(sampleDB::CheckTable(database = database, "matrix_tube")$barcode)
+
+        shinyFeedback::feedbackWarning("UploadDataSet", toggle, "Failed: Barcode Unique Constraint")
+      }
+    })
+
+    #CHECK THAT COLNAMES ARE CORRECT
+    CheckUploadColnames <- reactive({
+      if(!is.null(input$UploadDataSet$datapath)){
+        if("TubeCode" %in% names(read_csv(input$UploadDataSet$datapath))){
+          upload_names <- read_csv(input$UploadDataSet$datapath) %>% names()
+        }else{
+          upload_names <- read_csv(input$UploadDataSet$datapath) %>% names()
+        }
+
+        validate(
+          need(upload_names == c("LocationRow", "LocationColumn", "TubeCodes", "study_subject_id", "specimen_type") ||
+                 upload_names == c("LocationRow", "LocationColumn", "TubeCodes", "study_subject_id", "specimen_type", "collection_date") ||
+                 upload_names == c("Position", "Tube ID", "study_subject_id", "specimen_type") ||
+                 upload_names == c("Position", "Tube ID", "study_subject_id", "specimen_type", "collection_date"),
+               "Failed: Required Column Names")
+        )
+      }
+    })
+
+    #CHECK THAT USR SPECIMEN TYPE IS VALID
+    CheckUploadSpecimenTypes <- reactive({
+      if(!is.null(input$UploadDataSet$datapath)){
+        specimen_types <- read_csv(input$UploadDataSet$datapath)$specimen_type
+
+        validate(
+          need(all(specimen_types %in% CheckTable(database = database, table = "specimen_type")$label),
+               "Failed: Specimen Types are NOT Found")
+        )
+      }
+    })
+
+    #CHECK THAT DATE IS IN CORRECT FORMAT
+    CheckUploadDateFormat <- reactive({
+      if(!is.null(input$UploadDataSet$datapath)){
+        if("collection_date" %in% names(read_csv(input$UploadDataSet$datapath))){
+          collection_dates <- read_csv(input$UploadDataSet$datapath)$collection_date
+
+          ValidDatesToggle <- TRUE
+          for(collection_date in collection_dates){
+            # if(collection_date is not year "-" month "-" day){
+              ValidDatesToggle <- FALSE
+              break()
+            }
+          }
+          validate(
+            need(ValidDatesToggle == TRUE, #ALL ITEMS IN COLLECTION DATE MUST HAVE THE PROPER FORMAT
+                 "Failed: Required Column Names")
+          )
+        }
+      }
+    })
+
     output$WarningUploadPlate <- renderText(CheckUploadPlateDuplication())
+    output$WarningUploadBarcodeA <- renderText(CheckUploadPlateUniqBarcodeConstraintA())
+    output$WarningUploadBarcode <- renderText(CheckUploadPlateUniqBarcodeConstraint())
+    output$WarningUploadColnames <- renderText(CheckUploadColnames()) #OUTPUT DOES NOT EXIST
+    output$WarningUploadSpecimenTypes <- renderText(CheckUploadSpecimenTypes()) #OUTPUT DOES NOT EXIST
+    output$WarningUploadDateFormat <- renderText(CheckUploadDateFormat()) #OUTPUT DOES NOT EXIST
 
     #UPLOAD PLATE
     observeEvent(
         input$UploadAction,
         ({
 
+          if("TubeCode" %in% names(read_csv(input$UploadDataSet$datapath))){
+            upload_barcodes <- read_csv(input$UploadDataSet$datapath)$TubeCode
+          }else{
+            upload_barcodes <- read_csv(input$UploadDataSet$datapath)$"Tube ID"
+          }
+
+
           req(input$UploadDataSet$datapath,
               input$UploadPlateID,
               input$UploadLocation,
-              input$UploadStudyShortCode)
+              input$UploadStudyShortCode,
+              !(upload_barcodes %in% c(sampleDB::CheckTable(database = database, "matrix_tube")$barcode)),
+              !(input$UploadPlateID %in% c(sampleDB::CheckTable(database = database, "matrix_plate")$uid)))
 
           output$UploadReturnMessage <- renderText({
 
@@ -84,6 +186,9 @@ function(input, output, session) {
     ##################
 
     #SEARCH SAMPLES
+
+    showNotification(ui = "ABCDE")
+
     observe({
 
       if(is.null(input$SearchByBarcode$datapath)){
@@ -130,13 +235,57 @@ function(input, output, session) {
 
     output$WarningMovePlateDuplication <- renderText(CheckMovePlateDuplication())
 
+    #CHECK IF BARCODES ARE ALREADY IN DATABASE
+    CheckMovePlateUniqBarcodeConstraintA <- reactive({
+      if(!is.null(input$MoveDataSet$datapath)){
+
+        if("TubeCode" %in% names(read_csv(input$MoveDataSet$datapath))){
+          upload_barcodes <- read_csv(input$MoveDataSet$datapath)$TubeCode
+        }else{
+          upload_barcodes <- read_csv(input$MoveDataSet$datapath)$"Tube ID"
+        }
+
+        validate(
+          need(!(upload_barcodes %in% c(sampleDB::CheckTable(database = database, "matrix_tube")$barcode)),
+               "Failed: Barcode Unique Constraint")
+        )
+      }
+    })
+
+    output$WarningMoveBarcodeA <- renderText(CheckMovePlateUniqBarcodeConstraintA())
+
+    CheckMovePlateUniqBarcodeConstraint <- reactive({
+      if(!is.null(input$MoveDataSet$datapath)){
+
+        if("TubeCode" %in% names(read_csv(input$MoveDataSet$datapath))){
+          upload_barcodes <- read_csv(input$MoveDataSet$datapath)$TubeCode
+        }else{
+          upload_barcodes <- read_csv(input$MoveDataSet$datapath)$"Tube ID"
+        }
+
+        upload_barcodes <- read_csv(input$MoveDataSet$datapath)$TubeCode
+        toggle <- upload_barcodes %in% c(sampleDB::CheckTable(database = database, "matrix_tube")$barcode)
+        shinyFeedback::feedbackWarning("MoveDataSet", toggle, "Failed: Barcode Unique Constraint")
+      }
+    })
+
+    output$WarningMoveBarcode <- renderText(CheckMovePlateUniqBarcodeConstraint())
+
     observeEvent(
       input$MoveAction,
       ({
 
+        if("TubeCode" %in% names(read_csv(input$MoveDataSet$datapath))){
+          upload_barcodes <- read_csv(input$MoveDataSet$datapath)$TubeCode
+        }else{
+          upload_barcodes <- read_csv(input$MoveDataSet$datapath)$"Tube ID"
+        }
+
         req(input$MoveDataSet$datapath,
             input$MovePlateType,
-            input$MoveLocation)
+            input$MoveLocation,
+            !(upload_barcodes %in% c(sampleDB::CheckTable(database = database, "matrix_tube")$barcode)),
+            !(input$MovePlateID %in% c(sampleDB::CheckTable(database = database, "matrix_plate")$uid)))
 
         output$MoveReturnMessage <- renderText({
 
