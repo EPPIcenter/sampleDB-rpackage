@@ -1,2 +1,6 @@
 .Rproj.user
 .Rhistory
+.DS_Store
+inst/.DS_Store
+inst/sampleDB/rsconnect/
+trash/
