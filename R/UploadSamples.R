@@ -3,6 +3,7 @@
 #' @import emojifont
 #' @import readr
 #' @import tidyr
+#' @import lubridate
 #' @export
 
 # UploadSamples <- function(barcode_file, barcode_type, longitudinal, plate_id, location){
@@ -55,7 +56,8 @@ UploadSamples <- function(database, barcode_file, plate_id, location, study_shor
     study_id <- filter(CheckTable(database = database, "study"), short_code == study_short_code)$id
     uid <- csv[i, ]$"study_subject_id"
     if(toggle.is_longitudinal){
-      collection_date <- csv[i, ]$"collection_date"
+      collection_date <- ymd(csv[i, ]$"collection_date")
+      collection_date <- paste(year(collection_date), month(collection_date), day(collection_date), sep = "-")
     }else{
       collection_date <- NA
     }

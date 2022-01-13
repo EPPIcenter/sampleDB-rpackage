@@ -85,7 +85,7 @@ function(input, output, session) {
 
         validate(
           need(all(specimen_types %in% CheckTable(database = database, table = "specimen_type")$label),
-               "Failed: Specimen Types are NOT Found")
+               "Failed: Specimen Types are Not found")
         )
       }
     })
@@ -96,16 +96,9 @@ function(input, output, session) {
         if("collection_date" %in% names(read_csv(input$UploadDataSet$datapath))){
           collection_dates <- read_csv(input$UploadDataSet$datapath)$collection_date
 
-          ValidDatesToggle <- TRUE
-          for(collection_date in collection_dates){
-            # if(collection_date is not year "-" month "-" day){
-              ValidDatesToggle <- FALSE
-              break()
-            }
-          }
           validate(
-            need(ValidDatesToggle == TRUE, #ALL ITEMS IN COLLECTION DATE MUST HAVE THE PROPER FORMAT
-                 "Failed: Required Column Names")
+            need(all(!is.na(parse_date_time(collection_dates, orders = "ymd")) == TRUE), #ALL ITEMS IN COLLECTION DATE MUST HAVE THE PROPER FORMAT
+                 "Failed: All Collection Dates are Not in YMD format")
           )
         }
       }
