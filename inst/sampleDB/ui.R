@@ -122,17 +122,29 @@ navbarPage("SampleDB",
                         width = 4,
                         fileInput("SearchByBarcode",
                                   HTML("Search By Barcode - single column named \"barcode\""),
-                                   multiple = FALSE)),
+                                  multiple = FALSE)),
                       column(
                         width = 4,
                         selectizeInput("SearchByPlateID",
                                        "Search By Plate ID",
                                        choices = c("", sampleDB::CheckTable(database = database, "matrix_plate")$uid))),
+
                       column(
                         width = 4,
-                        selectizeInput("SearchBySubjectUID",
-                                       "Search By Subject (UID)",
-                                       choices = NULL))),
+                        radioButtons("SubjectUIDSearchType", label = "Subject UIDs Search Method",
+                                     choices = list("Single UID" = "one_at_a_time", "Multiple UIDs -- column named \"subject_uid\"" = "multiple"),
+                                     selected = "one_at_a_time"),
+
+                        conditionalPanel(
+                          condition = "input.SubjectUIDSearchType == \"one_at_a_time\"",
+                          selectizeInput("SearchBySubjectUID",
+                                    label = "Search By Subject (UID)",
+                                    choices = NULL)),
+
+                        conditionalPanel(
+                          condition = "input.SubjectUIDSearchType == \"multiple\"",
+                          fileInput("SearchBySubjectUIDFile",
+                                    label = "Search By Subject (UID)")))),
 
                     fluidRow(
                       column(
@@ -182,7 +194,6 @@ navbarPage("SampleDB",
                         radioButtons("MovePlateType", label = "Move Samples to:",
                                      choices = list("New Plate" = "new_plate", "Existing Plate" = "existing_plate"),
                                      selected = "new_plate"),
-
 
                         conditionalPanel(
                           condition = "input.MovePlateType == \"new_plate\"",

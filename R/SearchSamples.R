@@ -48,8 +48,8 @@ SearchSamples <- function(database, barcode_search_file, search_plate_uid, searc
     }
 
     if(search_term == "search_plate_uid"){
-    plate_ref_id <-  filter(table.matrix_plate, uid == search_plate_uid)$id
-    matrix_tube_ids <- filter(table.matrix_tube, plate_id %in% plate_ref_id)$id
+      plate_ref_id <-  filter(table.matrix_plate, uid == search_plate_uid)$id
+      matrix_tube_ids <- filter(table.matrix_tube, plate_id %in% plate_ref_id)$id
     }
 
     if(search_term == "search_location"){

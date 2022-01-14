@@ -180,7 +180,7 @@ function(input, output, session) {
 
     #SEARCH SAMPLES
 
-    showNotification(ui = "ABCDE")
+    # showNotification(ui = "ABCDE")
 
     observe({
 
@@ -190,13 +190,30 @@ function(input, output, session) {
         barcode_search_file <- input$SearchByBarcode$datapath
       }
 
-      search_results <- sampleDB::SearchSamples(database = database,
-                                                barcode_search_file = barcode_search_file,
-                                                search_plate_uid = input$SearchByPlateID,
-                                                search_subject_uid = input$SearchBySubjectUID,
-                                                search_study = input$SearchByStudy,
-                                                search_location = input$SearchByLocation,
-                                                search_specimen_type = input$SearchBySpecimenType)
+      if(is.null(input$SearchBySubjectUIDFile$datapath)){
+        subjectuid_search_uids <- ""
+      }else{
+        subjectuid_search_uids <- read_csv(input$SearchBySubjectUIDFile$datapath)$subject_uid
+      }
+
+      if(input$SubjectUIDSearchType == "one_at_a_time"){
+        search_results <- sampleDB::SearchSamples(database = database,
+                                                  barcode_search_file = barcode_search_file,
+                                                  search_plate_uid = input$SearchByPlateID,
+                                                  search_subject_uid = input$SearchBySubjectUID,
+                                                  search_study = input$SearchByStudy,
+                                                  search_location = input$SearchByLocation,
+                                                  search_specimen_type = input$SearchBySpecimenType)
+      }else{
+        search_results <- sampleDB::SearchSamples(database = database,
+                                                  barcode_search_file = barcode_search_file,
+                                                  search_plate_uid = input$SearchByPlateID,
+                                                  search_subject_uid = subjectuid_search_uids,
+                                                  search_study = input$SearchByStudy,
+                                                  search_location = input$SearchByLocation,
+                                                  search_specimen_type = input$SearchBySpecimenType)
+
+      }
 
       output$SearchResultsTable <- DT::renderDataTable({
         search_results},
@@ -213,6 +230,10 @@ function(input, output, session) {
                     write.csv(search_results, con)
                   }
                 )
+
+      # updateSelectizeInput(session = session,
+      #                      SearchByPlateID,
+      #                      choices = c("", sampleDB::CheckTable(database = database, "matrix_plate")$uid))
 
     })
 
