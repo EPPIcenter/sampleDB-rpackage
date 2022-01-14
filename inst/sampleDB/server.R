@@ -10,7 +10,7 @@ library(shinyjs)
 function(input, output, session) {
 
     #SET PATH TO SQLITE DATABASE
-    database <- "example_19-Oct-21.sample_db.sqlite"
+    database <- Sys.getenv("SAMPLEDB_DATABASE")
 
     #SERVER-SIDE DROPDOWN -- SAVES LOADING TIME
     updateSelectizeInput(session, 'SearchBySubjectUID', choices = c("", sampleDB::CheckTable(database = database, "study_subject")$uid %>% unique()), server = TRUE)
