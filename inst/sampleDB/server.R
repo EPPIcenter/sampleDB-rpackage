@@ -182,7 +182,27 @@ function(input, output, session) {
 
     # showNotification(ui = "ABCDE")
 
+    #update plate selection when study is specified
+    observeEvent(input$SearchByStudy,({
+
+        study_ref_id <- filter(sampleDB::CheckTable(database = database, "study"), short_code %in% input$SearchByStudy)$id
+        study_subject_ref_id <- filter(sampleDB::CheckTable(database = database, "study_subject"), study_id %in% study_ref_id)$id
+        specimen_ref_id <- filter(sampleDB::CheckTable(database = database, "specimen"), study_subject_id %in% study_subject_ref_id)$id
+        storage_container_id <- filter(sampleDB::CheckTable(database = database, "storage_container"), specimen_id %in% specimen_ref_id)$id
+        matrix_tube_ids <- filter(sampleDB::CheckTable(database = database, "matrix_tube"), id %in% storage_container_id)$id
+
+        plate_ids <- filter(sampleDB::CheckTable(database = database, "matrix_tube"), id %in% matrix_tube_ids)$plate_id %>% unique()
+        plate_names <- filter(sampleDB::CheckTable(database = database, "matrix_plate"), id %in% plate_ids)$uid
+
+        updateSelectizeInput(session = session,
+                             "SearchByPlateID",
+                             choices = c("", plate_names))
+    }))
+
     observe({
+
+
+
 
       if(is.null(input$SearchByBarcode$datapath)){
         barcode_search_file <- ""
@@ -215,6 +235,7 @@ function(input, output, session) {
 
       }
 
+      # DOWNLOAD SEARCH RESULTS
       output$SearchResultsTable <- DT::renderDataTable({
         search_results},
         options = list(
@@ -230,10 +251,6 @@ function(input, output, session) {
                     write.csv(search_results, con)
                   }
                 )
-
-      # updateSelectizeInput(session = session,
-      #                      SearchByPlateID,
-      #                      choices = c("", sampleDB::CheckTable(database = database, "matrix_plate")$uid))
 
     })
 
