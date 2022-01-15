@@ -37,8 +37,11 @@ navbarPage("SampleDB",
                                       "SampleDB UploadCSV",
                                       multiple = TRUE,
                                       accept = c("text/csv", "text/comma-separated-values,text/plain", ".csv")))),
-                        textOutput("WarningUploadBarcode"),
                         textOutput("WarningUploadBarcodeA"),
+                        textOutput("WarningUploadBarcode"),
+                        textOutput("WarningUploadColnames"),
+                        textOutput("WarningUploadSpecimenTypes"),
+                        textOutput("WarningUploadDateFormat"),
 
                     fluidRow(
                       column(
@@ -190,6 +193,7 @@ navbarPage("SampleDB",
                                       accept = c("text/csv", "text/comma-separated-values,text/plain", ".csv")))),
                         textOutput("WarningMoveBarcode"),
                         textOutput("WarningMoveBarcodeA"),
+                        textOutput("WarningMoveBarcodesExist"),
 
                         radioButtons("MovePlateType", label = "Move Samples to:",
                                      choices = list("New Plate" = "new_plate", "Existing Plate" = "existing_plate"),
@@ -210,6 +214,9 @@ navbarPage("SampleDB",
                           selectizeInput("MoveExistingPlateID",
                                          choices = c("", sampleDB::CheckTable(database = database, "matrix_plate")$uid),
                                          label = "Existing Plate Name")),
+
+                        textOutput("WarningMoveToSamePlate"),
+
                         fluidRow(
                           column(
                             width = 12,

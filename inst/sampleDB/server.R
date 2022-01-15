@@ -138,14 +138,14 @@ function(input, output, session) {
                                       location = input$UploadLocation,
                                       study_short_code = input$UploadStudyShortCode,
                                       session = session)})}))
-#
-#     observeEvent(
-#         input$UploadAction,
-#         ({
-#             updateSelectizeInput(session = session,
-#                                  "SearchByPlateID",
-#                                  choices = sampleDB::CheckTable(database = database, "matrix_plate")$uid,
-#                                  label = NULL)}))
+
+    observeEvent(
+        input$UploadAction,
+        ({
+            updateSelectizeInput(session = session,
+                                 "SearchByPlateID",
+                                 choices = sampleDB::CheckTable(database = database, "matrix_plate")$uid,
+                                 label = NULL)}))
 
     output$ExampleUploadCSVNoDate <- renderPrint({
       tibble(LocationRow = rep("A", 10),
@@ -264,8 +264,6 @@ function(input, output, session) {
       shinyFeedback::feedbackWarning("MovePlateID", toggle, "Plate IDs must be unique")
     })
 
-    output$WarningMovePlateDuplication <- renderText(CheckMovePlateDuplication())
-
     #CHECK IF BARCODES ARE ALREADY IN DATABASE
     CheckMovePlateUniqBarcodeConstraintA <- reactive({
       if(!is.null(input$MoveDataSet$datapath)){
@@ -283,8 +281,6 @@ function(input, output, session) {
       }
     })
 
-    output$WarningMoveBarcodeA <- renderText(CheckMovePlateUniqBarcodeConstraintA())
-
     CheckMovePlateUniqBarcodeConstraint <- reactive({
       if(!is.null(input$MoveDataSet$datapath)){
 
@@ -300,7 +296,38 @@ function(input, output, session) {
       }
     })
 
+    #CHECK THAT MOVE IS TO A DIFFERENT PLATE
+    CheckMoveToSamePlate <- reactive({
+      if(!is.null(input$MoveDataSet$datapath)){
+        if(input$MovePlateType == existing_plate){
+          # get all plates asso w the tubes
+          barcodes <- read_csv(input$MoveDataSet$datapath)$barcode
+          uniq_plate_ids <- filter(sampleDB::CheckTable(database = database, "matrix_tube"), barcode %in% barcodes)$plate_id %>% unique()
+          plate_names <- filter(sampleDB::CheckTable(database = database, "matrix_plate"), id %in% uniq_plate_id)$uid
+          # input$MoveExistingPlateID cannot be any of the plates ass w the tubes
+          validate(
+            need(!(input$MoveExistingPlateID %in% plate_names),
+                 "Failed: Samples cannot be moved to the same plate")
+          )
+        }
+      }
+    })
+
+    #CHECK THAT BARCODES IN MOVE EXIST IN DATABASE
+    CheckMoveBarcodesExist <- reactive({
+      if(!is.null(input$MoveDataSet$datapath)){
+        validate(
+          need(all(read_csv(input$MoveDataSet$datapath)$TubeCode %in% CheckTable(database = database, "matrix_tube")$barcode),
+               "Failed: Barcodes for move do Not exist")
+        )
+      }
+    })
+
+    output$WarningMoveBarcodeA <- renderText(CheckMovePlateUniqBarcodeConstraintA())
     output$WarningMoveBarcode <- renderText(CheckMovePlateUniqBarcodeConstraint())
+    output$WarningMovePlateDuplication <- renderText(CheckMovePlateDuplication())
+    output$WarningMoveToSamePlate <- renderText(CheckMoveToSamePlate())
+    output$WarningMoveBarcodesExist <- renderText(CheckMoveBarcodesExist())
 
     observeEvent(
       input$MoveAction,
@@ -340,13 +367,13 @@ function(input, output, session) {
 
                  }))
 
-    # observeEvent(
-    #   input$MoveAction,
-    #   ({
-    #     updateSelectizeInput(session = session,
-    #                          "SearchByPlateID",
-    #                          choices = sampleDB::CheckTable(database = database, "matrix_plate")$uid,
-    #                          label = NULL)}))
+    observeEvent(
+      input$MoveAction,
+      ({
+        updateSelectizeInput(session = session,
+                             "SearchByPlateID",
+                             choices = sampleDB::CheckTable(database = database, "matrix_plate")$uid,
+                             label = NULL)}))
 
     output$ExampleMoveSamplesCSV <- renderPrint({
       tibble(LocationRow = rep("A", 10),
