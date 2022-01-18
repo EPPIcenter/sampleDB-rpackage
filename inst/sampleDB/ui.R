@@ -7,7 +7,9 @@ library(markdown)
 
 
 #SET PATH TO SQLITE DATABASE
-database <- "example_19-Oct-21.sample_db.sqlite"
+# database <- "example_19-Oct-21.sample_db.sqlite"
+# database <- Sys.getenv("SAMPLEDB_DATABASE") #use the aragorn env var set at boot
+database <- "/databases/example_19-Oct-21.sample_db.sqlite"
 
 navbarPage("SampleDB",
 
