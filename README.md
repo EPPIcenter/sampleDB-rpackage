@@ -54,3 +54,32 @@ NOTE: making sure the app is
 - able to reliably interact with the database
 - able to back up the database
 - handling/preventing database manipulation by multiple users at once
+
+# Installation
+
+This packages is installed at Aragorn's `/usr/lib/R/site-library/`. This is where all system-wide packages are stored.
+
+For Reference:
+Before installing sampleDB these packages were installed system-wide
+```
+00LOCK-digest  base64enc  bit  cpp11  crayon  digest  fansi  fastmap  generics  glue  magrittr  pkgconfig  prettyunits  R6  rlang  utf8  withr
+```
+
+After installing sampleDB these packages are installed system-wid
+```
+base64enc  cli         crosstalk  emojifont    generics   htmlwidgets  later      memoise    prettyunits  rappdirs      sampleDB       showtextdb   tzdb         xfun
+bit        clipr       DBI        fansi        ggplot2    httpuv       lazyeval   mime       progress     RColorBrewer  sass           sourcetools  utf8         xtable
+bit64      colorspace  digest     farver       glue       isoband      lifecycle  munsell    promises     Rcpp          scales         sysfonts     vctrs        yaml
+blob       commonmark  dplyr      fastmap      gtable     jquerylib    lubridate  pillar     proto        readr         shiny          tibble       viridisLite
+bslib      cpp11       DT         fontawesome  hms        jsonlite     magrittr   pkgconfig  purrr        rlang         shinyFeedback  tidyr        vroom
+cachem     crayon      ellipsis   fs           htmltools  labeling     markdown   plogr      R6           RSQLite       showtext       tidyselect   withr
+```
+
+User access to aragorn is:
+usr: owen
+pass: Gr##nhouse
+
+R command for installing sampleDB to `/usr/lib/R/site-library`:
+```
+withr::with_libpaths(new = "/usr/lib/R/site-library/", devtools::install_github("https://github.com/villars4-ucsf/sampleDB-rpackage", ref = "master", auth_token = "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"))
+```
