@@ -24,8 +24,10 @@ SearchSamples <- function(database, barcode_search_file, search_plate_uid, searc
                             search_study = search_study,
                             search_location = search_location,
                             search_specimen_type = search_specimen_type)
-
-  if(length(SearchFilters %>% discard(function(x) x == "")) == 0){
+  # print("HERE84")
+  # print(SearchFilters)
+  # print(SearchFilters %>% discard(function(x) "" %in% x) %>% length())
+  if(length(SearchFilters %>% discard(function(x) "" %in% x)) == 0){
     search_results <- tibble(well_position = NA,
                              barcode = NA,
                              subject_uid = NA,
@@ -36,10 +38,10 @@ SearchSamples <- function(database, barcode_search_file, search_plate_uid, searc
                              collection_date = NA) %>% filter(well_position == 0)
 
   }else{
-
+    # print("HERE50")
     #COLLECT SEARCH AND FILTERING TERMS - FIRST ITEM NOT "" IS SEARCH TERM THE REST ARE FILTER TERMS
-    search_term <- keep(SearchFilters, function(x) x != "")[1] %>% names()
-    filter_terms <- names(keep(SearchFilters, function(x) x != ""))[-1]
+    search_term <- discard(SearchFilters, function(x) "" %in% x)[1] %>% names()
+    filter_terms <- names(discard(SearchFilters, function(x) "" %in% x))[-1]
     # print(filter_terms)
 
     #USE SEARCH TERM TO GET TO MATRIX_TUBE_IDS

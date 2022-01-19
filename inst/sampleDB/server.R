@@ -19,7 +19,11 @@ function(input, output, session) {
     ##################
     # Upload Samples #
     ##################
-
+    
+    #~~~~~~~~#
+    # Checks #
+    #~~~~~~~~#
+    
     #CHECK PLATE_ID IS UNIQUE
     CheckUploadPlateDuplication <- reactive({
         toggle <- input$UploadPlateID %in% c(sampleDB::CheckTable(database = database, "matrix_plate")$uid)
@@ -112,6 +116,10 @@ function(input, output, session) {
     output$WarningUploadSpecimenTypes <- renderText(CheckUploadSpecimenTypes()) #OUTPUT DOES NOT EXIST
     output$WarningUploadDateFormat <- renderText(CheckUploadDateFormat()) #OUTPUT DOES NOT EXIST
 
+    #~~~~~~~~#
+    # Upload #
+    #~~~~~~~~#
+    
     #UPLOAD PLATE
     observeEvent(
         input$UploadAction,
@@ -182,28 +190,107 @@ function(input, output, session) {
     #SEARCH SAMPLES
 
     # showNotification(ui = "ABCDE")
+    
+    #CHECK THAT UID FILE IS PROPERLY FORMED
+    CheckSubjectBarcodeFileColnames <- reactive({
+      
+      if(!is.null(input$SearchByBarcode$datapath)){
+        
+        names.barcode_file <- read_csv(input$SearchByBarcode$datapath) %>% colnames()
+        ncols.barcode_file <- read_csv(input$SearchByBarcode$datapath) %>% ncol()
+        
+        toggle <- ncols.barcode_file == 1 & names.barcode_file == "barcode"
+        
+        validate(
+          need(toggle, #ALL ITEMS IN COLLECTION DATE MUST HAVE THE PROPER FORMAT
+               "Failed: Barcode File is Malformed")
+        )
+      }
+    })
+    
+    #CHECK IF UID FILE IS PROPERLY FORMED - FILEINPUT
+    CheckSubjectBarcodeFileColnames2 <- reactive({
+      if(!is.null(input$SearchByBarcode$datapath)){
+        
+        names.barcode_file <- read_csv(input$SearchByBarcode$datapath) %>% colnames()
+        ncols.barcode_file <- read_csv(input$SearchByBarcode$datapath) %>% ncol()
+        
+        toggle <- !(ncols.barcode_file == 1 & names.barcode_file == "barcode")
+        
+        shinyFeedback::feedbackWarning("SearchByBarcode", toggle, "Failed: Barcode File is Malformed")
+      }
+    })
+    
+    #CHECK THAT UID FILE IS PROPERLY FORMED
+    CheckSubjectUIDFileColnames <- reactive({
+      
+      if(!is.null(input$SearchBySubjectUIDFile$datapath)){
 
+        names.subject_uid_file <- read_csv(input$SearchBySubjectUIDFile$datapath) %>% colnames()
+        ncols.subject_uid_file <- read_csv(input$SearchBySubjectUIDFile$datapath) %>% ncol()
+        
+        toggle <- ncols.subject_uid_file == 1 & names.subject_uid_file == "subject_uid"
+
+          validate(
+            need(toggle, #ALL ITEMS IN COLLECTION DATE MUST HAVE THE PROPER FORMAT
+                 "Failed: Subject UID File is Malformed")
+          )
+      }
+    })
+    
+    #CHECK IF UID FILE IS PROPERLY FORMED - FILEINPUT
+    CheckSubjectUIDFileColnames2 <- reactive({
+      if(!is.null(input$SearchBySubjectUIDFile$datapath)){
+
+        names.subject_uid_file <- read_csv(input$SearchBySubjectUIDFile$datapath) %>% colnames()
+        ncols.subject_uid_file <- read_csv(input$SearchBySubjectUIDFile$datapath) %>% ncol()
+
+        toggle <- !(ncols.subject_uid_file == 1 & names.subject_uid_file == "subject_uid")
+
+        shinyFeedback::feedbackWarning("SearchBySubjectUIDFile", toggle, "Failed: Subject UID File is Malformed")
+      }
+    })
+    
+    output$WarningSubjectUIDFileColnames2 <- renderText(CheckSubjectUIDFileColnames2())
+    output$WarnSubjectUIDFileColnames <- renderText(CheckSubjectUIDFileColnames())
+    output$WarnSubjectBarcodeFileColnames2 <- renderText(CheckSubjectBarcodeFileColnames2())
+    output$WarnSubjectBarcodeFileColnames <- renderText(CheckSubjectBarcodeFileColnames())
+        
+    observeEvent(input$ClearSearchBarcodes,
+                 ({
+                   
+                   reset("SearchByBarcode")
+
+                 }))
+    
+    observeEvent(input$ClearSearchUIDFile,
+                 ({
+                   
+                   reset("SearchBySubjectUIDFile")
+                   
+                 }))
     #update plate selection when study is specified
     observeEvent(input$SearchByStudy,({
-
+      
+      if(input$SearchByStudy != ""){
+        
         study_ref_id <- filter(sampleDB::CheckTable(database = database, "study"), short_code %in% input$SearchByStudy)$id
         study_subject_ref_id <- filter(sampleDB::CheckTable(database = database, "study_subject"), study_id %in% study_ref_id)$id
         specimen_ref_id <- filter(sampleDB::CheckTable(database = database, "specimen"), study_subject_id %in% study_subject_ref_id)$id
         storage_container_id <- filter(sampleDB::CheckTable(database = database, "storage_container"), specimen_id %in% specimen_ref_id)$id
         matrix_tube_ids <- filter(sampleDB::CheckTable(database = database, "matrix_tube"), id %in% storage_container_id)$id
-
+        
         plate_ids <- filter(sampleDB::CheckTable(database = database, "matrix_tube"), id %in% matrix_tube_ids)$plate_id %>% unique()
         plate_names <- filter(sampleDB::CheckTable(database = database, "matrix_plate"), id %in% plate_ids)$uid
-
+        
         updateSelectizeInput(session = session,
                              "SearchByPlateID",
-                             choices = c("", plate_names))
+                             choices = c("", plate_names))        
+      }
+
     }))
 
     observe({
-
-
-
 
       if(is.null(input$SearchByBarcode$datapath)){
         barcode_search_file <- ""
@@ -215,6 +302,7 @@ function(input, output, session) {
         subjectuid_search_uids <- ""
       }else{
         subjectuid_search_uids <- read_csv(input$SearchBySubjectUIDFile$datapath)$subject_uid
+        subjectuid_search_uids <- subjectuid_search_uids[subjectuid_search_uids != ""] # remove any blank entries that may be in vector
       }
 
       if(input$SubjectUIDSearchType == "one_at_a_time"){
@@ -258,6 +346,10 @@ function(input, output, session) {
     ##############
     # Move Tubes #
     ##############
+    
+    #~~~~~~~~#
+    # Checks #
+    #~~~~~~~~#
 
     #CHECK PLATE_ID IS UNIQUE
     CheckMovePlateDuplication <- reactive({
@@ -330,6 +422,10 @@ function(input, output, session) {
     output$WarningMoveToSamePlate <- renderText(CheckMoveToSamePlate())
     output$WarningMoveBarcodesExist <- renderText(CheckMoveBarcodesExist())
 
+    #~~~~~~#
+    # Move #
+    #~~~~~~#
+    
     observeEvent(
       input$MoveAction,
       ({

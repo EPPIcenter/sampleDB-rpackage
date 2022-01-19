@@ -86,7 +86,7 @@ navbarPage("SampleDB",
 
                     fluidRow(
                       column(
-                        width = 12,
+                        width = 6,
                         span(verbatimTextOutput("UploadReturnMessage"), style="font-size: 28px")))),
 
                       column(8,
@@ -127,7 +127,11 @@ navbarPage("SampleDB",
                         width = 4,
                         fileInput("SearchByBarcode",
                                   HTML("Search By Barcode - single column named \"barcode\""),
-                                  multiple = FALSE)),
+                                  multiple = FALSE),
+                        actionButton("ClearSearchBarcodes", label = "Clear Barcodes")),
+                        textOutput("WarnSubjectBarcodeFileColnames"),
+                        textOutput("WarnSubjectBarcodeFileColnames2"),
+                      
                       column(
                         width = 4,
                         selectizeInput("SearchByPlateID",
@@ -149,7 +153,10 @@ navbarPage("SampleDB",
                         conditionalPanel(
                           condition = "input.SubjectUIDSearchType == \"multiple\"",
                           fileInput("SearchBySubjectUIDFile",
-                                    label = "Search By Subject (UID)")))),
+                                    label = "Search By Subject (UID)"),
+                          actionButton("ClearSearchUIDFile", label = "Clear Subject IDs")))),
+                    textOutput("WarnSubjectUIDFileColnames"),
+                    textOutput("WarnSubjectUIDFileColnames2"),
 
                     fluidRow(
                       column(
