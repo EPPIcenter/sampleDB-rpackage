@@ -1,8 +1,8 @@
 library(dplyr)
 library(sampleDB)
-library(DT)
 library(shinyFeedback)
 library(shiny)
+library(readr)
 library(markdown)
 library(lubridate)
 library(shinyjs)
@@ -20,9 +20,9 @@ function(input, output, session) {
     # Upload Samples #
     ##################
     
-    #~~~~~~~~#
+    # ~~~~~~ #
     # Checks #
-    #~~~~~~~~#
+    # ~~~~~~ #
     
     #CHECK PLATE_ID IS UNIQUE
     CheckUploadPlateDuplication <- reactive({
@@ -34,10 +34,10 @@ function(input, output, session) {
     CheckUploadPlateUniqBarcodeConstraintA <- reactive({
       if(!is.null(input$UploadDataSet$datapath)){
 
-        if("TubeCode" %in% names(read_csv(input$UploadDataSet$datapath))){
-          upload_barcodes <- read_csv(input$UploadDataSet$datapath)$TubeCode
+        if("TubeCode" %in% names(read_csv(input$UploadDataSet$datapath, col_types = cols()))){
+          upload_barcodes <- read_csv(input$UploadDataSet$datapath, col_types = cols())$TubeCode
         }else{
-          upload_barcodes <- read_csv(input$UploadDataSet$datapath)$"Tube ID"
+          upload_barcodes <- read_csv(input$UploadDataSet$datapath, col_types = cols())$"Tube ID"
         }
 
         validate(
@@ -51,13 +51,13 @@ function(input, output, session) {
     CheckUploadPlateUniqBarcodeConstraint <- reactive({
       if(!is.null(input$UploadDataSet$datapath)){
 
-        if("TubeCode" %in% names(read_csv(input$UploadDataSet$datapath))){
-          upload_barcodes <- read_csv(input$UploadDataSet$datapath)$TubeCode
+        if("TubeCode" %in% names(read_csv(input$UploadDataSet$datapath, col_types = cols()))){
+          upload_barcodes <- read_csv(input$UploadDataSet$datapath, col_types = cols())$TubeCode
         }else{
-          upload_barcodes <- read_csv(input$UploadDataSet$datapath)$"Tube ID"
+          upload_barcodes <- read_csv(input$UploadDataSet$datapath, col_types = cols())$"Tube ID"
         }
 
-        upload_barcodes <- read_csv(input$UploadDataSet$datapath)$TubeCode
+        upload_barcodes <- read_csv(input$UploadDataSet$datapath, col_types = cols())$TubeCode
         toggle <- upload_barcodes %in% c(sampleDB::CheckTable(database = database, "matrix_tube")$barcode)
 
         shinyFeedback::feedbackWarning("UploadDataSet", toggle, "Failed: Barcode Unique Constraint")
@@ -67,10 +67,10 @@ function(input, output, session) {
     #CHECK THAT COLNAMES ARE CORRECT
     CheckUploadColnames <- reactive({
       if(!is.null(input$UploadDataSet$datapath)){
-        if("TubeCode" %in% names(read_csv(input$UploadDataSet$datapath))){
-          upload_names <- read_csv(input$UploadDataSet$datapath) %>% names()
+        if("TubeCode" %in% names(read_csv(input$UploadDataSet$datapath, col_types = cols()))){
+          upload_names <- read_csv(input$UploadDataSet$datapath, col_types = cols()) %>% names()
         }else{
-          upload_names <- read_csv(input$UploadDataSet$datapath) %>% names()
+          upload_names <- read_csv(input$UploadDataSet$datapath, col_types = cols()) %>% names()
         }
 
         validate(
@@ -86,7 +86,7 @@ function(input, output, session) {
     #CHECK THAT USR SPECIMEN TYPE IS VALID
     CheckUploadSpecimenTypes <- reactive({
       if(!is.null(input$UploadDataSet$datapath)){
-        specimen_types <- read_csv(input$UploadDataSet$datapath)$specimen_type
+        specimen_types <- read_csv(input$UploadDataSet$datapath, col_types = cols())$specimen_type
 
         validate(
           need(all(specimen_types %in% CheckTable(database = database, table = "specimen_type")$label),
@@ -98,8 +98,8 @@ function(input, output, session) {
     #CHECK THAT DATE IS IN CORRECT FORMAT
     CheckUploadDateFormat <- reactive({
       if(!is.null(input$UploadDataSet$datapath)){
-        if("collection_date" %in% names(read_csv(input$UploadDataSet$datapath))){
-          collection_dates <- read_csv(input$UploadDataSet$datapath)$collection_date
+        if("collection_date" %in% names(read_csv(input$UploadDataSet$datapath, col_types = cols()))){
+          collection_dates <- read_csv(input$UploadDataSet$datapath, col_types = cols())$collection_date
 
           validate(
             need(all(!is.na(parse_date_time(collection_dates, orders = "ymd")) == TRUE), #ALL ITEMS IN COLLECTION DATE MUST HAVE THE PROPER FORMAT
@@ -116,46 +116,54 @@ function(input, output, session) {
     output$WarningUploadSpecimenTypes <- renderText(CheckUploadSpecimenTypes()) #OUTPUT DOES NOT EXIST
     output$WarningUploadDateFormat <- renderText(CheckUploadDateFormat()) #OUTPUT DOES NOT EXIST
 
-    #~~~~~~~~#
+    # ~~~~~~ #
     # Upload #
-    #~~~~~~~~#
+    # ~~~~~~ #
     
     #UPLOAD PLATE
+    
     observeEvent(
         input$UploadAction,
         ({
-
-          if("TubeCode" %in% names(read_csv(input$UploadDataSet$datapath))){
-            upload_barcodes <- read_csv(input$UploadDataSet$datapath)$TubeCode
+          
+          #handle traxer v. visionmate
+          if("TubeCode" %in% names(read_csv(input$UploadDataSet$datapath, col_types = cols()))){
+            upload_barcodes <- read_csv(input$UploadDataSet$datapath, col_types = cols())$TubeCode
           }else{
-            upload_barcodes <- read_csv(input$UploadDataSet$datapath)$"Tube ID"
+            upload_barcodes <- read_csv(input$UploadDataSet$datapath, col_types = cols())$"Tube ID"
           }
-
-
+          # 
+          # output$UploadDataSet <- renderUI({
+          #   input$ClearUploadForm ## Create a dependency with the reset button
+          #   fileInput('UploadDataSet', label = NULL)
+          # })
+          
+          #set requirements
           req(input$UploadDataSet$datapath,
               input$UploadPlateID,
               input$UploadLocation,
               input$UploadStudyShortCode,
               !(upload_barcodes %in% c(sampleDB::CheckTable(database = database, "matrix_tube")$barcode)),
               !(input$UploadPlateID %in% c(sampleDB::CheckTable(database = database, "matrix_plate")$uid)))
+          
+          maxi <- 50
+          for (i in 1:maxi) {
+            updateProgressBar(session = session, id = "pb4", value = (i/maxi)*100)
+            Sys.sleep(0.2)
+          }
+          
+          #upload
+          output$UploadReturnMessage2 <- renderText({sampleDB::UploadSamples(database = database,
+                                            barcode_file = input$UploadDataSet$datapath,
+                                            plate_id = input$UploadPlateID,
+                                            location = input$UploadLocation,
+                                            study_short_code = input$UploadStudyShortCode,
+                                            session = session)})
+          }))
 
-          output$UploadReturnMessage <- renderText({
-
-              sampleDB::UploadSamples(database = database,
-                                      barcode_file = input$UploadDataSet$datapath,
-                                      plate_id = input$UploadPlateID,
-                                      location = input$UploadLocation,
-                                      study_short_code = input$UploadStudyShortCode,
-                                      session = session)})}))
-
-    observeEvent(
-        input$UploadAction,
-        ({
-            updateSelectizeInput(session = session,
-                                 "SearchByPlateID",
-                                 choices = sampleDB::CheckTable(database = database, "matrix_plate")$uid,
-                                 label = NULL)}))
-
+    # ~~~~~~~~ #
+    # Examples #
+    # ~~~~~~~~ #
     output$ExampleUploadCSVNoDate <- renderPrint({
       tibble(LocationRow = rep("A", 10),
              LocationColumn = c(1:10),
@@ -163,16 +171,6 @@ function(input, output, session) {
              study_subject_id = CheckTable(database = database, "study_subject")$uid %>% head(10),
              specimen_type = "PLASMA") %>% as.data.frame()
     })
-
-    observeEvent(input$ClearUploadForm,
-                 ({
-
-                   reset("UploadDataSet")
-                   reset("UploadStudyShortCode")
-                   reset("UploadPlateID")
-                   reset("UploadLocation")
-
-                 }))
 
     output$ExampleUploadCSVDate <- renderPrint({
       tibble(LocationRow = rep("A", 10),
@@ -182,6 +180,17 @@ function(input, output, session) {
              specimen_type = "PLASMA",
              collection_date = paste("2022", "1", c(1,1,1,2,2,2,3,3,3,4), sep = "-")) %>% as.data.frame()
     })
+    
+    observeEvent(input$ClearUploadForm,
+                 ({
+                   
+                   reset("UploadDataSet")
+                   reset("UploadStudyShortCode")
+                   reset("UploadPlateID")
+                   reset("UploadLocation")
+                   output$UploadReturnMessage <- renderText({NULL})
+                   
+                 }))
 
     ##################
     # Search Samples #

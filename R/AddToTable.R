@@ -20,27 +20,29 @@ AddToTable <- function(database, table_name, info_list){
 
   #get names of columns to modify
   column_names <- paste0(names(info_list), collapse = ", ")
-  #create ??? filler (required by dbSendQuery)
+  #CREATE ??? FILLER (required by dbSendQuery)
   filler <- replicate(length(info_list), "?") %>% paste0(., collapse = ", ")
-  #rename info_list (required by dbSendQuery)
+  #RENAME info_list (required by dbSendQuery)
   names(info_list) <- NULL
 
   tryCatch(
 
-      #modify database
-      RSQLite::dbSendQuery(conn,
+      #add to database
+      RSQLite::dbSendStatement(conn,
                            paste0('INSERT INTO ', table_name, ' (', column_names, ') VALUES (', filler, ');'),
                            info_list),
 
-      #handle duplicate entry error(s)
+
       error=function(e){
         print(e)
-        # if(e[1] == "UNIQUE constraint failed: location.description"){
-          # return(warning("FREEZER NAMES CANNOT BE DUPLICATED"))
-        # }
       }
   )
 
   #close connection
-  RSQLite::dbDisconnect(conn)
+  tryCatch(
+    RSQLite::dbDisconnect(conn),
+    warning=function(w){
+
+    })
+
 }

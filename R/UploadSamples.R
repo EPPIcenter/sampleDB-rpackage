@@ -13,7 +13,7 @@ UploadSamples <- function(database, barcode_file, plate_id, location, study_shor
   toggle.is_longitudinal <- FALSE
 
   #READIN CSV FROM USER WITH VISIONMATE/TRAXER BARCODES,
-  csv <- read_csv(barcode_file)
+  csv <- read_csv(barcode_file, col_types = cols())
   if("collection_date" %in% names(csv)){
     toggle.is_longitudinal <- TRUE
   }
@@ -62,31 +62,31 @@ UploadSamples <- function(database, barcode_file, plate_id, location, study_shor
       collection_date <- NA
     }
 
-    print("HERE1")
+    # print("HERE1")
     #CHECK TO SEE IF STUDY_SUBJECT_ID/STUDY_ID EXISTS
-    if(nrow(inner_join(CheckTable(database = database, "study_subject")[, c("uid", "study_id")], tibble(uid = uid, study_id = study_id))) > 0){
+    if(nrow(inner_join(CheckTable(database = database, "study_subject")[, c("uid", "study_id")], tibble(uid = uid, study_id = study_id), by = c("uid", "study_id"))) > 0){
 
       #IF STUDY_SUBJECT_ID/STUDY_ID EXISTS FETCH STUDY_SUBJECT_TABLE ENTRY'S ID
       study_subject_id <- filter(CheckTable(database = database, "study_subject"), uid == uid & study_id == study_id)$id
 
       #CHECK TO SEE THERE IS A SPECIMEN ENTRY WITH THE SAME STUDY_SUBJECT_ID/STUDY_ID, SPECIMEN_TYPE AND COLLECTION DATE INFO
-      if(nrow(inner_join(CheckTable(database = database, "specimen")[,c("study_subject_id", "specimen_type_id", "collection_date")], tibble(study_subject_id = study_subject_id, specimen_type_id = specimen_type_id, collection_date = collection_date ))) > 0){
-        print("HERE2")
+      if(nrow(inner_join(CheckTable(database = database, "specimen")[,c("study_subject_id", "specimen_type_id", "collection_date")], tibble(study_subject_id = study_subject_id, specimen_type_id = specimen_type_id, collection_date = collection_date), by = c("uid", "study_id"))) > 0){
+        # print("HERE2")
         #IF THERE IS AN EXISTING ENTRY GET THE SPECIMEN ID
         if(is.na(collection_id)){
-          specimen_id <- filter(CheckTable(databae = database, "specimen"),
+          specimen_id <- filter(CheckTable(database = database, "specimen"),
                                 study_subject_id == study_subject_id,
                                 specimen_type_id == specimen_type_id,
                                 is.na(collection_date))$id
         }else{
-          specimen_id <- filter(CheckTable(databae = database, "specimen"),
+          specimen_id <- filter(CheckTable(database = database, "specimen"),
                                 study_subject_id == study_subject_id,
                                 specimen_type_id == specimen_type_id,
                                 collection_date == collection_date)$id
         }
 
       }else{
-        print("HERE3")
+        # print("HERE3")
         #IF AN ENTRY DOES NOT EXIST CREATE A NEW SPECIMEN_ID ENTRY WITH STUDY_SUBJECT_ID/STUDY_ID, SPECIMEN_TYPE AND COLLECTION DATE INFO
         sampleDB::AddToTable(database = database, "specimen",
                              list(created = lubridate::now("UTC") %>% as.character(),
@@ -111,7 +111,7 @@ UploadSamples <- function(database, barcode_file, plate_id, location, study_shor
 
     #IF THE STUDY_SUBJ_ID/STUDY_ID DOES NOT EXIST
     }else{
-      print("HERE4")
+      # print("HERE4")
       #CREATE A NEW STUDY_STUBJECT_TABLE ENTRY
       sampleDB::AddToTable(database = database, "study_subject",
                            list(created = lubridate::now("UTC") %>% as.character(),
@@ -121,7 +121,7 @@ UploadSamples <- function(database, barcode_file, plate_id, location, study_shor
 
       #FETCH THE NEW STUDY_SUBJECT_TABLE_ID
       study_subject_id <- tail(CheckTable(database = database, "study_subject"), 1)$id
-      print("HERE5")
+      # print("HERE5")
       #ADD STUDY_SUBJECT_ID AND SPECIMEN_TYPE_ID TO _*_SPECIMEN_TABLE_*_
       sampleDB::AddToTable(database = database, "specimen",
                            list(created = lubridate::now("UTC") %>% as.character(),
@@ -131,7 +131,7 @@ UploadSamples <- function(database, barcode_file, plate_id, location, study_shor
                                 collection_date = collection_date)) #date is in y:m:d format
       specimen_id <- tail(CheckTable(database = database, "specimen"), 1)$id
 
-    print("HERE6")
+    # print("HERE6")
     #STORAGE CONTAINER TABLE
     sampleDB::AddToTable(database = database, "storage_container",
                          list(created = lubridate::now("UTC") %>% as.character(),
@@ -142,13 +142,13 @@ UploadSamples <- function(database, barcode_file, plate_id, location, study_shor
                               exhausted = 0))
     }
   }
-  print("HERE7")
+  # print("HERE7")
   #UPDATE THE SEARCH DROPDOWNS
   updateSelectizeInput(session = session,
                        "SearchByPlateID",
                        choices = c("", sampleDB::CheckTable(database = database, "matrix_plate")$uid),
                        label = NULL)
-  print("HERE8")
+  # print("HERE8")
   message <- paste("Upload Complete", emoji('tada'))
   return(message)
 

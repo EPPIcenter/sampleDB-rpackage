@@ -1,9 +1,9 @@
 library(dplyr)
 library(sampleDB)
-library(DT)
 library(shinyFeedback)
 library(shiny)
 library(markdown)
+library(shinyWidgets)
 
 
 #SET PATH TO SQLITE DATABASE
@@ -38,7 +38,9 @@ navbarPage("SampleDB",
                             fileInput("UploadDataSet",
                                       "SampleDB UploadCSV",
                                       multiple = TRUE,
-                                      accept = c("text/csv", "text/comma-separated-values,text/plain", ".csv")))),
+                                      accept = c("text/csv", "text/comma-separated-values,text/plain", ".csv"))
+                            )),
+                        
                         textOutput("WarningUploadBarcodeA"),
                         textOutput("WarningUploadBarcode"),
                         textOutput("WarningUploadColnames"),
@@ -87,7 +89,15 @@ navbarPage("SampleDB",
                     fluidRow(
                       column(
                         width = 6,
-                        span(verbatimTextOutput("UploadReturnMessage"), style="font-size: 28px")))),
+                        span(verbatimTextOutput("UploadReturnMessage1"), style="font-size: 28px"),
+                        progressBar(id = "pb4", title = HTML("<code>Upload Progress Bar</code>"), value = 0, display_pct = TRUE)
+                        )),
+                    
+                    fluidRow(
+                      column(
+                        width = 6,
+                        span(verbatimTextOutput("UploadReturnMessage2"), style="font-size: 28px"))),
+                    ),
 
                       column(8,
                         fluidRow(
@@ -180,7 +190,7 @@ navbarPage("SampleDB",
                       column(
                         width = 12,
                         HTML("<center><h3><b>Search Results</b></h3></center>"),
-                        DT::dataTableOutput("SearchResultsTable"))),
+                        shiny::dataTableOutput("SearchResultsTable"))),
 
                     br(),
                     fluidRow(
@@ -329,7 +339,7 @@ navbarPage("SampleDB",
 
                                  column(8,
                                    h3("Freezers"),
-                                   DT::dataTableOutput("TableFreezer")))),
+                                   shiny::dataTableOutput("TableFreezer")))),
 
                       tabPanel("Specimen Types",
 
@@ -397,7 +407,7 @@ navbarPage("SampleDB",
 
                                  column(8,
                                    h3("Specimen Types"),
-                                   DT::dataTableOutput("TableSpecimenType"))),),
+                                   shiny::dataTableOutput("TableSpecimenType"))),),
 
                       tabPanel("Studies",
 
@@ -454,7 +464,7 @@ navbarPage("SampleDB",
                                         fluidRow(
                                           column(
                                             width = 3,
-                                            DT::dataTableOutput("RenamePreview"))),
+                                            shiny::dataTableOutput("RenamePreview"))),
 
                                         fluidRow(
                                           column(
@@ -523,7 +533,7 @@ navbarPage("SampleDB",
 
                                  column(8,
                                         h3("Studies"),
-                                        DT::dataTableOutput("TableStudy"))))),
+                                        shiny::dataTableOutput("TableStudy"))))),
            tabPanel("About",
 
                     fluidRow(column(width = 4))
