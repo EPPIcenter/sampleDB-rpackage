@@ -10,7 +10,7 @@
 
 MoveTubes <- function(database, barcode_file, plate_type, new_plate_uid, existing_plate_uid, location, session){
 
-  #READIN CSV FROM USER WITH VISIONMATE/TRAXER BARCODES,
+  #READIN CSV FROM USER WITH VISIONMATE/TRAXER BARCODES
   csv <- read_csv(barcode_file)
 
   if(!("LocationRow" %in% names(csv))){

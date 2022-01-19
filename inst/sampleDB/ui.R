@@ -7,7 +7,9 @@ library(markdown)
 
 
 #SET PATH TO SQLITE DATABASE
-database <- "example_19-Oct-21.sample_db.sqlite"
+# database <- "example_19-Oct-21.sample_db.sqlite"
+# database <- Sys.getenv("SAMPLEDB_DATABASE") #use the aragorn env var set at boot
+database <- "/databases/example_19-Oct-21.sample_db.sqlite"
 
 navbarPage("SampleDB",
 
@@ -37,8 +39,11 @@ navbarPage("SampleDB",
                                       "SampleDB UploadCSV",
                                       multiple = TRUE,
                                       accept = c("text/csv", "text/comma-separated-values,text/plain", ".csv")))),
-                        textOutput("WarningUploadBarcode"),
                         textOutput("WarningUploadBarcodeA"),
+                        textOutput("WarningUploadBarcode"),
+                        textOutput("WarningUploadColnames"),
+                        textOutput("WarningUploadSpecimenTypes"),
+                        textOutput("WarningUploadDateFormat"),
 
                     fluidRow(
                       column(
@@ -81,7 +86,7 @@ navbarPage("SampleDB",
 
                     fluidRow(
                       column(
-                        width = 12,
+                        width = 6,
                         span(verbatimTextOutput("UploadReturnMessage"), style="font-size: 28px")))),
 
                       column(8,
@@ -122,17 +127,36 @@ navbarPage("SampleDB",
                         width = 4,
                         fileInput("SearchByBarcode",
                                   HTML("Search By Barcode - single column named \"barcode\""),
-                                   multiple = FALSE)),
+                                  multiple = FALSE),
+                        actionButton("ClearSearchBarcodes", label = "Clear Barcodes")),
+                        textOutput("WarnSubjectBarcodeFileColnames"),
+                        textOutput("WarnSubjectBarcodeFileColnames2"),
+                      
                       column(
                         width = 4,
                         selectizeInput("SearchByPlateID",
                                        "Search By Plate ID",
                                        choices = c("", sampleDB::CheckTable(database = database, "matrix_plate")$uid))),
+
                       column(
                         width = 4,
-                        selectizeInput("SearchBySubjectUID",
-                                       "Search By Subject (UID)",
-                                       choices = NULL))),
+                        radioButtons("SubjectUIDSearchType", label = "Subject UIDs Search Method",
+                                     choices = list("Single UID" = "one_at_a_time", "Multiple UIDs -- column named \"subject_uid\"" = "multiple"),
+                                     selected = "one_at_a_time"),
+
+                        conditionalPanel(
+                          condition = "input.SubjectUIDSearchType == \"one_at_a_time\"",
+                          selectizeInput("SearchBySubjectUID",
+                                    label = "Search By Subject (UID)",
+                                    choices = NULL)),
+
+                        conditionalPanel(
+                          condition = "input.SubjectUIDSearchType == \"multiple\"",
+                          fileInput("SearchBySubjectUIDFile",
+                                    label = "Search By Subject (UID)"),
+                          actionButton("ClearSearchUIDFile", label = "Clear Subject IDs")))),
+                    textOutput("WarnSubjectUIDFileColnames"),
+                    textOutput("WarnSubjectUIDFileColnames2"),
 
                     fluidRow(
                       column(
@@ -178,11 +202,11 @@ navbarPage("SampleDB",
                                       accept = c("text/csv", "text/comma-separated-values,text/plain", ".csv")))),
                         textOutput("WarningMoveBarcode"),
                         textOutput("WarningMoveBarcodeA"),
+                        textOutput("WarningMoveBarcodesExist"),
 
                         radioButtons("MovePlateType", label = "Move Samples to:",
                                      choices = list("New Plate" = "new_plate", "Existing Plate" = "existing_plate"),
                                      selected = "new_plate"),
-
 
                         conditionalPanel(
                           condition = "input.MovePlateType == \"new_plate\"",
@@ -199,6 +223,9 @@ navbarPage("SampleDB",
                           selectizeInput("MoveExistingPlateID",
                                          choices = c("", sampleDB::CheckTable(database = database, "matrix_plate")$uid),
                                          label = "Existing Plate Name")),
+
+                        textOutput("WarningMoveToSamePlate"),
+
                         fluidRow(
                           column(
                             width = 12,
