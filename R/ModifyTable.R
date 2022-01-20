@@ -26,11 +26,14 @@ ModifyTable <- function(database, table_name, info_list, id){
     RSQLite::dbSendQuery(conn,
                          paste0("UPDATE ", table_name," SET ", update_str," WHERE id = ", id, ";")),
     error=function(e){
-      if(e[1] == "UNIQUE constraint failed: location.description"){
-        return(warning("FREEZER NAMES CANNOT BE DUPLICATED"))
-      }
+      print(e)
     }
   )
 
-  RSQLite::dbDisconnect(conn)
+  #close connection
+  tryCatch(
+    RSQLite::dbDisconnect(conn),
+    warning=function(w){
+      
+    })
 }
