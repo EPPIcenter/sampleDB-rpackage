@@ -3,6 +3,7 @@ library(sampleDB)
 library(shinyFeedback)
 library(shiny)
 library(markdown)
+library(DT)
 library(shinyWidgets)
 
 
@@ -190,7 +191,7 @@ navbarPage("SampleDB",
                       column(
                         width = 12,
                         HTML("<center><h3><b>Search Results</b></h3></center>"),
-                        shiny::dataTableOutput("SearchResultsTable"))),
+                        DT::dataTableOutput("SearchResultsTable"))),
 
                     br(),
                     fluidRow(
@@ -343,7 +344,7 @@ navbarPage("SampleDB",
 
                                  column(8,
                                    h3("Freezers"),
-                                   shiny::dataTableOutput("TableFreezer")))),
+                                   DT::dataTableOutput("TableFreezer")))),
 
                       tabPanel("Specimen Types",
 
@@ -411,7 +412,7 @@ navbarPage("SampleDB",
 
                                  column(8,
                                    h3("Specimen Types"),
-                                   shiny::dataTableOutput("TableSpecimenType"))),),
+                                   DT::dataTableOutput("TableSpecimenType"))),),
 
                       tabPanel("Studies",
 
@@ -468,7 +469,7 @@ navbarPage("SampleDB",
                                         fluidRow(
                                           column(
                                             width = 3,
-                                            shiny::dataTableOutput("RenamePreview"))),
+                                            DT::dataTableOutput("RenamePreview"))),
 
                                         fluidRow(
                                           column(
@@ -537,7 +538,7 @@ navbarPage("SampleDB",
 
                                  column(8,
                                         h3("Studies"),
-                                        shiny::dataTableOutput("TableStudy"))))),
+                                        DT::dataTableOutput("TableStudy"))))),
            tabPanel("About",
 
                     fluidRow(column(width = 4))

@@ -6,6 +6,7 @@ library(readr)
 library(markdown)
 library(lubridate)
 library(shinyjs)
+library(DT)
 
 function(input, output, session) {
 
@@ -329,7 +330,7 @@ function(input, output, session) {
       }
 
       # DOWNLOAD SEARCH RESULTS
-      output$SearchResultsTable <- shiny::renderDataTable({
+      output$SearchResultsTable <- DT::renderDataTable({
         search_results},
         options = list(
           searching = T,
