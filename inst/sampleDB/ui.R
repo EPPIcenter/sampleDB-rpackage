@@ -89,14 +89,14 @@ navbarPage("SampleDB",
                     fluidRow(
                       column(
                         width = 6,
-                        span(verbatimTextOutput("UploadReturnMessage1"), style="font-size: 28px"),
-                        progressBar(id = "pb4", title = HTML("<code>Upload Progress Bar</code>"), value = 0, display_pct = TRUE)
+                        span(verbatimTextOutput("UploadReturnMessage2"), style="font-size: 28px"),
+                        # progressBar(id = "pb4", title = HTML("<code>Upload Progress Bar</code>"), value = 0, display_pct = TRUE)
                         )),
-                    
-                    fluidRow(
-                      column(
-                        width = 6,
-                        span(verbatimTextOutput("UploadReturnMessage2"), style="font-size: 28px"))),
+                    # 
+                    # fluidRow(
+                    #   column(
+                    #     width = 6,
+                    #     span(verbatimTextOutput("UploadReturnMessage1"), style="font-size: 28px"))),
                     ),
 
                       column(8,
@@ -203,38 +203,42 @@ navbarPage("SampleDB",
                     fluidRow(
                       column(
                         width = 4,
+                        
                         fluidRow(
                           column(
+                            
                             width = 12,
                             fileInput("MoveDataSet",
                                       "SampleDB MoveSamplesCSV",
                                       multiple = TRUE,
                                       accept = c("text/csv", "text/comma-separated-values,text/plain", ".csv")))),
-                        textOutput("WarningMoveBarcode"),
-                        textOutput("WarningMoveBarcodeA"),
-                        textOutput("WarningMoveBarcodesExist"),
+                        
+                            textOutput("WarningMoveBarcode"),
+                            textOutput("WarningMoveBarcodeA"),
+                            textOutput("WarningMoveBarcodesExist"),
 
-                        radioButtons("MovePlateType", label = "Move Samples to:",
-                                     choices = list("New Plate" = "new_plate", "Existing Plate" = "existing_plate"),
-                                     selected = "new_plate"),
+                            radioButtons("MovePlateType", label = "Move Samples to:",
+                                         choices = list("New Plate" = "new_plate", "Existing Plate" = "existing_plate"),
+                                         selected = "new_plate"),
 
-                        conditionalPanel(
-                          condition = "input.MovePlateType == \"new_plate\"",
-                          textInput("MovePlateID",
-                                    label = "New Plate Name"),
-                          textOutput("WarningMovePlateDuplication"),
-                          selectInput("MoveLocation",
-                                      label = "Storage Location",
-                                      choices = c("", sampleDB::CheckTable(database = database, "location")$description)),
-                          ),
+                             conditionalPanel(
+                                condition = "input.MovePlateType == \"new_plate\"",
+                          
+                                textInput("MovePlateID",
+                                          label = "New Plate Name"),
+                                textOutput("WarningMovePlateDuplication"),
+                                selectInput("MoveLocation",
+                                            label = "Storage Location",
+                                            choices = c("", sampleDB::CheckTable(database = database, "location")$description))),
 
-                        conditionalPanel(
-                          condition = "input.MovePlateType == \"existing_plate\"",
-                          selectizeInput("MoveExistingPlateID",
-                                         choices = c("", sampleDB::CheckTable(database = database, "matrix_plate")$uid),
-                                         label = "Existing Plate Name")),
+                            conditionalPanel(
+                              condition = "input.MovePlateType == \"existing_plate\"",
+                              
+                              selectizeInput("MoveExistingPlateID",
+                                             choices = c("", sampleDB::CheckTable(database = database, "matrix_plate")$uid),
+                                             label = "Existing Plate Name")),
 
-                        textOutput("WarningMoveToSamePlate"),
+                            textOutput("WarningMoveToSamePlate"),
 
                         fluidRow(
                           column(
