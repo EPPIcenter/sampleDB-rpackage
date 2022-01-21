@@ -85,3 +85,6 @@ withr::with_libpaths(new = "/usr/lib/R/site-library/", devtools::install_github(
 ```
 
 Cronjob is located at `/bin/sampleDB_backup_generator.sh`. Currently backups are every day at 16:15:00
+
+# Backups
+are located at `/databases/sampleDB_backups/`

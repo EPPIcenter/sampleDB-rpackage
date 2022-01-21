@@ -333,7 +333,25 @@ function(input, output, session) {
 
       # DOWNLOAD SEARCH RESULTS
       output$SearchResultsTable <- DT::renderDataTable({
-        search_results},
+        search_results <- search_results %>%
+          relocate(plate_uid) %>%
+          rename("Plate Name" = plate_uid,
+                 "WellPosition" = well_position,
+                 "Barcode" = barcode,
+                 "Study-Subject ID" = subject_uid,
+                 "Study Code" = study,
+                 "Specimen Type" = specimen_type,
+                 "Storage Location" = location,
+                 "Collected Date" = collection_date)
+        if(nrow(search_results) > 0){
+          search_results  %>%
+            arrange(plate_uid) %>%
+            group_by(plate_uid) %>%
+            mutate(well_position = stringr::str_sort(well_position, numeric = T)) 
+        }else{
+          search_results
+            }
+          },
         options = list(
           searching = T,
           paging = T,
