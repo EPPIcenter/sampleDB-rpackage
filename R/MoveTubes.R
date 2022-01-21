@@ -8,10 +8,81 @@
 
 MoveTubes <- function(database, barcode_file, plate_type, new_plate_uid, existing_plate_uid, location, session){
 
+  # CREATE A LIST WHERE THE KEY IS THE FILENAME AND THE VALUE IS THE CSV
   list.move <- list()
   for(i in 1:length(barcode_file[,1])){
-    list.move[[barcode_file[[i, 'name']]]] <- read_csv(barcode_file[[i, 'datapath']], col_types = cols())
+    plate.name <- barcode_file[[i, 'name']] %>% gsub("\\.csv","",.)
+    list.move[[plate.name]] <- read_csv(barcode_file[[i, 'datapath']], col_types = cols())
   }
+  
+  print(list.move)
+  
+  # MAKE A COPY OF THE DATABASE TO TEST THAT MOVE DOES NOT PRODUCE ORPHANS
+  system(paste0("cp ", "/databases/example_19-Oct-21.sample_db.sqlite ", "/databases/modifytest"))
+  
+  # CLEAR SPACE IN THE EXISTING PLATE BY PUTTING ALL TUBES IN THE EXISTING PLATE INTO DUMMY PLATE -100
+  for(i in 1:length(names(list.move))){
+    plate.name <- names(list.move)[i]
+    print(plate.name)
+    
+    # - GET THE PLATE ID FOR EXISTING PLATE
+    existing.plate <- filter(CheckTable(database = database, "matrix_plate"), uid == plate.name)$id
+    print(existing.plate)
+    
+    # - CREATE REF DF FOR ALL TUBES IN THE EXISTING PLATE
+    tube_data.existing_plate <- filter(CheckTable(database = database, "matrix_tube"), plate_id == existing.plate)
+    print(tube_data.existing_plate)
+    
+    # - PUT SAMPLES INTO A DUMMY PLATE (USING NEW DATABASE)
+    print("ids")
+    for(id in tube_data.existing_plate$id){
+      print(id)
+      
+      ModifyTable(database = "/databases/modifytest",
+                  "matrix_tube",
+                  info_list = list(plate_id = -(i)),
+                  id = id)
+    }
+  }
+  
+  # MODIFY THE TUBES SO THEY ARE IN THE EXISTING PLATE
+  for(csv.name in names(list.move)){
+    
+    # - GET MOVECSV
+    csv <- list.move[[csv.name]]
+    
+    # - GET BARCODE_ID
+    id <- filter(sampleDB::CheckTable(database = database, "matrix_tube"), barcode == eval.barcode)$id
+    
+    # - GET PLATE_ID 
+    eval.plate_id <- filter(sampleDB::CheckTable(database = database, "matrix_plate"), uid == csv.name)$id
+
+    # - GET DATA FOR MOVE (BARCODE, WELL, POS)
+    for (i in 1:nrow(csv)){
+      if("TubeCode" %in% names(csv)){
+        eval.barcode <- csv[i,]$"TubeCode"
+        eval.well <- csv[i,]$"LocationRow"
+        eval.pos <- csv[i,]$"LocationColumn"
+      }else{
+        eval.barcode <- csv[i,]$"Tube ID"
+        eval.well <- csv[i,]$"Position" %>% substring(., 1, 1)
+        eval.pos <- csv[i,]$"Position" %>% substring(., 2)
+      }
+
+      #MOVE SAMPLES INTO THE NEW PLATE
+      ModifyTable(database = "/databases/modifytest",
+                  "matrix_tube",
+                  info_list = list(plate_id = eval.plate_id,
+                                   well_position = paste0(eval.well, eval.pos)),
+                  id = id)
+
+    }
+  }
+  
+  #CHECK THAT THERE ARE NO ORPHANED TUBES
+  
+  
+  #######################################################################
   
   # #READIN CSV FROM USER WITH VISIONMATE/TRAXER BARCODES
   # csv <- read_csv(barcode_file)
@@ -55,31 +126,31 @@ MoveTubes <- function(database, barcode_file, plate_type, new_plate_uid, existin
   #   # MOVING SAMPLES TO A PLATE THAT HAS SAMPLES
   # }else{
   #   
-    # MAKE A COPY OF THE DATABASE TO TEST THAT MOVE DOES NOT PRODUCE ORPHANS
-    system(paste0("cp ", "/databases/example_19-Oct-21.sample_db.sqlite ", "/databases/modifytest"))
+    # # MAKE A COPY OF THE DATABASE TO TEST THAT MOVE DOES NOT PRODUCE ORPHANS
+    # system(paste0("cp ", "/databases/example_19-Oct-21.sample_db.sqlite ", "/databases/modifytest"))
 
-    # CLEAR SPACE IN THE EXISTING PLATE BY PUTTING ALL TUBES IN THE EXISTING PLATE INTO DUMMY PLATE -100
-    #clear space in each existing plate...existing plate is the name of the file w/o.csv
-    #it is possible that the existing plate is incorrectly written by the user
-    # can put the rest of this section into a for loop
-
-    for(plate.name in names(list.move)){ #instead of getting the plate names this way, i could just go through and use the barcodes to find all of the plate names associated with the tubes...then use those to zero things out
-      # - GET THE PLATE ID FOR EXISTING PLATE
-      existing.plate <- filter(CheckTable(database = database, "matrix_plate"), uid == plate.name)$id
-      
-      # - CREATE REF DF FOR ALL TUBES IN THE EXISTING PLATE
-      tube_data.existing_plate <- filter(CheckTable(database = database, "matrix_tube"), plate_id == existing.plate)
-      
-      # - PUT SAMPLES INTO A DUMMY PLATE (USING NEW DATABASE)
-      for(id in tube_data.existing_plate$id){
-        ModifyTable(database = "/databases/modifytest",
-                    "matrix_tube",
-                    info_list = list(plate_id = -100),
-                    id = id)
-      }
-      
-      #CHECK THAT ALL SAMPLES IN THE EXISTING PLATES ARE NOW IN DUMMY PLATES
-    }
+    # # CLEAR SPACE IN THE EXISTING PLATE BY PUTTING ALL TUBES IN THE EXISTING PLATE INTO DUMMY PLATE -100
+    # #clear space in each existing plate...existing plate is the name of the file w/o.csv
+    # #it is possible that the existing plate is incorrectly written by the user
+    # # can put the rest of this section into a for loop
+    # 
+    # for(plate.name in names(list.move)){ #instead of getting the plate names this way, i could just go through and use the barcodes to find all of the plate names associated with the tubes...then use those to zero things out
+    #   # - GET THE PLATE ID FOR EXISTING PLATE
+    #   existing.plate <- filter(CheckTable(database = database, "matrix_plate"), uid == plate.name)$id
+    #   
+    #   # - CREATE REF DF FOR ALL TUBES IN THE EXISTING PLATE
+    #   tube_data.existing_plate <- filter(CheckTable(database = database, "matrix_tube"), plate_id == existing.plate)
+    #   
+    #   # - PUT SAMPLES INTO A DUMMY PLATE (USING NEW DATABASE)
+    #   for(id in tube_data.existing_plate$id){
+    #     ModifyTable(database = "/databases/modifytest",
+    #                 "matrix_tube",
+    #                 info_list = list(plate_id = -100),
+    #                 id = id)
+    #   }
+    #   
+    #   #CHECK THAT ALL SAMPLES IN THE EXISTING PLATES ARE NOW IN DUMMY PLATES
+    # }
     
     # # - GET THE PLATE ID FOR EXISTING PLATE
     # existing.plate <- filter(CheckTable(database = database, "matrix_plate"), uid == existing_plate_uid)$id
@@ -95,21 +166,21 @@ MoveTubes <- function(database, barcode_file, plate_type, new_plate_uid, existin
     #               id = id)
     # }
 
-    # MODIFY THE TUBES SO THEY ARE IN THE EXISTING PLATE
-    #for csv in list of csvs
-    
-    for(csv.name in names(list.move)){
-      csv <- list.move[csv.name]
-      
-      for (i in  1:nrow(csv)){
-        id <- filter(sampleDB::CheckTable(database = database, "matrix_tube"), barcode == csv[i,]$"barcode")$id
-        ModifyTable(database = "/databases/modifytest",
-                    "matrix_tube",
-                    info_list = list(plate_id = existing.plate),
-                    id = id)
-        
-      }
-    }
+    # # MODIFY THE TUBES SO THEY ARE IN THE EXISTING PLATE
+    # #for csv in list of csvs
+    # 
+    # for(csv.name in names(list.move)){
+    #   csv <- list.move[csv.name]
+    #   
+    #   for (i in  1:nrow(csv)){
+    #     id <- filter(sampleDB::CheckTable(database = database, "matrix_tube"), barcode == csv[i,]$"barcode")$id
+    #     ModifyTable(database = "/databases/modifytest",
+    #                 "matrix_tube",
+    #                 info_list = list(plate_id = existing.plate),
+    #                 id = id)
+    #     
+    #   }
+    # }
     # for (i in  1:nrow(csv)){
     #   id <- filter(sampleDB::CheckTable(database = database, "matrix_tube"), barcode == csv[i,]$"barcode")$id
     #   ModifyTable(database = "/databases/modifytest",
