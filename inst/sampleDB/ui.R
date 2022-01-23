@@ -90,14 +90,12 @@ navbarPage("SampleDB",
                     fluidRow(
                       column(
                         width = 6,
-                        span(verbatimTextOutput("UploadReturnMessage2"), style="font-size: 28px"),
-                        # progressBar(id = "pb4", title = HTML("<code>Upload Progress Bar</code>"), value = 0, display_pct = TRUE)
-                        )),
-                    # 
-                    # fluidRow(
-                    #   column(
-                    #     width = 6,
-                    #     span(verbatimTextOutput("UploadReturnMessage1"), style="font-size: 28px"))),
+                        span(verbatimTextOutput("UploadReturnMessage1"), style="font-size: 28px"))),
+                    
+                    fluidRow(
+                      column(
+                        width = 6,
+                        span(verbatimTextOutput("UploadReturnMessage2"), style="font-size: 28px"))),
                     ),
 
                       column(8,
@@ -107,7 +105,7 @@ navbarPage("SampleDB",
                           column(12,
                                  verbatimTextOutput("ExampleUploadCSVNoDate")),
                           HTML("<h5>To create this table join the <code>LocationRow</code>,
-                               <code>LocationColumn</code>, and <code>TubeCodes</code> from the VisionMate
+                               <code>LocationColumn</code>, and <code>TubeCode</code> from the VisionMate
                                CSV with <code>study_subject_id</code> and <code>specimen_type</code> information,
                                where the <code>study_subject_id</code> and <code>specimen_type</code>
                                corresponds to the study subject id and specimen type associated with each sample</h5>")),

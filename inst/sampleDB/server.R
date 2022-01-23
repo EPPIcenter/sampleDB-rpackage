@@ -9,11 +9,14 @@ library(emojifont)
 library(shinyjs)
 library(DT)
 library(purrr)
+source('helpers/UploadExamples.helper.R', local = TRUE)
+source('helpers/UploadChecks.helper.R', local = TRUE)
+source('helpers/SearchChecks.helper.R', local = TRUE)
+source('helpers/Reference.helper.R', local = TRUE)
 
 function(input, output, session) {
 
-    #SET PATH TO SQLITE DATABASE
-    # database <- Sys.getenv("SAMPLEDB_DATABASE") #use the aragorn env var set at boot
+    #SET PATH TO SQLITE DATABASE - WOULD PREFER DATABASE TO BE AT Sys.getenv("SAMPLEDB_DATABASE")
     database <- "/databases/example_19-Oct-21.sample_db.sqlite"
 
     #SERVER-SIDE DROPDOWN -- SAVES LOADING TIME
@@ -23,295 +26,152 @@ function(input, output, session) {
     # Upload Samples #
     ##################
     
-    # ~~~~~~ #
-    # Checks #
-    # ~~~~~~ #
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+    # Perform upload checks... Prints good user messages #
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
     
-    #CHECK PLATE_ID IS UNIQUE
-    CheckUploadPlateDuplication <- reactive({
-        toggle <- input$UploadPlateID %in% c(sampleDB::CheckTable(database = database, "matrix_plate")$uid)
-        shinyFeedback::feedbackWarning("UploadPlateID", toggle, "Plate IDs must be unique")
-    })
-
-    #CHECK IF BARCODES ARE ALREADY IN DATABASE - TEXT
-    CheckUploadPlateUniqBarcodeConstraintA <- reactive({
-      if(!is.null(input$UploadDataSet$datapath)){
-
-        if("TubeCode" %in% names(read_csv(input$UploadDataSet$datapath, col_types = cols()))){
-          upload_barcodes <- read_csv(input$UploadDataSet$datapath, col_types = cols())$TubeCode
-        }else{
-          upload_barcodes <- read_csv(input$UploadDataSet$datapath, col_types = cols())$"Tube ID"
-        }
-
-        validate(
-          need(!(upload_barcodes %in% c(sampleDB::CheckTable(database = database, "matrix_tube")$barcode)),
-               "Failed: Barcode Unique Constraint")
-        )
-      }
-    })
-
-    #CHECK IF BARCODES ARE ALREADY IN DATABASE - FILEINPUT
-    CheckUploadPlateUniqBarcodeConstraint <- reactive({
-      if(!is.null(input$UploadDataSet$datapath)){
-
-        if("TubeCode" %in% names(read_csv(input$UploadDataSet$datapath, col_types = cols()))){
-          upload_barcodes <- read_csv(input$UploadDataSet$datapath, col_types = cols())$TubeCode
-        }else{
-          upload_barcodes <- read_csv(input$UploadDataSet$datapath, col_types = cols())$"Tube ID"
-        }
-
-        upload_barcodes <- read_csv(input$UploadDataSet$datapath, col_types = cols())$TubeCode
-        toggle <- upload_barcodes %in% c(sampleDB::CheckTable(database = database, "matrix_tube")$barcode)
-
-        shinyFeedback::feedbackWarning("UploadDataSet", toggle, "Failed: Barcode Unique Constraint")
-      }
-    })
-
-    #CHECK THAT COLNAMES ARE CORRECT
-    CheckUploadColnames <- reactive({
-      if(!is.null(input$UploadDataSet$datapath)){
-        if("TubeCode" %in% names(read_csv(input$UploadDataSet$datapath, col_types = cols()))){
-          upload_names <- read_csv(input$UploadDataSet$datapath, col_types = cols()) %>% names()
-        }else{
-          upload_names <- read_csv(input$UploadDataSet$datapath, col_types = cols()) %>% names()
-        }
-
-        validate(
-          need(upload_names == c("LocationRow", "LocationColumn", "TubeCodes", "study_subject_id", "specimen_type") ||
-                 upload_names == c("LocationRow", "LocationColumn", "TubeCodes", "study_subject_id", "specimen_type", "collection_date") ||
-                 upload_names == c("Position", "Tube ID", "study_subject_id", "specimen_type") ||
-                 upload_names == c("Position", "Tube ID", "study_subject_id", "specimen_type", "collection_date"),
-               "Failed: Required Column Names")
-        )
-      }
-    })
-
-    #CHECK THAT USR SPECIMEN TYPE IS VALID
-    CheckUploadSpecimenTypes <- reactive({
-      if(!is.null(input$UploadDataSet$datapath)){
-        specimen_types <- read_csv(input$UploadDataSet$datapath, col_types = cols())$specimen_type
-
-        validate(
-          need(all(specimen_types %in% CheckTable(database = database, table = "specimen_type")$label),
-               "Failed: Specimen Types are Not found")
-        )
-      }
-    })
-
-    #CHECK THAT DATE IS IN CORRECT FORMAT
-    CheckUploadDateFormat <- reactive({
-      if(!is.null(input$UploadDataSet$datapath)){
-        if("collection_date" %in% names(read_csv(input$UploadDataSet$datapath, col_types = cols()))){
-          collection_dates <- read_csv(input$UploadDataSet$datapath, col_types = cols())$collection_date
-
-          validate(
-            need(all(!is.na(parse_date_time(collection_dates, orders = "ymd")) == TRUE), #ALL ITEMS IN COLLECTION DATE MUST HAVE THE PROPER FORMAT
-                 "Failed: All Collection Dates are Not in YMD format")
-          )
-        }
-      }
-    })
-
+    # CHECK PLATE_ID IS UNIQUE
+    CheckUploadPlateDuplication <- reactive({helper.CheckUploadPlateDuplication(input, database)})
     output$WarningUploadPlate <- renderText(CheckUploadPlateDuplication())
-    output$WarningUploadBarcodeA <- renderText(CheckUploadPlateUniqBarcodeConstraintA())
-    output$WarningUploadBarcode <- renderText(CheckUploadPlateUniqBarcodeConstraint())
-    output$WarningUploadColnames <- renderText(CheckUploadColnames()) #OUTPUT DOES NOT EXIST
-    output$WarningUploadSpecimenTypes <- renderText(CheckUploadSpecimenTypes()) #OUTPUT DOES NOT EXIST
-    output$WarningUploadDateFormat <- renderText(CheckUploadDateFormat()) #OUTPUT DOES NOT EXIST
 
-    # ~~~~~~ #
-    # Upload #
-    # ~~~~~~ #
+    # CHECK THAT COLNAMES ARE CORRECT
+    CheckUploadColnames <- reactive({helper.CheckUploadColnames(input, database)})
+    output$WarningUploadColnames <- renderText(CheckUploadColnames())
     
-    #UPLOAD PLATE
+    # CHECK THAT DATE IS IN CORRECT FORMAT
+    CheckUploadDateFormat <- reactive({helper.CheckUploadDateFormat(input, database)})
+    output$WarningUploadDateFormat <- renderText(CheckUploadDateFormat())
+
+    # CHECK THAT USR SPECIMEN TYPE IS VALID
+    CheckUploadSpecimenTypes <- reactive({helper.CheckUploadSpecimenTypes(input, database)})
+    output$WarningUploadSpecimenTypes <- renderText(CheckUploadSpecimenTypes())
+
+    # CHECK THAT BARCODES ARE NOT IN DATABASE
+    CheckUploadPlateUniqBarcodeConstraint <- reactive({helper.CheckUploadPlateUniqBarcodeConstraint(input, database)})
+    output$WarningUploadBarcodeA <- renderText(CheckUploadPlateUniqBarcodeConstraint())
+
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+    # Add new plate to the database #
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
     
+
     observeEvent(
-        input$UploadAction,
-        ({
-          
-          #handle traxer v. visionmate
-          if("TubeCode" %in% names(read_csv(input$UploadDataSet$datapath, col_types = cols()))){
-            upload_barcodes <- read_csv(input$UploadDataSet$datapath, col_types = cols())$TubeCode
-          }else{
-            upload_barcodes <- read_csv(input$UploadDataSet$datapath, col_types = cols())$"Tube ID"
-          }
-
-          #set requirements
-          req(input$UploadDataSet$datapath,
-              input$UploadPlateID,
-              input$UploadLocation,
-              input$UploadStudyShortCode,
-              !(upload_barcodes %in% c(sampleDB::CheckTable(database = database, "matrix_tube")$barcode)),
-              !(input$UploadPlateID %in% c(sampleDB::CheckTable(database = database, "matrix_plate")$uid)))
-          
-          # maxi <- 50
-          # for (i in 1:maxi) {
-          #   updateProgressBar(session = session, id = "pb4", value = (i/maxi)*100)
-          #   Sys.sleep(0.2)
-          # }
-          
-          #upload
-          output$UploadReturnMessage2 <- renderText({sampleDB::UploadSamples(database = database,
-                                            barcode_file = input$UploadDataSet$datapath,
-                                            plate_id = input$UploadPlateID,
-                                            location = input$UploadLocation,
-                                            study_short_code = input$UploadStudyShortCode,
-                                            session = session)})
-          }))
-
-    # ~~~~~~~~ #
-    # Examples #
-    # ~~~~~~~~ #
-    output$ExampleUploadCSVNoDate <- renderPrint({
-      tibble(LocationRow = rep("A", 10),
-             LocationColumn = c(1:10),
-             TubeCodes = CheckTable(database = database, "matrix_tube")$barcode %>% head(10),
-             study_subject_id = CheckTable(database = database, "study_subject")$uid %>% head(10),
-             specimen_type = "PLASMA") %>% as.data.frame()
-    })
-
-    output$ExampleUploadCSVDate <- renderPrint({
-      tibble(LocationRow = rep("A", 10),
-             LocationColumn = c(1:10),
-             TubeCodes = CheckTable(database = database, "matrix_tube")$barcode %>% head(10),
-             study_subject_id = CheckTable(database = database, "study_subject")$uid %>% head(10),
-             specimen_type = "PLASMA",
-             collection_date = paste("2022", "1", c(1,1,1,2,2,2,3,3,3,4), sep = "-")) %>% as.data.frame()
+      input$UploadAction,
+      ({
+        # TRIGGER UI CHANGE FOR REACTIVITY - RECYCLE RENAMESTUDYLEADPERSON
+        updateTextInput(session = session, "RenameStudyLeadPerson", value = "@RBRLdB?GtnJ4kce")
+        
+        # PAUSE FOR EFFECT AND PRINT WORKING
+        Sys.sleep(.75)
+        output$UploadReturnMessage1 <- renderText({"Working..."})
+      }))
+    
+    # UPLOAD SAMPLES
+    observe({
+      
+      # WHEN REACTIVE UI IS CHANGED TO INDICATE AN UPLOAD
+      if(input$RenameStudyLeadPerson == "@RBRLdB?GtnJ4kce"){
+        
+        #CHECK REQUIREMENTS
+        UploadRequirements(input, database)
+        sampleDB::UploadSamples(database = database,
+                                barcode_file = input$UploadDataSet$datapath,
+                                plate_id = input$UploadPlateID,
+                                location = input$UploadLocation,
+                                study_short_code = input$UploadStudyShortCode,
+                                session = session,
+                                output = output)
+        
+        # PRINT UPLOAD MSG
+        output$UploadReturnMessage2 <- renderText({"Upload Complete"})
+        
+        # RESET UI VALUE
+        updateTextInput(session = session, "RenameStudyLeadPerson", value = "")
+      }
     })
     
-    observeEvent(input$ClearUploadForm,
+    # CLEAR FORM
+    observeEvent(
+      input$ClearUploadForm,
                  ({
-                   
                    reset("UploadDataSet")
                    reset("UploadStudyShortCode")
                    reset("UploadPlateID")
                    reset("UploadLocation")
-                   output$UploadReturnMessage <- renderText({NULL})
-                   
-                 }))
+                   output$UploadReturnMessage1 <- renderText({""})
+                   output$UploadReturnMessage2 <- renderText({""})
+                   }))
+
+    # ~~~~~~~~~~~~~~~ #
+    # Upload Examples #
+    # ~~~~~~~~~~~~~~~ #
+    
+    output$ExampleUploadCSVNoDate <- helper.ExampleUploadCSVNoDate
+    output$ExampleUploadCSVDate <- helper.ExampleUploadCSVDate
 
     ##################
     # Search Samples #
     ##################
 
-    #SEARCH SAMPLES
-
-    # showNotification(ui = "ABCDE")
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+    # Checks for searching the database... Check that files uploaded for searching are not malformed #
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
     
     #CHECK THAT UID FILE IS PROPERLY FORMED
-    CheckSubjectBarcodeFileColnames <- reactive({
-      
-      if(!is.null(input$SearchByBarcode$datapath)){
-        
-        names.barcode_file <- read_csv(input$SearchByBarcode$datapath) %>% colnames()
-        ncols.barcode_file <- read_csv(input$SearchByBarcode$datapath) %>% ncol()
-        
-        toggle <- ncols.barcode_file == 1 & names.barcode_file == "barcode"
-        
-        validate(
-          need(toggle, #ALL ITEMS IN COLLECTION DATE MUST HAVE THE PROPER FORMAT
-               "Failed: Barcode File is Malformed")
-        )
-      }
-    })
-    
-    #CHECK IF UID FILE IS PROPERLY FORMED - FILEINPUT
-    CheckSubjectBarcodeFileColnames2 <- reactive({
-      if(!is.null(input$SearchByBarcode$datapath)){
-        
-        names.barcode_file <- read_csv(input$SearchByBarcode$datapath) %>% colnames()
-        ncols.barcode_file <- read_csv(input$SearchByBarcode$datapath) %>% ncol()
-        
-        toggle <- !(ncols.barcode_file == 1 & names.barcode_file == "barcode")
-        
-        shinyFeedback::feedbackWarning("SearchByBarcode", toggle, "Failed: Barcode File is Malformed")
-      }
-    })
-    
-    #CHECK THAT UID FILE IS PROPERLY FORMED
-    CheckSubjectUIDFileColnames <- reactive({
-      
-      if(!is.null(input$SearchBySubjectUIDFile$datapath)){
-
-        names.subject_uid_file <- read_csv(input$SearchBySubjectUIDFile$datapath) %>% colnames()
-        ncols.subject_uid_file <- read_csv(input$SearchBySubjectUIDFile$datapath) %>% ncol()
-        
-        toggle <- ncols.subject_uid_file == 1 & names.subject_uid_file == "subject_uid"
-
-          validate(
-            need(toggle, #ALL ITEMS IN COLLECTION DATE MUST HAVE THE PROPER FORMAT
-                 "Failed: Subject UID File is Malformed")
-          )
-      }
-    })
-    
-    #CHECK IF UID FILE IS PROPERLY FORMED - FILEINPUT
-    CheckSubjectUIDFileColnames2 <- reactive({
-      if(!is.null(input$SearchBySubjectUIDFile$datapath)){
-
-        names.subject_uid_file <- read_csv(input$SearchBySubjectUIDFile$datapath) %>% colnames()
-        ncols.subject_uid_file <- read_csv(input$SearchBySubjectUIDFile$datapath) %>% ncol()
-
-        toggle <- !(ncols.subject_uid_file == 1 & names.subject_uid_file == "subject_uid")
-
-        shinyFeedback::feedbackWarning("SearchBySubjectUIDFile", toggle, "Failed: Subject UID File is Malformed")
-      }
-    })
-    
-    output$WarningSubjectUIDFileColnames2 <- renderText(CheckSubjectUIDFileColnames2())
-    output$WarnSubjectUIDFileColnames <- renderText(CheckSubjectUIDFileColnames())
-    output$WarnSubjectBarcodeFileColnames2 <- renderText(CheckSubjectBarcodeFileColnames2())
+    CheckSubjectBarcodeFileColnames <- reactive({helper.CheckSubjectBarcodeFileColnames(input, database)})
     output$WarnSubjectBarcodeFileColnames <- renderText(CheckSubjectBarcodeFileColnames())
-        
-    observeEvent(input$ClearSearchBarcodes,
-                 ({
-                   
-                   reset("SearchByBarcode")
-
-                 }))
     
-    observeEvent(input$ClearSearchUIDFile,
-                 ({
-                   
-                   reset("SearchBySubjectUIDFile")
-                   
-                 }))
-    #update plate selection when study is specified
-    observeEvent(input$SearchByStudy,({
-      
-      if(input$SearchByStudy != ""){
-        
-        study_ref_id <- filter(sampleDB::CheckTable(database = database, "study"), short_code %in% input$SearchByStudy)$id
-        study_subject_ref_id <- filter(sampleDB::CheckTable(database = database, "study_subject"), study_id %in% study_ref_id)$id
-        specimen_ref_id <- filter(sampleDB::CheckTable(database = database, "specimen"), study_subject_id %in% study_subject_ref_id)$id
-        storage_container_id <- filter(sampleDB::CheckTable(database = database, "storage_container"), specimen_id %in% specimen_ref_id)$id
-        matrix_tube_ids <- filter(sampleDB::CheckTable(database = database, "matrix_tube"), id %in% storage_container_id)$id
-        
-        plate_ids <- filter(sampleDB::CheckTable(database = database, "matrix_tube"), id %in% matrix_tube_ids)$plate_id %>% unique()
-        plate_names <- filter(sampleDB::CheckTable(database = database, "matrix_plate"), id %in% plate_ids)$uid
-        
-        updateSelectizeInput(session = session,
-                             "SearchByPlateID",
-                             choices = c("", plate_names))        
-      }
-
-    }))
+    #CHECK IF UID FILE IS PROPERLY FORMED - FILEINPUT
+    CheckSubjectUIDFileColnames2 <- reactive({CheckSubjectUIDFileColnames2(input, database)})
+    output$WarningSubjectUIDFileColnames2 <- renderText(CheckSubjectUIDFileColnames2())
+    
+    #CHECK THAT UID FILE IS PROPERLY FORMED
+    CheckSubjectUIDFileColnames <- reactive({helper.CheckSubjectUIDFileColnames(input, database)})
+    output$WarnSubjectUIDFileColnames <- renderText(CheckSubjectUIDFileColnames())
+    
+    #CHECK IF UID FILE IS PROPERLY FORMED - FILEINPUT
+    CheckSubjectBarcodeFileColnames2 <- reactive({helper.CheckSubjectUIDFileColnames2(input, database)})
+    output$WarnSubjectBarcodeFileColnames2 <- renderText(CheckSubjectBarcodeFileColnames2())
+    
+    # # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+    # # If as study is selected from the dropdown, subset plate names filter to only display plate names asso. w. the chosen study #
+    # # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+    # 
+    # # SUBSET PLATE NAMES IF STUDY IS SELECTED
+    # observeEvent(
+    #   input$SearchByStudy, ({
+    # 
+    #     if(input$SearchByStudy != ""){
+    #       updateSelectizeInput(session = session,
+    #                            "SearchByPlateID",
+    #                            choices = c("", helper.SubsetPlateNames(input, database)))        
+    #     }
+    # }))
+    
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+    # Actively use the UI filters to render a table with search results #
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
     observe({
 
+      # GET BARCODES IF BARCODE FILE IS PROVIDED
       if(is.null(input$SearchByBarcode$datapath)){
         barcode_search_file <- ""
       }else{
         barcode_search_file <- input$SearchByBarcode$datapath
       }
 
+      # GET STUDY SUBJECT ID IF STUDY SUBJECT ID FILE IS PROVIDED
       if(is.null(input$SearchBySubjectUIDFile$datapath)){
         subjectuid_search_uids <- ""
       }else{
         subjectuid_search_uids <- read_csv(input$SearchBySubjectUIDFile$datapath)$subject_uid
         subjectuid_search_uids <- subjectuid_search_uids[subjectuid_search_uids != ""] # remove any blank entries that may be in vector
       }
+      
+      # SEARCH THE DATABASE
 
+      # - SEARCH USING A SINGLE STUDY SUBJECT ID
       if(input$SubjectUIDSearchType == "one_at_a_time"){
         search_results <- sampleDB::SearchSamples(database = database,
                                                   barcode_search_file = barcode_search_file,
@@ -321,6 +181,8 @@ function(input, output, session) {
                                                   search_location = input$SearchByLocation,
                                                   search_specimen_type = input$SearchBySpecimenType)
       }else{
+        
+        # - SEARCH USING MULTIPLE STUDY SUBJECT IDs
         search_results <- sampleDB::SearchSamples(database = database,
                                                   barcode_search_file = barcode_search_file,
                                                   search_plate_uid = input$SearchByPlateID,
@@ -331,32 +193,18 @@ function(input, output, session) {
 
       }
 
-      # DOWNLOAD SEARCH RESULTS
+      # PRINT SEARCH RESULTS
       output$SearchResultsTable <- DT::renderDataTable({
-        search_results <- search_results %>%
-          relocate(plate_uid) %>%
-          rename("Plate Name" = plate_uid,
-                 "WellPosition" = well_position,
-                 "Barcode" = barcode,
-                 "Study-Subject ID" = subject_uid,
-                 "Study Code" = study,
-                 "Specimen Type" = specimen_type,
-                 "Storage Location" = location,
-                 "Collected Date" = collection_date)
-        if(nrow(search_results) > 0){
-          search_results  %>%
-            arrange(plate_uid) %>%
-            group_by(plate_uid) %>%
-            mutate(well_position = stringr::str_sort(well_position, numeric = T)) 
-        }else{
-          search_results
-            }
-          },
+          
+        search_results
+        
+      },
         options = list(
           searching = T,
           paging = T,
           language = list(zeroRecords = "No samples match filters given")))
 
+      # DOWNLOAD SEARCH RESULTS
       output$downloadData <- downloadHandler(
                   filename = function() {
                     paste('data-', Sys.Date(), '.csv', sep='')
@@ -365,8 +213,17 @@ function(input, output, session) {
                     write.csv(search_results, con)
                   }
                 )
-
     })
+    
+    observeEvent(
+      input$ClearSearchBarcodes,
+      ({
+        reset("SearchByBarcode")}))
+    
+    observeEvent(
+      input$ClearSearchUIDFile,
+      ({
+        reset("SearchBySubjectUIDFile")}))
 
     ##############
     # Move Tubes #
@@ -587,11 +444,7 @@ function(input, output, session) {
         }
 
         #MODIFY TABLE
-        output$TableFreezer <- DT::renderDataTable({
-          sampleDB::CheckTable(database = database, "location") %>%
-            dplyr::select(created, description) %>%
-            rename(`Date Created` = created, Name = description) %>%
-            relocate(Name, `Date Created`)})
+        ShowFreezers(output, database)
 
         #UPDATE DROPDOWNS
         updateTextInput(session, "AddFreezer", value = "", placeholder = "New Name")
@@ -629,11 +482,7 @@ function(input, output, session) {
         }
         
         #REFRESH REFERENCES
-        output$TableFreezer <- DT::renderDataTable({
-          sampleDB::CheckTable(database = database, "location") %>%
-            dplyr::select(created, description) %>%
-            rename(`Date Created` = created, Name = description) %>%
-            relocate(Name, `Date Created`)})
+        ShowFreezers(output, database)
 
         #UPDATE DROPDOWNS
         updateTextInput(session = session, "RenameFreezer2", value = "", placeholder = "New Name")
@@ -667,11 +516,7 @@ function(input, output, session) {
         }
 
         #REFRESH REFERENCES
-        output$TableFreezer <- DT::renderDataTable({
-          sampleDB::CheckTable(database = database, "location") %>%
-            dplyr::select(created, description) %>%
-            rename(`Date Created` = created, Name = description) %>%
-            relocate(Name, `Date Created`)})
+        ShowFreezers(output, database)
 
         #UPDATE DROPDOWNS
         updateSelectInput(session, inputId = "RenameFreezer1", choices = c("", sampleDB::CheckTable(database = database, "location")$description))
@@ -680,12 +525,7 @@ function(input, output, session) {
     )
 
     #IDLY PRESENT FREEZERS IN DATATABLE
-    output$TableFreezer <- DT::renderDataTable({
-
-      sampleDB::CheckTable(database = database, "location") %>%
-        dplyr::select(created, description) %>%
-        rename(`Date Created` = created, Name = description) %>%
-        relocate(Name, `Date Created`)})
+    ShowFreezers(output, database)
 
     ##################
     # SPECIMEN TYPES #
@@ -743,10 +583,7 @@ function(input, output, session) {
           }
           
           #REFRESH REFERENCES
-          output$TableSpecimenType <- DT::renderDataTable({
-            sampleDB::CheckTable(database = database, "specimen_type") %>%
-              rename(`Date Created` = created) %>%
-              relocate(`Date Created`)}) 
+          ShowSpecimenTypes(output, database)
 
           #UPDATE DROPDOWNS
           updateTextInput(session = session, "AddSpecimenType", value = "", placeholder = "New Name")
@@ -783,10 +620,7 @@ function(input, output, session) {
         }
 
         #REFRESH REFERENCES
-        output$TableSpecimenType <- DT::renderDataTable({
-          sampleDB::CheckTable(database = database, "specimen_type") %>%
-            rename(`Date Created` = created) %>%
-            relocate(`Date Created`)})
+        ShowSpecimenTypes(output, database)
 
         #UPDATE DROPDOWNS
         updateTextInput(session = session, "RenameSpecimenType2", value = "", placeholder = "New Name")
@@ -815,10 +649,7 @@ function(input, output, session) {
           }
 
           #REFRESH REFERENCES
-          output$TableSpecimenType <- DT::renderDataTable({
-              sampleDB::CheckTable(database = database, "specimen_type") %>%
-                  rename(`Date Created` = created) %>%
-                  relocate(`Date Created`)})
+          ShowSpecimenTypes(output, database)
 
           #UPDATE DROPDOWNS
           updateSelectInput(session = session, inputId = "RenameSpecimenType1", choices = c("", sampleDB::CheckTable(database = database, "specimen_type")$label))
@@ -826,12 +657,7 @@ function(input, output, session) {
         }))
 
     #IDLY PRESENT SPECIMEN TYPES
-    output$TableSpecimenType <- DT::renderDataTable({
-
-      sampleDB::CheckTable(database = database, "specimen_type") %>%
-        rename(`Date Created` = created) %>%
-        relocate(`Date Created`)})
-
+    ShowSpecimenTypes(output, database)
 
     ###########
     # STUDIES #
@@ -903,36 +729,23 @@ function(input, output, session) {
           
           # - CHECK THAT ALL ENTRIES ARE USED
           if(all(c("created", "last_updated", "title", "description", "short_code", "is_longitudinal", "lead_person", "hidden") %in% names(info_list))){
-            
             # - CHECK THAT NEW STUDY HAS UNIQUE TITLE & SHORT CODE
             if(!(new.title %in% sampleDB::CheckTable(database = database, "study")$title) & !(new.short_code %in% sampleDB::CheckTable(database = database, "study")$short_code)){
-              
               sampleDB::AddToTable(database = database, "study",
                                    info_list = info_list)
-              
               output$StudyReturnMessage <- renderText({paste("Added Study to the Database", emoji('tada'))})
             }else{
-              
               output$StudyReturnMessage <- renderText({paste("Error")})
             } 
           }else{
-            
             output$StudyReturnMessage <- renderText({paste("Missing Entries")})
           }
 
           #REFRESH REFERENCES
-          output$TableStudy <- DT::renderDataTable({
-              sampleDB::CheckTable(database = database, "study") %>%
-                  dplyr::select(-c(id, created, last_updated, hidden))}, selection = 'single')
+          ShowStudies(output, database)
 
           #UPDATE DROPDOWNS
-          updateTextInput(session = session, "AddStudyTitle", value = "", placeholder = "New Title")
-          updateTextInput(session = session, "AddStudyDescription", value = "", placeholder = "New Description")
-          updateTextInput(session = session, "AddStudyLeadPerson", value = "", placeholder = "New Lead Person")
-          updateTextInput(session = session, "AddStudyShortCode", value = "", placeholder = "New Short Code")
-          updateCheckboxInput(session = session, "AddStudyIsLongitudinal", value = FALSE)
-          updateCheckboxInput(session = session, "AddStudyIsHidden", value = FALSE)
-
+          StudyUpdateAddDropdowns(session)
         })
     )
     
@@ -1014,17 +827,10 @@ function(input, output, session) {
                   }
                 
                 #REFRESH REFERENCES
-                output$TableStudy <- DT::renderDataTable({
-                  sampleDB::CheckTable(database = database, "study") %>%
-                    dplyr::select(-c(id, created, last_updated, hidden))}, selection = 'single')
+                ShowStudies(output, database)
                 
                 #UPDATE DROPDOWNS
-                updateTextInput(session = session, "RenameStudyTitle", value = "", placeholder = "New Title")
-                updateTextInput(session = session, "RenameStudyDescription", value = "", placeholder = "New Description")
-                updateTextInput(session = session, "RenameStudyLeadPerson", value = "", placeholder = "New Lead Person")
-                updateTextInput(session = session, "RenameStudyShortCode", value = "", placeholder = "New Short Code")
-                updateCheckboxInput(session = session, "RenameStudyIsLongitudinal", value = FALSE)
-                updateCheckboxInput(session = session, "RenameStudyIsHidden", value = FALSE)
+                StudyUpdateRenameDropdowns(session)
               }
             }))})
     
@@ -1044,7 +850,6 @@ function(input, output, session) {
                     #DELETE STUDY
                     id <- sampleDB::CheckTable(database = database, "study")[input$TableStudy_rows_selected,]$"id"
                     
-                    
                     if(!(id %in% sampleDB::CheckTable(database = database, "study_subject")$study_id)){
                       sampleDB::DeleteFromTable(database = database, table_name = "study", id = as.character(id))
                       output$StudyReturnMessage <- renderText({paste("Deleted Study", emoji('tada'))})
@@ -1055,24 +860,12 @@ function(input, output, session) {
                     }
                     
                     #REFRESH REFERENCES
-                    output$TableStudy <- DT::renderDataTable({
-                        sampleDB::CheckTable(database = database, "study") %>%
-                            dplyr::select(-c(id, created, last_updated, hidden))}, selection = 'single')
-                    
-                    #UPDATE DROPDOWNS
-                    updateTextInput(session = session, "RenameStudyTitle", value = "", placeholder = "New Title")
-                    updateTextInput(session = session, "RenameStudyDescription", value = "", placeholder = "New Description")
-                    updateTextInput(session = session, "RenameStudyLeadPerson", value = "", placeholder = "New Lead Person")
-                    updateTextInput(session = session, "RenameStudyShortCode", value = "", placeholder = "New Short Code")
-                    updateCheckboxInput(session = session, "RenameStudyIsLongitudinal", value = FALSE)
-                    updateCheckboxInput(session = session, "RenameStudyIsHidden", value = FALSE)
+                    ShowStudies(output, database)
                     }
                   })
               )})
 
         #IDLY SHOW STUDIES
-        output$TableStudy <- DT::renderDataTable({
-          sampleDB::CheckTable(database = database, "study") %>%
-            dplyr::select(-c(id, created, last_updated, hidden))}, selection = 'single')
+        ShowStudies(output, database)
 
 }

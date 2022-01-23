@@ -141,7 +141,22 @@ SearchSamples <- function(database, barcode_search_file, search_plate_uid, searc
         search_results <- filter(search_results, specimen_type == SearchFilters[["search_specimen_type"]])
       }
     }
-
-    return(search_results)
   }
+  
+  # CLEAN SEARCH TABLE
+  search_results <- search_results %>%
+    relocate("plate_uid") %>%
+    rename(`Plate Name` = plate_uid,
+           `WellPosition` = well_position,
+           `Barcode` = barcode,
+           `Study-Subject ID` = subject_uid,
+           `Study Code` = study,
+           `Specimen Type` = specimen_type,
+           `Storage Location` = location,
+           `Collected Date` = collection_date) %>% 
+    arrange(`Plate Name`) %>% 
+    group_by(`Plate Name`) %>%
+    mutate(`WellPosition` = stringr::str_sort(`WellPosition`, numeric = T))
+  
+  return(search_results)
 }

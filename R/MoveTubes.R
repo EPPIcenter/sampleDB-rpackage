@@ -101,7 +101,9 @@ MoveTubes <- function(database, barcode_file, plate_type, new_plate_uid, existin
     #find what the negative number is and look back at the plate name asso w that negative number
     #whatever is asso w that neg number links to the missing file
     # return("somthing is missing...id like to be more specific")
-    return("printout names of all plates tubes were associated with so usr can search")
+    
+    # return("printout names of all plates tubes were associated with so usr can search")
+    return("Move Failed")
   }else{
 
     # CLEAR SPACE IN THE EXISTING PLATE BY PUTTING ALL TUBES IN THE EXISTING PLATE INTO DUMMY PLATE -100
@@ -157,7 +159,7 @@ MoveTubes <- function(database, barcode_file, plate_type, new_plate_uid, existin
   
       }
     }
-    return("Made Moves")
+    return("Moves Compete")
   }
   #######################################################################
   
