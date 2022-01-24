@@ -370,7 +370,7 @@ function(input, output, session) {
       ({
         updateSelectizeInput(session = session,
                              "SearchByPlateID",
-                             choices = sampleDB::CheckTable(database = database, "matrix_plate")$uid,
+                             choices = c("", sampleDB::CheckTable(database = database, "matrix_plate")$uid),
                              label = NULL)}))
 
     output$ExampleMoveSamplesCSV <- renderPrint({

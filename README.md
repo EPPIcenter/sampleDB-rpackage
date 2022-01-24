@@ -81,7 +81,7 @@ pass: Gr##nhouse
 
 R command for installing sampleDB to `/usr/lib/R/site-library`:
 ```
-withr::with_libpaths(new = "/usr/lib/R/site-library/", devtools::install_github("https://github.com/villars4-ucsf/sampleDB-rpackage", ref = "master", auth_token = "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"))
+withr::with_libpaths(new = "/usr/lib/R/site-library/", devtools::install_github("https://github.com/EPPIcenter/sampleDB-rpackage", ref = "master", auth_token = "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"))
 ```
 
 Cronjob is located at `/bin/sampleDB_backup_generator.sh`. Currently backups are every day at 16:15:00

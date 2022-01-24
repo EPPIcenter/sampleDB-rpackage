@@ -15,24 +15,24 @@ MoveTubes <- function(database, barcode_file, plate_type, new_plate_uid, existin
     list.move[[plate.name]] <- read_csv(barcode_file[[i, 'datapath']], col_types = cols())
   }
   
-  print(names(list.move))
-  print(list.move)
-  print("HERE62")
+  # print(names(list.move))
+  # print(list.move)
+  # print("HERE62")
   
   # TEST WHETHER MOVE WILL PRODUCE ORPHANS
   # GET A COPY OF THE PLATES INVOLVED IN THE MOVE - SAVE AS A LIST WITH KEYS BEING FILENAMES
   test.list <- list()
   for(plate.name in names(list.move)){
-    print(plate.name)
+    # print(plate.name)
     eval.plate_id <- filter(CheckTable(database = database, "matrix_plate"), uid == plate.name)$id
-    print(eval.plate_id)
+    # print(eval.plate_id)
     test.list[[as.character(eval.plate_id)]] <- filter(CheckTable(database = database, "matrix_tube"), plate_id == eval.plate_id)
-    print(test.list[[as.character(eval.plate_id)]])
-    print(test.list)
+    # print(test.list[[as.character(eval.plate_id)]])
+    # print(test.list)
   }
   
-  print("HERE52")
-  print(test.list)
+  # print("HERE52")
+  # print(test.list)
   
   # MAKE A LIST WHERE EACH PLATE IS CONVERTED TO A DUMMY PLATE
   # - MAKE DUMMY PLATE LIST
@@ -41,18 +41,18 @@ MoveTubes <- function(database, barcode_file, plate_type, new_plate_uid, existin
   # - CHANGE DUMMY LIST PLATES
   for(i in 1:length(names(dummy.list))){
     eval.plate_id <- names(dummy.list)[i]
-    print(eval.plate_id)
+    # print(eval.plate_id)
     dummy.list[[eval.plate_id]]$"plate_id" <- -(i)
   }
   
-  print("HERE48")
-  print(dummy.list)
+  # print("HERE48")
+  # print(dummy.list)
   
   # - ROW BIND DUMMY PLATES
   dummy.tbl <- bind_rows(dummy.list)
   
-  print("HERE41")
-  print(dummy.tbl %>% as.data.frame())
+  # print("HERE41")
+  # print(dummy.tbl %>% as.data.frame())
   
   # USE CSVS TO ASSIGN PLATES TO TUBES
   for(csv.name in names(list.move)){
@@ -93,8 +93,8 @@ MoveTubes <- function(database, barcode_file, plate_type, new_plate_uid, existin
       # print(dummy.tbl)
     }
   }
-  print("HERE80")
-  print(dummy.tbl %>% as.data.frame())
+  # print("HERE80")
+  # print(dummy.tbl %>% as.data.frame())
   
   # TEST IF NEG NUM IS IN PLATE_ID, CAN TEST IF LENGTH(UNIQ(PASTE(EVAL.WELL,PLATE.ID))) == NUMBER OF ROWS...MAY WANT TO DROP ALL NA'S FROM READIN CSV
   if(!all(dummy.tbl$plate_id > 0)){

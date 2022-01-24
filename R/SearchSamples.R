@@ -147,16 +147,20 @@ SearchSamples <- function(database, barcode_search_file, search_plate_uid, searc
   search_results <- search_results %>%
     relocate("plate_uid") %>%
     rename(`Plate Name` = plate_uid,
-           `WellPosition` = well_position,
            `Barcode` = barcode,
            `Study-Subject ID` = subject_uid,
            `Study Code` = study,
            `Specimen Type` = specimen_type,
            `Storage Location` = location,
-           `Collected Date` = collection_date) %>% 
-    arrange(`Plate Name`) %>% 
-    group_by(`Plate Name`) %>%
-    mutate(`WellPosition` = stringr::str_sort(`WellPosition`, numeric = T))
+           `Collected Date` = collection_date) %>%
+    mutate(letter = substring(well_position, 1, 1), 
+           number = as.numeric(substring(well_position, 2))) %>% 
+    select(-well_position) %>% 
+    group_by(`Plate Name`, `Barcode`, letter, number) %>% 
+    arrange(`Plate Name`, letter, number) %>% 
+    ungroup() %>% 
+    mutate(`WellPosition` = paste0(letter, number), .after = `Plate Name`) %>% 
+    select(-c(letter, number))
   
   return(search_results)
 }
