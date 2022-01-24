@@ -12,7 +12,7 @@ MoveTubes <- function(database, barcode_file, plate_type, new_plate_uid, existin
   list.move <- list()
   for(i in 1:length(barcode_file[,1])){
     plate.name <- barcode_file[[i, 'name']] %>% gsub("\\.csv","",.)
-    list.move[[plate.name]] <- read_csv(barcode_file[[i, 'datapath']], col_types = cols())
+    list.move[[plate.name]] <- read_csv(barcode_file[[i, 'datapath']], col_types = cols()) %>% drop_na()
   }
   
   # print(names(list.move))

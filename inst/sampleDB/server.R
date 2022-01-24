@@ -17,7 +17,7 @@ source('helpers/Reference.helper.R', local = TRUE)
 function(input, output, session) {
 
     #SET PATH TO SQLITE DATABASE - WOULD PREFER DATABASE TO BE AT Sys.getenv("SAMPLEDB_DATABASE")
-    database <- "/databases/example_19-Oct-21.sample_db.sqlite"
+    database <- "/databases/sampledb_database.sqlite"
 
     #SERVER-SIDE DROPDOWN -- SAVES LOADING TIME
     updateSelectizeInput(session, 'SearchBySubjectUID', choices = c("", sampleDB::CheckTable(database = database, "study_subject")$uid %>% unique()), server = TRUE)
@@ -106,8 +106,8 @@ function(input, output, session) {
     # Upload Examples #
     # ~~~~~~~~~~~~~~~ #
     
-    output$ExampleUploadCSVNoDate <- helper.ExampleUploadCSVNoDate
-    output$ExampleUploadCSVDate <- helper.ExampleUploadCSVDate
+    output$ExampleUploadCSVNoDate <- renderPrint({helper.ExampleUploadCSVNoDate(database)})
+    output$ExampleUploadCSVDate <- renderPrint({helper.ExampleUploadCSVDate(database)})
 
     ##################
     # Search Samples #
