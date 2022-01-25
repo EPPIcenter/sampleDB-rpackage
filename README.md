@@ -1,4 +1,10 @@
 
+# The Database
+The database lives at `/databases/sampledb_database.sqlite`.
+
+## Database Schema
+![db](https://user-images.githubusercontent.com/95319271/151049473-54f411e9-0fa2-4d3b-be33-32a0d8521a08.png)
+
 # Installation
 For **Admins** to install sampleDB on Aragorn use:
 ```
@@ -9,10 +15,6 @@ withr::with_libpaths(new = "/usr/lib/R/site-library/",
 ```
 
 System-wide Aragorn R packages are installed at `/usr/lib/R/site-library/`.
-
-# The Database
-The database lives at `/databases/sampledb_database.sqlite`.
-![db](https://user-images.githubusercontent.com/95319271/151049292-96aae7e9-9f4a-489b-a5d6-332b1ad66518.png)
 
 # Backups
 - Backups are located at `/databases/sampleDB_backups/`
