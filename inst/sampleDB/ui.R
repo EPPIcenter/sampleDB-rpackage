@@ -47,14 +47,15 @@ navbarPage("SampleDB",
                         textOutput("WarningUploadBarcode"),
                         textOutput("WarningUploadColnames"),
                         textOutput("WarningUploadSpecimenTypes"),
+                        textOutput("WarningUploadStudyShortCodes"),
                         textOutput("WarningUploadDateFormat"),
 
-                    fluidRow(
-                      column(
-                        width = 12,
-                        selectizeInput("UploadStudyShortCode",
-                                       choices = c("", sampleDB::CheckTable(database = database, "study")$short_code),
-                                       label = "Study Name"))),
+                    # fluidRow(
+                    #   column(
+                    #     width = 12,
+                    #     selectizeInput("UploadStudyShortCode",
+                    #                    choices = c("", sampleDB::CheckTable(database = database, "study")$short_code),
+                    #                    label = "Study Name"))),
 
                     fluidRow(
                       column(

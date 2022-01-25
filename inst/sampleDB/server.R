@@ -44,9 +44,13 @@ function(input, output, session) {
     CheckUploadDateFormat <- reactive({helper.CheckUploadDateFormat(input, database)})
     output$WarningUploadDateFormat <- renderText(CheckUploadDateFormat())
 
-    # CHECK THAT USR SPECIMEN TYPE IS VALID
+    # CHECK THAT USR SPECIMEN TYPES ARE VALID
     CheckUploadSpecimenTypes <- reactive({helper.CheckUploadSpecimenTypes(input, database)})
     output$WarningUploadSpecimenTypes <- renderText(CheckUploadSpecimenTypes())
+    
+    # CHECK THAT USR STUDY SHORT CODES ARE VALID
+    CheckUploadStudyShortCode <- reactive({helper.CheckUploadStudyShortCodes(input, database)})
+    output$WarningUploadStudyShortCodes <- renderText(CheckUploadStudyShortCode())
 
     # CHECK THAT BARCODES ARE NOT IN DATABASE
     CheckUploadPlateUniqBarcodeConstraint <- reactive({helper.CheckUploadPlateUniqBarcodeConstraint(input, database)})
@@ -80,7 +84,7 @@ function(input, output, session) {
                                 barcode_file = input$UploadDataSet$datapath,
                                 plate_id = input$UploadPlateID,
                                 location = input$UploadLocation,
-                                study_short_code = input$UploadStudyShortCode,
+                                # study_short_code = input$UploadStudyShortCode,
                                 session = session,
                                 output = output)
         

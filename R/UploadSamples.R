@@ -56,7 +56,8 @@ UploadSamples <- function(database, barcode_file, plate_id, location, study_shor
 
     #GET SPECIMEN TYPE ID, STUDY_ID, STUDY_SUBJ_ID AND COLLECTION_DATE ASSO W THE TUBE
     specimen_type_id <- filter(CheckTable(database = database, "specimen_type"), label == csv[i, ]$"specimen_type")$id
-    study_id <- filter(CheckTable(database = database, "study"), short_code == study_short_code)$id
+    study_id <- filter(CheckTable(database = database, "study"), short_code == csv[i, ]$"study_short_code")$id
+    # study_id <- filter(CheckTable(database = database, "study"), short_code == study_short_code)$id
     uid <- csv[i, ]$"study_subject_id"
     if(toggle.is_longitudinal){
       collection_date <- ymd(csv[i, ]$"collection_date")

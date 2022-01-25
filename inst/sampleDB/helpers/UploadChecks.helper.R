@@ -9,10 +9,15 @@ helper.CheckUploadPlateDuplication <- function(input, database){
 helper.CheckUploadColnames <- function(input, database){
   
   # VALID COLNAMES
-  names.traxer.nodate <- c("Position", "Tube ID",	"Status",	"Error Count",	"Rack ID",	"Date", "study_subject_id", "specimen_type") 
-  names.traxer.date <- c("Position", "Tube ID",	"Status",	"Error Count",	"Rack ID",	"Date", "study_subject_id", "specimen_type", "collection_date")
-  names.visionmate.nodate <- c("LocationRow", "LocationColumn", "TubeCode", "study_subject_id", "specimen_type")
-  names.visionmate.date <- c("LocationRow", "LocationColumn", "TubeCode", "study_subject_id", "specimen_type", "collection_date")
+  # names.traxer.nodate <- c("Position", "Tube ID",	"Status",	"Error Count",	"Rack ID",	"Date", "study_subject_id", "specimen_type") 
+  # names.traxer.date <- c("Position", "Tube ID",	"Status",	"Error Count",	"Rack ID",	"Date", "study_subject_id", "specimen_type", "collection_date")
+  # names.visionmate.nodate <- c("LocationRow", "LocationColumn", "TubeCode", "study_subject_id", "specimen_type")
+  # names.visionmate.date <- c("LocationRow", "LocationColumn", "TubeCode", "study_subject_id", "specimen_type", "collection_date")
+  
+  names.traxer.nodate <- c("Position", "Tube ID",	"Status",	"Error Count",	"Rack ID",	"Date", "study_subject_id", "specimen_type", "study_short_code") 
+  names.traxer.date <- c("Position", "Tube ID",	"Status",	"Error Count",	"Rack ID",	"Date", "study_subject_id", "specimen_type", "study_short_code", "collection_date")
+  names.visionmate.nodate <- c("LocationRow", "LocationColumn", "TubeCode", "study_subject_id", "specimen_type", "study_short_code")
+  names.visionmate.date <- c("LocationRow", "LocationColumn", "TubeCode", "study_subject_id", "specimen_type", "study_short_code", "collection_date")
   
   if(!is.null(input$UploadDataSet$datapath)){
     if("TubeCode" %in% names(read_csv(input$UploadDataSet$datapath, col_types = cols()))){
@@ -51,11 +56,20 @@ helper.CheckUploadDateFormat <- function(input, database){
 helper.CheckUploadSpecimenTypes <- function(input, database){
     if(!is.null(input$UploadDataSet$datapath)){
       specimen_types <- read_csv(input$UploadDataSet$datapath, col_types = cols()) %>% tidyr::drop_na() %>% pull(specimen_type)
-      print(specimen_types)
       out <- validate(need(all(specimen_types %in% CheckTable(database = database, table = "specimen_type")$label), "Failed: Specimen Type Not found"))
     }else{
       out <- NULL
     }
+  return(out)
+}
+
+helper.CheckUploadStudyShortCodes <- function(input, database){
+  if(!is.null(input$UploadDataSet$datapath)){
+    stud_short_codes <- read_csv(input$UploadDataSet$datapath, col_types = cols()) %>% tidyr::drop_na() %>% pull(study_short_code)
+    out <- validate(need(all(stud_short_codes %in% CheckTable(database = database, table = "study")$short_code), "Failed: Study Short Code Not found"))
+  }else{
+    out <- NULL
+  }
   return(out)
 }
 
@@ -116,8 +130,8 @@ UploadRequirements <- function(input, database){
     # - USER MUST UPLOAD LOCATION
     input$UploadLocation,
     
-    # - USER MUST SUPPLY A STUDY CODE
-    input$UploadStudyShortCode,
+    # # - USER MUST SUPPLY A STUDY CODE
+    # input$UploadStudyShortCode,
     
     # - DATASET BARCODES CANNOT BE IN DATABASE
     !(upload_barcodes %in% c(sampleDB::CheckTable(database = database, "matrix_tube")$barcode)),

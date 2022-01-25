@@ -16,5 +16,6 @@ helper.ExampleUploadCSVNoDate <- function(database){
          LocationColumn = c(1:10),
          TubeCode = CheckTable(database = database, "matrix_tube")$barcode %>% head(10),
          study_subject_id = CheckTable(database = database, "study_subject")$uid %>% head(10),
-         specimen_type = "PLASMA") %>% as.data.frame()
+         specimen_type = "PLASMA",
+         study_short_code = "KAM06") %>% as.data.frame()
 }
