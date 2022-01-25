@@ -1,6 +1,12 @@
 
+# Running SampleDB
+To spin up the app run the command below in the console of an Aragorn instance of R.
+```
+sampleDB::Run_SampleDB()
+```
+
 # The Database
-The database lives at `/databases/sampledb_database.sqlite`.
+The database lives on Aragorn at `/databases/sampledb_database.sqlite`.
 
 ## Database Schema
 ![db](https://user-images.githubusercontent.com/95319271/151049473-54f411e9-0fa2-4d3b-be33-32a0d8521a08.png)
