@@ -33,6 +33,7 @@ navbarPage("SampleDB",
 
                         HTML("<h4><b>Upload Samples Form</b></h4>"),
                         br(),
+                        
                         fluidRow(
                           column(
                             width = 12,
@@ -72,18 +73,12 @@ navbarPage("SampleDB",
                     fluidRow(
                       column(
                         width = 12,
-                        fluidRow(
-                          column(
-                            width = 4,
                             actionButton("UploadAction",
                                          label = "Upload Dataset",
                                          style="color: #fff; background-color: #337ab7; border-color: #2e6da4"),
-                          ),
-                          column(
-                            width = 4,
                             actionButton("ClearUploadForm",
                                          label = "Clear Form"),
-                          )))),
+                          )),
 
                     br(),
 
@@ -203,6 +198,9 @@ navbarPage("SampleDB",
                       column(
                         width = 4,
                         
+                        HTML("<h4><b>Move Samples Form</b></h4>"),
+                        br(),
+                        
                         fluidRow(
                           column(
                             
@@ -211,68 +209,38 @@ navbarPage("SampleDB",
                                       "SampleDB MoveSamplesCSV",
                                       multiple = TRUE,
                                       accept = c("text/csv", "text/comma-separated-values,text/plain", ".csv")))),
+
+                          fluidRow(
+                            column(
+                              width = 12,
+                              actionButton("MoveAction",
+                                           label = "Move Samples",
+                                           style="color: #fff; background-color: #337ab7; border-color: #2e6da4"),
+                              actionButton("ClearMoveForm",
+                                           label = "Clear Form"))),
+                        textOutput("WarningMoveColnames"),
+
+                          br(),
+                          fluidRow(
+                            column(
+                              width = 6,
+                              verbatimTextOutput("MoveReturnMessage1"))),
                         
-                            # textOutput("WarningMoveBarcode"),
-                            # textOutput("WarningMoveBarcodeA"),
-                            # textOutput("WarningMoveBarcodesExist"),
-                            # 
-                            # radioButtons("MovePlateType", label = "Move Samples to:",
-                            #              choices = list("New Plate" = "new_plate", "Existing Plate" = "existing_plate"),
-                            #              selected = "new_plate"),
-                            # 
-                            #  conditionalPanel(
-                            #     condition = "input.MovePlateType == \"new_plate\"",
-                            # 
-                            #     textInput("MovePlateID",
-                            #               label = "New Plate Name"),
-                            #     textOutput("WarningMovePlateDuplication"),
-                            #     selectInput("MoveLocation",
-                            #                 label = "Storage Location",
-                            #                 choices = c("", sampleDB::CheckTable(database = database, "location")$description))),
-                            # 
-                            # conditionalPanel(
-                            #   condition = "input.MovePlateType == \"existing_plate\"",
-                            #   
-                            #   selectizeInput("MoveExistingPlateID",
-                            #                  choices = c("", sampleDB::CheckTable(database = database, "matrix_plate")$uid),
-                            #                  label = "Existing Plate Name")),
-                            # 
-                            # textOutput("WarningMoveToSamePlate"),
-
-                        fluidRow(
-                          column(
-                            width = 12,
-                            fluidRow(
-                              column(
-                                width = 4,
-                                actionButton("MoveAction",
-                                             label = "Move Samples",
-                                             style="color: #fff; background-color: #337ab7; border-color: #2e6da4"),
-                              ),
-                              column(
-                                width = 4,
-                                actionButton("ClearMoveForm",
-                                             label = "Clear Form"),
-                              )))),
-
-                        br(),
-                        fluidRow(
-                          column(
-                            width = 12,
-                            verbatimTextOutput("MoveReturnMessage")
-                          )
-                        ),
-                      ),
-                      column(
-                        width = 8,
-                        HTML("<h4>This is an <b>Example SampleDB MoveSamplesCSV</b> from VisionMate.</h4>"),
-                        verbatimTextOutput("ExampleMoveSamplesCSV"),
-                        HTML("<h5>This format is essentially just the CSV that any micronix instrument creates.
-                              No CSV reformating is required.</h5>"),
-                        HTML("<h6>*Note that no new samples can be added during moves. This is because no
-                        study subject nor specimen type information is processed during moves.</h6>"),
-                      ))),
-
+                          fluidRow(
+                            column(
+                              width = 6,
+                              verbatimTextOutput("MoveReturnMessage2")))),
+                      
+                        column(
+                          width = 8,
+                          HTML("<h4>This is an <b>Example SampleDB MoveSamplesCSV</b> from VisionMate.</h4>"),
+                          verbatimTextOutput("ExampleMoveSamplesCSV"),
+                          HTML("<h5>This format is essentially just the CSV that any micronix instrument creates.
+                                No CSV reformating is required.</h5>"),
+                          HTML("<h6>*Note that no new samples can be added during moves. This is because no
+                          study subject nor specimen type information is processed during moves.</h6>"),
+                        ))),
+           
            navbarMenu("References",
 
                       tabPanel("Freezers",

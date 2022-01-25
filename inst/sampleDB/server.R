@@ -12,6 +12,8 @@ library(purrr)
 source('helpers/UploadExamples.helper.R', local = TRUE)
 source('helpers/UploadChecks.helper.R', local = TRUE)
 source('helpers/SearchChecks.helper.R', local = TRUE)
+source('helpers/MoveExamples.helper.R', local = TRUE)
+source('helpers/MoveChecks.helper.R', local = TRUE)
 source('helpers/Reference.helper.R', local = TRUE)
 
 function(input, output, session) {
@@ -169,7 +171,7 @@ function(input, output, session) {
         subjectuid_search_uids <- subjectuid_search_uids[subjectuid_search_uids != ""] # remove any blank entries that may be in vector
       }
       
-      # SEARCH THE DATABASE
+      # RETRIEVE SEARCH RESULTS
 
       # - SEARCH USING A SINGLE STUDY SUBJECT ID
       if(input$SubjectUIDSearchType == "one_at_a_time"){
@@ -233,77 +235,10 @@ function(input, output, session) {
     # Checks #
     #~~~~~~~~#
 
-    # #CHECK PLATE_ID IS UNIQUE
-    # CheckMovePlateDuplication <- reactive({
-    #   toggle <- input$MovePlateID %in% c(sampleDB::CheckTable(database = database, "matrix_plate")$uid)
-    #   shinyFeedback::feedbackWarning("MovePlateID", toggle, "Plate IDs must be unique")
-    # })
-    # 
-    # #CHECK IF BARCODES ARE ALREADY IN DATABASE
-    # CheckMovePlateUniqBarcodeConstraintA <- reactive({
-    #   if(!is.null(input$MoveDataSet$datapath)){
-    # 
-    #     if("TubeCode" %in% names(read_csv(input$MoveDataSet$datapath))){
-    #       upload_barcodes <- read_csv(input$MoveDataSet$datapath)$TubeCode
-    #     }else{
-    #       upload_barcodes <- read_csv(input$MoveDataSet$datapath)$"Tube ID"
-    #     }
-    # 
-    #     validate(
-    #       need(!(upload_barcodes %in% c(sampleDB::CheckTable(database = database, "matrix_tube")$barcode)),
-    #            "Failed: Barcode Unique Constraint")
-    #     )
-    #   }
-    # })
-    # 
-    # CheckMovePlateUniqBarcodeConstraint <- reactive({
-    #   if(!is.null(input$MoveDataSet$datapath)){
-    # 
-    #     if("TubeCode" %in% names(read_csv(input$MoveDataSet$datapath))){
-    #       upload_barcodes <- read_csv(input$MoveDataSet$datapath)$TubeCode
-    #     }else{
-    #       upload_barcodes <- read_csv(input$MoveDataSet$datapath)$"Tube ID"
-    #     }
-    # 
-    #     upload_barcodes <- read_csv(input$MoveDataSet$datapath)$TubeCode
-    #     toggle <- upload_barcodes %in% c(sampleDB::CheckTable(database = database, "matrix_tube")$barcode)
-    #     shinyFeedback::feedbackWarning("MoveDataSet", toggle, "Failed: Barcode Unique Constraint")
-    #   }
-    # })
-    # 
-    # #CHECK THAT MOVE IS TO A DIFFERENT PLATE
-    # CheckMoveToSamePlate <- reactive({
-    #   if(!is.null(input$MoveDataSet$datapath)){
-    #     if(input$MovePlateType == existing_plate){
-    #       # get all plates asso w the tubes
-    #       barcodes <- read_csv(input$MoveDataSet$datapath)$barcode
-    #       uniq_plate_ids <- filter(sampleDB::CheckTable(database = database, "matrix_tube"), barcode %in% barcodes)$plate_id %>% unique()
-    #       plate_names <- filter(sampleDB::CheckTable(database = database, "matrix_plate"), id %in% uniq_plate_id)$uid
-    #       # input$MoveExistingPlateID cannot be any of the plates ass w the tubes
-    #       validate(
-    #         need(!(input$MoveExistingPlateID %in% plate_names),
-    #              "Failed: Samples cannot be moved to the same plate")
-    #       )
-    #     }
-    #   }
-    # })
-    # 
-    # #CHECK THAT BARCODES IN MOVE EXIST IN DATABASE
-    # CheckMoveBarcodesExist <- reactive({
-    #   if(!is.null(input$MoveDataSet$datapath)){
-    #     validate(
-    #       need(all(read_csv(input$MoveDataSet$datapath)$TubeCode %in% CheckTable(database = database, "matrix_tube")$barcode),
-    #            "Failed: Barcodes for move do Not exist")
-    #     )
-    #   }
-    # })
-    # 
-    # output$WarningMoveBarcodeA <- renderText(CheckMovePlateUniqBarcodeConstraintA())
-    # output$WarningMoveBarcode <- renderText(CheckMovePlateUniqBarcodeConstraint())
-    # output$WarningMovePlateDuplication <- renderText(CheckMovePlateDuplication())
-    # output$WarningMoveToSamePlate <- renderText(CheckMoveToSamePlate())
-    # output$WarningMoveBarcodesExist <- renderText(CheckMoveBarcodesExist())
-
+    # CHECK THAT COLNAMES ARE FORMED CORRECTLY
+    CheckMoveColnames <- reactive({helper.CheckMoveColnames(input, database)})
+    output$WarningMoveColnames <- renderText(CheckMoveColnames())
+    
     #~~~~~~#
     # Move #
     #~~~~~~#
@@ -312,71 +247,51 @@ function(input, output, session) {
       input$MoveAction,
       ({
         
-        # #MAKE SURE BARCODES ARE ALREAD IN THE DATABASE
-        # #pls use the same micronix scanner for all the csvs (if uploading multiple)
-        # 
-        # # - PUT ALL THE BARCODE CSVS INTO A LIST
-        # barcode_upload <- list()
-        # for(i in 1:length(input$MoveDataSet[,1])){
-        #   barcode_upload[[i]] <- input$MoveDataSet[[i, 'datapath']]
-        # }
-        # 
-        # # - MAKE A VECTOR CONTAINING ALL THE BARCODES IN MOVE
-        # upload_barcodes <- c()
-        # for(csv in barcode_upload){
-        #   if("TubeCode" %in% names(read_csv(csv, col_types = cols()))){
-        #     upload_barcodes <- c(upload_barcodes, read_csv(csv, col_types = cols())$TubeCode)
-        #   }else{
-        #     upload_barcodes <- c(upload_barcodes, read_csv(csv, col_types = cols())$"Tube ID")
-        #   }
-        # }
-        # 
-        # # - CHECK BARCODE IS IN DATABASE
-        # req(!(upload_barcodes %in% c(sampleDB::CheckTable(database = database, "matrix_tube")$barcode)),
-        #     # !(input$MovePlateID %in% c(sampleDB::CheckTable(database = database, "matrix_plate")$uid)
-        #     )
-        # 
-        # # PERFORM OTHER CHECKS
-        # req(input$MoveDataSet$datapath,
-        #     input$MovePlateType,
-        #     input$MoveLocation)
-
-        # CARRY OUT MOVE
-        output$MoveReturnMessage <- renderText({
-
-          sampleDB::MoveTubes(database = database,
+        # TRIGGER UI CHANGE FOR REACTIVITY - RECYCLE RENAMESTUDYLEADPERSON
+        updateTextInput(session = session, "RenameStudyLeadPerson", value = "a6sFH$DKdsbgGLY9")
+        
+        # PAUSE FOR EFFECT AND PRINT WORKING
+        Sys.sleep(.75)
+        output$MoveReturnMessage1 <- renderText({"Working..."})
+        
+      }))
+    
+      # UPLOAD SAMPLES
+      observe({
+          
+        # WHEN REACTIVE UI IS CHANGED TO INDICATE AN UPLOAD
+        if(input$RenameStudyLeadPerson == "a6sFH$DKdsbgGLY9"){
+            
+          #CHECK REQUIREMENTS
+          # UploadRequirements(input, database)
+            
+          # MOVE SAMPLES
+          message <- sampleDB::MoveTubes(database = database,
                               barcode_file = input$MoveDataSet,
                               plate_type = input$MovePlateType,
                               new_plate_uid = input$MovePlateID,
                               existing_plate_uid = input$MoveExistingPlateID,
                               location = input$MoveLocation,
-                              session = session)})
-        }))
-
-
-    observeEvent(input$ClearMoveForm,
-                 ({
-
-                   reset("MoveDataSet")
-                   reset("MovePlateType")
-                   reset("MoveExistingPlateID")
-                   reset("MovePlateID")
-                   reset("MoveLocation")
-
-                 }))
-
-    observeEvent(
-      input$MoveAction,
-      ({
-        updateSelectizeInput(session = session,
-                             "SearchByPlateID",
-                             choices = c("", sampleDB::CheckTable(database = database, "matrix_plate")$uid),
-                             label = NULL)}))
-
-    output$ExampleMoveSamplesCSV <- renderPrint({
-      tibble(LocationRow = rep("A", 10),
-             LocationColumn = c(1:10),
-             TubeCodes = CheckTable(database = database, "matrix_tube")$barcode %>% head(10)) %>% as.data.frame()})
+                              session = session)
+          
+          # PRINT UPLOAD MSG
+          output$MoveReturnMessage2 <- renderText({message})
+          
+          # RESET UI VALUE
+          updateTextInput(session = session, "RenameStudyLeadPerson", value = "")
+        }
+      })
+        
+      # CLEAR FORM
+      observeEvent(
+        input$ClearMoveForm,
+        ({
+          reset("MoveDataSet")
+          output$MoveReturnMessage1 <- renderText({""})
+          output$MoveReturnMessage2 <- renderText({""})}))
+      
+      # MOVE EXAMPLES
+      output$ExampleMoveSamplesCSV <- renderPrint({helper.ExampleMoveCSVDate(database)})
 
     #REFERENCES#################################################################################
 
