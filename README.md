@@ -1,6 +1,6 @@
 
 # Installation
-For **Admin's** to install sampleDB on Aragorn use:
+For **Admins** to install sampleDB on Aragorn use:
 ```
 withr::with_libpaths(new = "/usr/lib/R/site-library/", 
 		     devtools::install_github("https://github.com/EPPIcenter/sampleDB-rpackage", 
