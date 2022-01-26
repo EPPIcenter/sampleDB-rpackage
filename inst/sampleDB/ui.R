@@ -131,7 +131,7 @@ navbarPage("SampleDB",
                       column(
                         width = 4,
                         fileInput("SearchByBarcode",
-                                  HTML("Search By Barcode - single column named \"barcode\""),
+                                  HTML("Barcode - single column named \"barcode\""),
                                   multiple = FALSE),
                         actionButton("ClearSearchBarcodes", label = "Clear Barcodes")),
                         textOutput("WarnSubjectBarcodeFileColnames"),
@@ -140,7 +140,7 @@ navbarPage("SampleDB",
                       column(
                         width = 4,
                         selectizeInput("SearchByPlateID",
-                                       "Search By Plate Name",
+                                       "Plate Name",
                                        choices = c("", sampleDB::CheckTable(database = database, "matrix_plate")$uid))),
 
                       column(
@@ -152,13 +152,13 @@ navbarPage("SampleDB",
                         conditionalPanel(
                           condition = "input.SubjectUIDSearchType == \"one_at_a_time\"",
                           selectizeInput("SearchBySubjectUID",
-                                    label = "Search By Study-Subject ID (UID)",
+                                    label = "Study-Subject ID (UID)",
                                     choices = NULL)),
 
                         conditionalPanel(
                           condition = "input.SubjectUIDSearchType == \"multiple\"",
                           fileInput("SearchBySubjectUIDFile",
-                                    label = "Search By Study-Subject ID (UID)"),
+                                    label = "Study-Subject ID (UID)"),
                           actionButton("ClearSearchUIDFile", label = "Clear Subject IDs")))),
                     textOutput("WarnSubjectUIDFileColnames"),
                     textOutput("WarnSubjectUIDFileColnames2"),
@@ -167,17 +167,17 @@ navbarPage("SampleDB",
                       column(
                         width = 4,
                         selectizeInput("SearchByStudy",
-                                       "Search By Study",
+                                       "Study",
                                        choices = c("", sampleDB::CheckTable(database = database, "study")$short_code))),
                       column(
                         width = 4,
                         selectizeInput("SearchByLocation",
-                                       "Search By Storage Location",
+                                       "Storage Location",
                                        choices = c("", sampleDB::CheckTable(database = database, "location")$description))),
                       column(
                         width = 4,
                         selectizeInput("SearchBySpecimenType",
-                                       "Search By Specimen Type",
+                                       "Specimen Type",
                                        choices = c("", sampleDB::CheckTable(database = database, "specimen_type")$label)))),
 
                     hr(),
@@ -238,9 +238,45 @@ navbarPage("SampleDB",
                           verbatimTextOutput("ExampleMoveSamplesCSV"),
                           HTML("<h5>This format is essentially just the CSV that any micronix instrument creates.
                                 No CSV reformating is required.</h5>"),
-                          HTML("<h6>*Note that no new samples can be added during moves. This is because no
-                          study subject nor specimen type information is processed during moves.</h6>"),
+                          br(),
+                          HTML("<h5>To perform moves:</h5>"),
+                          HTML("<ol>
+                                  <li>All plates involved in the move need to be scanned</li>
+                                  <li>The Micronix .csv file needs to be given the plate name</li>
+                                  <li>All the scans must be uploaded together</li>
+                              </ol>"),
+                          # HTML("<h6>*Note that no new samples can be added during moves. This is because no
+                          # study subject nor specimen type information is processed during moves.</h6>"),
                         ))),
+           
+           tabPanel("Delete Empty Plates",
+                    fluidRow(
+                      column(
+                        width = 4,
+                        
+                        fluidRow(
+                          column(
+                            width = 12,
+                            HTML("<h4><b>Delete Empty Plate</b></h4>"),
+                            selectizeInput("DeletePlateName",
+                                           "Plate Name",
+                                           choices = c("", sampleDB::CheckTable(database = database, "matrix_plate")$uid)),
+                            actionButton("DeletePlateAction", "Delete Plate")),
+                          column(
+                            width = 6,
+                            br(),
+                            textOutput("WarningDeletePlateMessage"),
+                            br(),
+                            verbatimTextOutput("DeletePlateMessage"),
+                          ))),
+                        
+                      column(
+                        width = 4,
+                        HTML("<code>BLANK</code>")),
+                      column(
+                        width = 4,
+                        HTML("<code>BLANK</code>")),
+                        )),
            
            navbarMenu("References",
 

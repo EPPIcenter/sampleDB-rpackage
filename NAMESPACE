@@ -2,6 +2,7 @@
 
 export(AddToTable)
 export(CheckTable)
+export(DeleteEmptyPlates)
 export(DeleteFromTable)
 export(ListTables)
 export(ModifyTable)

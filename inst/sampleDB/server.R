@@ -9,12 +9,7 @@ library(emojifont)
 library(shinyjs)
 library(DT)
 library(purrr)
-source('helpers/UploadExamples.helper.R', local = TRUE)
-source('helpers/UploadChecks.helper.R', local = TRUE)
-source('helpers/SearchChecks.helper.R', local = TRUE)
-source('helpers/MoveExamples.helper.R', local = TRUE)
-source('helpers/MoveChecks.helper.R', local = TRUE)
-source('helpers/Reference.helper.R', local = TRUE)
+for(helper in list.files(path = "helpers", full.names = T)){source(helper, local = TRUE)}
 
 function(input, output, session) {
 
@@ -60,7 +55,7 @@ function(input, output, session) {
     # Add new plate to the database #
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
     
-
+    # LINK ACTION BUTTON TO TRIGGER CASCADE
     observeEvent(
       input$UploadAction,
       ({
@@ -267,7 +262,7 @@ function(input, output, session) {
         if(input$RenameStudyLeadPerson == "a6sFH$DKdsbgGLY9"){
             
           #CHECK REQUIREMENTS
-          # UploadRequirements(input, database)
+          # MoveRequirements(input, database)
             
           # MOVE SAMPLES
           message <- sampleDB::MoveTubes(database = database,
@@ -297,6 +292,31 @@ function(input, output, session) {
       # MOVE EXAMPLES
       output$ExampleMoveSamplesCSV <- renderPrint({helper.ExampleMoveCSVDate(database)})
 
+    ######################
+    # Delete Empty Plate #
+    ######################
+    
+    WarningDeleteEmptyPlate <- reactive({helper.CheckDeleteEmptyPlate(input, database)})
+    output$WarningDeletePlateMessage <- renderText({WarningDeleteEmptyPlate()})
+    
+    observeEvent(
+      input$DeletePlateAction,
+      ({
+        
+        # SET REQUIREMENT FOR DELETEING PLATE
+        DeleteEmptyPlateRequirement(input, database)
+        
+        # DELETE PLATE
+        plate_name <- input$DeletePlateName
+        output$DeletePlateMessage <- renderText({sampleDB::DeleteEmptyPlates(database = database, plate_name = plate_name)})
+        
+        #UPDATE DELETE PLATE DROPDOWN
+        updateSelectizeInput(session = session,
+                             "DeletePlateName",
+                             choices = c("", sampleDB::CheckTable(database = database, "matrix_plate")$uid))
+        
+      }))
+      
     #REFERENCES#################################################################################
 
     ############

@@ -8,6 +8,7 @@ helper.ExampleUploadCSVDate <-  function(database){
          TubeCode = CheckTable(database = database, "matrix_tube")$barcode %>% head(10),
          study_subject_id = CheckTable(database = database, "study_subject")$uid %>% head(10),
          specimen_type = "PLASMA",
+         study_short_code = "KAM06",
          collection_date = paste("2022", "1", c(1,1,1,2,2,2,3,3,3,4), sep = "-")) %>% as.data.frame()
 }
 
