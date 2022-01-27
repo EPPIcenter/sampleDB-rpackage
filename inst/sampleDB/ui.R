@@ -49,6 +49,7 @@ navbarPage("SampleDB",
                         textOutput("WarningUploadSpecimenTypes"),
                         textOutput("WarningUploadStudyShortCodes"),
                         textOutput("WarningUploadDateFormat"),
+                        textOutput("WarningStudySubjectLongitudinal"),
 
                     # fluidRow(
                     #   column(
