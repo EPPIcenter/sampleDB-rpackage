@@ -50,6 +50,9 @@ function(input, output, session) {
     # CHECK THAT BARCODES ARE NOT IN DATABASE
     CheckUploadPlateUniqBarcodeConstraint <- reactive({helper.CheckUploadPlateUniqBarcodeConstraint(input, database)})
     output$WarningUploadBarcodeA <- renderText(CheckUploadPlateUniqBarcodeConstraint())
+    
+    CheckStudySubjectLongitudinal <- reactive({helper.CheckStudySubjectLongitudinal(input, database)})
+    output$WarningStudySubjectLongitudinal <- renderText(CheckStudySubjectLongitudinal())
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
     # Add new plate to the database #
@@ -79,7 +82,6 @@ function(input, output, session) {
                                 barcode_file = input$UploadDataSet$datapath,
                                 plate_id = input$UploadPlateID,
                                 location = input$UploadLocation,
-                                # study_short_code = input$UploadStudyShortCode,
                                 session = session,
                                 output = output)
         
