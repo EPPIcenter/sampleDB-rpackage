@@ -1,5 +1,23 @@
 
+SearchChecks <- function(input, database, output){
+  #CHECK THAT UID FILE IS PROPERLY FORMED
+  CheckSubjectBarcodeFileColnames <- reactive({helper.CheckSubjectBarcodeFileColnames(input, database)})
+  output$WarnSubjectBarcodeFileColnames <- renderText(CheckSubjectBarcodeFileColnames())
+  
+  #CHECK IF UID FILE IS PROPERLY FORMED - FILEINPUT
+  CheckSubjectUIDFileColnames2 <- reactive({CheckSubjectUIDFileColnames2(input, database)})
+  output$WarningSubjectUIDFileColnames2 <- renderText(CheckSubjectUIDFileColnames2())
+  
+  #CHECK THAT UID FILE IS PROPERLY FORMED
+  CheckSubjectUIDFileColnames <- reactive({helper.CheckSubjectUIDFileColnames(input, database)})
+  output$WarnSubjectUIDFileColnames <- renderText(CheckSubjectUIDFileColnames())
+  
+  #CHECK IF UID FILE IS PROPERLY FORMED - FILEINPUT
+  CheckSubjectBarcodeFileColnames2 <- reactive({helper.CheckSubjectUIDFileColnames2(input, database)})
+  output$WarnSubjectBarcodeFileColnames2 <- renderText(CheckSubjectBarcodeFileColnames2())
+}
 
+###############################################################################
 #need to verify checks in this file
 helper.CheckSubjectBarcodeFileColnames <- function(input, database){
   if(!is.null(input$SearchByBarcode$datapath)){

@@ -1,4 +1,11 @@
 
+MoveChecks <- function(input, database, output){
+  # CHECK THAT COLNAMES ARE FORMED CORRECTLY
+  CheckMoveColnames <- reactive({helper.CheckMoveColnames(input, database)})
+  output$WarningMoveColnames <- renderText(CheckMoveColnames()) 
+}
+
+#################################################################################
 
 helper.CheckMoveColnames <- function(input, database){
   

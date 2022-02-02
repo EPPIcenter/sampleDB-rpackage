@@ -1,5 +1,11 @@
 
 
+MoveExamples <- function(input, database, output){
+  # MOVE EXAMPLES
+  output$ExampleMoveSamplesCSV <- renderPrint({helper.ExampleMoveCSVDate(database)}) 
+}
+
+################################################################################
 
 helper.ExampleMoveCSVDate <-  function(database){
   tibble(LocationRow = rep("A", 10),

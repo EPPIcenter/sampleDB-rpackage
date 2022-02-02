@@ -1,4 +1,56 @@
 
+
+FreezerChangesChecks <- function(input, database, output){
+  #PROTECT AGAINST REDUNDANT FREEZER NAMES
+  CheckFreezerNameAddUnique <- reactive({helper.CheckFreezerNameUnique("AddFreezer", type.dup = "names", input, database)})
+  output$WarningFreezerNameAddUnique <- renderText(CheckFreezerNameAddUnique())
+  
+  #PREVENT DUPLICATION OF FREEZER NAMES
+  CheckFreezerNameChangeUnique <- reactive({helper.CheckFreezerNameUnique("RenameFreezer2", type.dup = "names", input, database)})
+  output$WarningFreezerNameChangeUnique <- renderText(CheckFreezerNameChangeUnique())
+  
+  #PREVENT DELETION OF FREEZER THAT IS IN USE
+  CheckFreezerDeletion <- reactive({helper.CheckFreezerDeletion(input, database)})
+  output$WarningFreezerDeletion <- renderText(CheckFreezerDeletion()) 
+}
+
+SpecimenTypeChangesChecks <- function(input, database, output){
+  #PROTECT AGAINST SPECIMEN TYPE NAME DUPLICATION
+  CheckAddSpecimenTypeUnique <- reactive({helper.CheckSpecimenTypeUnique("AddSpecimenType", type.dup = "names", input, database)})
+  output$WaringAddSpecimenTypeUnique <- renderText(CheckAddSpecimenTypeUnique())
+  
+  #PREVENT REPLICATE SPECIMEN TYPE NAMES
+  CheckChangeSpecimenTypeUnique <- reactive({helper.CheckSpecimenTypeUnique("RenameSpecimenType2", type.dup = "names", input, database)})
+  output$WarningChangeSpecimenTypeUnique <- renderText(CheckChangeSpecimenTypeUnique())
+  
+  #PROTECT AGAINST DELETION OF SPECIMEN TYPE IN USE
+  CheckSpecimenTypeDeletion <- reactive({helper.CheckSpecimenTypeDeletion(input, database)})
+  output$WarningSpecimenTypeDeletion <- renderText(CheckSpecimenTypeDeletion())
+}
+
+StudyChangesChecks <- function(input, database, output){
+  #PROTECT AGAINST STUDY NAME DUPLICATION
+  CheckStudyAddTitleUnique <- reactive({helper.CheckStudyUnique("AddStudyTitle", type.dup = "title", input, database)})
+  output$WarningStudyAddTitleUnique <- renderText(CheckStudyAddTitleUnique())
+  
+  #PROTECT AGAINST STUDY NAME DUPLICATION
+  CheckStudyChangeTitleUnique <- reactive({helper.CheckStudyUnique("RenameStudyTitle", type.dup = "title", input, database)})
+  output$WarningStudyChangeTitleUnique <- renderText(CheckStudyChangeTitleUnique())
+  
+  #PROTECT AGAINST STUDY SHORT CODE DUPLICATION
+  CheckStudyAddShortCodeUnique <- reactive({helper.CheckStudyUnique("AddStudyShortCode", type.dup = "short code", input, database)})
+  output$WarningStudyAddShortCodeUnique <- renderText(CheckStudyAddShortCodeUnique())
+  
+  #PROTECT AGAINST STUDY SHORT CODE DUPLICATION
+  CheckStudyChangeShortCodeUnique <- reactive({helper.CheckStudyUnique("RenameStudyShortCode", type.dup = "short code", input, database)})
+  output$WarningStudyChangeShortCodeUnique <- renderText(CheckStudyChangeShortCodeUnique())
+  
+  # #CHECK IF BARCODES ARE ALREADY IN DATABASE
+  CheckStudyDeletion <- reactive({helper.CheckStudyDeletion(input, database)})
+  output$WarnStudyDeletion <- renderText(CheckStudyDeletion())
+}
+
+####################################################################################
 helper.CheckFreezerNameUnique <- function(id.input, type.dup, input, database){
   toggle <- input$id.input %in% sampleDB::CheckTable(database = database, "location")$description
   shinyFeedback::feedbackWarning(id.input, toggle, paste0("Freezer", type.dup, "must be unique"))

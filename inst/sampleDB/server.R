@@ -23,42 +23,10 @@ function(input, output, session) {
     # Upload Samples #
     ##################
     
-    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
-    # Perform upload checks... Prints good user messages #
-    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
-    
-    # CHECK PLATE_ID IS UNIQUE
-    CheckUploadPlateDuplication <- reactive({helper.CheckUploadPlateDuplication(input, database)})
-    output$WarningUploadPlate <- renderText(CheckUploadPlateDuplication())
+    # PERFORM UPLOAD CHECKS... PRINT GOOD USER MESSAGES
+    UploadChecks(input, database, output)
 
-    # CHECK THAT COLNAMES ARE CORRECT
-    CheckUploadColnames <- reactive({helper.CheckUploadColnames(input, database)})
-    output$WarningUploadColnames <- renderText(CheckUploadColnames())
-    
-    # CHECK THAT DATE IS IN CORRECT FORMAT
-    CheckUploadDateFormat <- reactive({helper.CheckUploadDateFormat(input, database)})
-    output$WarningUploadDateFormat <- renderText(CheckUploadDateFormat())
-
-    # CHECK THAT USR SPECIMEN TYPES ARE VALID
-    CheckUploadSpecimenTypes <- reactive({helper.CheckUploadSpecimenTypes(input, database)})
-    output$WarningUploadSpecimenTypes <- renderText(CheckUploadSpecimenTypes())
-    
-    # CHECK THAT USR STUDY SHORT CODES ARE VALID
-    CheckUploadStudyShortCode <- reactive({helper.CheckUploadStudyShortCodes(input, database)})
-    output$WarningUploadStudyShortCodes <- renderText(CheckUploadStudyShortCode())
-
-    # CHECK THAT BARCODES ARE NOT IN DATABASE
-    CheckUploadPlateUniqBarcodeConstraint <- reactive({helper.CheckUploadPlateUniqBarcodeConstraint(input, database)})
-    output$WarningUploadBarcodeA <- renderText(CheckUploadPlateUniqBarcodeConstraint())
-    
-    CheckStudySubjectLongitudinal <- reactive({helper.CheckStudySubjectLongitudinal(input, database)})
-    output$WarningStudySubjectLongitudinal <- renderText(CheckStudySubjectLongitudinal())
-
-    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
-    # Add new plate to the database #
-    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
-    
-    # LINK ACTION BUTTON TO TRIGGER CASCADE
+    # ADD A NEW PLATE TO THE DATABASE... LINK ACTION BUTTON TO TRIGGER CASCADE
     observeEvent(
       input$UploadAction,
       ({
@@ -94,47 +62,17 @@ function(input, output, session) {
     })
     
     # CLEAR FORM
-    observeEvent(
-      input$ClearUploadForm,
-                 ({
-                   reset("UploadDataSet")
-                   reset("UploadStudyShortCode")
-                   reset("UploadPlateID")
-                   reset("UploadLocation")
-                   output$UploadReturnMessage1 <- renderText({""})
-                   output$UploadReturnMessage2 <- renderText({""})
-                   }))
+    UploadReset(input, output)
 
-    # ~~~~~~~~~~~~~~~ #
-    # Upload Examples #
-    # ~~~~~~~~~~~~~~~ #
-    
-    output$ExampleUploadCSVNoDate <- renderPrint({helper.ExampleUploadCSVNoDate(database)})
-    output$ExampleUploadCSVDate <- renderPrint({helper.ExampleUploadCSVDate(database)})
+    # EXAMPLES
+    UploadExamples(input, database, output)
 
     ##################
     # Search Samples #
     ##################
 
-    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
-    # Checks for searching the database... Check that files uploaded for searching are not malformed #
-    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
-    
-    #CHECK THAT UID FILE IS PROPERLY FORMED
-    CheckSubjectBarcodeFileColnames <- reactive({helper.CheckSubjectBarcodeFileColnames(input, database)})
-    output$WarnSubjectBarcodeFileColnames <- renderText(CheckSubjectBarcodeFileColnames())
-    
-    #CHECK IF UID FILE IS PROPERLY FORMED - FILEINPUT
-    CheckSubjectUIDFileColnames2 <- reactive({CheckSubjectUIDFileColnames2(input, database)})
-    output$WarningSubjectUIDFileColnames2 <- renderText(CheckSubjectUIDFileColnames2())
-    
-    #CHECK THAT UID FILE IS PROPERLY FORMED
-    CheckSubjectUIDFileColnames <- reactive({helper.CheckSubjectUIDFileColnames(input, database)})
-    output$WarnSubjectUIDFileColnames <- renderText(CheckSubjectUIDFileColnames())
-    
-    #CHECK IF UID FILE IS PROPERLY FORMED - FILEINPUT
-    CheckSubjectBarcodeFileColnames2 <- reactive({helper.CheckSubjectUIDFileColnames2(input, database)})
-    output$WarnSubjectBarcodeFileColnames2 <- renderText(CheckSubjectBarcodeFileColnames2())
+    # SEARCH CHECKS... CHECK THAT SEARCH FILES ARE NOT MALFORMED
+    SearchChecks(input, database, output)
     
     # # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
     # # If as study is selected from the dropdown, subset plate names filter to only display plate names asso. w. the chosen study #
@@ -150,11 +88,8 @@ function(input, output, session) {
     #                            choices = c("", helper.SubsetPlateNames(input, database)))        
     #     }
     # }))
-    
-    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
-    # Actively use the UI filters to render a table with search results #
-    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
+    # ACTIVELY USE UI FILTERS TO RENDER A TABLE WITH SEARCH RESULTS
     observe({
 
       # GET BARCODES IF BARCODE FILE IS PROVIDED
@@ -224,31 +159,14 @@ function(input, output, session) {
     })
     
     # CLEAR FILES
-    observeEvent(
-      input$ClearSearchBarcodes,
-      ({
-        reset("SearchByBarcode")}))
+    SearchReset(input)
     
-    observeEvent(
-      input$ClearSearchUIDFile,
-      ({
-        reset("SearchBySubjectUIDFile")}))
-
     ##############
     # Move Tubes #
     ##############
-    
-    #~~~~~~~~#
-    # Checks #
-    #~~~~~~~~#
 
-    # CHECK THAT COLNAMES ARE FORMED CORRECTLY
-    CheckMoveColnames <- reactive({helper.CheckMoveColnames(input, database)})
-    output$WarningMoveColnames <- renderText(CheckMoveColnames())
-    
-    #~~~~~~#
-    # Move #
-    #~~~~~~#
+    # Run Checks
+    MoveChecks(input,database, output)
     
     # PLAN:
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
@@ -295,15 +213,10 @@ function(input, output, session) {
       })
         
       # CLEAR FORM
-      observeEvent(
-        input$ClearMoveForm,
-        ({
-          reset("MoveDataSet")
-          output$MoveReturnMessage1 <- renderText({""})
-          output$MoveReturnMessage2 <- renderText({""})}))
+      MoveReset(input, output)
       
-      # MOVE EXAMPLES
-      output$ExampleMoveSamplesCSV <- renderPrint({helper.ExampleMoveCSVDate(database)})
+      # EXAMPLES
+      MoveExamples(input, database, output)
 
     ######################
     # Delete Empty Plate #
@@ -314,8 +227,7 @@ function(input, output, session) {
     # Is this deleting plate function straightforward #
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
     
-    WarningDeleteEmptyPlate <- reactive({helper.CheckDeleteEmptyPlate(input, database)})
-    output$WarningDeletePlateMessage <- renderText({WarningDeleteEmptyPlate()})
+    DeletePlateChecks(input, database, output)
     
     observeEvent(
       input$DeletePlateAction,
@@ -328,11 +240,8 @@ function(input, output, session) {
         plate_name <- input$DeletePlateName
         output$DeletePlateMessage <- renderText({sampleDB::DeleteEmptyPlates(database = database, plate_name = plate_name)})
         
-        #UPDATE DELETE PLATE DROPDOWN
-        updateSelectizeInput(session = session,
-                             "DeletePlateName",
-                             choices = c("", sampleDB::CheckTable(database = database, "matrix_plate")$uid))
-        
+        # RESET PLATE NAMES DROPDOWN
+        DeleteEmptyPlateReset(session, database)
       }))
       
     #REFERENCES#################################################################################
@@ -346,26 +255,7 @@ function(input, output, session) {
     # Make one or multiple functions for adding, deleting and modifying references #
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
     
-    
-    # ~~~~~ #
-    # Check #
-    # ~~~~~ #
-
-    #PROTECT AGAINST REDUNDANT FREEZER NAMES
-    CheckFreezerNameAddUnique <- reactive({helper.CheckFreezerNameUnique("AddFreezer", type.dup = "names", input, database)})
-    output$WarningFreezerNameAddUnique <- renderText(CheckFreezerNameAddUnique())
-    
-    #PREVENT DUPLICATION OF FREEZER NAMES
-    CheckFreezerNameChangeUnique <- reactive({helper.CheckFreezerNameUnique("RenameFreezer2", type.dup = "names", input, database)})
-    output$WarningFreezerNameChangeUnique <- renderText(CheckFreezerNameChangeUnique())
-    
-    #PREVENT DELETION OF FREEZER THAT IS IN USE
-    CheckFreezerDeletion <- reactive({helper.CheckFreezerDeletion(input, database)})
-    output$WarningFreezerDeletion <- renderText(CheckFreezerDeletion())
-    
-    # ~~~ #
-    # Add #
-    # ~~~ #
+    FreezerChangesChecks(input, databases, output)
 
     #ADD FREEZER TO DATABASE
     observeEvent(
@@ -394,10 +284,6 @@ function(input, output, session) {
         #UPDATE DROPDOWNS
         UpdateFreezerDropdowns(database, session)
       }))
-
-    # ~~~~~~ #
-    # CHANGE #
-    # ~~~~~~ #
     
     #CHANGE FREEZER NAMES
     observeEvent(
@@ -429,11 +315,7 @@ function(input, output, session) {
 
         #UPDATE DROPDOWNS
         UpdateFreezerDropdowns(database, session)
-        }))
-
-    # ~~~~~~ #
-    # Delete #
-    # ~~~~~~ #
+      }))
     
     #REMOVE FREEZER FROM DATABASE
     observeEvent(
@@ -468,25 +350,7 @@ function(input, output, session) {
     # SPECIMEN TYPES #
     ##################
     
-    # ~~~~~ #
-    # Check #
-    # ~~~~~ #
-
-    #PROTECT AGAINST SPECIMEN TYPE NAME DUPLICATION
-    CheckAddSpecimenTypeUnique <- reactive({helper.CheckSpecimenTypeUnique("AddSpecimenType", type.dup = "names", input, database)})
-    output$WaringAddSpecimenTypeUnique <- renderText(CheckAddSpecimenTypeUnique())
-    
-    #PREVENT REPLICATE SPECIMEN TYPE NAMES
-    CheckChangeSpecimenTypeUnique <- reactive({helper.CheckSpecimenTypeUnique("RenameSpecimenType2", type.dup = "names", input, database)})
-    output$WarningChangeSpecimenTypeUnique <- renderText(CheckChangeSpecimenTypeUnique())
-    
-    #PROTECT AGAINST DELETION OF SPECIMEN TYPE IN USE
-    CheckSpecimenTypeDeletion <- reactive({helper.CheckSpecimenTypeDeletion(input, database)})
-    output$WarningSpecimenTypeDeletion <- renderText(CheckSpecimenTypeDeletion())
-
-    # ~~~ #
-    # Add #
-    # ~~~ #
+    SpecimenTypeChangesChecks(input, database, output)
     
     #ADD A SPECIMEN TYPE TO THE DATABASE
     observeEvent(
@@ -515,10 +379,6 @@ function(input, output, session) {
           #UPDATE DROPDOWNS
           UpdateSpecimenTypeDropdowns(database, session)
         }))
-
-    # ~~~~~~ #
-    # Change #
-    # ~~~~~~ #
     
     #CHANGE A SPECIMEN TPYE
     observeEvent(
@@ -549,11 +409,7 @@ function(input, output, session) {
 
         #UPDATE DROPDOWNS
         UpdateSpecimenTypeDropdowns(database, session)
-        }))
-
-    # ~~~~~~ #
-    # Delete #
-    # ~~~~~~ #
+      }))
     
     #DELETE A SPECIMEN TYPE
     observeEvent(
@@ -589,33 +445,7 @@ function(input, output, session) {
     # STUDIES #
     ###########
     
-    # ~~~~~ #
-    # Check #
-    # ~~~~~ #
-
-    #PROTECT AGAINST STUDY NAME DUPLICATION
-    CheckStudyAddTitleUnique <- reactive({helper.CheckStudyUnique("AddStudyTitle", type.dup = "title", input, database)})
-    output$WarningStudyAddTitleUnique <- renderText(CheckStudyAddTitleUnique())
-    
-    #PROTECT AGAINST STUDY NAME DUPLICATION
-    CheckStudyChangeTitleUnique <- reactive({helper.CheckStudyUnique("RenameStudyTitle", type.dup = "title", input, database)})
-    output$WarningStudyChangeTitleUnique <- renderText(CheckStudyChangeTitleUnique())
-
-    #PROTECT AGAINST STUDY SHORT CODE DUPLICATION
-    CheckStudyAddShortCodeUnique <- reactive({helper.CheckStudyUnique("AddStudyShortCode", type.dup = "short code", input, database)})
-    output$WarningStudyAddShortCodeUnique <- renderText(CheckStudyAddShortCodeUnique())
-    
-    #PROTECT AGAINST STUDY SHORT CODE DUPLICATION
-    CheckStudyChangeShortCodeUnique <- reactive({helper.CheckStudyUnique("RenameStudyShortCode", type.dup = "short code", input, database)})
-    output$WarningStudyChangeShortCodeUnique <- renderText(CheckStudyChangeShortCodeUnique())
-    
-    # #CHECK IF BARCODES ARE ALREADY IN DATABASE
-    CheckStudyDeletion <- reactive({helper.CheckStudyDeletion(input, database)})
-    output$WarnStudyDeletion <- renderText(CheckStudyDeletion())
-
-    # ~~~ #
-    # Add #
-    # ~~~ #
+    StudyChangesChecks(input, database, output)
     
     #NEED TO TEST
     #ADD A STUDY TO THE DATABASE 
@@ -650,11 +480,7 @@ function(input, output, session) {
         })
     )
     
-    # ~~~~~~ #
-    # Modify #
-    # ~~~~~~ #
-
-    #RENAME A STUDY
+    # CHANGE A STUDY
     observe({
         observeEvent(
             input$RenameStudyAction,
@@ -734,12 +560,8 @@ function(input, output, session) {
                 UpdateStudyDropdowns(input, session)
               }
             }))})
-    
-    # ~~~~~~ #
-    # Delete #
-    # ~~~~~~ #
 
-        #REMOVE A STUDY FROM THE DATABASE
+        # DELETE A STUDY FROM THE DATABASE
         observe({
             observeEvent(
                 input$DeleteStudyAction,

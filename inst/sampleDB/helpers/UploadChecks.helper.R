@@ -1,4 +1,34 @@
 
+UploadChecks <- function(input, database, output){
+  # CHECK PLATE_ID IS UNIQUE
+  CheckUploadPlateDuplication <- reactive({helper.CheckUploadPlateDuplication(input, database)})
+  output$WarningUploadPlate <- renderText(CheckUploadPlateDuplication())
+  
+  # CHECK THAT COLNAMES ARE CORRECT
+  CheckUploadColnames <- reactive({helper.CheckUploadColnames(input, database)})
+  output$WarningUploadColnames <- renderText(CheckUploadColnames())
+  
+  # CHECK THAT DATE IS IN CORRECT FORMAT
+  CheckUploadDateFormat <- reactive({helper.CheckUploadDateFormat(input, database)})
+  output$WarningUploadDateFormat <- renderText(CheckUploadDateFormat())
+  
+  # CHECK THAT USR SPECIMEN TYPES ARE VALID
+  CheckUploadSpecimenTypes <- reactive({helper.CheckUploadSpecimenTypes(input, database)})
+  output$WarningUploadSpecimenTypes <- renderText(CheckUploadSpecimenTypes())
+  
+  # CHECK THAT USR STUDY SHORT CODES ARE VALID
+  CheckUploadStudyShortCode <- reactive({helper.CheckUploadStudyShortCodes(input, database)})
+  output$WarningUploadStudyShortCodes <- renderText(CheckUploadStudyShortCode())
+  
+  # CHECK THAT BARCODES ARE NOT IN DATABASE
+  CheckUploadPlateUniqBarcodeConstraint <- reactive({helper.CheckUploadPlateUniqBarcodeConstraint(input, database)})
+  output$WarningUploadBarcodeA <- renderText(CheckUploadPlateUniqBarcodeConstraint())
+  
+  CheckStudySubjectLongitudinal <- reactive({helper.CheckStudySubjectLongitudinal(input, database)})
+  output$WarningStudySubjectLongitudinal <- renderText(CheckStudySubjectLongitudinal())
+}
+################################################################################
+
 #NEED TO DROP NAs AND NA-LIKE ROWS (IE AS.CHAR(NA))... CAN PROBABLY DO SO DIRECTLY IN READ_CSV
 helper.CheckUploadPlateDuplication <- function(input, database){
   if(input$UploadPlateID != ""){

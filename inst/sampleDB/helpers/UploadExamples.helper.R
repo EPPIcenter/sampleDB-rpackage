@@ -1,6 +1,10 @@
 
+UploadExamples <- function(input, database, output){
+  output$ExampleUploadCSVNoDate <- renderPrint({helper.ExampleUploadCSVNoDate(database)})
+  output$ExampleUploadCSVDate <- renderPrint({helper.ExampleUploadCSVDate(database)}) 
+}
 
-
+################################################################################
 
 helper.ExampleUploadCSVDate <-  function(database){
   tibble(LocationRow = rep("A", 10),

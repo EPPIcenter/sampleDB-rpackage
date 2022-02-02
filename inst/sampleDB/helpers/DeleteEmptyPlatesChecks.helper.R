@@ -1,5 +1,10 @@
 
+DeletePlateChecks <- function(input, database, output){
+  WarningDeleteEmptyPlate <- reactive({helper.CheckDeleteEmptyPlate(input, database)})
+  output$WarningDeletePlateMessage <- renderText({WarningDeleteEmptyPlate()})
+}
 
+###############################################################################
 
 DeleteEmptyPlateRequirement <- function(input, database){
   #GET PLATE ID FROM PLATE NAME
