@@ -46,12 +46,17 @@ function(input, output, session) {
         
         #CHECK REQUIREMENTS
         UploadRequirements(input, database)
-        sampleDB::UploadSamples(database = database,
-                                barcode_file = input$UploadDataSet$datapath,
-                                plate_id = input$UploadPlateID,
-                                location = input$UploadLocation,
-                                session = session,
-                                output = output)
+        
+        # UPLOAD SAMPLES
+        sampleDB::UploadSamples(csv.upload = input$UploadDataSet$datapath,
+                                name.plate = input$UploadPlateID,
+                                location = input$UploadLocation)
+        
+        #UPDATE THE SEARCH DROPDOWNS
+        updateSelectizeInput(session = session,
+                             "SearchByPlateID",
+                             choices = c("", sampleDB::CheckTable(database = database, "matrix_plate")$uid),
+                             label = NULL)
         
         # PRINT UPLOAD MSG
         output$UploadReturnMessage2 <- renderText({"Upload Complete"})

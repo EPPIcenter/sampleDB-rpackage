@@ -50,16 +50,9 @@ helper.CheckUploadColnames <- function(input, database){
   
   if(!is.null(input$UploadDataSet$datapath)){
     message("CHECK: UPLOAD CSV COLUMN NAMES REQUIREMENTS")
-    if("TubeCode" %in% names(read.csv(input$UploadDataSet$datapath, check.names=FALSE))){
-      upload_names <- read.csv(input$UploadDataSet$datapath, check.names=FALSE) %>% tidyr::drop_na() %>% names()
-    }else{
-      upload_names <- read.csv(input$UploadDataSet$datapath, check.names=FALSE) %>% tidyr::drop_na() %>% names()
-    }
-    
-    # print(upload_names)
-    
+    upload_names <- read.csv(input$UploadDataSet$datapath, check.names=FALSE) %>% tidyr::drop_na() %>% names()
     out <- validate(need(all(names.traxer.nodate %in% upload_names) || all(names.traxer.date %in% upload_names) || all(names.visionmate.nodate %in% upload_names) || all(names.visionmate.date %in% upload_names), 
-                         "Failed: Malformed Colnames"))
+                         "Error: Malformed Colnames"))
   }else{
     out <- NULL
   }
@@ -76,7 +69,7 @@ helper.CheckUploadDateFormat <- function(input, database){
       collection_dates <- read.csv(input$UploadDataSet$datapath, check.names=FALSE) %>% tidyr::drop_na() %>% pull(collection_date)
       
       out <- validate(need(all(!is.na(parse_date_time(collection_dates, orders = "ymd")) == TRUE), 
-                           "Failed: All Collection Dates are Not in YMD format"))
+                           "Error: All Collection Dates are Not in YMD format"))
     }else{
         out <- NULL
     }
@@ -92,7 +85,7 @@ helper.CheckUploadSpecimenTypes <- function(input, database){
     message("CHECK: UPLOAD SPECIMEN TYPES EXISTS")
     specimen_types <- read_csv(input$UploadDataSet$datapath, col_types = cols()) %>% tidyr::drop_na() %>% pull(specimen_type)
     out <- validate(need(all(specimen_types %in% CheckTable(database = database, table = "specimen_type")$label), 
-                         "Failed: Specimen Type Not found... Consider creating a new specimen type"))
+                         "Error: Specimen Type Not found... Consider creating a new specimen type"))
   }else{
     out <- NULL
   }
@@ -103,9 +96,9 @@ helper.CheckUploadStudyShortCodes <- function(input, database){
   
   if(!is.null(input$UploadDataSet$datapath)){
     message("CHECK: UPLOAD STUDY CODE EXISTS")
-    stud_short_codes <- read_csv(input$UploadDataSet$datapath, col_types = cols()) %>% tidyr::drop_na() %>% pull(study_short_code)
-    out <- validate(need(all(stud_short_codes %in% CheckTable(database = database, table = "study")$short_code), 
-                         "Failed: Study Short Code Not found... Consider creating a new study"))
+    study_short_codes <- read_csv(input$UploadDataSet$datapath, col_types = cols()) %>% tidyr::drop_na() %>% pull(study_short_code)
+    out <- validate(need(all(study_short_codes %in% CheckTable(database = database, table = "study")$short_code), 
+                         "Error: Study Short Code Not found... Consider creating a new study"))
   }else{
     out <- NULL
   }
@@ -123,7 +116,7 @@ helper.CheckUploadPlateUniqBarcodeConstraint <- function(input, database){
     }
     barcodes.existing <- upload_barcodes[which(upload_barcodes %in% c(sampleDB::CheckTable(database = database, "matrix_tube")$barcode))]
     out <- validate(need(all(!(upload_barcodes %in% c(sampleDB::CheckTable(database = database, "matrix_tube")$barcode))), 
-                         paste("Failed: Barcode Unique Constraint", barcodes.existing)))
+                         paste("Error: Barcode Unique Constraint", barcodes.existing)))
   }else{
     out <- NULL
   }
@@ -166,7 +159,7 @@ helper.CheckStudySubjectLongitudinal <- function(input, database){
       )
     }
     
-    out <- validate(need(toggle, "Failed: Study Subject found in database. Longitudinal information required"))
+    out <- validate(need(toggle, "Error: Study Subject(s) in UploadCSV already exists in the database. To add information to a study subject a collection date is required."))
     
   }else{
     out <- NULL
