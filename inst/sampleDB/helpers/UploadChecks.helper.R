@@ -1,11 +1,13 @@
 
 #NEED TO DROP NAs AND NA-LIKE ROWS (IE AS.CHAR(NA))... CAN PROBABLY DO SO DIRECTLY IN READ_CSV
 helper.CheckUploadPlateDuplication <- function(input, database){
-  message("CHECK: UPLOAD PLATE NAME UNIQUENESS")
-  
-  toggle <- input$UploadPlateID %in% c(sampleDB::CheckTable(database = database, "matrix_plate")$uid)
-  out <- shinyFeedback::feedbackWarning("UploadPlateID", toggle, "Plate IDs must be unique")
-
+  if(input$UploadPlateID != ""){
+    message("CHECK: UPLOAD PLATE NAME UNIQUENESS")
+    toggle <- input$UploadPlateID %in% c(sampleDB::CheckTable(database = database, "matrix_plate")$uid)
+    out <- shinyFeedback::feedbackWarning("UploadPlateID", toggle, "Plate IDs must be unique")
+  }else{
+    out <- NULL
+  }
   return(out)
 }
 
@@ -53,6 +55,7 @@ helper.CheckUploadDateFormat <- function(input, database){
   }
     return(out)
 }
+
 helper.CheckUploadSpecimenTypes <- function(input, database){
   
   if(!is.null(input$UploadDataSet$datapath)){

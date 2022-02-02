@@ -173,7 +173,12 @@ function(input, output, session) {
       }
       
       # RETRIEVE SEARCH RESULTS
-
+      
+      # PLAN:
+      # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+      # Search function should be able to accept subject_ids as a vector or as a string #
+      # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+      
       # - SEARCH USING A SINGLE STUDY SUBJECT ID
       if(input$SubjectUIDSearchType == "one_at_a_time"){
         search_results <- sampleDB::SearchSamples(database = database,
@@ -218,6 +223,7 @@ function(input, output, session) {
                 )
     })
     
+    # CLEAR FILES
     observeEvent(
       input$ClearSearchBarcodes,
       ({
@@ -244,6 +250,11 @@ function(input, output, session) {
     # Move #
     #~~~~~~#
     
+    # PLAN:
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+    # Move function should take, as the `barcode_file` arg, a list of paths/to/file/platename.csv  #
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+    
     observeEvent(
       input$MoveAction,
       ({
@@ -263,7 +274,7 @@ function(input, output, session) {
         # WHEN REACTIVE UI IS CHANGED TO INDICATE AN UPLOAD
         if(input$RenameStudyLeadPerson == "a6sFH$DKdsbgGLY9"){
             
-          #CHECK REQUIREMENTS
+          # CHECK REQUIREMENTS
           # MoveRequirements(input, database)
             
           # MOVE SAMPLES
@@ -297,6 +308,11 @@ function(input, output, session) {
     ######################
     # Delete Empty Plate #
     ######################
+      
+    # PLAN:
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+    # Is this deleting plate function straightforward #
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
     
     WarningDeleteEmptyPlate <- reactive({helper.CheckDeleteEmptyPlate(input, database)})
     output$WarningDeletePlateMessage <- renderText({WarningDeleteEmptyPlate()})
@@ -325,39 +341,27 @@ function(input, output, session) {
     # FREEZERS #
     ############
     
+    # PLAN:
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+    # Make one or multiple functions for adding, deleting and modifying references #
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+    
+    
     # ~~~~~ #
     # Check #
     # ~~~~~ #
-    
+
     #PROTECT AGAINST REDUNDANT FREEZER NAMES
-    add_freezer_duplication_check <- reactive({
-      toggle <- input$AddFreezer %in% sampleDB::CheckTable(database = database, "location")$description
-      shinyFeedback::feedbackWarning("AddFreezer", toggle, "Freezer names must be unique")})
+    CheckFreezerNameAddUnique <- reactive({helper.CheckFreezerNameUnique("AddFreezer", type.dup = "names", input, database)})
+    output$WarningFreezerNameAddUnique <- renderText(CheckFreezerNameAddUnique())
     
     #PREVENT DUPLICATION OF FREEZER NAMES
-    modify_freezer_duplication_check <- reactive({
-      toggle <- input$RenameFreezer2 %in% c(sampleDB::CheckTable(database = database, "location")$description)
-      shinyFeedback::feedbackWarning("RenameFreezer2", toggle, "Freezer names must be unique")})
-    
-    # #CHECK THAT UID FILE IS PROPERLY FORMED
-    # modify_freezer_duplication_check2 <- reactive({
-    # 
-    #     validate(
-    #       need(!(input$RenameFreezer2 %in% c(sampleDB::CheckTable(database = database, "location")$description)),
-    #            "Failed: Barcode File is Malformed")
-    #     )
-    # })
+    CheckFreezerNameChangeUnique <- reactive({helper.CheckFreezerNameUnique("RenameFreezer2", type.dup = "names", input, database)})
+    output$WarningFreezerNameChangeUnique <- renderText(CheckFreezerNameChangeUnique())
     
     #PREVENT DELETION OF FREEZER THAT IS IN USE
-    delete_freezer_delete_warning_check <- reactive({
-      freezer_id <- CheckTable(database = database, "location") %>% filter(description == input$DeleteFreezer) %>% pull(id)
-      toggle <- freezer_id %in% sampleDB::CheckTable(database = database, "matrix_plate")$location_id
-      shinyFeedback::feedbackWarning("DeleteFreezer", toggle, "Freezer is currently is use")})
-    
-    output$add_freezer_warning <- renderText(add_freezer_duplication_check())
-    output$modify_freezer_warning <- renderText(modify_freezer_duplication_check())
-    # output$modify_freezer_warning2 <- renderText(modify_freezer_duplication_check2())
-    output$delete_freezer_delete_warning <- renderText(delete_freezer_delete_warning_check())
+    CheckFreezerDeletion <- reactive({helper.CheckFreezerDeletion(input, database)})
+    output$WarningFreezerDeletion <- renderText(CheckFreezerDeletion())
     
     # ~~~ #
     # Add #
@@ -371,34 +375,31 @@ function(input, output, session) {
         #SAVE FREEZER NAMES INVOLVED
         new.freezer <- input$AddFreezer
         
-        #ADD FREEZER IF IT HAS A UNIQUE NAME
-        if(!(new.freezer %in% c(sampleDB::CheckTable(database = database, "location")$description))){
-          sampleDB::AddToTable(database = database, "location",
-                               list(created = as.character(lubridate::now("UTC")),
-                                    last_updated = as.character(lubridate::now("UTC")),
-                                    description = input$AddFreezer))          
-          #PRINT MESSAGE
-          output$FreezerReturnMessage <- renderText({paste("Added Freezer", new.freezer, emoji('tada'))})
-        }else{
-          #PRINT MESSAGE
-          output$FreezerReturnMessage <- renderText({paste("Error")})
-        }
+        #SET REQUIREMENTS
+        req(input$AddFreezer,
+            !(new.freezer %in% c(sampleDB::CheckTable(database = database, "location")$description)))
+        
+        #ADD FREEZER NAME
+        sampleDB::AddToTable(database = database, "location",
+                             list(created = as.character(lubridate::now("UTC")),
+                                  last_updated = as.character(lubridate::now("UTC")),
+                                  description = input$AddFreezer))          
+        
+        #PRINT EXIT MESSAGE
+        output$FreezerReturnMessage <- renderText({paste("Added Freezer", new.freezer, emoji('tada'))})
 
         #MODIFY TABLE
         ShowFreezers(output, database)
 
         #UPDATE DROPDOWNS
-        updateTextInput(session, "AddFreezer", value = "", placeholder = "New Name")
-        updateSelectInput(session, "RenameFreezer1", choices = c("", sampleDB::CheckTable(database = database, "location")$description))
-        updateSelectInput(session, "DeleteFreezer", choices =  c("", sampleDB::CheckTable(database = database, "location")$description))
-
+        UpdateFreezerDropdowns(database, session)
       }))
 
     # ~~~~~~ #
-    # Modify #
+    # CHANGE #
     # ~~~~~~ #
     
-    #MODIFY FREEZER NAMES
+    #CHANGE FREEZER NAMES
     observeEvent(
       input$RenameFreezerAction,
       ({
@@ -408,28 +409,26 @@ function(input, output, session) {
         new.name <- input$RenameFreezer2
         
         #MODIFY TABLE IF NEW FREEZER NAME IS UNIQUE
-        if(!(new.name %in% c(sampleDB::CheckTable(database = database, "location")$description))){
-          sampleDB::ModifyTable(database = database, table_name = "location",
-                                info_list = list(created = as.character(filter(sampleDB::CheckTable(database = database, "location"), 
-                                                                               description == input$RenameFreezer1)$created),
-                                                 last_updated = as.character(lubridate::now("UTC")),
-                                                 description = input$RenameFreezer2),
-                                id = as.character(filter(sampleDB::CheckTable(database = database, "location"), description == input$RenameFreezer1)$id))
-          #PRINT EXIT MESSAGE
-          output$FreezerReturnMessage <- renderText({paste("Renamed Freezer", old.name, "to", new.name, emoji('tada'))})
-        }else{
-          #PRINT EXIT MESSAGE
-          output$FreezerReturnMessage <- renderText({paste("Error")})
-        }
+        req(input$RenameFreezer1,
+            input$RenameFreezer2,
+            !(new.name %in% c(sampleDB::CheckTable(database = database, "location")$description)))
+        
+        #CHANGE FREEZER NAME
+        sampleDB::ModifyTable(database = database, table_name = "location",
+                              info_list = list(created = as.character(filter(sampleDB::CheckTable(database = database, "location"), 
+                                                                             description == input$RenameFreezer1)$created),
+                                               last_updated = as.character(lubridate::now("UTC")),
+                                               description = input$RenameFreezer2),
+                              id = as.character(filter(sampleDB::CheckTable(database = database, "location"), description == input$RenameFreezer1)$id))
+        
+        #PRINT EXIT MESSAGE
+        output$FreezerReturnMessage <- renderText({paste("Renamed Freezer", old.name, "to", new.name, emoji('tada'))})
         
         #REFRESH REFERENCES
         ShowFreezers(output, database)
 
         #UPDATE DROPDOWNS
-        updateTextInput(session = session, "RenameFreezer2", value = "", placeholder = "New Name")
-        updateSelectInput(session = session, inputId = "RenameFreezer1", choices = c("", sampleDB::CheckTable(database = database, "location")$description))
-        updateSelectInput(session = session, inputId = "DeleteFreezer", choices = c("", sampleDB::CheckTable(database = database, "location")$description))
-        
+        UpdateFreezerDropdowns(database, session)
         }))
 
     # ~~~~~~ #
@@ -444,24 +443,21 @@ function(input, output, session) {
         #SAVE FREEZER NAMES INVOLVED
         delete.freezer <- input$DeleteFreezer
         
-        #DELETE FREEZER IF FREEZER IS NOT IN USE
-        if(!(filter(sampleDB::CheckTable(database = database, "location"), description == delete.freezer)$id %in% sampleDB::CheckTable(database = database, "matrix_plate")$location_id)){
-          sampleDB::DeleteFromTable(database = database, table_name = "location",
-                                    id = as.character(filter(sampleDB::CheckTable(database = database, "location"),
-                                                             description == input$DeleteFreezer)$id))          
-          #PRINT EXIT MESSAGE
-          output$FreezerReturnMessage <- renderText({paste("Deleted Freezer", delete.freezer, emoji('tada'))})
-        }else{
-          #PRINT EXIT MESSAGE
-          output$FreezerReturnMessage <- renderText({paste("Error")})
-        }
-
+        #SET REQUIREMENTS
+        req(input$DeleteFreezer,
+            !(filter(sampleDB::CheckTable(database = database, "location"), description == delete.freezer)$id %in% sampleDB::CheckTable(database = database, "matrix_plate")$location_id))
+        
+        #DELETE FREEZER
+        sampleDB::DeleteFromTable(database = database, table_name = "location",
+                                  id = as.character(filter(sampleDB::CheckTable(database = database, "location"), description == input$DeleteFreezer)$id))          
+        #PRINT EXIT MESSAGE
+        output$FreezerReturnMessage <- renderText({paste("Deleted Freezer", delete.freezer, emoji('tada'))})
+        
         #REFRESH REFERENCES
         ShowFreezers(output, database)
 
         #UPDATE DROPDOWNS
-        updateSelectInput(session, inputId = "RenameFreezer1", choices = c("", sampleDB::CheckTable(database = database, "location")$description))
-        updateSelectInput(session, inputId = "DeleteFreezer", choices =  c("", sampleDB::CheckTable(database = database, "location")$description))
+        UpdateFreezerDropdowns(database, session)
       })
     )
 
@@ -477,25 +473,16 @@ function(input, output, session) {
     # ~~~~~ #
 
     #PROTECT AGAINST SPECIMEN TYPE NAME DUPLICATION
-    add_specimen_type_duplication_check <- reactive({
-        toggle <- input$AddSpecimenType %in% c(sampleDB::CheckTable(database = database, "specimen_type") %>% dplyr::select(label) %>% dplyr::pull())
-        shinyFeedback::feedbackWarning("AddSpecimenType", toggle, "Specimen Type names must be unique")})
+    CheckAddSpecimenTypeUnique <- reactive({helper.CheckSpecimenTypeUnique("AddSpecimenType", type.dup = "names", input, database)})
+    output$WaringAddSpecimenTypeUnique <- renderText(CheckAddSpecimenTypeUnique())
     
     #PREVENT REPLICATE SPECIMEN TYPE NAMES
-    modify_specimen_type_duplication_check <- reactive({
-      toggle <- input$RenameSpecimenType2 %in% c(sampleDB::CheckTable(database = database, "specimen_type") %>% dplyr::select(label) %>% dplyr::pull())
-      shinyFeedback::feedbackWarning("RenameSpecimenType2", toggle, "Specimen Type names must be unique")})
-    
+    CheckChangeSpecimenTypeUnique <- reactive({helper.CheckSpecimenTypeUnique("RenameSpecimenType2", type.dup = "names", input, database)})
+    output$WarningChangeSpecimenTypeUnique <- renderText(CheckChangeSpecimenTypeUnique())
     
     #PROTECT AGAINST DELETION OF SPECIMEN TYPE IN USE
-    delete_specimen_delete_warning_check <- reactive({
-      specimen_type_id <- CheckTable(database = database, "specimen_type") %>% filter(label == input$DeleteSpecimenType) %>% pull(id)
-      toggle <- specimen_type_id %in% sampleDB::CheckTable(database = database, "specimen")$specimen_type_id
-      shinyFeedback::feedbackWarning("DeleteSpecimenType", toggle, "Specimen Type is currently is use")})
-    
-    output$delete_specimen_delete_warning <- renderText(delete_specimen_delete_warning_check())
-    output$add_specimen_type_warning <- renderText(add_specimen_type_duplication_check())
-    output$modify_specimen_type_warning <- renderText(modify_specimen_type_duplication_check())
+    CheckSpecimenTypeDeletion <- reactive({helper.CheckSpecimenTypeDeletion(input, database)})
+    output$WarningSpecimenTypeDeletion <- renderText(CheckSpecimenTypeDeletion())
 
     # ~~~ #
     # Add #
@@ -509,34 +496,31 @@ function(input, output, session) {
           #SAVE SPECIMEN_TYPE NAMES INVOLVED
           new.specimen_type <- input$AddSpecimenType
           
-          #ADD SPECIMEN TYPE IF IT IS UNIQUE
-          if(!(input$AddSpecimenType %in% c(sampleDB::CheckTable(database = database, "specimen_type")$label))){
-            
-            sampleDB::AddToTable(database = database, "specimen_type",
-                                 list(created = as.character(lubridate::now("UTC")),
-                                      last_updated = as.character(lubridate::now("UTC")),
-                                      label = input$AddSpecimenType))
-            
-            output$SpecimenReturnMessage <- renderText({paste("Added Specimen Type", new.specimen_type, emoji('tada'))})
-            
-          }else{
-            output$SpecimenReturnMessage <- renderText({paste("Error")})
-          }
+          #SET REQUIREMENT
+          req(input$AddSpecimenType,
+              !(new.specimen_type %in% c(sampleDB::CheckTable(database = database, "specimen_type")$label)))
+          
+          #ADD SPECIMEN TYPE
+          sampleDB::AddToTable(database = database, "specimen_type",
+                               list(created = as.character(lubridate::now("UTC")),
+                                    last_updated = as.character(lubridate::now("UTC")),
+                                    label = input$AddSpecimenType))
+          
+          #PRINT EXIT MESSAGE
+          output$SpecimenReturnMessage <- renderText({paste("Added Specimen Type", new.specimen_type, emoji('tada'))})
           
           #REFRESH REFERENCES
           ShowSpecimenTypes(output, database)
 
           #UPDATE DROPDOWNS
-          updateTextInput(session = session, "AddSpecimenType", value = "", placeholder = "New Name")
-          updateSelectInput(session = session, inputId = "RenameSpecimenType1", choices = c("", sampleDB::CheckTable(database = database, "specimen_type")$label))
-          updateSelectInput(session = session, inputId = "DeleteSpecimenType", choices = c("", sampleDB::CheckTable(database = database, "specimen_type")$label))
+          UpdateSpecimenTypeDropdowns(database, session)
         }))
 
     # ~~~~~~ #
-    # Modify #
+    # Change #
     # ~~~~~~ #
     
-    #RENAME A SPECIMEN TPYE
+    #CHANGE A SPECIMEN TPYE
     observeEvent(
       input$RenameSpecimenTypeAction,
       ({
@@ -545,28 +529,26 @@ function(input, output, session) {
         old.name <- input$RenameSpecimenType1
         new.name <- input$RenameSpecimenType2
               
-        #RENAME SPECIMEN_TYPE IF IT IS UNIQUE
-        if(!(new.name %in% c(sampleDB::CheckTable(database = database, "specimen_type")$label))){
-          
-          sampleDB::ModifyTable(database = database, table_name = "specimen_type",
-                                info_list = list(created = as.character(filter(sampleDB::CheckTable(database = database, "specimen_type"), label == input$RenameSpecimenType1)$created),
-                                                 last_updated = as.character(lubridate::now("UTC")),
-                                                 label = input$RenameSpecimenType2),
-                                id = as.character(filter(sampleDB::CheckTable(database = database, "specimen_type"), label == input$RenameSpecimenType1)$id))
-          
-          output$SpecimenReturnMessage <- renderText({paste("Renamed Specimen Type", old.name, "to", new.name, emoji('tada'))})
-          
-        }else{
-          output$SpecimenReturnMessage <- renderText({paste("Error")})
-        }
+        #CHANGE SPECIMEN_TYPE IF IT IS UNIQUE
+        req(input$RenameSpecimenType1,
+            input$RenameSpecimenType2,
+            !(new.name %in% c(sampleDB::CheckTable(database = database, "specimen_type")$label)))
+        
+        #CHANGE SPECIMEN TYPE NAME
+        sampleDB::ModifyTable(database = database, table_name = "specimen_type",
+                              info_list = list(created = as.character(filter(sampleDB::CheckTable(database = database, "specimen_type"), label == input$RenameSpecimenType1)$created),
+                                               last_updated = as.character(lubridate::now("UTC")),
+                                               label = input$RenameSpecimenType2),
+                              id = as.character(filter(sampleDB::CheckTable(database = database, "specimen_type"), label == input$RenameSpecimenType1)$id))
+        
+        #PRINT EXIT MESSAGE
+        output$SpecimenReturnMessage <- renderText({paste("Renamed Specimen Type", old.name, "to", new.name, emoji('tada'))})
 
         #REFRESH REFERENCES
         ShowSpecimenTypes(output, database)
 
         #UPDATE DROPDOWNS
-        updateTextInput(session = session, "RenameSpecimenType2", value = "", placeholder = "New Name")
-        updateSelectInput(session = session, inputId = "RenameSpecimenType1", choices = c("", sampleDB::CheckTable(database = database, "specimen_type")$label))
-        updateSelectInput(session = session, inputId = "DeleteSpecimenType", choices = c("", sampleDB::CheckTable(database = database, "specimen_type")$label))
+        UpdateSpecimenTypeDropdowns(database, session)
         }))
 
     # ~~~~~~ #
@@ -580,21 +562,24 @@ function(input, output, session) {
           
           #SAVE SPECIMEN_TYPE NAMES INVOLVED
           delete.specimen_type <- input$DeleteSpecimenType
-            
-          if(!(filter(sampleDB::CheckTable(database = database, "specimen_type"), label == delete.specimen_type)$id %in% sampleDB::CheckTable(database = database, "specimen")$specimen_type_id)){
-            sampleDB::DeleteFromTable(database = database, table_name = "specimen_type",
-                                      id = as.character(filter(sampleDB::CheckTable(database = database, "specimen_type"), label == input$DeleteSpecimenType)$id))
-            output$SpecimenReturnMessage <- renderText({paste("Deleted Specimen Type", input$DeleteSpecimenType, emoji('tada'))}) 
-          }else{
-            output$SpecimenReturnMessage <- renderText({paste("Error")})
-          }
+          
+          #SET REQUIREMENT
+          req(input$DeleteSpecimenTypeAction,
+              !(filter(sampleDB::CheckTable(database = database, "specimen_type"), label == delete.specimen_type)$id %in% sampleDB::CheckTable(database = database, "specimen")$specimen_type_id))
+          
+          #DELETE SPECIMEN TYPE
+          sampleDB::DeleteFromTable(database = database, 
+                                    table_name = "specimen_type",
+                                    id = as.character(filter(sampleDB::CheckTable(database = database, "specimen_type"), label == input$DeleteSpecimenType)$id))
+          
+          #PRINT EXIT MESSAGE
+          output$SpecimenReturnMessage <- renderText({paste("Deleted Specimen Type", input$DeleteSpecimenType, emoji('tada'))})
 
           #REFRESH REFERENCES
           ShowSpecimenTypes(output, database)
 
           #UPDATE DROPDOWNS
-          updateSelectInput(session = session, inputId = "RenameSpecimenType1", choices = c("", sampleDB::CheckTable(database = database, "specimen_type")$label))
-          updateSelectInput(session = session, inputId = "DeleteSpecimenType", choices = c("", sampleDB::CheckTable(database = database, "specimen_type")$label))
+          UpdateSpecimenTypeDropdowns(database, session)
         }))
 
     #IDLY PRESENT SPECIMEN TYPES
@@ -609,55 +594,39 @@ function(input, output, session) {
     # ~~~~~ #
 
     #PROTECT AGAINST STUDY NAME DUPLICATION
-    add_study_title_duplication_check <- reactive({
-      toggle <- input$AddStudyTitle %in% c(sampleDB::CheckTable(database = database, "study")$title)
-      shinyFeedback::feedbackWarning("AddStudyTitle", toggle, "Study titles must be unique")})
-
-    #PROTECT AGAINST STUDY SHORT CODE DUPLICATION
-    add_study_short_code_duplication_check <- reactive({
-      toggle <- input$AddStudyShortCode %in% c(sampleDB::CheckTable(database = database, "study")$short_code)
-      shinyFeedback::feedbackWarning("AddStudyShortCode", toggle, "Study short codes must be unique")})
+    CheckStudyAddTitleUnique <- reactive({helper.CheckStudyUnique("AddStudyTitle", type.dup = "title", input, database)})
+    output$WarningStudyAddTitleUnique <- renderText(CheckStudyAddTitleUnique())
     
     #PROTECT AGAINST STUDY NAME DUPLICATION
-    rename_study_title_duplication_check <- reactive({
-      toggle <- input$RenameStudyTitle %in% c(sampleDB::CheckTable(database = database, "study")$title)
-      shinyFeedback::feedbackWarning("RenameStudyTitle", toggle, "Study titles must be unique")})
+    CheckStudyChangeTitleUnique <- reactive({helper.CheckStudyUnique("RenameStudyTitle", type.dup = "title", input, database)})
+    output$WarningStudyChangeTitleUnique <- renderText(CheckStudyChangeTitleUnique())
+
+    #PROTECT AGAINST STUDY SHORT CODE DUPLICATION
+    CheckStudyAddShortCodeUnique <- reactive({helper.CheckStudyUnique("AddStudyShortCode", type.dup = "short code", input, database)})
+    output$WarningStudyAddShortCodeUnique <- renderText(CheckStudyAddShortCodeUnique())
     
     #PROTECT AGAINST STUDY SHORT CODE DUPLICATION
-    rename_study_short_code_duplication_check <- reactive({
-      toggle <- input$RenameStudyShortCode %in% c(sampleDB::CheckTable(database = database, "study")$short_code)
-      shinyFeedback::feedbackWarning("RenameStudyShortCode", toggle, "Study short codes must be unique")})
+    CheckStudyChangeShortCodeUnique <- reactive({helper.CheckStudyUnique("RenameStudyShortCode", type.dup = "short code", input, database)})
+    output$WarningStudyChangeShortCodeUnique <- renderText(CheckStudyChangeShortCodeUnique())
     
     # #CHECK IF BARCODES ARE ALREADY IN DATABASE
-    CheckActiveStudyDelete <- reactive({
-      if(!is.null(input$TableStudy_rows_selected)){
-        id <- sampleDB::CheckTable(database = database, "study")[input$TableStudy_rows_selected,]$"id"
-        validate(
-          need(!(id %in% sampleDB::CheckTable(database = database, "study_subject")$study_id),
-               "Study currently in use. Cannot Delete.")
-        )
-      }
-    })
-    
-    output$add_study_title_warning <- renderText(add_study_title_duplication_check())
-    output$add_study_short_code_warning <- renderText(add_study_short_code_duplication_check())
-    output$rename_study_title_warning <- renderText(rename_study_title_duplication_check())
-    output$rename_study_short_code_warning <- renderText(rename_study_short_code_duplication_check())
-    output$WarnActiveStudyDelete <- renderText(CheckActiveStudyDelete())
+    CheckStudyDeletion <- reactive({helper.CheckStudyDeletion(input, database)})
+    output$WarnStudyDeletion <- renderText(CheckStudyDeletion())
 
     # ~~~ #
     # Add #
     # ~~~ #
     
+    #NEED TO TEST
     #ADD A STUDY TO THE DATABASE 
     observeEvent(
         input$AddStudyAction,
         ({
           
-          #SAVE STUDY NAMES INVOLVED
-          new.title <- input$AddStudyTitle
-          new.short_code <- input$AddStudyShortCode
+          # SET REQUIREMENTS
+          AddStudyRequirements(input)
           
+          #SAVE STUDY NAMES INVOLVED
           info_list <- list(created = as.character(lubridate::now("UTC")),
                             last_updated = as.character(lubridate::now("UTC")),
                             title = input$AddStudyTitle,
@@ -665,28 +634,19 @@ function(input, output, session) {
                             short_code = input$AddStudyShortCode,
                             is_longitudinal = input$AddStudyIsLongitudinal,
                             lead_person = input$AddStudyLeadPerson,
-                            hidden = input$AddStudyIsHidden) %>%
-            discard(function(x) x == "")
+                            hidden = input$AddStudyIsHidden)
           
-          # - CHECK THAT ALL ENTRIES ARE USED
-          if(all(c("created", "last_updated", "title", "description", "short_code", "is_longitudinal", "lead_person", "hidden") %in% names(info_list))){
-            # - CHECK THAT NEW STUDY HAS UNIQUE TITLE & SHORT CODE
-            if(!(new.title %in% sampleDB::CheckTable(database = database, "study")$title) & !(new.short_code %in% sampleDB::CheckTable(database = database, "study")$short_code)){
-              sampleDB::AddToTable(database = database, "study",
-                                   info_list = info_list)
-              output$StudyReturnMessage <- renderText({paste("Added Study to the Database", emoji('tada'))})
-            }else{
-              output$StudyReturnMessage <- renderText({paste("Error")})
-            } 
-          }else{
-            output$StudyReturnMessage <- renderText({paste("Missing Entries")})
-          }
+          #ADD STUDY
+          sampleDB::AddToTable(database = database, "study", info_list = info_list)
+          
+          #PRINT EXIT MESSAGE
+          output$StudyReturnMessage <- renderText({paste("Added Study to the Database", emoji('tada'))})
 
           #REFRESH REFERENCES
           ShowStudies(output, database)
 
           #UPDATE DROPDOWNS
-          StudyUpdateAddDropdowns(session)
+          UpdateStudyDropdowns(session)
         })
     )
     
@@ -771,7 +731,7 @@ function(input, output, session) {
                 ShowStudies(output, database)
                 
                 #UPDATE DROPDOWNS
-                StudyUpdateRenameDropdowns(session)
+                UpdateStudyDropdowns(input, session)
               }
             }))})
     

@@ -51,13 +51,6 @@ navbarPage("SampleDB",
                         textOutput("WarningUploadDateFormat"),
                         textOutput("WarningStudySubjectLongitudinal"),
 
-                    # fluidRow(
-                    #   column(
-                    #     width = 12,
-                    #     selectizeInput("UploadStudyShortCode",
-                    #                    choices = c("", sampleDB::CheckTable(database = database, "study")$short_code),
-                    #                    label = "Study Name"))),
-
                     fluidRow(
                       column(
                         width = 12,
@@ -297,7 +290,7 @@ navbarPage("SampleDB",
                                                  actionButton("AddFreezerAction",
                                                               label = "Add",
                                                               style="color: #fff; background-color: #337ab7; border-color: #2e6da4"))),
-                                        textOutput("add_freezer_warning"),
+                                        textOutput("WarningFreezerNameUnique"),
 
                                         HTML("<h3>Rename a Freezer</h3>"),
                                         fluidRow(
@@ -371,7 +364,7 @@ navbarPage("SampleDB",
                                                  actionButton("AddSpecimenTypeAction",
                                                               label = "Add",
                                                               style="color: #fff; background-color: #337ab7; border-color: #2e6da4"))),
-                                          textOutput("add_specimen_type_warning"),
+                                          textOutput("WaringAddSpecimenTypeUnique"),
 
                                         HTML("<h3>Rename a Specimen Type</h3>"),
                                         fluidRow(
@@ -394,7 +387,7 @@ navbarPage("SampleDB",
                                             actionButton("RenameSpecimenTypeAction",
                                                          label = "Rename",
                                                          style="color: #fff; background-color: #337ab7; border-color: #2e6da4")),
-                                          textOutput("modify_specimen_type_warning")),
+                                          textOutput("WarningChangeSpecimenTypeUnique")),
 
                                         h3("Remove a Specimen Type"),
                                         fluidRow(
@@ -404,7 +397,7 @@ navbarPage("SampleDB",
                                                         label = NULL,
                                                         choices = c("", sampleDB::CheckTable(database = database, "specimen_type")$label),
                                                         selected = 1))),
-                                        textOutput("delete_specimen_delete_warning"),
+                                        textOutput("WarningSpecimenTypeDeletion"),
 
                                         fluidRow(
                                           column(
@@ -473,8 +466,8 @@ navbarPage("SampleDB",
                                                  actionButton("AddStudyAction",
                                                               label = "Add",
                                                               style = "color: #fff; background-color: #337ab7; border-color: #2e6da4"))),
-                                        textOutput("add_study_title_warning"),
-                                        textOutput("add_study_short_code_warning"),
+                                        textOutput("WarningStudyAddTitleUnique"),
+                                        textOutput("WarningStudyAddShortCodeUnique"),
 
                                         h3("Rename a Study"),
                                         fluidRow(
@@ -524,15 +517,15 @@ navbarPage("SampleDB",
                                             actionButton("RenameStudyAction",
                                                          label = "Rename",
                                                          style="color: #fff; background-color: #337ab7; border-color: #2e6da4"))),
-                                        textOutput("rename_study_title_warning"),
-                                        textOutput("rename_study_short_code_warning"),
+                                        textOutput("WarningStudyChangeTitleUnique"),
+                                        textOutput("WarningStudyChangeShortCodeUnique"),
 
                                         h3("Remove a Study"),
                                         
                                         fluidRow(
                                           column(
                                             width = 8,
-                                            textOutput("WarnActiveStudyDelete"),
+                                            textOutput("WarnStudyDeletion"),
                                         
                                         fluidRow(
                                           column(
