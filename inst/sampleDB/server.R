@@ -9,7 +9,7 @@ library(emojifont)
 library(shinyjs)
 library(DT)
 library(purrr)
-for(helper in list.files(path = "helpers", full.names = T)){source(helper, local = TRUE)}
+for(helper in list.files(path = "helpers", full.names = T, recursive = T)){source(helper, local = TRUE)}
 
 function(input, output, session) {
 
@@ -19,9 +19,9 @@ function(input, output, session) {
     #SERVER-SIDE DROPDOWN -- SAVES LOADING TIME
     updateSelectizeInput(session, 'SearchBySubjectUID', choices = c("", sampleDB::CheckTable(database = database, "study_subject")$uid %>% unique()), server = TRUE)
 
-    ##################
-    # Upload Samples #
-    ##################
+    ###########################
+    # Upload Micronix Samples #
+    ###########################
     
     # PERFORM UPLOAD CHECKS... PRINT GOOD USER MESSAGES
     UploadChecks(input, database, output)
@@ -71,7 +71,27 @@ function(input, output, session) {
 
     # EXAMPLES
     UploadExamples(input, database, output)
-
+    
+    ###########################
+    # Upload Cryo Samples #
+    ###########################
+    
+    # EXAMPLES
+    output$ExampleUploadCryoCSVNoDate <- renderPrint({tibble(row = 1:10,
+                                                           column = 1:10,
+                                                           label = c("A","B","C","D","E","F","G","H","I","J"),
+                                                           study_subject = CheckTable(database = database, "study_subject")$uid %>% head(10),
+                                                           specimen_type = "PLASMA",
+                                                           study_code = "KAM06") %>% as.data.frame()})
+    
+    output$ExampleUploadCryoCSVDate <- renderPrint({tibble(row = 1:10,
+                                                             column = 1:10,
+                                                             label = c("A","B","C","D","E","F","G","H","I","J"),
+                                                             study_subject = CheckTable(database = database, "study_subject")$uid %>% head(10),
+                                                             specimen_type = "PLASMA",
+                                                             study_code = "KAM06",
+                                                             collection_date = paste("2022", "1", c(1,1,1,2,2,2,3,3,3,4), sep = "-")) %>% as.data.frame()})
+    
     ##################
     # Search Samples #
     ##################

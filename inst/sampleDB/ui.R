@@ -13,8 +13,8 @@ library(shinyWidgets)
 database <- "/databases/sampledb_database.sqlite"
 
 navbarPage("SampleDB",
-
-           tabPanel("Upload New Samples",
+           navbarMenu("Upload New Wetlab Samples",
+           tabPanel("Upload New Micronix Tube Samples",
 
                     shinyFeedback::useShinyFeedback(),
                     shinyjs::useShinyjs(),
@@ -31,14 +31,14 @@ navbarPage("SampleDB",
                     fluidRow(
                       column(4,
 
-                        HTML("<h4><b>Upload Samples Form</b></h4>"),
+                        HTML("<h4><b>Upload Micronix Samples Form</b></h4>"),
                         br(),
                         
                         fluidRow(
                           column(
                             width = 12,
                             fileInput("UploadDataSet",
-                                      "SampleDB UploadCSV",
+                                      "Upload a UploadMicronixCSV CSV",
                                       multiple = TRUE,
                                       accept = c("text/csv", "text/comma-separated-values,text/plain", ".csv"))
                             )),
@@ -91,7 +91,7 @@ navbarPage("SampleDB",
                       column(8,
                         fluidRow(
                           br(),
-                          HTML("<h4>This is an <b>Example SampleDB UploadCSV</b> from VisionMate.</h4>"),
+                          HTML("<h4>This is an <b>Example SampleDB UploadMicronixCSV</b> from VisionMate.</h4>"),
                           column(12,
                                  verbatimTextOutput("ExampleUploadCSVNoDate")),
                           HTML("<h5>To create this table join the <code>LocationRow</code>,
@@ -103,7 +103,7 @@ navbarPage("SampleDB",
                           fluidRow(
                              HTML("<h4><b>Alternatives to VisionMate Format</b></h4>"),
                              HTML("<h5>If your data is was formatted using a different micronix instrument the process for
-                                  creating a SampleDB UploadCSV is the same. Simply add the <code>study_subject_id</code>
+                                  creating a UploadMicronixCSV is the same. Simply add the <code>study_subject_id</code>
                                   and <code>specimen_type</code> columns to your existing columns and the CSV is ready for upload.
                                   In other words uploading is agnostic with respect to the format of the micronix information</h5>")),
 
@@ -112,10 +112,86 @@ navbarPage("SampleDB",
                              HTML("<h5>Simply append a column named <code>collection_date</code> to your CSV in order to add
                                   longitudinal information to the samples. (Date format is YMD.)</h5>"),
                              br(),
-                             HTML("<center><h4><b>Example SampleDB UploadCSV</b> with <code>collection_date</code> Column</h4></center>"),
+                             HTML("<center><h4><b>Example SampleDB UploadMicronixCSV</b> with <code>collection_date</code> Column</h4></center>"),
                              column(12,
                                     verbatimTextOutput("ExampleUploadCSVDate")
                              ))))),
+           
+           tabPanel("Upload New Cryo Samples",
+                    fluidRow(
+                      column(4,
+                             
+                             HTML("<h4><b>Upload Cryo Samples Form</b></h4>"),
+                             br(),
+                             
+                             fluidRow(
+                               column(
+                                 width = 12,
+                                 fileInput("UploadCryoSamples",
+                                           "Upload a UploadCryoCSV CSV",
+                                           multiple = TRUE,
+                                           accept = c("text/csv", "text/comma-separated-values,text/plain", ".csv"))
+                               )),
+                             fluidRow(
+                               column(
+                                 width = 12,
+                                 textInput("UploadBoxID",
+                                           label = "Unique Box Name"))),
+                             fluidRow(
+                               column(
+                                 width = 6,
+                                 hr()
+                                 )),
+                             
+                             fluidRow(
+                               column(
+                                 width = 12,
+                                 selectInput("UploadLocationCryoFreezerName",
+                                             label = "Freezer Name",
+                                             choices = c("", sampleDB::CheckTable(database = database, "location")$description)),
+                                 selectInput("UploadLocationCryoLevelI",
+                                             label = HTML("<h5>Level I</h5>"),
+                                             width = '25%',
+                                             choices = c("", sampleDB::CheckTable(database = database, "location")$description)),
+                                 selectInput("UploadLocationCryoLevelII",
+                                             label = HTML("<h5>Level I</h5>"),
+                                             width = '25%',
+                                             choices = c("", sampleDB::CheckTable(database = database, "location")$description)))),
+                             fluidRow(
+                               column(
+                                 width = 12,
+                                 actionButton("UploadActionCryoSamples",
+                                              label = "Upload Dataset",
+                                              style="color: #fff; background-color: #337ab7; border-color: #2e6da4"),
+                                 actionButton("ClearUploadFormCryoSamples",
+                                              label = "Clear Form"),
+                               )),
+                      ),
+                      column(8,
+                             fluidRow(
+                               br(),
+                               HTML("<h4>This is an <b>Example SampleDB UploadCryoCSV</b>.</h4>"),
+                               column(12,
+                                      verbatimTextOutput("ExampleUploadCryoCSVNoDate")
+                                      ),
+                               HTML("<h5>The combination of <code>study_subject</code>, <code>specimen_type</code> and <code>study_code</code> must be unique.
+                                    Consider adding a collection_date for the sample</h5>")
+                             ),
+                             fluidRow(
+                               HTML("<h4><b>Longitudinal Data</b></h4>"),
+                               HTML("<h5>Simply append a column named <code>collection_date</code> to your CSV in order to add
+                                  longitudinal information to the samples. (Date format is YMD.)</h5>"),
+                               br(),
+                               HTML("<center><h4><b>Example SampleDB UploadCryoCSV</b> with <code>collection_date</code> Column</h4></center>"),
+                               column(12,
+                                      verbatimTextOutput("ExampleUploadCryoCSVDate")
+                               ),
+                               HTML("<h5>The combination of <code>study_subject</code>, <code>specimen_type</code>, <code>study_code</code> and <code>collection_date</code> must be unique</h5>"))
+                             )
+                    )
+                    
+                    ),
+           ),
 
            tabPanel("Search Existing Samples",
 
