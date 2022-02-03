@@ -147,19 +147,34 @@ helper.CheckStudySubjectLongitudinal <- function(input, database){
   if(!is.null(input$UploadDataSet$datapath)){
     message("CHECK: STUDY SUBJECT LONGITUDINAL REQUIREMENTS")
     csv <- read.csv(input$UploadDataSet$datapath, check.names = F)
-    tmp_table.study_subject <- inner_join(CheckTable(database = database, "study_subject")[, c("uid", "study_id")],
-                                          tibble(uid = csv$"study_subject_id", study_id = filter(CheckTable(database = database, "study"), short_code %in% csv$study_short_code)$id, short_code = csv$"study_short_code"),
-                                          by = c("uid", "study_id"))
-    if(nrow(tmp_table.study_subject) > 0){
-      if(!("collection_date" %in% names(csv))){
+    
+    tmp_table.specimen <- tibble(uid = csv$"study_subject_id", 
+                                 study_id = filter(CheckTable(database = database, "study"), short_code %in% csv$study_short_code)$id, 
+                                 specimen_type_id = filter(CheckTable(database = database, "specimen_type"), label %in% csv$specimen_type)$id)
+    
+    tmp_table.specimen <- inner_join(CheckTable(database = database, "study_subject"),
+                                     tmp_table.specimen,
+                                     by = c("uid", "study_id"))
+    
+    if(nrow(tmp_table.specimen) != 0){
+      
+      if("collection_date" %in% names(csv)){
+        tmp_table.specimen$collection_date <- csv$collection_date
+      }else{
+        tmp_table.specimen$collection_date <- NA
+      } 
+      
+      #CHECK IF SPECIMEN ALREADY EXISTS
+      tmp_table.specimen <- inner_join(CheckTable(database = database, "specimen"), 
+                                       tmp_table.specimen %>% rename("study_subject_id" = "id"), 
+                                       by = c("study_subject_id", "specimen_type_id", "collection_date"))
+      
+      if(nrow(tmp_table.specimen) > 0){
         toggle <- FALSE
       }
-      if(NA %in% inner_join(tmp_table.study_subject %>% distinct(), csv, by = c("uid" = "study_subject_id", "short_code" = "study_short_code"))$collection_date)(
-        toggle <- FALSE
-      )
     }
-    
-    out <- validate(need(toggle, "Error: Study Subject(s) in UploadCSV already exists in the database. To add information to a study subject a collection date is required."))
+
+    out <- validate(need(toggle, "Error: Specimen already exists in the database. Specimen Unique Constraint: SUBJECT + STUDY + SPECIMEN TYPE + COLLECTION DATE"))
     
   }else{
     out <- NULL

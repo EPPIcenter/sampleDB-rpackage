@@ -6,18 +6,89 @@
 ReformatUploadCSV <- function(csv.upload){
 
   if(!("LocationRow" %in% names(csv.upload))){
-    csv.upload.reformatted <- drop_na(csv.upload) %>%
+    csv.reformatted <- drop_na(csv.upload) %>%
       mutate(barcode = `Tube ID`,
              well_position = paste0(substring(Position, 1, 1), substring(Position, 2))) %>%
       select(-c(Position:Date))
     message("UploadCSV from Traxer detected...")
   }else{
-    csv.upload.reformatted <- drop_na(csv.upload) %>%
+    csv.reformatted <- drop_na(csv.upload) %>%
       mutate(barcode = TubeCode,
              well_position = paste0(LocationRow, LocationColumn)) %>%
       select(-c(LocationRow, LocationColumn, TubeCode))
     message("UploadCSV from VisionMate detected...")
   }
   
-  return(csv.upload.reformatted)
+  return(csv.reformatted)
+}
+
+
+UploadMicronixChecks <- function(input, database, location, name.plate, csv.upload, csv.reformatted){
+  # PERFORM CHECKS
+  
+  # CHECK PLATE NAME IS UNIQUE
+  if(!location %in% c(sampleDB::CheckTable(database = database, "location")$description)){
+    stop("FREEZER NAME DOES NOT EXITS")
+  }
+  
+  # CHECK PLATE NAME IS UNIQUE
+  if(name.plate %in% c(sampleDB::CheckTable(database = database, "matrix_plate")$uid)){
+    stop("PLATE NAME IS NOT UNIQUE")
+  }
+  
+  #CHECK COLNAMES ARE NOT MALFORMED
+  names.traxer.nodate <- c("Position", "Tube ID",	"Status",	"Error Count",	"Rack ID",	"Date", "study_subject_id", "specimen_type", "study_short_code")
+  names.traxer.date <- c("Position", "Tube ID",	"Status",	"Error Count",	"Rack ID",	"Date", "study_subject_id", "specimen_type", "study_short_code", "collection_date")
+  names.visionmate.nodate <- c("LocationRow", "LocationColumn", "TubeCode", "study_subject_id", "specimen_type", "study_short_code")
+  names.visionmate.date <- c("LocationRow", "LocationColumn", "TubeCode", "study_subject_id", "specimen_type", "study_short_code", "collection_date")
+  if(all(names.traxer.nodate %in% names(csv.upload)) || all(names.traxer.date %in% names(csv.upload)) || all(names.visionmate.nodate %in% names(csv.upload)) || all(names.visionmate.date %in% names(csv.upload))){
+  }else{
+    stop("UPLOADCSV COLNAMES ARE MALFORMED")
+  }
+  
+  # CHECK DATE (IF PRESENT) IS IN CORRECT FORMAT
+  if("collection_date" %in% names(csv.reformatted)){
+    if(is.na(parse_date_time(csv.reformatted$"collection_date", orders = "ymd")) == TRUE){
+      stop("COLLECTION DATE MUSE BE YMD")
+    }
+  }
+  
+  # CHECK THAT SPECIMEN TYPE(S) EXISTS
+  if(!all(csv.reformatted$"specimen_type" %in% CheckTable(database = database, table = "specimen_type")$label)){
+    stop("ERROR: SPECIMEN TYPE(S) NOT FOUND")
+  }
+  
+  # CHECK THAT NO BARCODE ALREADY EXISTS -- NEEDS TO BE REFLECTED IN UPLOADCHECKS.HELPER.R
+  if(all(!csv.reformatted$barcode %in% c(sampleDB::CheckTable(database = database, "matrix_tube")$barcode))){
+  }else{
+    barcodes.existing <- csv.reformatted$barcode[which(csv.reformatted$barcode %in% c(sampleDB::CheckTable(database = database, "matrix_tube")$barcode))]
+    stop(paste("Error: Barcode Unique Constraint", barcodes.existing))
+  }
+  
+  # CHECK THAT STUDY SUBJECT UID IS PRESENT IF IT IS REQUIRED
+  tmp_table.specimen <- tibble(uid = csv.reformatted$"study_subject_id", 
+                               study_id = filter(CheckTable(database = database, "study"), short_code %in% csv.reformatted$study_short_code)$id, 
+                               specimen_type_id = filter(CheckTable(database = database, "specimen_type"), label %in% csv.reformatted$specimen_type)$id)
+  
+  tmp_table.specimen <- inner_join(CheckTable(database = database, "study_subject"),
+                                   tmp_table.specimen,
+                                   by = c("uid", "study_id"))
+  
+  if(nrow(tmp_table.specimen) != 0){
+    
+    if("collection_date" %in% names(csv.reformatted)){
+      tmp_table.specimen$collection_date <- csv.reformatted$collection_date
+    }else{
+      tmp_table.specimen$collection_date <- NA
+    } 
+    
+    #CHECK IF SPECIMEN ALREADY EXISTS
+    tmp_table.specimen <- inner_join(CheckTable(database = database, "specimen"), 
+                                     tmp_table.specimen %>% rename("study_subject_id" = "id"), 
+                                     by = c("study_subject_id", "specimen_type_id", "collection_date"))
+    
+    if(nrow(tmp_table.specimen) > 0){
+      stop("SPECIMEN ALREADY EXISTS IN THE DATABASE. SPECIMENS UNIQUE CONSTRAINT: SUBJECT + STUDY + SPECIMEN TYPE + COLLECTION DATE")
+    }
+  }
 }
