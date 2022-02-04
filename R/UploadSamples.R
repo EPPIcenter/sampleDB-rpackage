@@ -1,3 +1,10 @@
+#' Upload EPPIcenter Wetlab Samples to the sampleDB database
+#' 
+#' @param csv.upload An UploadCSV
+#' @param name.plate A plate name
+#' @param location A freezer in the lab
+#' @examples
+#' UploadSamples(csv.upload = "/path/to/UploadCSV.csv", name.plate = "dummy_name", location = "Left -20 Freezer")
 #' @import dplyr
 #' @import RSQLite
 #' @import emojifont

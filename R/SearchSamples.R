@@ -1,3 +1,10 @@
+#' Search for Wetlab Samples in the EPPIcenter sampleDB database
+#' 
+#' @param filters A list containing micronix barcodes, plate name, study code, location and/or specimen_type
+#' @param study_subject.file TRUE or FALSE
+#' @examples
+#' SearchSamples(filters = list(name.plate = c("100","101"), name.location = c("Left -20 Freezer")))
+#' SearchSamples(filters = list(file.barcodes = "/path/to/barcodes.csv", name.plate = "dummy_name", name.study = "dummy_study", name.location = "fridge", name.specimen_type = "specimen_type1"))
 #' @import dplyr
 #' @import RSQLite
 #' @import emojifont
