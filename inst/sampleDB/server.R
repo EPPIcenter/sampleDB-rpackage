@@ -117,60 +117,44 @@ function(input, output, session) {
     # ACTIVELY USE UI FILTERS TO RENDER A TABLE WITH SEARCH RESULTS
     observe({
 
-      # GET BARCODES IF BARCODE FILE IS PROVIDED
-      if(is.null(input$SearchByBarcode$datapath)){
-        barcode_search_file <- ""
-      }else{
-        barcode_search_file <- input$SearchByBarcode$datapath
-      }
-
-      # GET STUDY SUBJECT ID IF STUDY SUBJECT ID FILE IS PROVIDED
-      if(is.null(input$SearchBySubjectUIDFile$datapath)){
-        subjectuid_search_uids <- ""
-      }else{
-        subjectuid_search_uids <- read_csv(input$SearchBySubjectUIDFile$datapath)$subject_uid
-        subjectuid_search_uids <- subjectuid_search_uids[subjectuid_search_uids != ""] # remove any blank entries that may be in vector
-      }
+      filters <- list(file.barcodes = input$SearchByBarcode$datapath,
+                      name.plate = input$SearchByPlateID,
+                      name.study = input$SearchByStudy,
+                      name.location = input$SearchByLocation,
+                      name.specimen_type = input$SearchBySpecimenType)
       
       # RETRIEVE SEARCH RESULTS
-      
-      # PLAN:
-      # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
-      # Search function should be able to accept subject_ids as a vector or as a string #
-      # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
-      
-      # - SEARCH USING A SINGLE STUDY SUBJECT ID
-      if(input$SubjectUIDSearchType == "one_at_a_time"){
-        search_results <- sampleDB::SearchSamples(database = database,
-                                                  barcode_search_file = barcode_search_file,
-                                                  search_plate_uid = input$SearchByPlateID,
-                                                  search_subject_uid = input$SearchBySubjectUID,
-                                                  search_study = input$SearchByStudy,
-                                                  search_location = input$SearchByLocation,
-                                                  search_specimen_type = input$SearchBySpecimenType)
+      if(input$SubjectUIDSearchType == "individual"){
+        filters$name.study_subject <- input$SearchBySubjectUID
+        search_results <- sampleDB::SearchSamples(discard(filters, function(x) "" %in% x), study_subject.file = F)
       }else{
-        
-        # - SEARCH USING MULTIPLE STUDY SUBJECT IDs
-        search_results <- sampleDB::SearchSamples(database = database,
-                                                  barcode_search_file = barcode_search_file,
-                                                  search_plate_uid = input$SearchByPlateID,
-                                                  search_subject_uid = subjectuid_search_uids,
-                                                  search_study = input$SearchByStudy,
-                                                  search_location = input$SearchByLocation,
-                                                  search_specimen_type = input$SearchBySpecimenType)
-
+        filters$name.study_subject <- input$SearchBySubjectUIDFile$datapath
+        search_results <- sampleDB::SearchSamples(discard(filters, function(x) "" %in% x), study_subject.file = T)
       }
 
       # PRINT SEARCH RESULTS
       output$SearchResultsTable <- DT::renderDataTable({
-          
-        search_results
+        if(is.null(search_results)){
+          tibble(`Well Position` = NA,
+                 `Barcode` = NA,
+                 `Study Subject` = NA,
+                 `Study Code` = NA,
+                 `Specimen Type` = NA,
+                 `Storage Location` = NA,
+                 `Plate Name` = NA,
+                 `Collected Date` = NA) %>% 
+            filter(`Well Position` == 0)
+        }else{
+          search_results 
+        }
         
       },
         options = list(
           searching = T,
           paging = T,
-          language = list(zeroRecords = "No samples match filters given")))
+          pageLength = 20,
+          lengthMenu = c(10, 20, 50, 100),
+          language = list(zeroRecords = "There are no EPPIcenter Wetlab Samples that match this search.")))
 
       # DOWNLOAD SEARCH RESULTS
       output$downloadData <- downloadHandler(

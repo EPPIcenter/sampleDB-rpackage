@@ -194,74 +194,31 @@ navbarPage("SampleDB",
            ),
 
            tabPanel("Search Existing Samples",
-
-                    h4("Use Filters Below to Populate the Search Results Table", align = "center"),
-                    br(),
-                    fluidRow(
-                      column(
-                        width = 4,
-                        fileInput("SearchByBarcode",
-                                  HTML("Barcode - single column named \"barcode\""),
-                                  multiple = FALSE),
-                        actionButton("ClearSearchBarcodes", label = "Clear Barcodes")),
-                        textOutput("WarnSubjectBarcodeFileColnames"),
-                        textOutput("WarnSubjectBarcodeFileColnames2"),
-                      
-                      column(
-                        width = 4,
-                        selectizeInput("SearchByPlateID",
-                                       "Plate Name",
-                                       choices = c("", sampleDB::CheckTable(database = database, "matrix_plate")$uid))),
-
-                      column(
-                        width = 4,
-                        radioButtons("SubjectUIDSearchType", label = "Study-Subject Search Method",
-                                     choices = list("Single UID" = "one_at_a_time", "Multiple UIDs -- column named \"subject_uid\"" = "multiple"),
-                                     selected = "one_at_a_time"),
-
+                    sidebarLayout(
+                      sidebarPanel(
+                        width = 2,
+                        HTML("<h4>Search Filters</h4>"),
+                        hr(),
+                        fileInput("SearchByBarcode", label = HTML("Barcode <h6>Single column named \"barcode\"</h6>")), actionButton("ClearSearchBarcodes", label = "Clear Barcodes"), textOutput("WarnSubjectBarcodeFileColnames"), textOutput("WarnSubjectBarcodeFileColnames2"),
+                        br(),
+                        selectizeInput("SearchByPlateID", "Plate Name", choices = c("", sampleDB::CheckTable(database = database, "matrix_plate")$uid)),
+                        selectizeInput("SearchByStudy", "Study", choices = c("", sampleDB::CheckTable(database = database, "study")$short_code)),
+                        selectizeInput("SearchByLocation", "Storage Location", choices = c("", sampleDB::CheckTable(database = database, "location")$description)),
+                        selectizeInput("SearchBySpecimenType", "Specimen Type", choices = c("", sampleDB::CheckTable(database = database, "specimen_type")$label)),
+                        radioButtons("SubjectUIDSearchType", label = "Study Subject Search Method", choices = list("Single Study Subject" = "individual", "Multiple Study Subjects" = "multiple"), selected = "individual"),
                         conditionalPanel(
-                          condition = "input.SubjectUIDSearchType == \"one_at_a_time\"",
-                          selectizeInput("SearchBySubjectUID",
-                                    label = "Study-Subject ID (UID)",
-                                    choices = NULL)),
-
+                          condition = "input.SubjectUIDSearchType == \"individual\"",
+                            selectizeInput("SearchBySubjectUID", label = "Study Subject", choices = NULL)),
                         conditionalPanel(
                           condition = "input.SubjectUIDSearchType == \"multiple\"",
-                          fileInput("SearchBySubjectUIDFile",
-                                    label = "Study-Subject ID (UID)"),
-                          actionButton("ClearSearchUIDFile", label = "Clear Subject IDs")))),
-                    textOutput("WarnSubjectUIDFileColnames"),
-                    textOutput("WarnSubjectUIDFileColnames2"),
-
-                    fluidRow(
-                      column(
-                        width = 4,
-                        selectizeInput("SearchByStudy",
-                                       "Study",
-                                       choices = c("", sampleDB::CheckTable(database = database, "study")$short_code))),
-                      column(
-                        width = 4,
-                        selectizeInput("SearchByLocation",
-                                       "Storage Location",
-                                       choices = c("", sampleDB::CheckTable(database = database, "location")$description))),
-                      column(
-                        width = 4,
-                        selectizeInput("SearchBySpecimenType",
-                                       "Specimen Type",
-                                       choices = c("", sampleDB::CheckTable(database = database, "specimen_type")$label)))),
-
-                    hr(),
-                    fluidRow(
-                      column(
-                        width = 12,
-                        HTML("<center><h3><b>Search Results</b></h3></center>"),
-                        DT::dataTableOutput("SearchResultsTable"))),
-
-                    br(),
-                    fluidRow(
-                      column(
-                        width = 12,
-                        downloadButton("downloadData", "Download")))),
+                            fileInput("SearchBySubjectUIDFile", label = HTML("Study Subjects <h6>Single column named \"subject_uid\"</h6>")), actionButton("ClearSearchUIDFile", label = "Clear Study Subjects")), textOutput("WarnSubjectUIDFileColnames"), textOutput("WarnSubjectUIDFileColnames2")
+                      ),
+                    mainPanel(
+                      width = 10,
+                          DT::dataTableOutput("SearchResultsTable"),
+                          downloadButton("downloadData", "Download")
+                    ))
+           ),
 
            tabPanel("Move Samples",
 
