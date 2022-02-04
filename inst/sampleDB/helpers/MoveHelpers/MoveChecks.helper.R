@@ -18,7 +18,7 @@ helper.CheckMoveColnames <- function(input, database){
     list.move <- list()
     for(i in 1:length(input$MoveDataSet[,1])){
       plate.name <- input$MoveDataSet[[i, 'name']] %>% gsub("\\.csv","",.)
-      list.move[[plate.name]] <- read_csv(input$MoveDataSet[[i, 'datapath']], col_types = cols()) %>% drop_na()
+      list.move[[plate.name]] <- read_csv(input$MoveDataSet[[i, 'datapath']], col_types = cols()) %>% tidyr::drop_na()
     }
     
     toggle <- TRUE

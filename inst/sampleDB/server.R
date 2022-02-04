@@ -203,13 +203,19 @@ function(input, output, session) {
             
           # CHECK REQUIREMENTS
           # MoveRequirements(input, database)
-            
-          # MOVE SAMPLES -- FUN INPUT SHOULD PROBABLY BE A LIST OF FILES
-          message <- sampleDB::MoveTubes(barcode_file = input$MoveDataSet)
           
+          eval.file.barcode <- list()
+          for(i in 1:length(input$MoveDataSet[,1])){
+            plate.name <- input$MoveDataSet[[i, 'name']] %>% gsub("\\.csv","",.)
+            eval.file.barcode[[plate.name]] <- input$MoveDataSet[[i, 'datapath']]
+          }
+          
+          # MOVE SAMPLES -- FUN INPUT SHOULD PROBABLY BE A LIST OF FILES
+          message <- sampleDB::MoveTubes(file.barcode = eval.file.barcode)
+
           # PRINT UPLOAD MSG
           output$MoveReturnMessage2 <- renderText({message})
-          
+
           # RESET UI VALUE
           updateTextInput(session = session, "RenameStudyLeadPerson", value = "")
         }

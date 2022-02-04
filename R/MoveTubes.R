@@ -6,72 +6,19 @@
 #' @import lubridate
 #' @export
 
-MoveTubes <- function(barcode_file){
+MoveTubes <- function(file.barcode){
   
   database <- "/databases/sampledb_database.sqlite"
-
-  # CREATE A LIST WHERE THE KEY IS THE FILENAME AND THE VALUE IS THE CSV
-  list.move <- list()
-  for(i in 1:length(barcode_file[,1])){
-    plate.name <- barcode_file[[i, 'name']] %>% gsub("\\.csv","",.)
-    list.move[[plate.name]] <- read_csv(barcode_file[[i, 'datapath']], col_types = cols()) %>% drop_na()
-  }
-
-  # TEST WHETHER MOVE WILL PRODUCE ORPHANS
-  # GET A COPY OF THE PLATES INVOLVED IN THE MOVE - SAVE AS A LIST WITH KEYS BEING FILENAMES
-  test.list <- list()
-  for(plate.name in names(list.move)){
-    eval.plate_id <- filter(CheckTable(database = database, "matrix_plate"), uid == plate.name)$id
-    test.list[[as.character(eval.plate_id)]] <- filter(CheckTable(database = database, "matrix_tube"), plate_id == eval.plate_id)
-  }
   
-  # MAKE A LIST WHERE EACH PLATE IS CONVERTED TO A DUMMY PLATE
-  # - MAKE DUMMY PLATE LIST
-  dummy.list <- test.list
+  # READ IN FILES
+  list.move <- modify(file.barcode, function(x){x <- read_csv(x, col_types = cols()) %>% drop_na()})
   
-  # - CHANGE DUMMY LIST PLATES
-  for(i in 1:length(names(dummy.list))){
-    eval.plate_id <- names(dummy.list)[i]
-    dummy.list[[eval.plate_id]]$"plate_id" <- -(i)
-  }
+  # RUN CHECKS
+  toggle <- MovePlatesOrphanCheck(list.move, database)[[1]]
+  dummy.tbl <- MovePlatesOrphanCheck(list.move, database)[[2]]
   
-  # - ROW BIND DUMMY PLATES
-  dummy.tbl <- bind_rows(dummy.list)
-  
-  # USE CSVS TO ASSIGN PLATES TO TUBES
-  for(csv.name in names(list.move)){
-    
-    # - GET MOVECSV
-    csv <- list.move[[csv.name]]
-    
-    # - GET PLATE_ID 
-    eval.plate_id <- filter(sampleDB::CheckTable(database = database, "matrix_plate"), uid == csv.name)$id
-    
-    # - GET DATA FOR MOVE (BARCODE, WELL, POS)
-    for (i in 1:nrow(csv)){
-      if("TubeCode" %in% names(csv)){
-        eval.barcode <- csv[i,]$"TubeCode"
-        eval.well <- csv[i,]$"LocationRow"
-        eval.pos <- csv[i,]$"LocationColumn"
-      }else{
-        eval.barcode <- csv[i,]$"Tube ID"
-        eval.well <- csv[i,]$"Position" %>% substring(., 1, 1)
-        eval.pos <- csv[i,]$"Position" %>% substring(., 2)
-      }
-      
-      #GET ROW BARCODE IS IN
-      m <- which(dummy.tbl$barcode == eval.barcode)
-      
-      # PUT THAT BARCODE/TUBE IN A NEW PLATE
-      dummy.tbl[m, "plate_id"] <- eval.plate_id
-      
-      # PUT THAT BARCODE/TUBE IN A WELL
-      dummy.tbl[m, "well_position"] <- paste0(eval.well, eval.pos)
-    }
-  }
-  
-  # TEST IF NEG NUM IS IN PLATE_ID, CAN TEST IF LENGTH(UNIQ(PASTE(EVAL.WELL,PLATE.ID))) == NUMBER OF ROWS...MAY WANT TO DROP ALL NA'S FROM READIN CSV
-  if(!all(dummy.tbl$plate_id > 0)){
+  # MOVE SAMPLES IN DATABASE
+  if(toggle){
     
     # GET BARCODE STILL IN DUMMY PLATE
     barcode.missing <- filter(dummy.tbl, plate_id < 0)$barcode
