@@ -67,13 +67,13 @@ helper.CheckStudyUnique <- function(id.input, type.dup, input, database){
 }
 
 helper.CheckFreezerDeletion <- function(input, database){
-  freezer_id <- CheckTable(database = database, "location") %>% filter(description == input$DeleteFreezer) %>% pull(id)
+  freezer_id <- sampleDB::CheckTable(database = database, "location") %>% filter(description == input$DeleteFreezer) %>% pull(id)
   toggle <- freezer_id %in% sampleDB::CheckTable(database = database, "matrix_plate")$location_id
   shinyFeedback::feedbackWarning("DeleteFreezer", toggle, "Freezer is currently is use") 
 }
 
 helper.CheckSpecimenTypeDeletion <- function(input, database){
-  specimen_type_id <- CheckTable(database = database, "specimen_type") %>% filter(label == input$DeleteSpecimenType) %>% pull(id)
+  specimen_type_id <- sampleDB::CheckTable(database = database, "specimen_type") %>% filter(label == input$DeleteSpecimenType) %>% pull(id)
   toggle <- specimen_type_id %in% sampleDB::CheckTable(database = database, "specimen")$specimen_type_id
   shinyFeedback::feedbackWarning("DeleteSpecimenType", toggle, "Specimen Type is currently is use")
 }

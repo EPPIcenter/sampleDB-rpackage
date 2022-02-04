@@ -6,7 +6,9 @@
 #' @import lubridate
 #' @export
 
-MoveTubes <- function(database, barcode_file, plate_type, new_plate_uid, existing_plate_uid, location, session){
+MoveTubes <- function(barcode_file){
+  
+  database <- "/databases/sampledb_database.sqlite"
 
   # CREATE A LIST WHERE THE KEY IS THE FILENAME AND THE VALUE IS THE CSV
   list.move <- list()

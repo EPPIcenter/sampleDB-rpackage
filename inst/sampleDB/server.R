@@ -204,14 +204,8 @@ function(input, output, session) {
           # CHECK REQUIREMENTS
           # MoveRequirements(input, database)
             
-          # MOVE SAMPLES
-          message <- sampleDB::MoveTubes(database = database,
-                              barcode_file = input$MoveDataSet,
-                              plate_type = input$MovePlateType,
-                              new_plate_uid = input$MovePlateID,
-                              existing_plate_uid = input$MoveExistingPlateID,
-                              location = input$MoveLocation,
-                              session = session)
+          # MOVE SAMPLES -- FUN INPUT SHOULD PROBABLY BE A LIST OF FILES
+          message <- sampleDB::MoveTubes(barcode_file = input$MoveDataSet)
           
           # PRINT UPLOAD MSG
           output$MoveReturnMessage2 <- renderText({message})
@@ -264,7 +258,7 @@ function(input, output, session) {
     # Make one or multiple functions for adding, deleting and modifying references #
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
     
-    FreezerChangesChecks(input, databases, output)
+    FreezerChangesChecks(input, database, output)
 
     #ADD FREEZER TO DATABASE
     observeEvent(
