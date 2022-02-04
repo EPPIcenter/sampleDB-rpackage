@@ -1,3 +1,8 @@
+#' Move Wetlab Samples in the EPPIcenter sampleDB database
+#' 
+#' @param file.barcode A list containing an item for each plate involved in the move. Key is plate name, value is path to MoveCSV
+#' @examples
+#' sampleDB::MoveTubes(file.barcode = list("name1" = "~/path/name1.csv", "name2" = "~/path/name2.csv"))
 #' @import dplyr
 #' @import RSQLite
 #' @import emojifont
