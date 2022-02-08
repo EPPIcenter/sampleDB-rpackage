@@ -40,7 +40,7 @@ UploadMicronixChecks <- function(input, database, location, name.plate, csv.uplo
   names.traxer.date <- c("Position", "Tube ID",	"Status",	"Error Count",	"Rack ID",	"Date", "study_subject_id", "specimen_type", "study_short_code", "collection_date")
   names.visionmate.nodate <- c("LocationRow", "LocationColumn", "TubeCode", "study_subject_id", "specimen_type", "study_short_code")
   names.visionmate.date <- c("LocationRow", "LocationColumn", "TubeCode", "study_subject_id", "specimen_type", "study_short_code", "collection_date")
-  if(all(names.traxer.nodate %in% names(csv.upload)) || all(names.traxer.date %in% names(csv.upload)) || all(names.visionmate.nodate %in% names(csv.upload)) || all(names.visionmate.date %in% names(csv.upload))){
+  if(setequal(names.traxer.nodate, names(csv.upload)) || setequal(names.traxer.date, names(csv.upload)) || setequal(names.visionmate.nodate, names(csv.upload)) || setequal(names.visionmate.date, names(csv.upload))){
   }else{
     stop("UPLOADCSV COLNAMES ARE MALFORMED")
   }

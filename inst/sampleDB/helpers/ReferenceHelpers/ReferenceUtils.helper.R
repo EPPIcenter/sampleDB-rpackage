@@ -17,17 +17,18 @@ UpdateSpecimenTypeDropdowns <- function(database, session){
 }
 
 #STUDY UPLATE DROPDOWNS
-UpdateStudyDropdowns <- function(session){
+UpdateStudyDropdowns <- function(database, session){
   updateTextInput(session = session, "AddStudyTitle", value = "", placeholder = "New Title")
   updateTextInput(session = session, "AddStudyDescription", value = "", placeholder = "New Description")
   updateTextInput(session = session, "AddStudyLeadPerson", value = "", placeholder = "New Lead Person")
   updateTextInput(session = session, "AddStudyShortCode", value = "", placeholder = "New Short Code")
   updateCheckboxInput(session = session, "AddStudyIsLongitudinal", value = FALSE)
   updateCheckboxInput(session = session, "AddStudyIsHidden", value = FALSE)
-  updateTextInput(session = session, "RenameStudyTitle", value = "", placeholder = "New Title")
-  updateTextInput(session = session, "RenameStudyDescription", value = "", placeholder = "New Description")
-  updateTextInput(session = session, "RenameStudyLeadPerson", value = "", placeholder = "New Lead Person")
-  updateTextInput(session = session, "RenameStudyShortCode", value = "", placeholder = "New Short Code")
+  updateTextInput(session = session, "RenameStudyTitle", value = "",)
+  updateTextInput(session = session, "RenameStudyDescription", value = "",)
+  updateTextInput(session = session, "RenameStudyLeadPerson", value = "",)
+  updateTextInput(session = session, "RenameStudyShortCode", value = "",)
+  updateSelectInput(session = session, "ChangeStudyShortCode", choices = c("", sampleDB::CheckTable(database = database, "study")$short_code))
   updateCheckboxInput(session = session, "RenameStudyIsLongitudinal", value = FALSE)
   updateCheckboxInput(session = session, "RenameStudyIsHidden", value = FALSE)
 }

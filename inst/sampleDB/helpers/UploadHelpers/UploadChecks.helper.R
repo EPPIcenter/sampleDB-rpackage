@@ -51,7 +51,7 @@ helper.CheckUploadColnames <- function(input, database){
   if(!is.null(input$UploadDataSet$datapath)){
     message("CHECK: UPLOAD CSV COLUMN NAMES REQUIREMENTS")
     upload_names <- read.csv(input$UploadDataSet$datapath, check.names=FALSE) %>% tidyr::drop_na() %>% names()
-    out <- validate(need(all(names.traxer.nodate %in% upload_names) || all(names.traxer.date %in% upload_names) || all(names.visionmate.nodate %in% upload_names) || all(names.visionmate.date %in% upload_names), 
+    out <- validate(need(setequal(names.traxer.nodate, upload_names) || setequal(names.traxer.date, upload_names) || setequal(names.visionmate.nodate, upload_names) || setequal(names.visionmate.date, upload_names), 
                          "Error: Malformed Colnames"))
   }else{
     out <- NULL

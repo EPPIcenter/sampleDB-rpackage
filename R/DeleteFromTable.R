@@ -11,18 +11,24 @@ DeleteFromTable <- function(database, table_name, id){
   if(table_name == "location"){
     if(!(id %in% sampleDB::CheckTable(database = database, "matrix_plate")$location_id)){
       RSQLite::dbSendQuery(conn, paste0("DELETE FROM ", table_name, " WHERE id = ", id,";"))
+    }else{
+      warning("Storage Location is in use, it cannot be deleted.")
     }
   }
 
   else if(table_name == "study"){
     if(!(id %in% sampleDB::CheckTable(database = database, "study_subject")$study_id)){
       RSQLite::dbSendQuery(conn, paste0("DELETE FROM ", table_name, " WHERE id = ", id,";"))
+    }else{
+      warning("Study is in use, it cannot be deleted.")
     }
   }
 
   else if(table_name == "specimen_type"){
     if(!(id %in% sampleDB::CheckTable(database = database, "specimen")$specimen_type_id)){
       RSQLite::dbSendQuery(conn, paste0("DELETE FROM ", table_name, " WHERE id = ", id,";"))
+    }else{
+      warning("Specimen Type is in use, it cannot be deleted.")
     }
   }
   
