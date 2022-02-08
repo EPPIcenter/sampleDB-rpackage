@@ -204,6 +204,7 @@ function(input, output, session) {
           # CHECK REQUIREMENTS
           # MoveRequirements(input, database)
           
+          #CREATE LIST FOR MOVE
           eval.file.barcode <- list()
           for(i in 1:length(input$MoveDataSet[,1])){
             plate.name <- input$MoveDataSet[[i, 'name']] %>% gsub("\\.csv","",.)
@@ -231,10 +232,9 @@ function(input, output, session) {
     # Delete Empty Plate #
     ######################
       
-    # PLAN:
-    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
-    # Is this deleting plate function straightforward #
-    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+    # CAN THIS FUN BE USED IN THE CONSOLE? #
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
     
     DeletePlateChecks(input, database, output)
     
@@ -277,12 +277,11 @@ function(input, output, session) {
         #SET REQUIREMENTS
         req(input$AddFreezer,
             !(new.freezer %in% c(sampleDB::CheckTable(database = database, "location")$description)))
-        
+
         #ADD FREEZER NAME
-        sampleDB::AddToTable(database = database, "location",
-                             list(created = as.character(lubridate::now("UTC")),
-                                  last_updated = as.character(lubridate::now("UTC")),
-                                  description = input$AddFreezer))          
+        sampleDB::UpdateReferences(reference = "freezer",
+                                   operation = "add",
+                                   information = list(NewFreezerName = new.freezer))
         
         #PRINT EXIT MESSAGE
         output$FreezerReturnMessage <- renderText({paste("Added Freezer", new.freezer, emoji('tada'))})
@@ -309,12 +308,10 @@ function(input, output, session) {
             !(new.name %in% c(sampleDB::CheckTable(database = database, "location")$description)))
         
         #CHANGE FREEZER NAME
-        sampleDB::ModifyTable(database = database, table_name = "location",
-                              info_list = list(created = as.character(filter(sampleDB::CheckTable(database = database, "location"), 
-                                                                             description == input$RenameFreezer1)$created),
-                                               last_updated = as.character(lubridate::now("UTC")),
-                                               description = input$RenameFreezer2),
-                              id = as.character(filter(sampleDB::CheckTable(database = database, "location"), description == input$RenameFreezer1)$id))
+        sampleDB::UpdateReferences(reference = "freezer",
+                                   operation = "modify",
+                                   information = list(NewFreezerName = new.name,
+                                                      OldFreezerName = old.name))
         
         #PRINT EXIT MESSAGE
         output$FreezerReturnMessage <- renderText({paste("Renamed Freezer", old.name, "to", new.name, emoji('tada'))})
@@ -339,8 +336,9 @@ function(input, output, session) {
             !(filter(sampleDB::CheckTable(database = database, "location"), description == delete.freezer)$id %in% sampleDB::CheckTable(database = database, "matrix_plate")$location_id))
         
         #DELETE FREEZER
-        sampleDB::DeleteFromTable(database = database, table_name = "location",
-                                  id = as.character(filter(sampleDB::CheckTable(database = database, "location"), description == input$DeleteFreezer)$id))          
+        sampleDB::UpdateReferences(reference = "freezer",
+                                   operation = "delete",
+                                   information = list(DeleteFreezerName = delete.freezer))
         #PRINT EXIT MESSAGE
         output$FreezerReturnMessage <- renderText({paste("Deleted Freezer", delete.freezer, emoji('tada'))})
         
@@ -374,11 +372,10 @@ function(input, output, session) {
               !(new.specimen_type %in% c(sampleDB::CheckTable(database = database, "specimen_type")$label)))
           
           #ADD SPECIMEN TYPE
-          sampleDB::AddToTable(database = database, "specimen_type",
-                               list(created = as.character(lubridate::now("UTC")),
-                                    last_updated = as.character(lubridate::now("UTC")),
-                                    label = input$AddSpecimenType))
-          
+          sampleDB::UpdateReferences(reference = "specimen_type",
+                                     operation = "add",
+                                     information = list(NewSpecimenTypeName = new.specimen_type))
+
           #PRINT EXIT MESSAGE
           output$SpecimenReturnMessage <- renderText({paste("Added Specimen Type", new.specimen_type, emoji('tada'))})
           
@@ -404,11 +401,10 @@ function(input, output, session) {
             !(new.name %in% c(sampleDB::CheckTable(database = database, "specimen_type")$label)))
         
         #CHANGE SPECIMEN TYPE NAME
-        sampleDB::ModifyTable(database = database, table_name = "specimen_type",
-                              info_list = list(created = as.character(filter(sampleDB::CheckTable(database = database, "specimen_type"), label == input$RenameSpecimenType1)$created),
-                                               last_updated = as.character(lubridate::now("UTC")),
-                                               label = input$RenameSpecimenType2),
-                              id = as.character(filter(sampleDB::CheckTable(database = database, "specimen_type"), label == input$RenameSpecimenType1)$id))
+        sampleDB::UpdateReferences(reference = "specimen_type",
+                                   operation = "modify",
+                                   information = list(NewSpecimenTypeName = new.name,
+                                                      OldSpecimenTyleName = old.name))
         
         #PRINT EXIT MESSAGE
         output$SpecimenReturnMessage <- renderText({paste("Renamed Specimen Type", old.name, "to", new.name, emoji('tada'))})
@@ -433,9 +429,9 @@ function(input, output, session) {
               !(filter(sampleDB::CheckTable(database = database, "specimen_type"), label == delete.specimen_type)$id %in% sampleDB::CheckTable(database = database, "specimen")$specimen_type_id))
           
           #DELETE SPECIMEN TYPE
-          sampleDB::DeleteFromTable(database = database, 
-                                    table_name = "specimen_type",
-                                    id = as.character(filter(sampleDB::CheckTable(database = database, "specimen_type"), label == input$DeleteSpecimenType)$id))
+          sampleDB::UpdateReferences(reference = "specimen_type",
+                                     operation = "delete",
+                                     information = list(DeleteSpecimenType = delete.specimen_type))
           
           #PRINT EXIT MESSAGE
           output$SpecimenReturnMessage <- renderText({paste("Deleted Specimen Type", input$DeleteSpecimenType, emoji('tada'))})
@@ -465,18 +461,15 @@ function(input, output, session) {
           # SET REQUIREMENTS
           AddStudyRequirements(input)
           
-          #SAVE STUDY NAMES INVOLVED
-          info_list <- list(created = as.character(lubridate::now("UTC")),
-                            last_updated = as.character(lubridate::now("UTC")),
-                            title = input$AddStudyTitle,
-                            description = input$AddStudyDescription,
-                            short_code = input$AddStudyShortCode,
-                            is_longitudinal = input$AddStudyIsLongitudinal,
-                            lead_person = input$AddStudyLeadPerson,
-                            hidden = input$AddStudyIsHidden)
-          
           #ADD STUDY
-          sampleDB::AddToTable(database = database, "study", info_list = info_list)
+          sampleDB::UpdateReferences(reference = "study",
+                                     operation = "add",
+                                     information = list(NewStudyTitle = input$AddStudyTitle,
+                                                        NewStudyDescription = input$AddStudyDescription,
+                                                        NewStudyShortCode = input$AddStudyShortCode,
+                                                        NewStudyLeadPerson = input$AddStudyLeadPerson,
+                                                        NewStudyLongitudinal = input$AddStudyIsLongitudinal,
+                                                        NewStudyHidden = input$AddStudyIsHidden))
           
           #PRINT EXIT MESSAGE
           output$StudyReturnMessage <- renderText({paste("Added Study to the Database", emoji('tada'))})
@@ -490,114 +483,49 @@ function(input, output, session) {
     )
     
     # CHANGE A STUDY
-    observe({
-        observeEvent(
-            input$RenameStudyAction,
-            ({
-              
-              #SAVE STUDY NAMES INVOLVED
-              new.short_code <- input$RenameStudyShortCode
-              new.title <- input$RenameStudyTitle
+    observeEvent(
+        input$RenameStudyAction,
+        ({
+          
+          # MODIFY STUDY
+          sampleDB::UpdateReferences(reference = "study",
+                                     operation = "modify",
+                                     information = list(OldStudyShortCode = input$ChangeStudyShortCode,
+                                                        NewStudyTitle = input$RenameStudyTitle,
+                                                        NewStudyDescription = input$RenameStudyDescription,
+                                                        NewStudyShortCode = input$RenameStudyShortCode,
+                                                        NewStudyLeadPerson = input$RenameStudyLeadPerson,
+                                                        NewStudyLongitudinal = sum(input$RenameStudyIsLongitudinal),
+                                                        NewStudyHidden = sum(input$RenameStudyIsHidden)))
+          #PRINT EXIT MESSAGE
+          output$StudyReturnMessage <- renderText({paste("Modified Study in the Database", emoji('tada'))})
+          
+          #REFRESH REFERENCES
+          ShowStudies(output, database)
+          
+          #UPDATE DROPDOWNS
+          UpdateStudyDropdowns(database, session)
+        }))
 
-              #MUST SELECT A ROW FOR MODIFICATION
-              if(!is.null(input$TableStudy_rows_selected)){
-                  
-                  #SET LONGITUDINAL VARIABLE TO WORK WITH TABLE CONSTRAINTS
-                  if(input$AddStudyIsLongitudinal == F){
-                    is_longitudinal <- 0
-                  }else{
-                    is_longitudinal <- 1
-                  }
-                  
-                  #SET HIDDEN VARIABLE TO WORK WITH TABLE CONSTRAINTS
-                  if(input$AddStudyIsHidden == F){
-                    is_hidden <- 0
-                  }else{
-                    is_hidden <- 1
-                  }
-                  
-                  #CREATE ENTRY THAT WILL REPLACE THE CURRENT ENTRY
-                  
-                  # - GET OLD ENTRY
-                  old.entry <- as.list(sampleDB::CheckTable(database = database, "study")[input$TableStudy_rows_selected,])
-                  
-                  # - CREATE A CONDENSED NEW ENTRY (EXCLUDE EMPTY ITEMS IN LIST)
-                  new.entry <- list(title = new.title, 
-                                    description = input$RenameStudyDescription, 
-                                    short_code = new.short_code, 
-                                    lead_person = input$RenameStudyLeadPerson,
-                                    is_longitudinal = is_longitudinal,
-                                    hidden = is_hidden,
-                                    last_updated = as.character(lubridate::now("UTC"))) %>% 
-                    discard(function(x) x == "")
-                  
-                  # - REPLACE ITEMS IN NEW ENTRY WITH THEIR MATES IN OLD ENTRY
-                  update.entry <- old.entry
-                  for (i in names(new.entry)){
-                    update.entry[[i]] <- new.entry[[i]]
-                  }
-                  
-                  #RENAME ENTRY
-                  
-                  # - SEE IF SHORT CODE OR TITLE ARE BEING RENAMED
-                  if("short_code" %in% names(new.entry) | "title" %in% names(new.entry)){
-                    # - IF SHORT CODE OR TITLE ARE BEING RENAMED, CHECK THAT THEY ARE UNIQUE
-                    if(!(new.title %in% sampleDB::CheckTable(database = database, "study")$title) & !(new.short_code %in% sampleDB::CheckTable(database = database, "study")$short_code)){
-                      sampleDB::ModifyTable(database = database, table_name = "study",
-                                            info_list = update.entry,
-                                            id = as.character(sampleDB::CheckTable(database = database, "study")[input$TableStudy_rows_selected,]$"id"))
-                      
-                      output$StudyReturnMessage <- renderText({paste("Modified Study", emoji('tada'))})   
-                    }else{
-                      
-                      output$StudyReturnMessage <- renderText({paste("Error")}) 
-                    }
-                      
-                  }else{
-                    # - IF SHORT CODE OR TITLE ARE NOT BEING RENAMED, THEN PROCEED WITH THE RENAME
-                    sampleDB::ModifyTable(database = database, table_name = "study",
-                                          info_list = update.entry,
-                                          id = as.character(sampleDB::CheckTable(database = database, "study")[input$TableStudy_rows_selected,]$"id"))
-                    
-                    output$StudyReturnMessage <- renderText({paste("Modified Study", emoji('tada'))})
-                  }
-                
-                #REFRESH REFERENCES
-                ShowStudies(output, database)
-                
-                #UPDATE DROPDOWNS
-                UpdateStudyDropdowns(input, session)
-              }
-            }))})
+      # DELETE A STUDY FROM THE DATABASE
+      observeEvent(
+          input$DeleteStudyAction,
+          ({
+            #DELETE STUDY
+            sampleDB::UpdateReferences(reference = "study",
+                                       operation = "delete",
+                                       information = list(DeleteStudyShortCode = input$DeleteStudyShortCode))
+            
+            #PRINT EXIT MESSAGE
+            output$StudyReturnMessage <- renderText({paste("Deleted Study from the Database", emoji('tada'))})  
+            
+            #REFRESH REFERENCES
+            ShowStudies(output, database)
+            
+            })
+        )
 
-        # DELETE A STUDY FROM THE DATABASE
-        observe({
-            observeEvent(
-                input$DeleteStudyAction,
-                ({
-                  
-                  #MUST SELECT A ROW FOR MODIFICATION
-                  if(length(input$TableStudy_rows_selected) ==1 & !is.null(input$TableStudy_rows_selected)){
-                    
-                    #DELETE STUDY
-                    id <- sampleDB::CheckTable(database = database, "study")[input$TableStudy_rows_selected,]$"id"
-                    
-                    if(!(id %in% sampleDB::CheckTable(database = database, "study_subject")$study_id)){
-                      sampleDB::DeleteFromTable(database = database, table_name = "study", id = as.character(id))
-                      output$StudyReturnMessage <- renderText({paste("Deleted Study", emoji('tada'))})
-                      
-                    }else{
-                      
-                      output$StudyReturnMessage <- renderText({paste("Error")})
-                    }
-                    
-                    #REFRESH REFERENCES
-                    ShowStudies(output, database)
-                    }
-                  })
-              )})
-
-        #IDLY SHOW STUDIES
-        ShowStudies(output, database)
+      #IDLY SHOW STUDIES
+      ShowStudies(output, database)
 
 }

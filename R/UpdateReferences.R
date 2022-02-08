@@ -1,0 +1,145 @@
+#' Update References in the EPPIcenter sampleDB database
+#' 
+#' @param reference One of the following strings: freezer, specimen_type, study
+#' @param operation One of the following strings: add, modify, delete
+#' @param information A key value pair that matches the specified reference and operation
+#' @examples
+#' 
+#' UpdateReferences(reference = "study", operation = "modify", information = list(OldStudyShortCode = "C", NewStudyTitle = "AA", NewLeadPerson = "EE"))
+#' UpdateReferences(reference = "study", operation = "delete", information = list(DeleteStudyShortCode = "MNP"))
+#' @import dplyr
+#' @import purrr
+#' @export
+
+
+UpdateReferences <- function(reference, operation, information){
+  
+  database <- "/databases/sampledb_database.sqlite"
+    
+  references <- c("study", "freezer","specimen_type")
+  stopifnot(reference %in% references)
+  
+  operations <- c("add", "modify", "delete")
+  stopifnot(operation %in% operations)
+  
+  if(reference == "freezer"){
+    if(operation == "add"){
+      
+      #ADD FREEZER
+      stopifnot(names(information) == "NewFreezerName")
+      sampleDB::AddToTable(database = database, 
+                           table_name = "location",
+                           list(created = as.character(lubridate::now("UTC")),
+                                last_updated = as.character(lubridate::now("UTC")),
+                                description = information$NewFreezerName))
+    }
+    if(operation == "modify"){
+      
+      # MODIFY FREEZER
+      stopifnot(names(information) == c("NewFreezerName","OldFreezerName"))
+      id.OldFreezerName <- as.character(filter(sampleDB::CheckTable(database = database, "location"), description == information$OldFreezerName)$id)
+      eval.created <- as.character(filter(sampleDB::CheckTable(database = database, "location"), description == information$OldFreezerName)$created)
+      sampleDB::ModifyTable(database = database,
+                            table_name = "location",
+                            info_list = list(created = eval.created,
+                                             last_updated = as.character(lubridate::now("UTC")),
+                                             description = information$NewFreezerName),
+                            id = id.OldFreezerName)
+    }
+    
+    if(operation == "delete"){
+      
+      # DELETE FREEZER
+      stopifnot(names(information) == c("DeleteFreezerName"))
+      id.DeleteFreezerName <- as.character(filter(sampleDB::CheckTable(database = database, "location"), description == information$DeleteFreezerName)$id)
+      sampleDB::DeleteFromTable(database = database, 
+                                table_name = "location",
+                                id = id.DeleteFreezerName)
+    }
+  }
+  if(reference == "specimen_type"){
+    if(operation == "add"){
+      
+      #ADD SPECIMEN TYPE
+      stopifnot(names(information) == "NewSpecimenTypeName")
+      sampleDB::AddToTable(database = database, 
+                           table_name = "specimen_type",
+                           list(created = as.character(lubridate::now("UTC")),
+                                last_updated = as.character(lubridate::now("UTC")),
+                                label = information$NewSpecimenTypeName))
+    }
+    if(operation == "modify"){
+      
+      # MODIFY SPECIMEN TYPE
+      stopifnot(names(information) == c("NewSpecimenTypeName","OldSpecimenTypeName"))
+      id.OldSpecimenTypeName <- as.character(filter(sampleDB::CheckTable(database = database, "specimen_type"), label == information$OldSpecimenTypeName)$id)
+      eval.created <- as.character(filter(sampleDB::CheckTable(database = database, "specimen_type"), label == information$OldSpecimenTypeName)$created)
+      sampleDB::ModifyTable(database = database,
+                            table_name = "specimen_type",
+                            info_list = list(created = eval.created,
+                                             last_updated = as.character(lubridate::now("UTC")),
+                                             label = information$NewSpecimenTypeName),
+                            id = id.OldSpecimenTypeName)
+    }
+    
+    if(operation == "delete"){
+      
+      # DELETE SPECIMEN TYPE
+      stopifnot(names(information) == c("DeleteSpecimenTypeName"))
+      id.DeleteSpecimenTypeName <- as.character(filter(sampleDB::CheckTable(database = database, "specimen_type"), label == information$DeleteSpecimenTypeName)$id)
+      sampleDB::DeleteFromTable(database = database, 
+                                table_name = "specimen_type",
+                                id = id.DeleteSpecimenTypeName)
+    }
+  }
+  if(reference == "study"){
+    if(operation == "add"){
+
+      #ADD STUDY
+      print(information)
+      stopifnot(setequal(names(information), c("NewStudyTitle", "NewStudyDescription", "NewStudyShortCode", "NewStudyLongitudinal", "NewStudyLeadPerson", "NewStudyHidden")))
+      sampleDB::AddToTable(database = database, 
+                           table_name = "study", 
+                           info_list = list(created = as.character(lubridate::now("UTC")),
+                                            last_updated = as.character(lubridate::now("UTC")),
+                                            title = information$NewStudyTitle,
+                                            description = information$NewStudyDescription,
+                                            short_code = information$NewStudyShortCode,
+                                            is_longitudinal = information$NewStudyLongitudinal,
+                                            lead_person = information$NewStudyLeadPerson,
+                                            hidden = information$NewStudyHidden))
+
+    }
+    if(operation == "modify"){
+      
+      stopifnot(all(names(information) %in% c("OldStudyShortCode", "NewStudyTitle", "NewStudyDescription", "NewStudyShortCode", "NewStudyLongitudinal", "NewStudyLeadPerson", "NewStudyHidden")))
+      eval.created <- as.character(filter(sampleDB::CheckTable(database = database, "study"), short_code == information$OldStudyShortCode)$created)
+      id.OldStudyShortCode <- as.character(filter(sampleDB::CheckTable(database = database, "study"), short_code == information$OldStudyShortCode)$id)
+      
+      sampleDB::ModifyTable(database = database,
+                            table_name = "study",
+                            info_list = list(created = eval.created,
+                                             last_updated = as.character(lubridate::now("UTC")),
+                                             title = information$NewStudyTitle,
+                                             description = information$NewStudyDescription,
+                                             short_code = information$NewStudyShortCode,
+                                             is_longitudinal = information$NewStudyLongitudinal,
+                                             lead_person = information$NewStudyLeadPerson,
+                                             hidden = information$NewStudyHidden) %>% purrr::discard(function(x) is.null(x) || x == ""),
+                            id = id.OldStudyShortCode)
+    }
+    
+    if(operation == "delete"){
+      stopifnot(names(information) == c("DeleteStudyShortCode"))
+      id.DeleteStudyShortCode <- as.character(filter(sampleDB::CheckTable(database = database, "study"), short_code == information$DeleteStudyShortCode)$id)
+      #sampleDB::DeleteFromTable will not delete if study is in use
+      sampleDB::DeleteFromTable(database = database, 
+                                table_name = "study", 
+                                id = id.DeleteStudyShortCode)
+    }
+  }
+}
+
+# Notes:
+# What if usr only wants to update part of a study?
+# There are no checks currently in place

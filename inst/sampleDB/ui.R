@@ -16,6 +16,7 @@ navbarPage("SampleDB",
            navbarMenu("Upload New Wetlab Samples",
            tabPanel("Micronix Samples",
 
+                    #GENERAL APP CSS
                     shinyFeedback::useShinyFeedback(),
                     shinyjs::useShinyjs(),
                     includeCSS("app.css"),
@@ -27,7 +28,7 @@ navbarPage("SampleDB",
                         .shiny-output-error-validation {
                               color: #FCA211; font-weight: bold;
                             }"))),
-
+                    
                     sidebarLayout(
                       sidebarPanel(
                         width = 3,
@@ -46,11 +47,9 @@ navbarPage("SampleDB",
                         textInput("UploadPlateID", label = "Unique Plate Name"),
                         textOutput("WarningUploadPlate"),
                         selectInput("UploadLocation", label = "Storage Location", choices = c("", sampleDB::CheckTable(database = database, "location")$description)),
-                        fluidRow(
-                          column(
-                            width = 12,
-                                actionButton("UploadAction", label = "Upload Dataset", style="color: #fff; background-color: #337ab7; border-color: #2e6da4"),
-                                actionButton("ClearUploadForm", label = "Clear Form")))
+                        fluidRow(column(width = 12,
+                                        actionButton("UploadAction", label = "Upload Dataset", style="color: #fff; background-color: #337ab7; border-color: #2e6da4"),
+                                        actionButton("ClearUploadForm", label = "Clear Form")))
                       ),
                       mainPanel(
                         width = 9,
@@ -85,11 +84,9 @@ navbarPage("SampleDB",
                         selectInput("UploadLocationCryoFreezerName", label = "Freezer Name", choices = c("", sampleDB::CheckTable(database = database, "location")$description)),
                         selectInput("UploadLocationCryoLevelI", label = HTML("<h5>Level I</h5>"), width = '25%', choices = c("", sampleDB::CheckTable(database = database, "location")$description)),
                         selectInput("UploadLocationCryoLevelII", label = HTML("<h5>Level II</h5>"), width = '25%', choices = c("", sampleDB::CheckTable(database = database, "location")$description)),
-                        fluidRow(
-                          column(
-                            width = 12, 
-                            actionButton("UploadActionCryoSamples", label = "Upload Dataset", style="color: #fff; background-color: #337ab7; border-color: #2e6da4"),
-                            actionButton("ClearUploadFormCryoSamples", label = "Clear Form"))),
+                        fluidRow(column(width = 12, 
+                                        actionButton("UploadActionCryoSamples", label = "Upload Dataset", style="color: #fff; background-color: #337ab7; border-color: #2e6da4"),
+                                        actionButton("ClearUploadFormCryoSamples", label = "Clear Form"))),
                       ),
                       mainPanel(
                         width = 9,
@@ -118,12 +115,10 @@ navbarPage("SampleDB",
                         selectizeInput("SearchByLocation", "Storage Location", choices = c("", sampleDB::CheckTable(database = database, "location")$description)),
                         selectizeInput("SearchBySpecimenType", "Specimen Type", choices = c("", sampleDB::CheckTable(database = database, "specimen_type")$label)),
                         radioButtons("SubjectUIDSearchType", label = "Study Subject Search Method", choices = list("Single Study Subject" = "individual", "Multiple Study Subjects" = "multiple"), selected = "individual"),
-                        conditionalPanel(
-                          condition = "input.SubjectUIDSearchType == \"individual\"",
-                            selectizeInput("SearchBySubjectUID", label = "Study Subject", choices = NULL)),
-                        conditionalPanel(
-                          condition = "input.SubjectUIDSearchType == \"multiple\"",
-                            fileInput("SearchBySubjectUIDFile", label = HTML("Study Subjects <h6>Single column named \"subject_uid\"</h6>")), actionButton("ClearSearchUIDFile", label = "Clear Study Subjects")), textOutput("WarnSubjectUIDFileColnames"), textOutput("WarnSubjectUIDFileColnames2")
+                        conditionalPanel(condition = "input.SubjectUIDSearchType == \"individual\"",
+                                         selectizeInput("SearchBySubjectUID", label = "Study Subject", choices = NULL)),
+                        conditionalPanel(condition = "input.SubjectUIDSearchType == \"multiple\"",
+                                         fileInput("SearchBySubjectUIDFile", label = HTML("Study Subjects <h6>Single column named \"subject_uid\"</h6>")), actionButton("ClearSearchUIDFile", label = "Clear Study Subjects")), textOutput("WarnSubjectUIDFileColnames"), textOutput("WarnSubjectUIDFileColnames2")
                       ),
                     mainPanel(
                       width = 10,
@@ -139,15 +134,13 @@ navbarPage("SampleDB",
                         width = 3,
                         HTML("<h4><b>Move Samples Form</b></h4>"),
                         fileInput("MoveDataSet", "SampleDB MoveSamplesCSV", multiple = TRUE, accept = c("text/csv", "text/comma-separated-values,text/plain", ".csv")),
-                        fluidRow(
-                          column(
-                            width = 12,
-                            actionButton("MoveAction", label = "Move Samples", style="color: #fff; background-color: #337ab7; border-color: #2e6da4"),
-                            actionButton("ClearMoveForm", label = "Clear Form"))),
-                            br(),
-                            textOutput("WarningMoveColnames"),
-                            verbatimTextOutput("MoveReturnMessage1"),
-                            verbatimTextOutput("MoveReturnMessage2"),
+                        fluidRow(column(width = 12,
+                                        actionButton("MoveAction", label = "Move Samples", style="color: #fff; background-color: #337ab7; border-color: #2e6da4"),
+                                        actionButton("ClearMoveForm", label = "Clear Form"))),
+                        br(),
+                        textOutput("WarningMoveColnames"),
+                        verbatimTextOutput("MoveReturnMessage1"),
+                        verbatimTextOutput("MoveReturnMessage2"),
                       ),
                       mainPanel(
                         width = 9,
@@ -156,11 +149,7 @@ navbarPage("SampleDB",
                         HTML("<h5>This format is essentially just the CSV that any micronix instrument creates.
                              No CSV reformating is required.</h5>"),
                         HTML("<h5>To perform moves:</h5>"),
-                        HTML("<ol>
-                                  <li>All plates involved in the move need to be scanned</li>
-                                  <li>The Micronix .csv file needs to be given the plate name</li>
-                                  <li>All the scans must be uploaded together</li>
-                              </ol>"))),
+                        HTML("<ol> <li>All plates involved in the move need to be scanned</li> <li>The Micronix .csv file needs to be given the plate name</li> <li>All the scans must be uploaded together</li> </ol>"))),
                         # HTML("<h6>*Note that no new samples can be added during moves. This is because no
                         #       study subject nor specimen type information is processed during moves.</h6>")
                     ),
@@ -253,69 +242,32 @@ navbarPage("SampleDB",
                                  sidebarPanel(
                                    width = 4,
                                   HTML("<h4><b>Add a Study</b></h4>"),
-                                   fluidRow(
-                                     
-                                     column(
-                                       width = 6,
-                                       textInput("AddStudyTitle", label = "Title", placeholder = "New Title")),
-                                     column(
-                                       width = 6,
-                                       textInput("AddStudyDescription", label = "Description", placeholder = "New Description"))),
-                                   fluidRow(
-                                     column(
-                                       width = 6,
-                                       textInput("AddStudyLeadPerson", label = "Lead Person", placeholder = "New Lead Person")
-                                     ),
-                                     column(
-                                       width = 6,
-                                       textInput("AddStudyShortCode", label = "Short Code", placeholder = "New Short Code"))),
-                                   fluidRow(
-                                     column(
-                                       width = 6,
-                                       checkboxInput("AddStudyIsLongitudinal", label = "Londitudinal", value = FALSE)),
-                                     column(
-                                       width = 6,
-                                       checkboxInput("AddStudyIsHidden", label = "Hidden", value = FALSE))),
-                                       actionButton("AddStudyAction", label = "Add", style = "color: #fff; background-color: #337ab7; border-color: #2e6da4"),
+                                   fluidRow(column(width = 6, textInput("AddStudyTitle", label = "New Title")),
+                                            column(width = 6, textInput("AddStudyDescription", label = "New Description"))),
+                                   fluidRow(column(width = 6, textInput("AddStudyLeadPerson", label = "New Lead Person")),
+                                            column(width = 6, textInput("AddStudyShortCode", label = "New Short Code"))),
+                                   fluidRow(column(width = 6, checkboxInput("AddStudyIsLongitudinal", label = "Londitudinal", value = FALSE)),
+                                            column(width = 6, checkboxInput("AddStudyIsHidden", label = "Hidden", value = FALSE))), actionButton("AddStudyAction", label = "Add", style = "color: #fff; background-color: #337ab7; border-color: #2e6da4"),
                                    textOutput("WarningStudyAddTitleUnique"),
                                    textOutput("WarningStudyAddShortCodeUnique"),
                                    hr(),
                                    HTML("<h4><b>Rename a Study</b></h4>"),
-                                   # fluidRow(
-                                   #   column(
-                                   #     width = 3,
-                                   #     DT::dataTableOutput("RenamePreview"))),
-                                   
-                                   fluidRow(
-                                     column(
-                                       width = 6,
-                                       textInput("RenameStudyTitle", label = "Title", placeholder = "New Title")),
-                                     column(
-                                       width = 6,
-                                       textInput("RenameStudyDescription", label = "Description", placeholder = "New Description"))),
-                                   
-                                   fluidRow(
-                                     column(
-                                       width = 6,
-                                       textInput("RenameStudyLeadPerson", label = "Lead Person", placeholder = "New Lead Person")),
-                                     column(
-                                       width = 6,
-                                       textInput("RenameStudyShortCode", label = "Short Code", placeholder = "New Short Code"))),
-                                   
-                                   fluidRow(
-                                     column(
-                                       width = 6,
-                                       checkboxInput("RenameStudyIsLongitudinal", label = "Londitudinal", value = FALSE)),
-                                     column(
-                                       width = 6,
-                                       checkboxInput("RenameStudyIsHidden", label = "Hidden", value = FALSE))),
+                                   selectInput("ChangeStudyShortCode", width = "47.5%", label = "Current Study", choices = c("", sampleDB::CheckTable(database = database, "study")$short_code), selected = 1),
+                                   fluidRow(column(width = 6, textInput("RenameStudyTitle", label = "Title", placeholder = "New Title")),
+                                            column(width = 6, textInput("RenameStudyDescription", label = "Description", placeholder = "New Description"))),
+                                   fluidRow(column(width = 6, textInput("RenameStudyLeadPerson", label = "Lead Person", placeholder = "New Lead Person")),
+                                            column(width = 6,textInput("RenameStudyShortCode", label = "Short Code", placeholder = "New Short Code"))),
+                                   fluidRow(column(width = 6, checkboxInput("RenameStudyIsLongitudinal", label = "Londitudinal", value = FALSE)),
+                                            column( width = 6, checkboxInput("RenameStudyIsHidden", label = "Hidden", value = FALSE))),
                                    actionButton("RenameStudyAction", label = "Rename", style="color: #fff; background-color: #337ab7; border-color: #2e6da4"),
                                    textOutput("WarningStudyChangeTitleUnique"),
                                    textOutput("WarningStudyChangeShortCodeUnique"),
                                    hr(),
                                    HTML("<h4><b>Remove a Study</b></h4>"),
+                                   selectInput("DeleteStudyShortCode", width = "47.5%", label = "Current Study", choices = c("", sampleDB::CheckTable(database = database, "study")$short_code), selected = 1),
                                    textOutput("WarnStudyDeletion"),
                                    actionButton("DeleteStudyAction", label = "Delete", style="color: #fff; background-color: #337ab7; border-color: #2e6da4"),
+                                   br(), 
                                    span(verbatimTextOutput("StudyReturnMessage"), style="font-size: 28px")
                                  ),
                                  mainPanel(
