@@ -22,16 +22,19 @@ ReformatUploadCSV <- function(csv.upload){
   return(csv.reformatted)
 }
 
-UploadMicronixChecks <- function(input, database, location, name.plate, csv.upload, csv.reformatted){
+UploadMicronixChecks <- function(input, database, list.location, name.plate, csv.upload, csv.reformatted){
   # PERFORM CHECKS
   
-  # CHECK PLATE NAME IS UNIQUE
-  if(!location %in% c(sampleDB::CheckTable(database = database, "location")$description)){
-    stop("FREEZER NAME DOES NOT EXITS")
+  # CHECK FREEZER EXISTS
+  tmp.location.tbl <- inner_join(tibble(location_name = list.location$location_name, level_I = list.location$level_I, level_II = list.location$level_II), 
+                                 sampleDB::CheckTable(database = database, "location"), 
+                                 by = c("location_name", "level_I", "level_II"))
+  if(nrow(tmp.location.tbl) == 0){
+    stop("FREEZER NAME + LEVEL I + LEVEL II DOES NOT EXITS")
   }
   
   # CHECK PLATE NAME IS UNIQUE
-  if(name.plate %in% c(sampleDB::CheckTable(database = database, "matrix_plate")$uid)){
+  if(name.plate %in% c(sampleDB::CheckTable(database = database, "matrix_plate")$plate_name)){
     stop("PLATE NAME IS NOT UNIQUE")
   }
   
@@ -64,14 +67,14 @@ UploadMicronixChecks <- function(input, database, location, name.plate, csv.uplo
     stop(paste("Error: Barcode Unique Constraint", barcodes.existing))
   }
   
-  # CHECK THAT STUDY SUBJECT UID IS PRESENT IF IT IS REQUIRED
-  tmp_table.specimen <- tibble(uid = csv.reformatted$"study_subject_id", 
+  # CHECK THAT STUDY SUBJECT subject IS PRESENT IF IT IS REQUIRED
+  tmp_table.specimen <- tibble(subject = csv.reformatted$"study_subject_id", 
                                study_id = filter(CheckTable(database = database, "study"), short_code %in% csv.reformatted$study_short_code)$id, 
                                specimen_type_id = filter(CheckTable(database = database, "specimen_type"), label %in% csv.reformatted$specimen_type)$id)
   
   tmp_table.specimen <- inner_join(CheckTable(database = database, "study_subject"),
                                    tmp_table.specimen,
-                                   by = c("uid", "study_id"))
+                                   by = c("subject", "study_id"))
   
   if(nrow(tmp_table.specimen) != 0){
     
@@ -98,7 +101,7 @@ MovePlatesOrphanCheck <- function(list.move, database){
   # GET A COPY OF THE PLATES INVOLVED IN THE MOVE - SAVE AS A LIST WITH KEYS BEING FILENAMES
   test.list <- list()
   for(plate.name in names(list.move)){
-    tmp.matrix_plate <- filter(CheckTable(database = database, "matrix_plate"), uid == plate.name)
+    tmp.matrix_plate <- filter(CheckTable(database = database, "matrix_plate"), plate_name == plate.name)
     stopifnot("PLATE IS NOT FOUND IN THE DATABASE" = nrow(tmp.matrix_plate) != 0)
     eval.plate_id <- tmp.matrix_plate$id
     test.list[[as.character(eval.plate_id)]] <- filter(CheckTable(database = database, "matrix_tube"), plate_id == eval.plate_id)
@@ -124,7 +127,7 @@ MovePlatesOrphanCheck <- function(list.move, database){
     csv <- list.move[[csv.name]]
 
     # - GET PLATE_ID 
-    eval.plate_id <- filter(sampleDB::CheckTable(database = database, "matrix_plate"), uid == csv.name)$id
+    eval.plate_id <- filter(sampleDB::CheckTable(database = database, "matrix_plate"), plate_name == csv.name)$id
     
     # - GET DATA FOR MOVE (BARCODE, WELL, POS)
     for (i in 1:nrow(csv)){

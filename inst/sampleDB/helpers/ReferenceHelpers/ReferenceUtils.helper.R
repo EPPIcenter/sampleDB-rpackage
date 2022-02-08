@@ -5,8 +5,8 @@
 UpdateFreezerDropdowns <- function(database, session){
   updateTextInput(session = session, inputId ="AddFreezer", value = "", placeholder = "New Name")
   updateTextInput(session = session, inputId = "RenameFreezer2", value = "", placeholder = "New Name")
-  updateSelectInput(session = session, inputId = "RenameFreezer1", choices = c("", sampleDB::CheckTable(database = database, "location")$description))
-  updateSelectInput(session = session, inputId = "DeleteFreezer", choices = c("", sampleDB::CheckTable(database = database, "location")$description))
+  updateSelectInput(session = session, inputId = "RenameFreezer1", choices = c("", sampleDB::CheckTable(database = database, "location")$location_name))
+  updateSelectInput(session = session, inputId = "DeleteFreezer", choices = c("", sampleDB::CheckTable(database = database, "location")$location_name))
 }
 
 UpdateSpecimenTypeDropdowns <- function(database, session){
@@ -42,8 +42,8 @@ ShowStudies <- function(output, database){
 ShowFreezers <- function(output, database){
   output$TableFreezer <- DT::renderDataTable({
     sampleDB::CheckTable(database = database, "location") %>%
-      dplyr::select(created, description) %>%
-      rename(`Date Created` = created, Name = description) %>%
+      dplyr::select(created, location_name) %>%
+      rename(`Date Created` = created, Name = location_name) %>%
       relocate(Name, `Date Created`)})
 }
 

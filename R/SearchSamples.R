@@ -15,7 +15,7 @@
 
 SearchSamples <- function(filters, study_subject.file = F){
   
-  database <- "/databases/sampledb_database.sqlite"
+  database <- "/databases/new.sampleDB.db"
   
   if(study_subject.file){
     eval.name.study_subject  <- read.csv(filter$name.study_subject)$subject_uid
@@ -50,7 +50,7 @@ SearchSamples <- function(filters, study_subject.file = F){
       matrix_tube_ids <- filter(table.matrix_tube, plate_id %in% plate_ref_id)$id
     }
     if(term.search == "name.location"){
-      location_ref_id <- filter(table.location, description %in% filters$name.location)$id
+      location_ref_id <- filter(table.location, location_name %in% filters$name.location)$id
       plate_ref_id <- filter(table.matrix_plate, location_id %in% location_ref_id)$id
       matrix_tube_ids <- filter(table.matrix_tube, plate_id %in% plate_ref_id)$id
     }
@@ -82,7 +82,7 @@ SearchSamples <- function(filters, study_subject.file = F){
   
     table.ref2 <- inner_join(table.ref1, table.matrix_plate, by = c("plate_id" = "id"))
     output.plate_uids <- table.ref2$uid
-    output.location_descriptions <- inner_join(table.ref2, table.location, by = c("location_id" = "id"))$description
+    output.location_location_names <- inner_join(table.ref2, table.location, by = c("location_id" = "id"))$location_name
   
     specimen_ids <- filter(table.storage_container, id %in% matrix_tube_ids)
   
@@ -103,7 +103,7 @@ SearchSamples <- function(filters, study_subject.file = F){
                              subject_uid = output.subject_uids,
                              study = output.study_short_code,
                              specimen_type = output.specimen_type_labels,
-                             location = output.location_descriptions,
+                             location = output.location_location_names,
                              plate_uid = output.plate_uids,
                              collection_date = output.collection_date)
     

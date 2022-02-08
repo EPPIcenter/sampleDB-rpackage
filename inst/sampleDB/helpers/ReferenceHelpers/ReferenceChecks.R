@@ -52,7 +52,7 @@ StudyChangesChecks <- function(input, database, output){
 
 ####################################################################################
 helper.CheckFreezerNameUnique <- function(id.input, type.dup, input, database){
-  toggle <- input$id.input %in% sampleDB::CheckTable(database = database, "location")$description
+  toggle <- input$id.input %in% sampleDB::CheckTable(database = database, "location")$location_name
   shinyFeedback::feedbackWarning(id.input, toggle, paste0("Freezer", type.dup, "must be unique"))
 }
 
@@ -67,7 +67,7 @@ helper.CheckStudyUnique <- function(id.input, type.dup, input, database){
 }
 
 helper.CheckFreezerDeletion <- function(input, database){
-  freezer_id <- sampleDB::CheckTable(database = database, "location") %>% filter(description == input$DeleteFreezer) %>% pull(id)
+  freezer_id <- sampleDB::CheckTable(database = database, "location") %>% filter(location_name == input$DeleteFreezer) %>% pull(id)
   toggle <- freezer_id %in% sampleDB::CheckTable(database = database, "matrix_plate")$location_id
   shinyFeedback::feedbackWarning("DeleteFreezer", toggle, "Freezer is currently is use") 
 }

@@ -13,7 +13,7 @@
 
 MoveTubes <- function(file.barcode){
   
-  database <- "/databases/sampledb_database.sqlite"
+  database <- "/databases/new.sampleDB.db"
   
   # READ IN FILES
   list.move <- modify(file.barcode, function(x){x <- read_csv(x, col_types = cols()) %>% drop_na()})

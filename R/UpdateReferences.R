@@ -14,7 +14,7 @@
 
 UpdateReferences <- function(reference, operation, information){
   
-  database <- "/databases/sampledb_database.sqlite"
+  database <- "/databases/new.sampleDB.db"
     
   references <- c("study", "freezer","specimen_type")
   stopifnot(reference %in% references)
@@ -26,24 +26,32 @@ UpdateReferences <- function(reference, operation, information){
     if(operation == "add"){
       
       #ADD FREEZER
-      stopifnot(names(information) == "NewFreezerName")
+      stopifnot(setequal(names(information), c("NewFreezerName", "NewFreezerLocationType", "NewFreezerLevelI", "NewFreezerLevelII", "NewFreezerLevelIII")))
       sampleDB::AddToTable(database = database, 
                            table_name = "location",
                            list(created = as.character(lubridate::now("UTC")),
                                 last_updated = as.character(lubridate::now("UTC")),
-                                description = information$NewFreezerName))
+                                location_name = information$NewFreezerName,
+                                location_type = information$NewFreezerLocationType,
+                                level_I = information$NewFreezerLevelI,
+                                level_II = information$NewFreezerLevelII,
+                                level_III = information$NewFreezerLevelIII))
     }
     if(operation == "modify"){
       
       # MODIFY FREEZER
-      stopifnot(names(information) == c("NewFreezerName","OldFreezerName"))
-      id.OldFreezerName <- as.character(filter(sampleDB::CheckTable(database = database, "location"), description == information$OldFreezerName)$id)
-      eval.created <- as.character(filter(sampleDB::CheckTable(database = database, "location"), description == information$OldFreezerName)$created)
+      stopifnot(setequal(names(information), c("OldFreezerName", "NewFreezerName", "NewFreezerLocationType", "NewFreezerLevelI", "NewFreezerLevelII", "NewFreezerLevelIII")))
+      id.OldFreezerName <- as.character(filter(sampleDB::CheckTable(database = database, "location"), location_name == information$OldFreezerName)$id)
+      eval.created <- as.character(filter(sampleDB::CheckTable(database = database, "location"), location_name == information$OldFreezerName)$created)
       sampleDB::ModifyTable(database = database,
                             table_name = "location",
                             info_list = list(created = eval.created,
                                              last_updated = as.character(lubridate::now("UTC")),
-                                             description = information$NewFreezerName),
+                                             location_name = information$NewFreezerName,
+                                             location_type = information$NewFreezerLocationType,
+                                             level_I = information$NewFreezerLevelI,
+                                             level_II = information$NewFreezerLevelII,
+                                             level_III = information$NewFreezerLevelIII),
                             id = id.OldFreezerName)
     }
     
@@ -51,7 +59,7 @@ UpdateReferences <- function(reference, operation, information){
       
       # DELETE FREEZER
       stopifnot(names(information) == c("DeleteFreezerName"))
-      id.DeleteFreezerName <- as.character(filter(sampleDB::CheckTable(database = database, "location"), description == information$DeleteFreezerName)$id)
+      id.DeleteFreezerName <- as.character(filter(sampleDB::CheckTable(database = database, "location"), location_name == information$DeleteFreezerName)$id)
       sampleDB::DeleteFromTable(database = database, 
                                 table_name = "location",
                                 id = id.DeleteFreezerName)
@@ -96,8 +104,7 @@ UpdateReferences <- function(reference, operation, information){
     if(operation == "add"){
 
       #ADD STUDY
-      print(information)
-      stopifnot(setequal(names(information), c("NewStudyTitle", "NewStudyDescription", "NewStudyShortCode", "NewStudyLongitudinal", "NewStudyLeadPerson", "NewStudyHidden")))
+      stopifnot(setequal(names(information), c("NewStudyTitle", "NewStudyDescription", "NewStudyShortCode", "NewStudyLongitudinal", "NewStudyLeadPerson")))
       sampleDB::AddToTable(database = database, 
                            table_name = "study", 
                            info_list = list(created = as.character(lubridate::now("UTC")),
@@ -106,8 +113,7 @@ UpdateReferences <- function(reference, operation, information){
                                             description = information$NewStudyDescription,
                                             short_code = information$NewStudyShortCode,
                                             is_longitudinal = information$NewStudyLongitudinal,
-                                            lead_person = information$NewStudyLeadPerson,
-                                            hidden = information$NewStudyHidden))
+                                            lead_person = information$NewStudyLeadPerson))
 
     }
     if(operation == "modify"){

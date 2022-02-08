@@ -14,7 +14,7 @@ for(helper in list.files(path = "helpers", full.names = T, recursive = T)){sourc
 function(input, output, session) {
 
     #SET PATH TO SQLITE DATABASE - WOULD PREFER DATABASE TO BE AT Sys.getenv("SAMPLEDB_DATABASE")
-    database <- "/databases/sampledb_database.sqlite"
+    database <- "/databases/new.sampleDB.db"
 
     #SERVER-SIDE DROPDOWN -- SAVES LOADING TIME
     updateSelectizeInput(session, 'SearchBySubjectUID', choices = c("", sampleDB::CheckTable(database = database, "study_subject")$uid %>% unique()), server = TRUE)
@@ -276,7 +276,7 @@ function(input, output, session) {
         
         #SET REQUIREMENTS
         req(input$AddFreezer,
-            !(new.freezer %in% c(sampleDB::CheckTable(database = database, "location")$description)))
+            !(new.freezer %in% c(sampleDB::CheckTable(database = database, "location")$location_name)))
 
         #ADD FREEZER NAME
         sampleDB::UpdateReferences(reference = "freezer",
@@ -305,7 +305,7 @@ function(input, output, session) {
         #MODIFY TABLE IF NEW FREEZER NAME IS UNIQUE
         req(input$RenameFreezer1,
             input$RenameFreezer2,
-            !(new.name %in% c(sampleDB::CheckTable(database = database, "location")$description)))
+            !(new.name %in% c(sampleDB::CheckTable(database = database, "location")$location_name)))
         
         #CHANGE FREEZER NAME
         sampleDB::UpdateReferences(reference = "freezer",
@@ -333,7 +333,7 @@ function(input, output, session) {
         
         #SET REQUIREMENTS
         req(input$DeleteFreezer,
-            !(filter(sampleDB::CheckTable(database = database, "location"), description == delete.freezer)$id %in% sampleDB::CheckTable(database = database, "matrix_plate")$location_id))
+            !(filter(sampleDB::CheckTable(database = database, "location"), location_name == delete.freezer)$id %in% sampleDB::CheckTable(database = database, "matrix_plate")$location_id))
         
         #DELETE FREEZER
         sampleDB::UpdateReferences(reference = "freezer",

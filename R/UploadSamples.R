@@ -2,9 +2,9 @@
 #' 
 #' @param csv.upload An UploadCSV
 #' @param name.plate A plate name
-#' @param location A freezer in the lab
+#' @param list.location A freezer in the lab + a level I in that freezer + a level II in that freezer
 #' @examples
-#' UploadSamples(csv.upload = "/path/to/UploadCSV.csv", name.plate = "dummy_name", location = "Left -20 Freezer")
+#' UploadSamples(csv.upload = "/path/to/UploadCSV.csv", name.plate = "dummy_name", location = list.location = list(location_name = "Freezer A", level_I = "dummy.levelI", level_II = "dummy.levelII"))
 #' @import dplyr
 #' @import RSQLite
 #' @import emojifont
@@ -13,9 +13,9 @@
 #' @import lubridate
 #' @export
 
-UploadSamples <- function(csv.upload, name.plate, location){
+UploadSamples <- function(csv.upload, name.plate, list.location){
   
-  database <- "/databases/sampledb_database.sqlite"
+  database <- "/databases/new.sampleDB.db"
   message(paste0("Connecting to database at", database))
 
   #READ IN USR SUPPLIED UPLOADCSV
@@ -31,17 +31,16 @@ UploadSamples <- function(csv.upload, name.plate, location){
   csv <- sampleDB::ReformatUploadCSV(csv.upload)
   
   # PERFORM CHECKS
-  UploadMicronixChecks(input, database, location, name.plate, csv.upload = csv.upload, csv.reformatted = csv)
+  UploadMicronixChecks(input, database, list.location, name.plate, csv.upload = csv.upload, csv.reformatted = csv)
   
   #ADD TO MATRIX_PLATE TABLE
-  eval.location_id <- filter(CheckTable(database = database, "location"), description == location)$id
+  eval.location_id <- filter(CheckTable(database = database, "location"), location_name == list.location$location, level_I == list.location$level_I, level_II == list.location$level_II)$id
   sampleDB::AddToTable(database = database, 
                        "matrix_plate",
                        list(created = lubridate::now("UTC") %>% as.character(),
                             last_updated = lubridate::now("UTC") %>% as.character(),
-                            uid = name.plate,
-                            hidden = 0,
-                            location_id = eval.location_id))
+                            location_id = eval.location_id,
+                            plate_name = name.plate))
   
   #ADD TO MATRIX_TUBE TABLE
   for(i in 1:nrow(csv)){
@@ -68,7 +67,7 @@ UploadSamples <- function(csv.upload, name.plate, location){
     #GET VARIABLES IN UPLOAD
     eval.specimen_type_id <- filter(CheckTable(database = database, "specimen_type"), label == csv[i, ]$"specimen_type")$id
     eval.study_id <- filter(CheckTable(database = database, "study"), short_code == csv[i, ]$"study_short_code")$id
-    eval.uid <- csv[i, ]$"study_subject_id"
+    eval.subject <- csv[i, ]$"study_subject_id"
     if(toggle.is_longitudinal){
       eval.collection_date <- ymd(csv[i, ]$"collection_date")
       eval.collection_date <- paste(year(eval.collection_date), month(eval.collection_date), day(eval.collection_date), sep = "-")
@@ -77,13 +76,13 @@ UploadSamples <- function(csv.upload, name.plate, location){
     }
 
     #CHECK IF THIS SUBJECT + STUDY COMBO EXISTS
-    tmp_table.study_subject <- inner_join(CheckTable(database = database, "study_subject")[, c("uid", "study_id")],
-                                          tibble(uid = eval.uid, study_id = eval.study_id),
-                                          by = c("uid", "study_id"))
+    tmp_table.study_subject <- inner_join(CheckTable(database = database, "study_subject")[, c("subject", "study_id")],
+                                          tibble(subject = eval.subject, study_id = eval.study_id),
+                                          by = c("subject", "study_id"))
     
     if(nrow(tmp_table.study_subject) > 0){
       #IF THIS SUBJECT + STUDY COMBINATION EXISTS GET ITS STUDY_SUBJECT_TABLE ID
-      eval.study_subject_id <- filter(CheckTable(database = database, "study_subject"), uid == eval.uid & study_id == eval.study_id)$id
+      eval.study_subject_id <- filter(CheckTable(database = database, "study_subject"), subject == eval.subject & study_id == eval.study_id)$id
 
       #CHECK IF THIS SPECIMEN EXISTS (SUBJECT + STUDY + SPECIMEN_TYPE)
       tmp_table.specimen <- inner_join(CheckTable(database = database, "specimen")[,c("study_subject_id", "specimen_type_id", "collection_date")],
@@ -129,7 +128,6 @@ UploadSamples <- function(csv.upload, name.plate, location){
                                 last_updated = lubridate::now("UTC") %>% as.character(),
                                 type = "matrix_tube",
                                 specimen_id = eval.specimen_id,
-                                comments = NA,
                                 exhausted = 0))
       
     }else{
@@ -140,7 +138,7 @@ UploadSamples <- function(csv.upload, name.plate, location){
       sampleDB::AddToTable(database = database, "study_subject",
                            list(created = lubridate::now("UTC") %>% as.character(),
                                 last_updated = lubridate::now("UTC") %>% as.character(),
-                                uid = eval.uid,
+                                subject = eval.subject,
                                 study_id = eval.study_id))
 
       #GET STUDY_SUBJECT ID
@@ -172,7 +170,6 @@ UploadSamples <- function(csv.upload, name.plate, location){
                               last_updated = lubridate::now("UTC") %>% as.character(),
                               type = "matrix_tube",
                               specimen_id = eval.specimen_id,
-                              comments = NA,
                               exhausted = 0))
     }
   }
