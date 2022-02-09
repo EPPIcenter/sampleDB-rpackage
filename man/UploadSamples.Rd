@@ -4,18 +4,18 @@
 \alias{UploadSamples}
 \title{Upload EPPIcenter Wetlab Samples to the sampleDB database}
 \usage{
-UploadSamples(csv.upload, name.plate, location)
+UploadSamples(type, csv.upload, container, list.location)
 }
 \arguments{
 \item{csv.upload}{An UploadCSV}
 
-\item{name.plate}{A plate name}
+\item{container}{A plate name}
 
-\item{location}{A freezer in the lab}
+\item{list.location}{A freezer in the lab + a level I in that freezer + a level II in that freezer}
 }
 \description{
 Upload EPPIcenter Wetlab Samples to the sampleDB database
 }
 \examples{
-UploadSamples(csv.upload = "/path/to/UploadCSV.csv", name.plate = "dummy_name", location = "Left -20 Freezer")
+UploadSamples(csv.upload = "/path/to/UploadCSV.csv", container = "dummy_name", location = list.location = list(location_name = "Freezer A", level_I = "dummy.levelI", level_II = "dummy.levelII"))
 }

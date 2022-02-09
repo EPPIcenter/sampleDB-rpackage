@@ -33,7 +33,7 @@ UploadChecks <- function(input, database, output){
 helper.CheckUploadPlateDuplication <- function(input, database){
   if(input$UploadPlateID != ""){
     message("CHECK: UPLOAD PLATE NAME UNIQUENESS")
-    toggle <- input$UploadPlateID %in% c(sampleDB::CheckTable(database = database, "matrix_plate")$uid)
+    toggle <- input$UploadPlateID %in% c(sampleDB::CheckTable(database = database, "matrix_plate")$plate_name)
     out <- shinyFeedback::feedbackWarning("UploadPlateID", toggle, "Plate IDs must be unique")
   }else{
     out <- NULL
@@ -148,13 +148,13 @@ helper.CheckStudySubjectLongitudinal <- function(input, database){
     message("CHECK: STUDY SUBJECT LONGITUDINAL REQUIREMENTS")
     csv <- read.csv(input$UploadDataSet$datapath, check.names = F)
     
-    tmp_table.specimen <- tibble(uid = csv$"study_subject_id", 
+    tmp_table.specimen <- tibble(subject = csv$"study_subject_id", 
                                  study_id = filter(CheckTable(database = database, "study"), short_code %in% csv$study_short_code)$id, 
                                  specimen_type_id = filter(CheckTable(database = database, "specimen_type"), label %in% csv$specimen_type)$id)
     
     tmp_table.specimen <- inner_join(CheckTable(database = database, "study_subject"),
                                      tmp_table.specimen,
-                                     by = c("uid", "study_id"))
+                                     by = c("subject", "study_id"))
     
     if(nrow(tmp_table.specimen) != 0){
       
@@ -213,7 +213,7 @@ UploadRequirements <- function(input, database){
     !(upload_barcodes %in% c(sampleDB::CheckTable(database = database, "matrix_tube")$barcode)),
     
     # - PLATE NAME CANNOT BE IN DATABASE
-    !(input$UploadPlateID %in% c(sampleDB::CheckTable(database = database, "matrix_plate")$uid)))
+    !(input$UploadPlateID %in% c(sampleDB::CheckTable(database = database, "matrix_plate")$plate_name)))
   
   return(out)
   

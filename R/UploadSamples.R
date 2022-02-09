@@ -1,10 +1,10 @@
 #' Upload EPPIcenter Wetlab Samples to the sampleDB database
 #' 
 #' @param csv.upload An UploadCSV
-#' @param name.plate A plate name
+#' @param container A plate name
 #' @param list.location A freezer in the lab + a level I in that freezer + a level II in that freezer
 #' @examples
-#' UploadSamples(csv.upload = "/path/to/UploadCSV.csv", name.plate = "dummy_name", location = list.location = list(location_name = "Freezer A", level_I = "dummy.levelI", level_II = "dummy.levelII"))
+#' UploadSamples(csv.upload = "/path/to/UploadCSV.csv", container = "dummy_name", location = list.location = list(location_name = "Freezer A", level_I = "dummy.levelI", level_II = "dummy.levelII"))
 #' @import dplyr
 #' @import RSQLite
 #' @import emojifont
@@ -13,49 +13,83 @@
 #' @import lubridate
 #' @export
 
-UploadSamples <- function(csv.upload, name.plate, list.location){
+UploadSamples <- function(type, csv.upload, container, list.location){
   
   database <- "/databases/new.sampleDB.db"
   message(paste0("Connecting to database at", database))
 
-  #READ IN USR SUPPLIED UPLOADCSV
+  # READ IN USR SUPPLIED UPLOADCSV
   csv.upload <- read.csv(csv.upload, check.names = F)
   
-  #UNITL A CHECK FOR A DATE COL IS PERFORMED ASSUME UPLOAD IS NOT LONGITUDINAL
+  # UNITL A CHECK FOR A DATE COL IS PERFORMED ASSUME UPLOAD IS NOT LONGITUDINAL
   toggle.is_longitudinal <- FALSE
   if("collection_date" %in% names(csv.upload)){
     toggle.is_longitudinal <- TRUE
   }
   
-  #CREATE A CSV WITH ALL THE ESSENTIAL INFO FROM EITHER TRAXER OR VISIONMATE CSV
-  csv <- sampleDB::ReformatUploadCSV(csv.upload)
-  
-  # PERFORM CHECKS
-  UploadMicronixChecks(input, database, list.location, name.plate, csv.upload = csv.upload, csv.reformatted = csv)
-  
-  #ADD TO MATRIX_PLATE TABLE
-  eval.location_id <- filter(CheckTable(database = database, "location"), location_name == list.location$location, level_I == list.location$level_I, level_II == list.location$level_II)$id
-  sampleDB::AddToTable(database = database, 
-                       "matrix_plate",
-                       list(created = lubridate::now("UTC") %>% as.character(),
-                            last_updated = lubridate::now("UTC") %>% as.character(),
-                            location_id = eval.location_id,
-                            plate_name = name.plate))
-  
-  #ADD TO MATRIX_TUBE TABLE
-  for(i in 1:nrow(csv)){
-    eval.plate_id <- tail(sampleDB::CheckTable(database = database, "matrix_plate"), 1)$id
-    eval.barcode <- csv[i,]$"barcode" %>% as.character()
-    eval.well_position <- csv[i,]$"well_position"
+  if(type == "micronix"){
+    # CREATE A CSV WITH ALL THE ESSENTIAL INFO FROM EITHER TRAXER OR VISIONMATE CSV
+    csv <- sampleDB::ReformatUploadMicronixCSV(csv.upload)
     
-    sampleDB::AddToTable(database = database,
-                         "matrix_tube",
-                         list(plate_id = eval.plate_id,
-                              barcode = eval.barcode,
-                              well_position = eval.well_position))
+    # PERFORM CHECKS
+    UploadMicronixChecks(input, database, list.location, container, csv.upload = csv.upload, csv.reformatted = csv)
+
+    # ADD TO MATRIX_PLATE TABLE
+    UploadMicronixPlate(database, container, list.location)    
+    
+    # ADD TO MATRIX_TUBE TABLE
+    num_samples <- UploadMicronixTubes(database, csv)
+    
+    # UPLOAD MICRONIX MESSAGE
+    message(paste("UPLOADING PLATE", container, "CONTAINING", num_samples, "MICRONIX SAMPLES"))
   }
-  
-  message(paste("UPLOADING PLATE", name.plate, "CONTAINING", i, "SAMPLES"))
+  else if(type == "cryo"){
+    #CREATE A CSV WITH ALL THE ESSENTIAL INFO FROM EITHER TRAXER OR VISIONMATE CSV
+    # csv <- sampleDB::ReformatUploadMicronixCSV(csv.upload)
+    csv <- csv.upload
+    
+    # PERFORM CHECKS
+    # UploadMicronixChecks(input, database, list.location, container, csv.upload = csv.upload, csv.reformatted = csv)
+    
+    #ADD TO CRYO BOX TO TABLE
+    UploadCryoBox(database, container, list.location)
+    
+    #ADD TO CRYO TUBE TABLE
+    num_samples <- UploadCryoTubes(database, csv)
+    
+    message(paste("UPLOADING BOX", container, "CONTAINING", num_samples, "TUBES"))
+  }
+  else if(type == "rdt"){    #CREATE A CSV WITH ALL THE ESSENTIAL INFO FROM EITHER TRAXER OR VISIONMATE CSV
+    # csv <- sampleDB::ReformatUploadMicronixCSV(csv.upload)
+    csv <- csv.upload
+    
+    # PERFORM CHECKS
+    # UploadMicronixChecks(input, database, list.location, container, csv.upload = csv.upload, csv.reformatted = csv)
+    
+    #ADD TO BAG TABLE
+    UploadBag(database, container, list.location) 
+    
+    #ADD TO RDT TABLE
+    num_samples <- UploadRDT(database, csv)
+    
+    message(paste("UPLOADING BAG", container, "CONTAINING", num_samples, "RDT SAMPLES"))
+  }
+  else if(type == "paper"){
+    # csv <- sampleDB::ReformatUploadMicronixCSV(csv.upload)
+    
+    # PERFORM CHECKS
+    # UploadMicronixChecks(input, database, list.location, container, csv.upload = csv.upload, csv.reformatted = csv)
+    
+    #ADD TO BAG TABLE
+    UploadBag(database, container, list.location) 
+    
+    #ADD TO PAPER TABLE
+    num_samples <- UploadPaper(database, csv)
+    
+    message(paste("UPLOADING BAG", container, "CONTAINING", num_samples, "PAPER SAMPLES"))
+  }
+  else{message("User Upload Type was not a valid option. Valid options are: micronix, cryo, rdt and paper")}
+
 
   ###########################################
   # PARSE THROUGH EACH ROW IN THE UPLOADCSV #
@@ -72,7 +106,7 @@ UploadSamples <- function(csv.upload, name.plate, list.location){
       eval.collection_date <- ymd(csv[i, ]$"collection_date")
       eval.collection_date <- paste(year(eval.collection_date), month(eval.collection_date), day(eval.collection_date), sep = "-")
     }else{
-      eval.collection_date <- NA
+      eval.collection_date <- as.character(NA)
     }
 
     #CHECK IF THIS SUBJECT + STUDY COMBO EXISTS
@@ -126,7 +160,7 @@ UploadSamples <- function(csv.upload, name.plate, list.location){
       sampleDB::AddToTable(database = database, "storage_container",
                            list(created = lubridate::now("UTC") %>% as.character(),
                                 last_updated = lubridate::now("UTC") %>% as.character(),
-                                type = "matrix_tube",
+                                type = type,
                                 specimen_id = eval.specimen_id,
                                 exhausted = 0))
       
@@ -168,7 +202,7 @@ UploadSamples <- function(csv.upload, name.plate, list.location){
     sampleDB::AddToTable(database = database, "storage_container",
                          list(created = lubridate::now("UTC") %>% as.character(),
                               last_updated = lubridate::now("UTC") %>% as.character(),
-                              type = "matrix_tube",
+                              type = type,
                               specimen_id = eval.specimen_id,
                               exhausted = 0))
     }
