@@ -44,16 +44,19 @@ UploadSamples <- function(type, csv.upload, container, list.location){
     message(paste("UPLOADING PLATE", container, "CONTAINING", nrow(csv.upload), "MICRONIX SAMPLES"))
   }
   else if(type == "cryo"){
+    stopifnot("Malformed csv.upload column names" = setequal(names(csv.upload), c("label", "row","column","study_short_code", "study_subject_id", "specimen_type")) || setequal(names(csv.upload), c("label", "row","column", "study_short_code", "study_subject_id", "specimen_type", "collection_date"))
     .UploadCryoBox(database, container, list.location)
     .UploadCryoTubes(database, csv.upload)
     message(paste("UPLOADING BOX", container, "CONTAINING", nrow(csv.upload), "TUBES"))
   }
   else if(type == "rdt"){
+    stopifnot("Malformed csv.upload column names" = setequal(names(csv.upload), c("label", "study_short_code", "study_subject_id", "specimen_type")) || setequal(names(csv.upload), c("label", "study_short_code", "study_subject_id", "specimen_type", "collection_date"))
     .UploadBag(database, container, list.location) 
     .UploadRDT(database, csv.upload)
     message(paste("UPLOADING BAG", container, "CONTAINING", nrow(csv.upload), "RDT SAMPLES"))
   }
   else if(type == "paper"){
+    stopifnot("Malformed csv.upload column names" = setequal(names(csv.upload), c("label", "study_short_code", "study_subject_id", "specimen_type")) || setequal(names(csv.upload), c("label", "study_short_code", "study_subject_id", "specimen_type", "collection_date"))
     .UploadBag(database, container, list.location) 
     .UploadPaper(database, csv.upload)
     message(paste("UPLOADING BAG", container, "CONTAINING", nrow(csv.upload), "PAPER SAMPLES"))

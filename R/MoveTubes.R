@@ -19,8 +19,8 @@ MoveTubes <- function(file.barcode){
   list.move <- modify(file.barcode, function(x){x <- read_csv(x, col_types = cols()) %>% drop_na()})
   
   # RUN CHECKS
-  toggle <- MovePlatesOrphanCheck(list.move, database)[[1]]
-  dummy.tbl <- MovePlatesOrphanCheck(list.move, database)[[2]]
+  toggle <- .MovePlatesOrphanCheck(list.move, database)[[1]]
+  dummy.tbl <- .MovePlatesOrphanCheck(list.move, database)[[2]]
   
   # MOVE SAMPLES IN DATABASE
   if(toggle){
@@ -91,4 +91,69 @@ MoveTubes <- function(file.barcode){
     }
     return("Moves Compete")
   }
+}
+
+.MovePlatesOrphanCheck <- function(list.move, database){
+  
+  # TEST WHETHER MOVE WILL PRODUCE ORPHANS
+  # GET A COPY OF THE PLATES INVOLVED IN THE MOVE - SAVE AS A LIST WITH KEYS BEING FILENAMES
+  test.list <- list()
+  for(plate.name in names(list.move)){
+    tmp.matrix_plate <- filter(CheckTable(database = database, "matrix_plate"), plate_name == plate.name)
+    stopifnot("PLATE IS NOT FOUND IN THE DATABASE" = nrow(tmp.matrix_plate) != 0)
+    eval.plate_id <- tmp.matrix_plate$id
+    test.list[[as.character(eval.plate_id)]] <- filter(CheckTable(database = database, "matrix_tube"), plate_id == eval.plate_id)
+  }
+  
+  # MAKE A LIST WHERE EACH PLATE IS CONVERTED TO A DUMMY PLATE
+  # - MAKE DUMMY PLATE LIST
+  dummy.list <- test.list
+  
+  # - CHANGE DUMMY LIST PLATES
+  for(i in 1:length(names(dummy.list))){
+    eval.plate_id <- names(dummy.list)[i]
+    dummy.list[[eval.plate_id]]$"plate_id" <- -(i)
+  }
+  
+  # - ROW BIND DUMMY PLATES
+  dummy.tbl <- bind_rows(dummy.list)
+  
+  # USE CSVS TO ASSIGN PLATES TO TUBES
+  for(csv.name in names(list.move)){
+    
+    # - GET MOVECSV
+    csv <- list.move[[csv.name]]
+    
+    # - GET PLATE_ID 
+    eval.plate_id <- filter(sampleDB::CheckTable(database = database, "matrix_plate"), plate_name == csv.name)$id
+    
+    # - GET DATA FOR MOVE (BARCODE, WELL, POS)
+    for (i in 1:nrow(csv)){
+      if("TubeCode" %in% names(csv)){
+        eval.barcode <- csv[i,]$"TubeCode"
+        eval.well <- csv[i,]$"LocationRow"
+        eval.pos <- csv[i,]$"LocationColumn"
+      }else{
+        eval.barcode <- csv[i,]$"Tube ID"
+        eval.well <- csv[i,]$"Position" %>% substring(., 1, 1)
+        eval.pos <- csv[i,]$"Position" %>% substring(., 2)
+      }
+      
+      #GET ROW BARCODE IS IN
+      m <- which(dummy.tbl$barcode == eval.barcode)
+      
+      # PUT THAT BARCODE/TUBE IN A NEW PLATE
+      dummy.tbl[m, "plate_id"] <- eval.plate_id
+      
+      # PUT THAT BARCODE/TUBE IN A WELL
+      dummy.tbl[m, "well_position"] <- paste0(eval.well, eval.pos)
+    }
+  }
+  if(!all(dummy.tbl$plate_id > 0)){
+    out <- list(TRUE, dummy.tbl)
+  }else{
+    out <- list(FALSE, dummy.tbl)
+  }
+  
+  return(out)
 }
