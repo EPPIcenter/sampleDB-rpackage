@@ -13,8 +13,19 @@
 #' @import lubridate
 #' @export
 
-# will upload container and samples (eg matrix_tubes, rdt) regardless of whether internal upload is successful
-# if internal upload is successful container and samples (eg matrix_tubes, rdt) should be deleted
+# am now uploadin internal data before containers and samples
+# so i dont think upload container and samples (eg matrix_tubes, rdt) are uploaded regardless of whether internal upload is successful
+# there are two problems
+# 1. is that internal upload (specimen, storage_container, study_subject) occurs before container (plates, boxes, bags) and samples (cryo tubes, rdt, micronix tubes)
+# this means that in order for the ids of samples to match the upload ids no errors can take place during either of these uploads. they work in tandem so must fail together or be successful together
+# this leads to issue 2
+# 2. connections to the database are (to the best of my knowledge) opening and closing all throughout the upload. This is bad, it means that if two usrs try to upload something at the same time
+# the can get their connections to the db (via an upload) can get crossed and ids storage container ids could be useless
+# There are three ways to overcome these problems:
+# A. upload internal data and container/sample data at the same time (is this possible? idk. it is how thing *should* be)
+# B. open a connection to the database only at the beginning of the upload and close the connection only at the end on the upload. many sampleDB funs open and close the db so the use of those funs here is
+# very problematic (it is how things i think *need* to be in order for 2+ users to work with the db at the same time)
+# C. Adds to the db tables occur not in a loop but all at once. (this is how things *should* be)
 UploadSamples <- function(type, csv.upload, container, list.location){
   
   database <- "/databases/new.sampleDB.db"
@@ -37,36 +48,36 @@ UploadSamples <- function(type, csv.upload, container, list.location){
   # Perform sample upload checks
   .UploadChecks(input, database, list.location, container, csv.upload = csv.upload)
   
+  # Parse through each row in the upload csv
+  sc_ids <- .InternalUpload(csv.upload = csv.upload, database = database, toggle.is_longitudinal = toggle.is_longitudinal, type = type)
+  
   # Upload samples
   if(type == "micronix"){
     .UploadMicronixPlate(database, container, list.location)    
-    .UploadMicronixTubes(database, csv.upload)
+    .UploadMicronixTubes(database, csv.upload, sc_ids)
     message(paste("UPLOADING PLATE", container, "CONTAINING", nrow(csv.upload), "MICRONIX SAMPLES"))
   }
   else if(type == "cryo"){
     stopifnot("Malformed csv.upload column names" = setequal(names(csv.upload), c("label", "row","column","study_short_code", "study_subject_id", "specimen_type")) || setequal(names(csv.upload), c("label", "row","column", "study_short_code", "study_subject_id", "specimen_type", "collection_date")))
     .UploadCryoBox(database, container, list.location)
-    .UploadCryoTubes(database, csv.upload)
+    .UploadCryoTubes(database, csv.upload, sc_ids)
     message(paste("UPLOADING BOX", container, "CONTAINING", nrow(csv.upload), "TUBES"))
   }
   else if(type == "rdt"){
     stopifnot("Malformed csv.upload column names" = setequal(names(csv.upload), c("label", "study_short_code", "study_subject_id", "specimen_type")) || setequal(names(csv.upload), c("label", "study_short_code", "study_subject_id", "specimen_type", "collection_date")))
     .UploadBag(database, container, list.location) 
-    .UploadRDT(database, csv.upload)
+    .UploadRDT(database, csv.upload, sc_ids)
     message(paste("UPLOADING BAG", container, "CONTAINING", nrow(csv.upload), "RDT SAMPLES"))
   }
   else if(type == "paper"){
     stopifnot("Malformed csv.upload column names" = setequal(names(csv.upload), c("label", "study_short_code", "study_subject_id", "specimen_type")) || setequal(names(csv.upload), c("label", "study_short_code", "study_subject_id", "specimen_type", "collection_date")))
-    .UploadBag(database, container, list.location) 
+    .UploadBag(database, container, list.location, sc_ids) 
     .UploadPaper(database, csv.upload)
     message(paste("UPLOADING BAG", container, "CONTAINING", nrow(csv.upload), "PAPER SAMPLES"))
   }
   else{
     message("User Upload Type was not a valid option. Valid options are: micronix, cryo, rdt and paper")
   }
-  
-  # Parse through each row in the upload csv
-  .InternalUpload(csv.upload = csv.upload, database = database, toggle.is_longitudinal = toggle.is_longitudinal, type = type)
   
   # message("UPLOAD COMPLETE")
 }
@@ -157,15 +168,17 @@ UploadSamples <- function(type, csv.upload, container, list.location){
   }
 }
 
-.UploadMicronixTubes <- function(database, csv){
+.UploadMicronixTubes <- function(database, csv, sc_ids){
   for(i in 1:nrow(csv)){
     eval.plate_id <- tail(sampleDB::CheckTable(database = database, "matrix_plate"), 1)$id
     eval.barcode <- csv[i,]$"label" %>% as.character()
     eval.well_position <- csv[i,]$"well_position"
     
+    storage_container_ids <- tail(sampleDB::CheckTable(database = database, "storage_container"), 1)$id
     sampleDB::AddToTable(database = database,
                          "matrix_tube",
-                         list(plate_id = eval.plate_id,
+                         list(id = sc_ids$before_upload.newest_sc_id + i,
+                              plate_id = eval.plate_id,
                               barcode = eval.barcode,
                               well_position = eval.well_position))
   }
@@ -181,7 +194,7 @@ UploadSamples <- function(type, csv.upload, container, list.location){
                             plate_name = container)) 
 }
 
-.UploadCryoTubes <- function(database, csv){
+.UploadCryoTubes <- function(database, csv, sc_ids){
   for(i in 1:nrow(csv)){
     eval.box_id <- tail(sampleDB::CheckTable(database = database, "box"), 1)$id
     eval.label <- csv[i,]$"label" %>% as.character()
@@ -189,7 +202,8 @@ UploadSamples <- function(type, csv.upload, container, list.location){
     
     sampleDB::AddToTable(database = database,
                          "tube",
-                         list(box_id = eval.box_id,
+                         list(id = sc_ids$before_upload.newest_sc_id + i,
+                              box_id = eval.box_id,
                               label = eval.label,
                               box_position = eval.box_position))
   }
@@ -205,6 +219,32 @@ UploadSamples <- function(type, csv.upload, container, list.location){
                             box_name = container)) 
 }
 
+.UploadRDT <- function(database, csv, sc_ids){
+  for(i in 1:nrow(csv)){
+    eval.bag_id <- tail(sampleDB::CheckTable(database = database, "bag"), 1)$id
+    eval.label <- csv[i,]$"label" %>% as.character()
+    
+    sampleDB::AddToTable(database = database,
+                         "rdt",
+                         list(id = sc_ids$before_upload.newest_sc_id + i,
+                              bag_id = eval.bag_id,
+                              label = eval.label))
+  }
+}
+
+.UploadPaper <- function(database, csv, sc_ids){
+  for(i in 1:nrow(csv)){
+    eval.bag_id <- tail(sampleDB::CheckTable(database = database, "bag"), 1)$id
+    eval.label <- csv[i,]$"label" %>% as.character()
+    
+    sampleDB::AddToTable(database = database,
+                         "paper",
+                         list(id = sc_ids$before_upload.newest_sc_id + i,
+                              bag_id = eval.bag_id,
+                              label = eval.label))
+  }
+}
+
 .UploadBag <- function(database, container, list.location){
   eval.location_id <- filter(CheckTable(database = database, "location"), location_name == list.location$location, level_I == list.location$level_I, level_II == list.location$level_II)$id
   sampleDB::AddToTable(database = database, 
@@ -215,31 +255,14 @@ UploadSamples <- function(type, csv.upload, container, list.location){
                             bag_name = container)) 
 }
 
-.UploadRDT <- function(database, csv){
-  for(i in 1:nrow(csv)){
-    eval.bag_id <- tail(sampleDB::CheckTable(database = database, "bag"), 1)$id
-    eval.label <- csv[i,]$"label" %>% as.character()
-    
-    sampleDB::AddToTable(database = database,
-                         "rdt",
-                         list(bag_id = eval.bag_id,
-                              label = eval.label))
-  }
-}
-
-.UploadPaper <- function(database, csv){
-  for(i in 1:nrow(csv)){
-    eval.bag_id <- tail(sampleDB::CheckTable(database = database, "bag"), 1)$id
-    eval.label <- csv[i,]$"label" %>% as.character()
-    
-    sampleDB::AddToTable(database = database,
-                         "paper",
-                         list(bag_id = eval.bag_id,
-                              label = eval.label))
-  }
-}
-
 .InternalUpload <- function(csv.upload, database, toggle.is_longitudinal, type){
+  #GET THE CURRENT NEWEST STORAGE CONTAINER ID
+  if(nrow(sampleDB::CheckTable(database = database, "storage_container")) == 0){
+    before_upload.newest_sc_id <- 0
+  }else{
+    before_upload.newest_sc_id <- tail(sampleDB::CheckTable(database = database, "storage_container"), 1)$id 
+  }
+  
   for(i in 1:nrow(csv.upload)){
     
     #GET VARIABLES IN UPLOAD
@@ -350,6 +373,10 @@ UploadSamples <- function(type, csv.upload, container, list.location){
                                 specimen_id = eval.specimen_id,
                                 exhausted = 0))
     }
+    after_upload.newest_sc_id <- tail(sampleDB::CheckTable(database = database, "storage_container"), 1)$id
     # message("UPLOAD COMPLETE")
   }
+  sc_ids <- list(before_upload.newest_sc_id = before_upload.newest_sc_id, 
+                 after_upload.newest_sc_id = after_upload.newest_sc_id)
+  return(sc_ids)
 }
