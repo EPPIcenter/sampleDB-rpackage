@@ -44,19 +44,19 @@ UploadSamples <- function(type, csv.upload, container, list.location){
     message(paste("UPLOADING PLATE", container, "CONTAINING", nrow(csv.upload), "MICRONIX SAMPLES"))
   }
   else if(type == "cryo"){
-    stopifnot("Malformed csv.upload column names" = setequal(names(csv.upload), c("label", "row","column","study_short_code", "study_subject_id", "specimen_type")) || setequal(names(csv.upload), c("label", "row","column", "study_short_code", "study_subject_id", "specimen_type", "collection_date"))
+    stopifnot("Malformed csv.upload column names" = setequal(names(csv.upload), c("label", "row","column","study_short_code", "study_subject_id", "specimen_type")) || setequal(names(csv.upload), c("label", "row","column", "study_short_code", "study_subject_id", "specimen_type", "collection_date")))
     .UploadCryoBox(database, container, list.location)
     .UploadCryoTubes(database, csv.upload)
     message(paste("UPLOADING BOX", container, "CONTAINING", nrow(csv.upload), "TUBES"))
   }
   else if(type == "rdt"){
-    stopifnot("Malformed csv.upload column names" = setequal(names(csv.upload), c("label", "study_short_code", "study_subject_id", "specimen_type")) || setequal(names(csv.upload), c("label", "study_short_code", "study_subject_id", "specimen_type", "collection_date"))
+    stopifnot("Malformed csv.upload column names" = setequal(names(csv.upload), c("label", "study_short_code", "study_subject_id", "specimen_type")) || setequal(names(csv.upload), c("label", "study_short_code", "study_subject_id", "specimen_type", "collection_date")))
     .UploadBag(database, container, list.location) 
     .UploadRDT(database, csv.upload)
     message(paste("UPLOADING BAG", container, "CONTAINING", nrow(csv.upload), "RDT SAMPLES"))
   }
   else if(type == "paper"){
-    stopifnot("Malformed csv.upload column names" = setequal(names(csv.upload), c("label", "study_short_code", "study_subject_id", "specimen_type")) || setequal(names(csv.upload), c("label", "study_short_code", "study_subject_id", "specimen_type", "collection_date"))
+    stopifnot("Malformed csv.upload column names" = setequal(names(csv.upload), c("label", "study_short_code", "study_subject_id", "specimen_type")) || setequal(names(csv.upload), c("label", "study_short_code", "study_subject_id", "specimen_type", "collection_date")))
     .UploadBag(database, container, list.location) 
     .UploadPaper(database, csv.upload)
     message(paste("UPLOADING BAG", container, "CONTAINING", nrow(csv.upload), "PAPER SAMPLES"))
@@ -74,7 +74,7 @@ UploadSamples <- function(type, csv.upload, container, list.location){
 .ReformatUploadMicronixCSV <- function(csv.upload){
   names.base <- c("study_subject_id", "specimen_type", "study_short_code")
   names.traxer.nodate <- c(names.base, "Position", "Tube ID",	"Status",	"Error Count",	"Rack ID",	"Date")
-  names.traxer.date <- c(names.visionmate, "collection_date")
+  names.traxer.date <- c(names.traxer.nodate, "collection_date")
   names.visionmate.nodate <- c(names.base, "LocationRow", "LocationColumn", "TubeCode")
   names.visionmate.date <- c(names.visionmate.nodate, "collection_date")
   
@@ -100,7 +100,6 @@ UploadSamples <- function(type, csv.upload, container, list.location){
 
 .UploadChecks <- function(input, database, list.location, container, csv.upload){
   message("PERFORMING CHECKS")
-  
   # CHECK FREEZER EXISTS
   tmp.location.tbl <- inner_join(tibble(location_name = list.location$location_name, level_I = list.location$level_I, level_II = list.location$level_II), 
                                  sampleDB::CheckTable(database = database, "location"), 
@@ -144,10 +143,10 @@ UploadSamples <- function(type, csv.upload, container, list.location){
     
     if("collection_date" %in% names(csv.upload)){
       test_table.specimen <- check.study_subject %>% rename("study_subject_id" = "id")
-      test_table.specimen$collection_date <- csv.upload$collection_date
+      test_table.specimen$collection_date <- as.double(as.Date(csv.upload$collection_date))
     }else{
       test_table.specimen <- check.study_subject %>% rename("study_subject_id" = "id")
-      test_table.specimen$collection_date <- NA
+      test_table.specimen$collection_date <- as.double(as.Date(NA))
     } 
     
     check.specimen <- inner_join(sampleDB::CheckTable(database = database, "specimen"), 
@@ -161,7 +160,7 @@ UploadSamples <- function(type, csv.upload, container, list.location){
 .UploadMicronixTubes <- function(database, csv){
   for(i in 1:nrow(csv)){
     eval.plate_id <- tail(sampleDB::CheckTable(database = database, "matrix_plate"), 1)$id
-    eval.barcode <- csv[i,]$"barcode" %>% as.character()
+    eval.barcode <- csv[i,]$"label" %>% as.character()
     eval.well_position <- csv[i,]$"well_position"
     
     sampleDB::AddToTable(database = database,
@@ -249,9 +248,9 @@ UploadSamples <- function(type, csv.upload, container, list.location){
     eval.subject <- csv.upload[i, ]$"study_subject_id"
     if(toggle.is_longitudinal){
       eval.collection_date <- ymd(csv.upload[i, ]$"collection_date")
-      eval.collection_date <- paste(year(eval.collection_date), month(eval.collection_date), day(eval.collection_date), sep = "-")
+      eval.collection_date <- as.double(as.Date(paste(year(eval.collection_date), month(eval.collection_date), day(eval.collection_date), sep = "-")))
     }else{
-      eval.collection_date <- as.character(NA)
+      eval.collection_date <- as.double(as.Date(NA))
     }
     
     #CHECK IF THIS SUBJECT + STUDY COMBO EXISTS
@@ -267,7 +266,7 @@ UploadSamples <- function(type, csv.upload, container, list.location){
       tmp_table.specimen <- inner_join(sampleDB::CheckTable(database = database, "specimen")[,c("study_subject_id", "specimen_type_id", "collection_date")],
                                        tibble(study_subject_id = eval.study_subject_id, specimen_type_id = eval.specimen_type_id, collection_date = eval.collection_date),
                                        by = c("study_subject_id", "specimen_type_id", "collection_date"))
-      
+
       if(nrow(tmp_table.specimen) > 0){
         
         #IF SPECIMEN EXISTS: GET SPECIMEN ID
