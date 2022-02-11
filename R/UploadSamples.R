@@ -71,8 +71,8 @@ UploadSamples <- function(type, csv.upload, container, list.location){
   }
   else if(type == "paper"){
     stopifnot("Malformed csv.upload column names" = setequal(names(csv.upload), c("label", "study_short_code", "study_subject_id", "specimen_type")) || setequal(names(csv.upload), c("label", "study_short_code", "study_subject_id", "specimen_type", "collection_date")))
-    .UploadBag(database, container, list.location, sc_ids) 
-    .UploadPaper(database, csv.upload)
+    .UploadBag(database, container, list.location) 
+    .UploadPaper(database, csv.upload, sc_ids)
     message(paste("UPLOADING BAG", container, "CONTAINING", nrow(csv.upload), "PAPER SAMPLES"))
   }
   else{
@@ -118,7 +118,7 @@ UploadSamples <- function(type, csv.upload, container, list.location){
   stopifnot("FREEZER NAME + LEVEL I + LEVEL II DOES NOT EXITS" = nrow(tmp.location.tbl) != 0)
   
   # CHECK PLATE NAME IS UNIQUE
-  stopifnot("PLATE NAME IS NOT UNIQUE" = !(container %in% c(sampleDB::CheckTable(database = database, "matrix_plate")$plate_name,
+  stopifnot("CONTAINER NAME IS NOT UNIQUE" = !(container %in% c(sampleDB::CheckTable(database = database, "matrix_plate")$plate_name,
                                                             sampleDB::CheckTable(database = database, "box")$box_name,
                                                             sampleDB::CheckTable(database = database, "bag")$bag_name)))
   
@@ -127,7 +127,7 @@ UploadSamples <- function(type, csv.upload, container, list.location){
   
   # CHECK DATE (IF PRESENT) IS IN CORRECT FORMAT
   if("collection_date" %in% names(csv.upload)){
-    stopifnot("COLLECTION DATE MUSE BE YMD" = all(!is.na(parse_date_time(csv.upload$"collection_date", orders = "ymd")) == TRUE))
+    stopifnot("COLLECTION DATE MUST BE YMD" = all(!is.na(parse_date_time(csv.upload$"collection_date", orders = "ymd")) == TRUE))
   }
   
   # CHECK THAT NO BARCODE ALREADY EXISTS
@@ -144,28 +144,28 @@ UploadSamples <- function(type, csv.upload, container, list.location){
   if(length(NonUniqueLabels) != 0){print(NonUniqueLabels)}
 
   #CHECK IF SPECIMEN ALREADY EXISTS
-  check.study_subject <- inner_join(sampleDB::CheckTable(database = database, "study_subject"),
-                                    tibble(subject = csv.upload$"study_subject_id",
-                                           study_id = filter(sampleDB::CheckTable(database = database, "study"), short_code %in% csv.upload$study_short_code)$id,
-                                           specimen_type_id = filter(sampleDB::CheckTable(database = database, "specimen_type"), label %in% csv.upload$specimen_type)$id),
-                                    by = c("subject", "study_id"))
-  
-  if(nrow(check.study_subject) != 0){
-    
-    if("collection_date" %in% names(csv.upload)){
-      test_table.specimen <- check.study_subject %>% rename("study_subject_id" = "id")
-      test_table.specimen$collection_date <- as.double(as.Date(csv.upload$collection_date))
-    }else{
-      test_table.specimen <- check.study_subject %>% rename("study_subject_id" = "id")
-      test_table.specimen$collection_date <- as.double(as.Date(NA))
-    } 
-    
-    check.specimen <- inner_join(sampleDB::CheckTable(database = database, "specimen"), 
-                                     test_table.specimen, 
-                                     by = c("study_subject_id", "specimen_type_id", "collection_date"))
-    
-    stopifnot("SPECIMEN ALREADY EXISTS IN THE DATABASE. SPECIMENS UNIQUE CONSTRAINT: SUBJECT + STUDY + SPECIMEN TYPE + COLLECTION DATE" = nrow(check.specimen) == 0)
-  }
+  # check.study_subject <- inner_join(sampleDB::CheckTable(database = database, "study_subject"),
+  #                                   tibble(subject = csv.upload$"study_subject_id",
+  #                                          study_id = filter(sampleDB::CheckTable(database = database, "study"), short_code %in% csv.upload$study_short_code)$id,
+  #                                          specimen_type_id = filter(sampleDB::CheckTable(database = database, "specimen_type"), label %in% csv.upload$specimen_type)$id),
+  #                                   by = c("subject", "study_id"))
+  # 
+  # if(nrow(check.study_subject) != 0){
+  #   
+  #   if("collection_date" %in% names(csv.upload)){
+  #     test_table.specimen <- check.study_subject %>% rename("study_subject_id" = "id")
+  #     test_table.specimen$collection_date <- as.double(as.Date(csv.upload$collection_date))
+  #   }else{
+  #     test_table.specimen <- check.study_subject %>% rename("study_subject_id" = "id")
+  #     test_table.specimen$collection_date <- as.double(as.Date(NA))
+  #   } 
+  #   
+  #   check.specimen <- inner_join(sampleDB::CheckTable(database = database, "specimen"), 
+  #                                    test_table.specimen, 
+  #                                    by = c("study_subject_id", "specimen_type_id", "collection_date"))
+  #   
+  #   stopifnot("SPECIMEN ALREADY EXISTS IN THE DATABASE. SPECIMENS UNIQUE CONSTRAINT: SUBJECT + STUDY + SPECIMEN TYPE + COLLECTION DATE" = nrow(check.specimen) == 0)
+  # }
 }
 
 .UploadMicronixTubes <- function(database, csv, sc_ids){
@@ -198,7 +198,7 @@ UploadSamples <- function(type, csv.upload, container, list.location){
   for(i in 1:nrow(csv)){
     eval.box_id <- tail(sampleDB::CheckTable(database = database, "box"), 1)$id
     eval.label <- csv[i,]$"label" %>% as.character()
-    eval.box_position <- paste(csv[i,]$"row", csv[i,]$"column", sep = "_")
+    eval.box_position <- paste(csv[i,]$"row", csv[i,]$"column", sep = "")
     
     sampleDB::AddToTable(database = database,
                          "tube",

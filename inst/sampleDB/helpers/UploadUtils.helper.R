@@ -3,7 +3,6 @@
 
 MatrixUpload <- function(session, output, input, database, ref.clear_action){
   
-  print("HERE")
   # A. PERFORM UPLOAD CHECKS... PRINT GOOD USER MESSAGES
   UploadChecks(database = database,
                input = input,
@@ -362,9 +361,9 @@ UploadChecks <- function(database, type, input, output, ui.output, ui.input){
   CheckUploadPlateUniqSampleIDConstraint <- reactive({.CheckUploadPlateUniqSampleIDConstraint(input, database, type, ui.input)})
   output[[ui.output$WarningUploadSampleID]] <- renderText(CheckUploadPlateUniqSampleIDConstraint())
   
-  # CHECK THAT SPECIMEN TYPE IS UNIQUE
-  CheckSpecimenExists <- reactive({.CheckSpecimenExists(input, database, ui.input)})
-  output[[ui.output$WarningSpecimenExists]] <- renderText(CheckSpecimenExists())
+  # # CHECK THAT SPECIMEN TYPE IS UNIQUE
+  # CheckSpecimenExists <- reactive({.CheckSpecimenExists(input, database, ui.input)})
+  # output[[ui.output$WarningSpecimenExists]] <- renderText(CheckSpecimenExists())
 }
 
 UploadRequirements <- function(input, database, ui.input){

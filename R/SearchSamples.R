@@ -125,9 +125,9 @@ SearchSamples <- function(filters, study_subject.file = F){
      specimen_ids <- filter(table.specimen, lubridate::as_date(collection_date) %within% interval(d1,d2))$id
      storage_container_id <- filter(table.storage_container, specimen_id %in% specimen_ids)$id
     }
-    # USE TYPE TO GET STORAGE CONTAINER ID
+    # USE TYPE TO GET STORAGE CONTAINER ID -- 
     if(term.search == "type"){
-      storage_container_id <- filter(table.storage_container, type %in% filter$type)$id
+      storage_container_id <- filter(table.storage_container, type %in% filters$type)$id
     }
     # USE TYPE SPECIFIC THINGS TO FILTER
     
@@ -206,17 +206,17 @@ SearchSamples <- function(filters, study_subject.file = F){
       
     #STITCH TOGETHER SEARCH RESULTS
     search_results <- tibble(
-                             subject_uid = output.subject_uids,
-                             study = output.study_short_code,
-                             specimen_type = output.specimen_type_labels,
-                             collection_date = output.collection_date,
-                             container_name = external_data$container_name,
-                             container_position = external_data$container_position,
+                             subject_uid = output.subject_uids %>% as.factor(),
+                             study = output.study_short_code %>% as.factor(),
+                             specimen_type = output.specimen_type_labels %>% as.factor(),
+                             collection_date = lubridate::as_date(output.collection_date),
+                             container_name = external_data$container_name %>% as.factor(),
+                             container_position = external_data$container_position %>% as.factor(),
                              label = external_data$label,
-                             type = external_data$type,
-                             freezer = external_data$location_name,
-                             freezer_l1 = external_data$level_I,
-                             freezer_l2 = external_data$level_II
+                             type = external_data$type %>% as.factor(),
+                             freezer = external_data$location_name %>% as.factor(),
+                             freezer_l1 = external_data$level_I %>% as.factor(),
+                             freezer_l2 = external_data$level_II %>% as.factor()
                              )
     
     # USE TYPE SPECIFIC THINGS TO FILTER
