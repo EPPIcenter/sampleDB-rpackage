@@ -3,14 +3,15 @@
 #' @param filters A list containing micronix barcodes, plate name, study code, location and/or specimen_type
 #' @param study_subject.file TRUE or FALSE
 #' @examples
-#' name.container =
-#' name.date = list(date.from = , date.to =)
-#' name.label =
-#' name.location = list(location_name = "Freezer A", level_I = "dummy.levelI", level_II = "dummy.levelII")
-#' name.specimen_type = 
-#' name.study = 
-#' name.study_subject = 
-#' name.type = 
+#' name.container = #tricky bc are container names uniq throughout the whole db or just within a certain sample type?
+#' - date = list(date.from = "YMD", date.to = "YMD")
+#' - exhausted = T/F
+#' name.label = #tricky bc are labels uniq throughout the whole db or just within a certain sample type?
+#' + name.location = list(location_name = c(), level_I = c(), level_II = c())
+#' + name.specimen_type = c()
+#' + name.study = c()
+#' + name.study_subject = c()
+#' + name.type = c("RDT", "Micronix", "Paper", "Cryovile")
 #' 
 #' Examples:
 #' SearchSamples(filters = list(name.plate = c("100","101"), name.location = c("Left -20 Freezer")))
@@ -41,30 +42,30 @@ SearchSamples <- function(filters, study_subject.file = FALSE){
   clean_filters <- discard(filters, function(x) is.null(x))
   term.search <- clean_filters[1] %>% names()
   terms.filter <- clean_filters[-1] %>% names()
-  print(term.search)
-  print(terms.filter)
   
   if(is.na(term.search)){
     usr_results <- NULL
   }else{
     
-    # USE SEARCH TERM TO GET STORAGE CONTAINER IDS
+    # AGGREGATE THE DATASET INTO A TABLE BY USING A "SEARCH TERM" -- OUTPUT IS STORAGE CONTAINER IDS
     storage_container_id <- .UseSearchTermToGetStorageContainerIDs(filters = filters, term.search = term.search, tables.database = tables.database)
     
-    # USE STORAGE CONTAINER IDS TO GET INTERNAL DATA
+    # RETRIEVE INTERNAL DATA USING STORAGE CONTAINER IDS
     internal_data <- .UseStorageContainerIDToGetInternalData(storage_container_id = storage_container_id, 
                                                              tables.database = tables.database)
     
-    # USE STORAGE CONTAINER IDS TO GET EXTERNAL DATA
+    # RETRIEVE EXTERNAL DATA USING STORAGE CONTAINER IDS
     external_data <- .UseStorageContainerIDToGetExternalData(storage_container_id = storage_container_id,
                                                              tables.database = tables.database)
       
-    # USE INTERNAL AND EXTERNAL DATA TO GET SEARCH RESULTS
+    # COMBINE INTERNAL AND EXTERNAL DATA TO CREATE SEARCH RESULTS
     results.search_term <- .UseInternalAndExternalDataToGetResults(internal_data = internal_data, 
                                                                    external_data = external_data)
     
-    # FILTER SEARCH RESULTS
-    results.filter_and_search <- .FilterSearchResults(filters = filters, terms.filter = terms.filter, results.search_term = results.search_term)
+    # FILTER THE AGGREGATED TABLE BY FILTER TERMS
+    results.filter_and_search <- .FilterSearchResults(filters = filters, 
+                                                      terms.filter = terms.filter,
+                                                      results.search_term = results.search_term)
     
     # BEAUTIFY RESULTS TABLE
     usr_results <- .BeautifyResultsTable(results.filter_and_search = results.filter_and_search)
@@ -98,7 +99,12 @@ SearchSamples <- function(filters, study_subject.file = FALSE){
 .UseSearchTermToGetStorageContainerIDs <- function(filters, term.search, tables.database){
   # USE TYPE TO GET STORAGE CONTAINER ID -- 
   if(term.search == "name.type"){
+    print(tables.database$table.storage_container)
+    print(filters$name.type)
     storage_container_id <- filter(tables.database$table.storage_container, type %in% filters$name.type)$id
+  }
+  if(term.search == "exhausted"){
+    storage_container_id <- filter(tables.database$table.storage_container, as.logical(exhausted == filter$exhausted))$id
   }
   # USE STUDY TO GET STORAGE CONTAINER ID
   if(term.search == "name.study"){
@@ -129,9 +135,10 @@ SearchSamples <- function(filters, study_subject.file = FALSE){
     storage_container_id <- filter(tables.database$table.storage_container, id %in% c(tubes_id, rdt_id, paper_id, matrix_tubes_id))$id
   }
   # USE DATE TO GET STORAGE CONTAINER ID
-  if(term.search == "from_to.dates"){
-    date.from <- lubridate::as_date(filter$date$date.from)
-    date.to <- lubridate::as_date(filter$date$date.to)
+  if(term.search == "date"){
+    stopifnot("date.from and data.to must be in YMD format." = all(!is.na(parse_date_time(c(filters$date$date.from, filters$date$date.to), orders = "ymd")) == TRUE))
+    date.from <- lubridate::as_date(filters$date$date.from)
+    date.to <- lubridate::as_date(filters$date$date.to)
     specimen_ids <- filter(tables.database$table.specimen, lubridate::as_date(collection_date) %within% interval(date.from,date.to))$id
     storage_container_id <- filter(tables.database$table.storage_container, specimen_id %in% specimen_ids)$id
   }
@@ -157,6 +164,8 @@ SearchSamples <- function(filters, study_subject.file = FALSE){
 }
 
 .UseStorageContainerIDToGetInternalData <- function(storage_container_id, tables.database){
+  exhausted_info <- filter(tables.database$table.storage_container, id %in% storage_container_id)$exhausted
+  # comments <- filter(tables.database$table.storage_container, id %in% storage_container_id)$comments
   specimen_ids <- filter(tables.database$table.storage_container, id %in% storage_container_id)
   table.ref1 <- inner_join(specimen_ids, tables.database$table.specimen, by = c("specimen_id" = "id"))
   study_subject_id <- table.ref1$study_subject_id
@@ -168,7 +177,9 @@ SearchSamples <- function(filters, study_subject.file = FALSE){
   study_short_code <- inner_join(table.ref2, tables.database$table.study, by = c("study_id" = "id"))$short_code
   
   specimen_type_labels <- inner_join(table.ref1, tables.database$table.specimen_type, by = c("specimen_type_id" = "id"))$label
-  internal_data <- list(collection_date = collection_date,
+  internal_data <- list(storage_container_id = storage_container_id,
+                        exhausted_info = exhausted_info,
+                        collection_date = collection_date,
                         study_short_code = study_short_code,
                         subject_uids = subject_uids,
                         subject_uids = subject_uids,
@@ -184,7 +195,7 @@ SearchSamples <- function(filters, study_subject.file = FALSE){
     select(-c(box_id)) %>%
     rename(container_position = box_position,
            container_name = box_name) %>%
-    mutate(type = "Micronix")
+    mutate(type = "Cryovile")
   
   micr_dat <- inner_join(filter(tables.database$table.matrix_tube, id %in% storage_container_id), 
                          tables.database$table.plate[, c("id","plate_name", "location_id")], 
@@ -219,7 +230,8 @@ SearchSamples <- function(filters, study_subject.file = FALSE){
 }
 
 .UseInternalAndExternalDataToGetResults <- function(internal_data, external_data){
-  search_results <- tibble(subject_uid = internal_data$subject_uids %>% as.factor(),
+  search_results <- tibble(storage_container_id = internal_data$storage_container_id,
+                           subject_uid = internal_data$subject_uids %>% as.factor(),
                            study = internal_data$study_short_code %>% as.factor(),
                            specimen_type = internal_data$specimen_type_labels %>% as.factor(),
                            collection_date = lubridate::as_date(internal_data$collection_date),
@@ -229,7 +241,8 @@ SearchSamples <- function(filters, study_subject.file = FALSE){
                            type = external_data$type %>% as.factor(),
                            freezer = external_data$location_name %>% as.factor(),
                            freezer_l1 = external_data$level_I %>% as.factor(),
-                           freezer_l2 = external_data$level_II %>% as.factor()) 
+                           freezer_l2 = external_data$level_II %>% as.factor(),
+                           exhausted = as.logical(internal_data$exhausted_info) %>% as.factor())
   return(search_results)
 }
 
@@ -246,20 +259,29 @@ SearchSamples <- function(filters, study_subject.file = FALSE){
       if(filter_term == "name.study_subject"){
         results.search_term <- filter(results.search_term, subject_uid %in% filters[["name.study_subject"]])
       }
-      # if(filter_term == "name.date"){
-      #   results.search_term <- filter(results.search_term, subject_uid %in% filters[["name.study_subject"]])
-      # }
-      # if(filter_term == "name.container_name"){
-      #   results.search_term <- filter(results.search_term, subject_uid %in% filters[["name.study_subject"]])
-      # }
-      # if(filter_term == "name.type"){
-      #   results.search_term <- filter(results.search_term, subject_uid %in% filters[["name.study_subject"]])
-      # }
-      # if(filter_term == "name.location"){
-      #   results.search_term <- filter(results.search_term, subject_uid %in% filters[["name.study_subject"]])
-      # }
+      if(filter_term == "name.location"){
+        results.search_term <- filter(results.search_term, freezer %in% filters[["name.location"]][["location_name"]])
+        if(!is.null(filters[["name.location"]][["level_I"]])){
+          results.search_term <- filter(results.search_term, freezer_l1 %in% filters[["name.location"]][["level_I"]])
+        }
+        if(!is.null(filters[["name.location"]][["level_II"]])){
+          results.search_term <- filter(results.search_term, freezer_l2 %in% filters[["name.location"]][["level_II"]])
+        }
+      }
+      if(filter_term == "name.type"){
+        results.search_term <- filter(results.search_term, type %in% filters[["name.type"]])
+      }
+      if(filter_term == "exhausted"){
+        results.search_term <- filter(results.search_term, as.logical(exhausted) == filters[["exhausted"]])
+      }
+      if(filter_term == "date"){
+        stopifnot("date.from and data.to must be in YMD format." = all(!is.na(parse_date_time(c(filters$date$date.from, filters$date$date.to), orders = "ymd")) == TRUE))
+        date.from <- lubridate::as_date(filters[["date"]][["date.from"]])
+        date.to <- lubridate::as_date(filters[["date"]][["date.to"]])
+        results.search_term <- filter(results.search_term, lubridate::as_date(collection_date) %within% interval(date.from, date.to))
+      }
       results.filter_and_search <- results.search_term
-    } 
+    }
   }else{
     results.filter_and_search <- results.search_term
   }
@@ -268,7 +290,6 @@ SearchSamples <- function(filters, study_subject.file = FALSE){
 
 .BeautifyResultsTable <- function(results.filter_and_search){
   usr_results <- results.filter_and_search %>%
-    # relocate("plate_uid") %>%
     rename(`Sample Type` = type,
            `Container Name` = container_name,
            `Container Position` = container_position,
@@ -279,16 +300,8 @@ SearchSamples <- function(filters, study_subject.file = FALSE){
            `Storage Location` = freezer,
            `Storage Location.level_I` = freezer_l1,
            `Storage Location.level_II` = freezer_l2,
-           `Collected Date` = collection_date)
-  # %>%
-  #   mutate(letter = substring(well_position, 1, 1),
-  #          number = as.numeric(substring(well_position, 2))) %>%
-  #   select(-well_position) %>%
-  #   group_by(`Plate Name`, `Barcode`, letter, number) %>%
-  #   arrange(`Plate Name`, letter, number) %>%
-  #   ungroup() %>%
-  #   mutate(`Well Position` = paste0(letter, number), .after = `Plate Name`) %>%
-  #   select(-c(letter, number))
+           `Collected Date` = collection_date,
+           `Exhausted` = exhausted)
   
   return(usr_results)
 }
