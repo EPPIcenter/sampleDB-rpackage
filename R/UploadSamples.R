@@ -111,6 +111,9 @@ UploadSamples <- function(type, csv.upload, container, list.location){
 
 .UploadChecks <- function(input, database, list.location, container, csv.upload){
   message("PERFORMING CHECKS")
+  
+  stopifnot("SAMPLE TYPE IS NOT VALID" = type %in% c("cryo", "micronix", "paper", "rdt"))
+  
   # CHECK FREEZER EXISTS
   tmp.location.tbl <- inner_join(tibble(location_name = list.location$location_name, level_I = list.location$level_I, level_II = list.location$level_II), 
                                  sampleDB::CheckTable(database = database, "location"), 
@@ -168,93 +171,6 @@ UploadSamples <- function(type, csv.upload, container, list.location){
   # }
 }
 
-.UploadMicronixTubes <- function(database, csv, sc_ids){
-  for(i in 1:nrow(csv)){
-    eval.plate_id <- tail(sampleDB::CheckTable(database = database, "matrix_plate"), 1)$id
-    eval.barcode <- csv[i,]$"label" %>% as.character()
-    eval.well_position <- csv[i,]$"well_position"
-    
-    storage_container_ids <- tail(sampleDB::CheckTable(database = database, "storage_container"), 1)$id
-    sampleDB::AddToTable(database = database,
-                         "matrix_tube",
-                         list(id = sc_ids$before_upload.newest_sc_id + i,
-                              plate_id = eval.plate_id,
-                              barcode = eval.barcode,
-                              well_position = eval.well_position))
-  }
-}
-
-.UploadMicronixPlate <- function(database, container, list.location){
-  eval.location_id <- filter(CheckTable(database = database, "location"), location_name == list.location$location, level_I == list.location$level_I, level_II == list.location$level_II)$id
-  sampleDB::AddToTable(database = database, 
-                       "matrix_plate",
-                       list(created = lubridate::now("UTC") %>% as.character(),
-                            last_updated = lubridate::now("UTC") %>% as.character(),
-                            location_id = eval.location_id,
-                            plate_name = container)) 
-}
-
-.UploadCryoTubes <- function(database, csv, sc_ids){
-  for(i in 1:nrow(csv)){
-    eval.box_id <- tail(sampleDB::CheckTable(database = database, "box"), 1)$id
-    eval.label <- csv[i,]$"label" %>% as.character()
-    eval.box_position <- paste(csv[i,]$"row", csv[i,]$"column", sep = "")
-    
-    sampleDB::AddToTable(database = database,
-                         "tube",
-                         list(id = sc_ids$before_upload.newest_sc_id + i,
-                              box_id = eval.box_id,
-                              label = eval.label,
-                              box_position = eval.box_position))
-  }
-}
-
-.UploadCryoBox <- function(database, container, list.location){
-  eval.location_id <- filter(CheckTable(database = database, "location"), location_name == list.location$location, level_I == list.location$level_I, level_II == list.location$level_II)$id
-  sampleDB::AddToTable(database = database,
-                       "box",
-                       list(created = lubridate::now("UTC") %>% as.character(),
-                            last_updated = lubridate::now("UTC") %>% as.character(),
-                            location_id = eval.location_id,
-                            box_name = container)) 
-}
-
-.UploadRDT <- function(database, csv, sc_ids){
-  for(i in 1:nrow(csv)){
-    eval.bag_id <- tail(sampleDB::CheckTable(database = database, "bag"), 1)$id
-    eval.label <- csv[i,]$"label" %>% as.character()
-    
-    sampleDB::AddToTable(database = database,
-                         "rdt",
-                         list(id = sc_ids$before_upload.newest_sc_id + i,
-                              bag_id = eval.bag_id,
-                              label = eval.label))
-  }
-}
-
-.UploadPaper <- function(database, csv, sc_ids){
-  for(i in 1:nrow(csv)){
-    eval.bag_id <- tail(sampleDB::CheckTable(database = database, "bag"), 1)$id
-    eval.label <- csv[i,]$"label" %>% as.character()
-    
-    sampleDB::AddToTable(database = database,
-                         "paper",
-                         list(id = sc_ids$before_upload.newest_sc_id + i,
-                              bag_id = eval.bag_id,
-                              label = eval.label))
-  }
-}
-
-.UploadBag <- function(database, container, list.location){
-  eval.location_id <- filter(CheckTable(database = database, "location"), location_name == list.location$location, level_I == list.location$level_I, level_II == list.location$level_II)$id
-  sampleDB::AddToTable(database = database, 
-                       "bag",
-                       list(created = lubridate::now("UTC") %>% as.character(),
-                            last_updated = lubridate::now("UTC") %>% as.character(),
-                            location_id = eval.location_id,
-                            bag_name = container)) 
-}
-
 .InternalUpload <- function(csv.upload, database, toggle.is_longitudinal, type){
   #GET THE CURRENT NEWEST STORAGE CONTAINER ID
   if(nrow(sampleDB::CheckTable(database = database, "storage_container")) == 0){
@@ -289,7 +205,7 @@ UploadSamples <- function(type, csv.upload, container, list.location){
       tmp_table.specimen <- inner_join(sampleDB::CheckTable(database = database, "specimen")[,c("study_subject_id", "specimen_type_id", "collection_date")],
                                        tibble(study_subject_id = eval.study_subject_id, specimen_type_id = eval.specimen_type_id, collection_date = eval.collection_date),
                                        by = c("study_subject_id", "specimen_type_id", "collection_date"))
-
+      
       if(nrow(tmp_table.specimen) > 0){
         
         #IF SPECIMEN EXISTS: GET SPECIMEN ID
@@ -379,4 +295,91 @@ UploadSamples <- function(type, csv.upload, container, list.location){
   sc_ids <- list(before_upload.newest_sc_id = before_upload.newest_sc_id, 
                  after_upload.newest_sc_id = after_upload.newest_sc_id)
   return(sc_ids)
+}
+
+.UploadMicronixTubes <- function(database, csv, sc_ids){
+  for(i in 1:nrow(csv)){
+    eval.plate_id <- tail(sampleDB::CheckTable(database = database, "matrix_plate"), 1)$id
+    eval.barcode <- csv[i,]$"label" %>% as.character()
+    eval.well_position <- csv[i,]$"well_position"
+    
+    storage_container_ids <- tail(sampleDB::CheckTable(database = database, "storage_container"), 1)$id
+    sampleDB::AddToTable(database = database,
+                         "matrix_tube",
+                         list(id = sc_ids$before_upload.newest_sc_id + i,
+                              plate_id = eval.plate_id,
+                              barcode = eval.barcode,
+                              well_position = eval.well_position))
+  }
+}
+
+.UploadMicronixPlate <- function(database, container, list.location){
+  eval.location_id <- filter(CheckTable(database = database, "location"), location_name == list.location$location, level_I == list.location$level_I, level_II == list.location$level_II)$id
+  sampleDB::AddToTable(database = database, 
+                       "matrix_plate",
+                       list(created = lubridate::now("UTC") %>% as.character(),
+                            last_updated = lubridate::now("UTC") %>% as.character(),
+                            location_id = eval.location_id,
+                            plate_name = container)) 
+}
+
+.UploadCryoTubes <- function(database, csv, sc_ids){
+  for(i in 1:nrow(csv)){
+    eval.box_id <- tail(sampleDB::CheckTable(database = database, "box"), 1)$id
+    eval.label <- csv[i,]$"label" %>% as.character()
+    eval.box_position <- paste(csv[i,]$"row", csv[i,]$"column", sep = "")
+    
+    sampleDB::AddToTable(database = database,
+                         "tube",
+                         list(id = sc_ids$before_upload.newest_sc_id + i,
+                              box_id = eval.box_id,
+                              label = eval.label,
+                              box_position = eval.box_position))
+  }
+}
+
+.UploadCryoBox <- function(database, container, list.location){
+  eval.location_id <- filter(CheckTable(database = database, "location"), location_name == list.location$location, level_I == list.location$level_I, level_II == list.location$level_II)$id
+  sampleDB::AddToTable(database = database,
+                       "box",
+                       list(created = lubridate::now("UTC") %>% as.character(),
+                            last_updated = lubridate::now("UTC") %>% as.character(),
+                            location_id = eval.location_id,
+                            box_name = container)) 
+}
+
+.UploadRDT <- function(database, csv, sc_ids){
+  for(i in 1:nrow(csv)){
+    eval.bag_id <- tail(sampleDB::CheckTable(database = database, "bag"), 1)$id
+    eval.label <- csv[i,]$"label" %>% as.character()
+    
+    sampleDB::AddToTable(database = database,
+                         "rdt",
+                         list(id = sc_ids$before_upload.newest_sc_id + i,
+                              bag_id = eval.bag_id,
+                              label = eval.label))
+  }
+}
+
+.UploadPaper <- function(database, csv, sc_ids){
+  for(i in 1:nrow(csv)){
+    eval.bag_id <- tail(sampleDB::CheckTable(database = database, "bag"), 1)$id
+    eval.label <- csv[i,]$"label" %>% as.character()
+    
+    sampleDB::AddToTable(database = database,
+                         "paper",
+                         list(id = sc_ids$before_upload.newest_sc_id + i,
+                              bag_id = eval.bag_id,
+                              label = eval.label))
+  }
+}
+
+.UploadBag <- function(database, container, list.location){
+  eval.location_id <- filter(CheckTable(database = database, "location"), location_name == list.location$location, level_I == list.location$level_I, level_II == list.location$level_II)$id
+  sampleDB::AddToTable(database = database, 
+                       "bag",
+                       list(created = lubridate::now("UTC") %>% as.character(),
+                            last_updated = lubridate::now("UTC") %>% as.character(),
+                            location_id = eval.location_id,
+                            bag_name = container)) 
 }
