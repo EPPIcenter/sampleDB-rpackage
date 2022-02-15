@@ -19,8 +19,9 @@ MatrixUpload <- function(session, output, input, database, ref.clear_action){
                                 WarningUploadContainer = "WarningMicronixUploadContainer"))
   
   observeEvent(
-    input$UploadActionCryoSamples,
+    input$UploadMicronixAction,
     ({
+      print("hi")
       # TRIGGER UI CHANGE FOR REACTIVITY - RECYCLE RENAMESTUDYLEADPERSON
       updateTextInput(session = session, "RenameStudyLeadPerson", value = "@RBRLdB?GtnJ4kce")
       
@@ -192,8 +193,8 @@ RDTUpload <- function(session, output, input, database, ref.clear_action){
     input$UploadActionRDTSamples,
     ({
       # TRIGGER UI CHANGE FOR REACTIVITY - RECYCLE RENAMESTUDYLEADPERSON
-      updateTextInput(session = session, "RenameStudyLeadPerson", value = "zcj#f8T!k3Grfyd6")
-      
+      updateTextInput(session = session, "RenameStudyLeadPerson", value = "9k@YczN!EJ$CNyP9")
+
       # PAUSE FOR EFFECT AND PRINT WORKING
       Sys.sleep(.75)
       output$UploadRDTReturnMessage1 <- renderText({"Working..."})
@@ -203,50 +204,56 @@ RDTUpload <- function(session, output, input, database, ref.clear_action){
   observe({
     
     # WHEN REACTIVE UI IS CHANGED TO INDICATE AN UPLOAD
-    if(input$RenameStudyLeadPerson == "zcj#f8T!k3Grfyd6"){
+    if(input$RenameStudyLeadPerson == "9k@YczN!EJ$CNyP9"){
       
       # B. CHECK REQUIREMENTS
       UploadRequirements(input = input,
-                         database = database, 
+                         database = database,
                          ui.input = list(UploadPlateID = "UploadRDTPlateID",
                                          UploadDataSet = "UploadRDTDataSet"))
       
       # UPLOAD SAMPLES
-      sampleDB::UploadSamples(type = "cryo",
+      sampleDB::UploadSamples(type = "rdt",
                               csv.upload = input$UploadRDTSamples$datapath,
                               container = input$UploadBagID,
-                              list.location = list(location_name = input$UploadLocationRDTFreezerName, 
-                                                   level_I = input$UploadLocationRDTLevelI, 
+                              list.location = list(location_name = input$UploadLocationRDTFreezerName,
+                                                   level_I = input$UploadLocationRDTLevelI,
                                                    level_II = input$UploadLocationRDTLevelII))
-      # 
-      # #UPDATE THE SEARCH DROPDOWNS
+
+      #UPDATE THE SEARCH DROPDOWNS
       warning("search dropdowns are not updated")
       # updateSelectizeInput(session = session,
       #                      "SearchByPlateID",
       #                      choices = c("", sampleDB::CheckTable(database = database, "matrix_plate")$plate_name),
       #                      label = NULL)
-      
-      # D. CLEAR FORM
-      UploadReset(input = input, 
-                  output = output, 
-                  ref.clear_action = ref.clear_action,
-                  ui.output = list(UploadPlateID = "UploadRDTPlateID",
-                                  UploadDataSet = "UploadRDTDataSet",
-                                  UploadLocation = "UploadRDTLocation",
-                                  UploadLocationLevel_I = "UploadRDTLocation",
-                                  UploadLocationLevel_II = "UploadRDTLocation",
-                                  UploadReturnMessage1 = "UploadRDTReturnMessage1",
-                                  UploadReturnMessage2 = "UploadRDTReturnMessage2"))
+    }
+  })
+  
+  # D. CLEAR FORM
+  UploadReset(input = input, 
+              output = output, 
+              ref.clear_action = ref.clear_action,
+              ui.input = list(UploadPlateID = "UploadRDTPlateID",
+                              UploadDataSet = "UploadRDTDataSet",
+                              UploadLocation = "UploadRDTLocation",
+                              UploadLocationLevel_I = "UploadRDTLocation",
+                              UploadLocationLevel_II = "UploadRDTLocation",
+                              UploadReturnMessage1 = "UploadRDTReturnMessage1",
+                              UploadReturnMessage2 = "UploadRDTReturnMessage2"))
       
       # E. EXAMPLES
+      # UploadExamples(input = input,
+      #                database = database, 
+      #                output = output,
+      #                type = "rdt",
+      #                ui.output = list(ExampleUploadCSVNoDate = "ExampleUploadRDTCSVNoDate",
+      #                                 ExampleUploadCSVDate = "ExampleUploadRDTCSVDate"))
       UploadExamples(input = input,
-                     database = database, 
+                     database = database,
                      output = output,
                      type = "rdt",
                      ui.output = list(ExampleUploadCSVNoDate = "ExampleUploadRDTCSVNoDate",
                                       ExampleUploadCSVDate = "ExampleUploadRDTCSVDate"))
-    }
-  })
 }
 
 PaperUpload <- function(session, output, input, database, ref.clear_action){
@@ -327,7 +334,7 @@ PaperUpload <- function(session, output, input, database, ref.clear_action){
   
   # E. EXAMPLES
   UploadExamples(input = input,
-                 database = database, 
+                 database = database,
                  output = output,
                  type = "paper",
                  ui.output = list(ExampleUploadCSVNoDate = "ExampleUploadPaperCSVNoDate",
@@ -617,7 +624,6 @@ UploadExamples <- function(input, database, output, ui.output, type){
 }
 
 .ExampleUploadCSVDate <-  function(database, type){
-  print(type) 
   if(type == "micronix"){
     tibble(LocationRow = rep("A", 10),
            LocationColumn = c(1:10),

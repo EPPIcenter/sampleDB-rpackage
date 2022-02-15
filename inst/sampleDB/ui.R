@@ -93,7 +93,7 @@ navbarPage("SampleDB",
                         selectInput("UploadLocationCryoFreezerName", label = "Freezer Name", choices = c("", sampleDB::CheckTable(database = database, "location")$location_name)),
                         selectInput("UploadLocationCryoLevelI", label = HTML("<h5>Level I</h5>"), width = '25%', choices = c("", sampleDB::CheckTable(database = database, "location")$level_I)),
                         selectInput("UploadLocationCryoLevelII", label = HTML("<h5>Level II</h5>"), width = '25%', choices = c("", sampleDB::CheckTable(database = database, "location")$level_II)),
-                        fluidRow(column(width = 12, 
+                        fluidRow(column(width = 12,
                                         actionButton("UploadCryoAction", label = "Upload Dataset", style="color: #fff; background-color: #337ab7; border-color: #2e6da4"),
                                         actionButton("ClearCryoUploadForm", label = "Clear Form"))),
                         span(verbatimTextOutput("UploadCryoReturnMessage1"), style="font-size: 28px"),
@@ -110,7 +110,8 @@ navbarPage("SampleDB",
                              longitudinal information to the samples. (Date format is YMD.)</h5>"),
                         HTML("<center><h4><b>Example SampleDB UploadCryoCSV</b> with <code>collection_date</code> Column</h4></center>"),
                         verbatimTextOutput("ExampleUploadCryoCSVDate"),
-                        HTML("<h5>The combination of <code>study_subject</code>, <code>specimen_type</code>, <code>study_code</code> and <code>collection_date</code> must be unique</h5>")))),
+                        HTML("<h5>The combination of <code>study_subject</code>, <code>specimen_type</code>, <code>study_code</code> and <code>collection_date</code> must be unique</h5>")
+                      ))),
            
            tabPanel("RDT Samples",
                     sidebarLayout(
@@ -145,9 +146,10 @@ navbarPage("SampleDB",
                         HTML("<h4><b>Longitudinal Data</b></h4>"),
                         HTML("<h5>Simply append a column named <code>collection_date</code> to your CSV in order to add
                              longitudinal information to the samples. (Date format is YMD.)</h5>"),
-                        HTML("<center><h4><b>Example SampleDB UploadCryoCSV</b> with <code>collection_date</code> Column</h4></center>"),
-                        verbatimTextOutput("ExampleUploadRDTCSVNoDate"),
-                        HTML("<h5>The combination of <code>study_subject</code>, <code>specimen_type</code>, <code>study_code</code> and <code>collection_date</code> must be unique</h5>")))),
+                        HTML("<center><h4><b>Example SampleDB UploadRDTCSV</b> with <code>collection_date</code> Column</h4></center>"),
+                        verbatimTextOutput("ExampleUploadRDTCSVDate"),
+                        HTML("<h5>The combination of <code>study_subject</code>, <code>specimen_type</code>, <code>study_code</code> and <code>collection_date</code> must be unique</h5>")
+                      ))),
            tabPanel("Paper Samples",
                     sidebarLayout(
                       sidebarPanel(
@@ -181,35 +183,35 @@ navbarPage("SampleDB",
                         HTML("<h4><b>Longitudinal Data</b></h4>"),
                         HTML("<h5>Simply append a column named <code>collection_date</code> to your CSV in order to add
                              longitudinal information to the samples. (Date format is YMD.)</h5>"),
-                        HTML("<center><h4><b>Example SampleDB UploadCryoCSV</b> with <code>collection_date</code> Column</h4></center>"),
+                        HTML("<center><h4><b>Example SampleDB UploadPaperCSV</b> with <code>collection_date</code> Column</h4></center>"),
                         verbatimTextOutput("ExampleUploadPaperCSVDate"),
-                        HTML("<h5>The combination of <code>study_subject</code>, <code>specimen_type</code>, <code>study_code</code> and <code>collection_date</code> must be unique</h5>")))),
+                        HTML("<h5>The combination of <code>study_subject</code>, <code>specimen_type</code>, <code>study_code</code> and <code>collection_date</code> must be unique</h5>")
+                        ))),
            ),
 
            tabPanel("Search Existing Samples",
                     sidebarLayout(
                       sidebarPanel(
-                        width = 2,
-                        HTML("<h4>Search Filters</h4>"),
-                        hr(),
-                        fileInput("SearchByBarcode", label = HTML("Barcode <h6>Single column named \"barcode\"</h6>")), actionButton("ClearSearchBarcodes", label = "Clear Barcodes"), textOutput("WarnSubjectBarcodeFileColnames"), textOutput("WarnSubjectBarcodeFileColnames2"),
-                        br(),
-                        selectizeInput("SearchByPlateID", "Plate Name", choices = c("", sampleDB::CheckTable(database = database, "matrix_plate")$plate_name)),
-                        selectizeInput("SearchByStudy", "Study", choices = c("", sampleDB::CheckTable(database = database, "study")$short_code)),
-                        selectizeInput("SearchByLocation", "Storage Location", choices = c("", sampleDB::CheckTable(database = database, "location")$location_name)),
-                        selectizeInput("SearchBySpecimenType", "Specimen Type", choices = c("", sampleDB::CheckTable(database = database, "specimen_type")$label)),
-                        radioButtons("SubjectUIDSearchType", label = "Study Subject Search Method", choices = list("Single Study Subject" = "individual", "Multiple Study Subjects" = "multiple"), selected = "individual"),
-                        conditionalPanel(condition = "input.SubjectUIDSearchType == \"individual\"",
-                                         selectizeInput("SearchBySubjectUID", label = "Study Subject", choices = NULL)),
-                        conditionalPanel(condition = "input.SubjectUIDSearchType == \"multiple\"",
-                                         fileInput("SearchBySubjectUIDFile", label = HTML("Study Subjects <h6>Single column named \"subject_uid\"</h6>")), actionButton("ClearSearchUIDFile", label = "Clear Study Subjects")), textOutput("WarnSubjectUIDFileColnames"), textOutput("WarnSubjectUIDFileColnames2")
+                        # width = 2,
+                        # HTML("<h4>Search Filters</h4>"),
+                        # hr(),
+                        # fileInput("SearchByBarcode", label = HTML("Barcode <h6>Single column named \"barcode\"</h6>")), actionButton("ClearSearchBarcodes", label = "Clear Barcodes"), textOutput("WarnSubjectBarcodeFileColnames"), textOutput("WarnSubjectBarcodeFileColnames2"),
+                        # br(),
+                        # selectizeInput("SearchByPlateID", "Plate Name", choices = c("", sampleDB::CheckTable(database = database, "matrix_plate")$plate_name)),
+                        # selectizeInput("SearchByStudy", "Study", choices = c("", sampleDB::CheckTable(database = database, "study")$short_code)),
+                        # selectizeInput("SearchByLocation", "Storage Location", choices = c("", sampleDB::CheckTable(database = database, "location")$location_name)),
+                        # selectizeInput("SearchBySpecimenType", "Specimen Type", choices = c("", sampleDB::CheckTable(database = database, "specimen_type")$label)),
+                        # radioButtons("SubjectUIDSearchType", label = "Study Subject Search Method", choices = list("Single Study Subject" = "individual", "Multiple Study Subjects" = "multiple"), selected = "individual"),
+                        # conditionalPanel(condition = "input.SubjectUIDSearchType == \"individual\"",
+                        #                  selectizeInput("SearchBySubjectUID", label = "Study Subject", choices = NULL)),
+                        # conditionalPanel(condition = "input.SubjectUIDSearchType == \"multiple\"",
+                        #                  fileInput("SearchBySubjectUIDFile", label = HTML("Study Subjects <h6>Single column named \"subject_uid\"</h6>")), actionButton("ClearSearchUIDFile", label = "Clear Study Subjects")), textOutput("WarnSubjectUIDFileColnames"), textOutput("WarnSubjectUIDFileColnames2")
                       ),
                     mainPanel(
-                      width = 10,
-                          DT::dataTableOutput("SearchResultsTable"),
-                          downloadButton("downloadData", "Download")
-                    ))
-           ),
+                      # width = 10,
+                      #     DT::dataTableOutput("SearchResultsTable"),
+                      #     downloadButton("downloadData", "Download")
+                    ))),
 
            tabPanel("Move Samples",
 
