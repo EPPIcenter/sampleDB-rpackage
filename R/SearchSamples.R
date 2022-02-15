@@ -13,6 +13,8 @@
 #' + name.study_subject = c()
 #' + name.type = c("RDT", "Micronix", "Paper", "Cryovile")
 #' 
+#' NOTE: Ufortunately the whole database has to be read into memory inorder to search for something
+#' Im sure there is a faster sql way to do this
 #' Examples:
 #' SearchSamples(filters = list(name.plate = c("100","101"), name.location = c("Left -20 Freezer")))
 #' SearchSamples(filters = list(file.barcodes = "/path/to/barcodes.csv", name.plate = "dummy_name", name.study = "dummy_study", name.location = "fridge", name.specimen_type = "specimen_type1"))
