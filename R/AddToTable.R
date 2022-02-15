@@ -29,12 +29,15 @@ AddToTable <- function(database, table_name, info_list){
 
       #add to database
       RSQLite::dbSendStatement(conn,
-                           paste0('INSERT INTO ', table_name, ' (', column_names, ') VALUES (', filler, ');'),
-                           info_list),
-
+                               paste0('INSERT INTO ', table_name, ' (', column_names, ') VALUES (', filler, ');'),
+                               info_list),
 
       error=function(e){
-        print(e)
+        # out <- 1
+        # return(out)
+        message(e)
+        # stop("Error: Attempted changes cannot be implemented because they would violate the database's uniqueness")
+        stop()
       }
   )
 
@@ -42,7 +45,6 @@ AddToTable <- function(database, table_name, info_list){
   tryCatch(
     RSQLite::dbDisconnect(conn),
     warning=function(w){
-
+      # NULL
     })
-
 }
