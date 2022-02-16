@@ -20,6 +20,13 @@ function(input, output, session) {
     updateSelectizeInput(session, 'SearchBySubjectUID', choices = c("", sampleDB::CheckTable(database = database, "study_subject")$subject %>% unique()), server = TRUE)
 
     # --------- Upload Samples -------------
+    observe({
+      if(input$UploadMicronixLocation != ""){
+        tmp_table.location <- filter(sampleDB::CheckTable(database = database, "location"), location_name == input$UploadMicronixLocation)
+        updateSelectInput(session, "UploadLocationMicronixLevelI", label = NULL, choices = c(tmp_table.location$level_I))
+        updateSelectInput(session, "UploadLocationMicronixLevelII", label = NULL, choices = c(tmp_table.location$level_II))
+      }
+    })
     
     # Upload Micronix Samples
     MatrixUpload(session = session, output = output, input = input, database = databse, ref.clear_action = "ClearMicronixUploadForm")
@@ -36,78 +43,73 @@ function(input, output, session) {
     # -------- Search Samples -------------
 
     # SEARCH CHECKS... CHECK THAT SEARCH FILES ARE NOT MALFORMED
-    # SearchChecks(input, database, output)
+    SearchChecks(input, database, output)
     
-    # # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
-    # # If as study is selected from the dropdown, subset plate names filter to only display plate names asso. w. the chosen study #
-    # # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
-    # 
-    # # SUBSET PLATE NAMES IF STUDY IS SELECTED
-    # observeEvent(
-    #   input$SearchByStudy, ({
-    # 
-    #     if(input$SearchByStudy != ""){
-    #       updateSelectizeInput(session = session,
-    #                            "SearchByPlateID",
-    #                            choices = c("", helper.SubsetPlateNames(input, database)))        
-    #     }
-    # }))
-
+    observe({
+      if(input$SearchByLocation != ""){
+        tmp_table.location <- filter(sampleDB::CheckTable(database = database, "location"), location_name == input$SearchByLocation)
+        updateSelectizeInput(session, "SearchByLevelI", label = NULL, choices = c(tmp_table.location$level_I))
+        updateSelectizeInput(session, "SearchByLevelII", label = NULL, choices = c(tmp_table.location$level_II))
+      }else{
+        updateSelectizeInput(session, "SearchByLevelI", label = NULL, choices = c(""))
+        updateSelectizeInput(session, "SearchByLevelII", label = NULL, choices = c(""))
+      }
+    })
+    
     # ACTIVELY USE UI FILTERS TO RENDER A TABLE WITH SEARCH RESULTS
-    # observe({
-    # 
-    #   filters <- list(file.barcodes = input$SearchByBarcode$datapath,
-    #                   name.plate = input$SearchByPlateID,
-    #                   name.study = input$SearchByStudy,
-    #                   name.location = input$SearchByLocation,
-    #                   name.specimen_type = input$SearchBySpecimenType)
-    #   
-    #   # RETRIEVE SEARCH RESULTS
-    #   if(input$SubjectUIDSearchType == "individual"){
-    #     filters$name.study_subject <- input$SearchBySubjectUID
-    #     search_results <- sampleDB::SearchSamples(discard(filters, function(x) "" %in% x), study_subject.file = F)
-    #   }else{
-    #     filters$name.study_subject <- input$SearchBySubjectUIDFile$datapath
-    #     search_results <- sampleDB::SearchSamples(discard(filters, function(x) "" %in% x), study_subject.file = T)
-    #   }
-    # 
-    #   # PRINT SEARCH RESULTS
-    #   output$SearchResultsTable <- DT::renderDataTable({
-    #     if(is.null(search_results)){
-    #       tibble(`Well Position` = NA,
-    #              `Barcode` = NA,
-    #              `Study Subject` = NA,
-    #              `Study Code` = NA,
-    #              `Specimen Type` = NA,
-    #              `Storage Location` = NA,
-    #              `Plate Name` = NA,
-    #              `Collected Date` = NA) %>% 
-    #         filter(`Well Position` == 0)
-    #     }else{
-    #       search_results 
-    #     }
-    #     
-    #   },
-    #     options = list(
-    #       searching = T,
-    #       paging = T,
-    #       pageLength = 20,
-    #       lengthMenu = c(10, 20, 50, 100),
-    #       language = list(zeroRecords = "There are no EPPIcenter Wetlab Samples that match this search.")))
-    # 
-    #   # DOWNLOAD SEARCH RESULTS
-    #   output$downloadData <- downloadHandler(
-    #               filename = function() {
-    #                 paste('data-', Sys.Date(), '.csv', sep='')
-    #               },
-    #               content = function(con) {
-    #                 write.csv(search_results, con)
-    #               }
-    #             )
-    # })
-    # 
+    observe({
+      
+      if(!is.na(input$dateRange[1]) & !is.na(input$dateRange[2])){
+        eval.search.date <- list(date.from = input$dateRange[1], date.to = input$dateRange[2])
+      }else{
+        eval.search.date <- ""
+      }
+      
+      filters <- list(
+        search.date = eval.search.date,
+        search.exhausted = input$SearchByExhausted,
+        search.location = list(location_name = input$SearchByLocation, level_I = input$SearchByLevelI, level_II = input$SearchByLevelII),
+        search.specimen_type = input$SearchBySpecimenType,
+        search.study = input$SearchByStudy,
+        search.type = input$SearchBySampleType)
+
+      # RETRIEVE SEARCH RESULTS
+      if(input$SubjectUIDSearchType == "individual"){
+        filters$name.study_subject <- input$SearchBySubjectUID
+        search_results <- sampleDB::SearchSamples(discard(filters, function(x) "" %in% x), study_subject.file = F)
+      }else{
+        filters$name.study_subject <- input$SearchBySubjectUIDFile$datapath
+        search_results <- sampleDB::SearchSamples(discard(filters, function(x) "" %in% x), study_subject.file = T)
+      }
+
+      # PRINT SEARCH RESULTS
+      output$SearchResultsTable <- DT::renderDataTable({
+        if(!is.null(search_results)){
+          search_results
+        }else{
+          tibble(a = c(1)) %>% filter(a == 2)
+        }
+      },
+        options = list(
+          searching = T,
+          paging = T,
+          pageLength = 20,
+          lengthMenu = c(10, 20, 50, 100),
+          language = list(zeroRecords = "There are no EPPIcenter Wetlab Samples that match this search.")))
+
+      # DOWNLOAD SEARCH RESULTS
+      output$downloadData <- downloadHandler(
+                  filename = function() {
+                    paste('data-', Sys.Date(), '.csv', sep='')
+                  },
+                  content = function(con) {
+                    write.csv(search_results, con)
+                  }
+                )
+    })
+
     # CLEAR FILES
-    # SearchReset(input)
+    SearchReset(input)
     
     ##############
     # Move Tubes #
@@ -468,3 +470,39 @@ function(input, output, session) {
 #       ShowStudies(output, database)
 # 
 }
+
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+# If as study is selected from the dropdown, subset plate names filter to only display plate names asso. w. the chosen study #
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+
+# SUBSET PLATE NAMES IF STUDY IS SELECTED
+# observeEvent(
+#   input$SearchByStudy, ({
+# 
+#     if(input$SearchByStudy != ""){
+#       updateSelectizeInput(session = session,
+#                            "SearchByPlateID",
+#                            choices = c("", helper.SubsetPlateNames(input, database)))
+#     }
+# }))
+
+
+# observe({
+#   if(input$SearchByLocation != ""){
+#     tmp_table.location <- filter(sampleDB::CheckTable(database = database, "location"), location_name == input$SearchByLocation)
+#     updateSelectizeInput(session, "SearchByLevelI", label = NULL, choices = c("", tmp_table.location$level_I))
+#     updateSelectizeInput(session, "SearchByLevelII", label = NULL, choices = c("", tmp_table.location$level_II))
+#   }
+# })
+
+# can add so usr can choose multiple things for each type of filter
+
+# if(input$SearchByLocation != ""){
+#   updateSelectizeInput(session = session,
+#                        "SearchByLevelI",
+#                        choices = c(filter(sampleDB::CheckTable(database = database, "location"), location_name == input$SearchByLocation)$level_I))
+#   updateSelectizeInput(session = session,
+#                        "SearchByLevelII",
+#                        choices = c(filter(sampleDB::CheckTable(database = database, "location"), location_name == input$SearchByLocation)$level_II))
+# }
