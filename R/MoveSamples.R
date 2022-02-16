@@ -15,7 +15,7 @@
 #' @export
 
 #want to be able to move samples and to move containers
-MoveTubes <- function(type, file.container_samples){
+MoveSamples <- function(type, file.container_samples){
   
   database <- "/databases/new.sampleDB.db"
   
@@ -23,44 +23,18 @@ MoveTubes <- function(type, file.container_samples){
   list.move <- modify(file.container_samples, function(x){x <- read_csv(x, col_types = cols()) %>% drop_na()})
   
   # RUN CHECKS
-  toggle <- .MoveSamplesOrphanCheck(list.move, database, type = type)[[1]]
-  dummy.tbl <- .MoveSamplesOrphanCheck(list.move, database, type = type)[[2]]
+  outs.oprhan_check <- .MoveSamplesOrphanCheck(list.move, database, type = type)
+  
+  # GET CHECK DATA
+  toggle <- outs.oprhan_check[[1]]
+  dummy.tbl <- outs.oprhan_check[[2]]
 
   # MOVE SAMPLES IN DATABASE
   if(toggle){
 
-    # GET label STILL IN DUMMY PLATE
-    if(type == "matrix"){
-      label.missing <- filter(dummy.tbl, plate_id < 0)$barcode
-
-      # GET PLATE ID/PLATE NAME WHICH CONTAINED BARCODE STILL IN DUMMY
-      container_id_with_missing_label <- filter(CheckTable(database = database, "matrix_tube"), barcode %in% label.missing)$plate_id
-      container_name_with_missing_label <- filter(CheckTable(database = database, "matrix_plate"), id %in% container_id_with_missing_label)$plate_name
-    }
-    else if(type == "cryo"){
-      label.missing <- filter(dummy.tbl, box_id < 0)$label
-      container_id_with_missing_label <- filter(CheckTable(database = database, "tube"), barcode %in% label.missing)$box_id
-      container_name_with_missing_label <- filter(CheckTable(database = database, "box"), id %in% container_id_with_missing_label)$box_name
-    }
-    else if(type == "rdt"){
-      label.missing <- filter(dummy.tbl, bag_id < 0)$label
-      container_id_with_missing_label <- filter(CheckTable(database = database, "rdt"), barcode %in% label.missing)$bag_id
-      container_name_with_missing_label <- filter(CheckTable(database = database, "bag"), id %in% container_id_with_missing_label)$bag_name
-    }
-    else{
-      label.missing <- filter(dummy.tbl, bag_id < 0)$label
-      container_id_with_missing_label <- filter(CheckTable(database = database, "paper"), barcode %in% label.missing)$bag_id
-      container_name_with_missing_label <- filter(CheckTable(database = database, "bag"), id %in% container_id_with_missing_label)$bag_name
-    }
-
-    message <- paste0("Move Failed: Orphaned ",
-                      type,
-                      " sample with label ",
-                      label.missing,
-                      " from container ",
-                      container_name_with_missing_label,
-                      "\n")
-    return(message)
+    message.fail <- .GetFailedOrphanCheckSamples(type = type, dummy.tbl = dummy.tbl)
+    
+    return(message(message.fail))
     
   }else{
 
@@ -68,10 +42,42 @@ MoveTubes <- function(type, file.container_samples){
     .ClearSpaceInContainers(type = type, list.move = list.move, database = database)
     
     # MODIFY THE SAMPLES SO THEY ARE IN NEW CONTAINERS
-    .CarryOutMoves(type = type, list.move = list.move, database = database)
-
+    message.successful <- .CarryOutMoves(type = type, list.move = list.move, database = database)
+    
+    return(message(message.successful))
   }
-  return(message("Moves Compete"))
+}
+
+.GetFailedOrphanCheckSamples <- function(dummy.tbl){
+  # GET LABEL STILL IN DUMMY PLATE
+  if(type == "matrix"){
+    label.missing <- filter(dummy.tbl, plate_id < 0)$barcode
+    
+    # GET PLATE ID/PLATE NAME WHICH CONTAINED BARCODE STILL IN DUMMY
+    container_id_with_missing_label <- filter(CheckTable(database = database, "matrix_tube"), barcode %in% label.missing)$plate_id
+    container_name_with_missing_label <- filter(CheckTable(database = database, "matrix_plate"), id %in% container_id_with_missing_label)$plate_name
+  }
+  else if(type == "cryo"){
+    label.missing <- filter(dummy.tbl, box_id < 0)$label
+    container_id_with_missing_label <- filter(CheckTable(database = database, "tube"), label %in% label.missing)$box_id
+    container_name_with_missing_label <- filter(CheckTable(database = database, "box"), id %in% container_id_with_missing_label)$box_name
+  }
+  else if(type == "rdt"){
+    label.missing <- filter(dummy.tbl, bag_id < 0)$label
+    container_id_with_missing_label <- filter(CheckTable(database = database, "rdt"), label %in% label.missing)$bag_id
+    container_name_with_missing_label <- filter(CheckTable(database = database, "bag"), id %in% container_id_with_missing_label)$bag_name
+  }
+  else{
+    label.missing <- filter(dummy.tbl, bag_id < 0)$label
+    container_id_with_missing_label <- filter(CheckTable(database = database, "paper"), label %in% label.missing)$bag_id
+    container_name_with_missing_label <- filter(CheckTable(database = database, "bag"), id %in% container_id_with_missing_label)$bag_name
+  }
+  
+  message.fail <- paste0("Move Failed:\n",
+                    "\tOrphaned Samples Detected:", label.missing ,"\n",
+                    "\tOf Type:", type, "\n",
+                    "\tFrom Container:", container_name_with_missing_label)
+  return(message.fail)
 }
 
 .MoveSamplesOrphanCheck <- function(list.move, database, type){
@@ -233,7 +239,12 @@ MoveTubes <- function(type, file.container_samples){
 
 .CarryOutMoves <- function(type, list.move, database){
   
+  container_names <- c()
+  number_samples <- c()
+
   for(csv.name in names(list.move)){
+    container_names <- c(container_names, csv.name)
+    number_samples <- c(number_samples, nrow(csv.name))
     
     # - GET MOVECSV
     csv <- list.move[[csv.name]]
@@ -305,6 +316,12 @@ MoveTubes <- function(type, file.container_samples){
       }
     }
   }
+  #NOTE: number of samples from each container
+  message <- paste0("Sucessfully Moved Samples:\n",
+                    "\tType:", type, "\n",
+                    "\tContainer Name: Number of Samples\n",
+                    "\t", container_name, ":", number_samples, "\n")
+  return(message)
 }
 
 .ClearSpaceInTestContainers <- function(test.list, type){

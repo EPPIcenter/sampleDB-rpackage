@@ -1,4 +1,11 @@
-
+MoveReset <- function(input, output){
+  observeEvent(
+  input$ClearMoveForm,
+  ({
+    reset("MoveDataSet")
+    output$MoveReturnMessage1 <- renderText({""})
+    output$MoveReturnMessage2 <- renderText({""})}))
+  }
 MoveChecks <- function(input, database, output){
   # CHECK THAT COLNAMES ARE FORMED CORRECTLY
   CheckMoveColnames <- reactive({helper.CheckMoveColnames(input, database)})
@@ -74,4 +81,17 @@ MoveRequirements <- function(input, database){
   
   return(out)
   
+}
+
+MoveExamples <- function(input, database, output){
+  # MOVE EXAMPLES
+  output$ExampleMoveSamplesCSV <- renderPrint({helper.ExampleMoveCSVDate(database)}) 
+}
+
+################################################################################
+
+helper.ExampleMoveCSVDate <-  function(database){
+  tibble(LocationRow = rep("A", 10),
+         LocationColumn = c(1:10),
+         TubeCode = CheckTable(database = database, "matrix_tube")$barcode %>% head(10)) %>% as.data.frame()
 }
