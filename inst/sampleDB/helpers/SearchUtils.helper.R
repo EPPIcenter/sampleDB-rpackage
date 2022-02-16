@@ -1,4 +1,8 @@
 
+SearchReset <- function(input){
+  observeEvent(input$ClearSearchBarcodes, ({reset("SearchByBarcode")}))
+  observeEvent(input$ClearSearchUIDFile, ({reset("SearchBySubjectUIDFile")})) 
+}
 SearchChecks <- function(input, database, output){
   #CHECK THAT UID FILE IS PROPERLY FORMED
   CheckSubjectBarcodeFileColnames <- reactive({helper.CheckSubjectBarcodeFileColnames(input, database)})

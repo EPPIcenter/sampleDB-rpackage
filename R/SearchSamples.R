@@ -3,22 +3,22 @@
 #' @param filters A list containing micronix barcodes, plate name, study code, location and/or specimen_type
 #' @param study_subject.file TRUE or FALSE
 #' @examples
-#' name.container = #tricky bc are container names uniq throughout the whole db or just within a certain sample type?
-#' - date = list(date.from = "YMD", date.to = "YMD")
-#' - exhausted = T/F
-#' name.label = #tricky bc are labels uniq throughout the whole db or just within a certain sample type?
-#' + name.location = list(location_name = c(), level_I = c(), level_II = c())
-#' + name.specimen_type = c()
-#' + name.study = c()
-#' + name.study_subject = c()
-#' + name.type = c("RDT", "Micronix", "Paper", "Cryovile")
+#' x search.container = #tricky bc are container names uniq throughout the whole db or just within a certain sample type?
+#' - search.date = list(date.from = "YMD", date.to = "YMD")
+#' - search.exhausted = T/F
+#' x search.label = #tricky bc are labels uniq throughout the whole db or just within a certain sample type?
+#' + search.location = list(location_name = c(), level_I = c(), level_II = c())
+#' + search.specimen_type = c()
+#' + search.study = c()
+#' + search.study_subject = c()
+#' + search.type = c("RDT", "Micronix", "Paper", "Cryovile")
 #' 
 #' NOTE: Ufortunately the whole database has to be read into memory inorder to search for something
 #' Im sure there is a faster sql way to do this
 #' Examples:
-#' SearchSamples(filters = list(name.plate = c("100","101"), name.location = c("Left -20 Freezer")))
-#' SearchSamples(filters = list(file.barcodes = "/path/to/barcodes.csv", name.plate = "dummy_name", name.study = "dummy_study", name.location = "fridge", name.specimen_type = "specimen_type1"))
-#' SearchSamples(filters = list(name.location = list(location_name = "Freezer A", level_I = "dummy.levelI", level_II = "dummy.levelII"))) # feb 10 2022
+#' SearchSamples(filters = list(name.plate = c("100","101"), search.location = c("Left -20 Freezer")))
+#' SearchSamples(filters = list(file.barcodes = "/path/to/barcodes.csv", name.plate = "dummy_name", search.study = "dummy_study", search.location = "fridge", search.specimen_type = "specimen_type1"))
+#' SearchSamples(filters = list(search.location = list(location_name = "Freezer A", level_I = "dummy.levelI", level_II = "dummy.levelII"))) # feb 10 2022
 #' @import dplyr
 #' @import RSQLite
 #' @import emojifont
@@ -32,9 +32,9 @@ SearchSamples <- function(filters, study_subject.file = FALSE){
   database <- "/databases/new.sampleDB.db"
   
   # FLEXIBLY USE STUDY SUBJECT ITEM OR FILE 
-  if(study_subject.file == TRUE){
-    eval.name.study_subject  <- read.csv(filter$name.study_subject)$subject_uid
-    filters$name.study_subject <- eval.name.study_subject[eval.name.study_subject != ""] # remove any blank entries that may be in vector
+  if(study_subject.file == TRUE & !is.null(filters$search.study_subject)){
+    eval.search.study_subject  <- read.csv(filters$search.study_subject)$subject_uid
+    filters$search.study_subject <- eval.search.study_subject[eval.search.study_subject != ""] # remove any blank entries that may be in vector
   }
 
   # GET ALL THE TABLES FROM THE DATABASE
@@ -45,7 +45,9 @@ SearchSamples <- function(filters, study_subject.file = FALSE){
   term.search <- clean_filters[1] %>% names()
   terms.filter <- clean_filters[-1] %>% names()
   
-  if(is.na(term.search)){
+  # print(clean_filters)
+  
+  if(length(clean_filters) == 0){
     usr_results <- NULL
   }else{
     
@@ -100,35 +102,33 @@ SearchSamples <- function(filters, study_subject.file = FALSE){
 
 .UseSearchTermToGetStorageContainerIDs <- function(filters, term.search, tables.database){
   # USE TYPE TO GET STORAGE CONTAINER ID -- 
-  if(term.search == "name.type"){
-    print(tables.database$table.storage_container)
-    print(filters$name.type)
-    storage_container_id <- filter(tables.database$table.storage_container, type %in% filters$name.type)$id
+  if(term.search == "search.type"){
+    storage_container_id <- filter(tables.database$table.storage_container, type %in% filters$search.type)$id
   }
-  if(term.search == "exhausted"){
-    storage_container_id <- filter(tables.database$table.storage_container, as.logical(exhausted == filter$exhausted))$id
+  if(term.search == "search.exhausted"){
+    storage_container_id <- filter(tables.database$table.storage_container, as.logical(exhausted) == filters$search.exhausted)$id
   }
   # USE STUDY TO GET STORAGE CONTAINER ID
-  if(term.search == "name.study"){
-    study_ref_id <- filter(tables.database$table.study, short_code %in% filters$name.study)$id
+  if(term.search == "search.study"){
+    study_ref_id <- filter(tables.database$table.study, short_code %in% filters$search.study)$id
     study_subject_ref_id <- filter(tables.database$table.study_subject, study_id %in% study_ref_id)$id
     specimen_ref_id <- filter(tables.database$table.specimen, study_subject_id %in% study_subject_ref_id)$id
     storage_container_id <- filter(tables.database$table.storage_container, specimen_id %in% specimen_ref_id)$id
   }
   # USE SPECIMEN TYPE TO GET STORAGE CONTAINER ID
-  if(term.search == "name.specimen_type"){
-    specimen_ref_id <- filter(tables.database$table.specimen_type, label %in% filters$name.specimen_type)$id
+  if(term.search == "search.specimen_type"){
+    specimen_ref_id <- filter(tables.database$table.specimen_type, label %in% filters$search.specimen_type)$id
     specimen_ref_id <- filter(tables.database$table.specimen, specimen_type_id %in% specimen_ref_id)$id
     storage_container_id <- filter(tables.database$table.storage_container, specimen_id %in% specimen_ref_id)$id
   }
   # USE SUBJECT TO GET STORAGE CONTAINER ID
-  if(term.search == "name.study_subject"){
-    study_subject_ref_id <- filter(tables.database$table.study_subject, subject %in% filters$name.study_subject)$id
+  if(term.search == "search.study_subject"){
+    study_subject_ref_id <- filter(tables.database$table.study_subject, subject %in% filters$search.study_subject)$id
     specimen_ref_id <- filter(tables.database$table.specimen, study_subject_id %in% study_subject_ref_id)$id
     storage_container_id <- filter(tables.database$table.storage_container, specimen_id %in% specimen_ref_id)$id
   }
   # USE LOCATION LIST TO GET STORAGE CONTAINER ID
-  if(term.search == "name.location"){
+  if(term.search == "search.location"){
     location_ref_id <- .GetLocationID(filters = filters, tables.database = tables.database)
     tubes_id <- filter(tables.database$table.tube, box_id %in% filter(tables.database$table.box, location_id %in% location_ref_id)$id)$id
     rdt_id <- filter(tables.database$table.rdt, bag_id %in% filter(tables.database$table.bag, location_id %in% location_ref_id)$id)$id
@@ -137,10 +137,10 @@ SearchSamples <- function(filters, study_subject.file = FALSE){
     storage_container_id <- filter(tables.database$table.storage_container, id %in% c(tubes_id, rdt_id, paper_id, matrix_tubes_id))$id
   }
   # USE DATE TO GET STORAGE CONTAINER ID
-  if(term.search == "date"){
-    stopifnot("date.from and data.to must be in YMD format." = all(!is.na(parse_date_time(c(filters$date$date.from, filters$date$date.to), orders = "ymd")) == TRUE))
-    date.from <- lubridate::as_date(filters$date$date.from)
-    date.to <- lubridate::as_date(filters$date$date.to)
+  if(term.search == "search.date"){
+    stopifnot("date.from and data.to must be in YMD format." = all(!is.na(parse_date_time(c(filters$search.date$date.from, filters$search.date$date.to), orders = "ymd")) == TRUE))
+    date.from <- lubridate::as_date(filters$search.date$date.from)
+    date.to <- lubridate::as_date(filters$search.date$date.to)
     specimen_ids <- filter(tables.database$table.specimen, lubridate::as_date(collection_date) %within% interval(date.from,date.to))$id
     storage_container_id <- filter(tables.database$table.storage_container, specimen_id %in% specimen_ids)$id
   }
@@ -149,16 +149,16 @@ SearchSamples <- function(filters, study_subject.file = FALSE){
 }
 
 .GetLocationID <- function(filters, tables.database){
-  # make sure you can search by just one aspect of locations in the filters$name.location(ie freezer name, l1, l2), and that that search can include multiple names (l1 = c("A_rack", "B_rack"))
+  # make sure you can search by just one aspect of locations in the filters$search.location(ie freezer name, l1, l2), and that that search can include multiple names (l1 = c("A_rack", "B_rack"))
   tmp.table.location <- tables.database$table.location
-  if(!is.null(filters$name.location$location_name)){
-    tmp.table.location <- filter(tmp.table.location, location_name %in% filters$name.location$location_name)
+  if(!is.null(filters$search.location$location_name)){
+    tmp.table.location <- filter(tmp.table.location, location_name %in% filters$search.location$location_name)
   }
-  if(!is.null(filters$name.location$level_I)){
-    tmp.table.location <- filter(tmp.table.location, level_I %in% filters$name.location$level_I)
+  if(!is.null(filters$search.location$level_I)){
+    tmp.table.location <- filter(tmp.table.location, level_I %in% filters$search.location$level_I)
   }
-  if(!is.null(filters$name.location$level_II)){
-    tmp.table.location <- filter(tmp.table.location, level_II %in% filters$name.location$level_II)
+  if(!is.null(filters$search.location$level_II)){
+    tmp.table.location <- filter(tmp.table.location, level_II %in% filters$search.location$level_II)
   }
   location_ref_id <- tmp.table.location$id
   
@@ -252,34 +252,34 @@ SearchSamples <- function(filters, study_subject.file = FALSE){
   if(length(terms.filter) > 0){
     #FILTER BY FILTER TERMS
     for(filter_term in terms.filter){
-      if(filter_term == "name.study"){
-        results.search_term <- filter(results.search_term, study %in% filters[["name.study"]])
+      if(filter_term == "search.study"){
+        results.search_term <- filter(results.search_term, study %in% filters[["search.study"]])
       }
-      if(filter_term == "name.specimen_type"){
-        results.search_term <- filter(results.search_term, specimen_type %in% filters[["name.specimen_type"]])
+      if(filter_term == "search.specimen_type"){
+        results.search_term <- filter(results.search_term, specimen_type %in% filters[["search.specimen_type"]])
       }
-      if(filter_term == "name.study_subject"){
-        results.search_term <- filter(results.search_term, subject_uid %in% filters[["name.study_subject"]])
+      if(filter_term == "search.study_subject"){
+        results.search_term <- filter(results.search_term, subject_uid %in% filters[["search.study_subject"]])
       }
-      if(filter_term == "name.location"){
-        results.search_term <- filter(results.search_term, freezer %in% filters[["name.location"]][["location_name"]])
-        if(!is.null(filters[["name.location"]][["level_I"]])){
-          results.search_term <- filter(results.search_term, freezer_l1 %in% filters[["name.location"]][["level_I"]])
+      if(filter_term == "search.location"){
+        results.search_term <- filter(results.search_term, freezer %in% filters[["search.location"]][["location_name"]])
+        if(!is.null(filters[["search.location"]][["level_I"]])){
+          results.search_term <- filter(results.search_term, freezer_l1 %in% filters[["search.location"]][["level_I"]])
         }
-        if(!is.null(filters[["name.location"]][["level_II"]])){
-          results.search_term <- filter(results.search_term, freezer_l2 %in% filters[["name.location"]][["level_II"]])
+        if(!is.null(filters[["search.location"]][["level_II"]])){
+          results.search_term <- filter(results.search_term, freezer_l2 %in% filters[["search.location"]][["level_II"]])
         }
       }
-      if(filter_term == "name.type"){
-        results.search_term <- filter(results.search_term, type %in% filters[["name.type"]])
+      if(filter_term == "search.type"){
+        results.search_term <- filter(results.search_term, type %in% filters[["search.type"]])
       }
-      if(filter_term == "exhausted"){
-        results.search_term <- filter(results.search_term, as.logical(exhausted) == filters[["exhausted"]])
+      if(filter_term == "search.exhausted"){
+        results.search_term <- filter(results.search_term, as.logical(exhausted) == filters[["search.exhausted"]])
       }
-      if(filter_term == "date"){
-        stopifnot("date.from and data.to must be in YMD format." = all(!is.na(parse_date_time(c(filters$date$date.from, filters$date$date.to), orders = "ymd")) == TRUE))
-        date.from <- lubridate::as_date(filters[["date"]][["date.from"]])
-        date.to <- lubridate::as_date(filters[["date"]][["date.to"]])
+      if(filter_term == "search.date"){
+        stopifnot("date.from and data.to must be in YMD format." = all(!is.na(parse_date_time(c(filters$search.date$date.from, filters$search.date$date.to), orders = "ymd")) == TRUE))
+        date.from <- lubridate::as_date(filters[["search.date"]][["date.from"]])
+        date.to <- lubridate::as_date(filters[["search.date"]][["date.to"]])
         results.search_term <- filter(results.search_term, lubridate::as_date(collection_date) %within% interval(date.from, date.to))
       }
       results.filter_and_search <- results.search_term
@@ -300,8 +300,8 @@ SearchSamples <- function(filters, study_subject.file = FALSE){
            `Study Code` = study,
            `Specimen Type` = specimen_type,
            `Storage Location` = freezer,
-           `Storage Location.level_I` = freezer_l1,
-           `Storage Location.level_II` = freezer_l2,
+           `Storage Location.Level I` = freezer_l1,
+           `Storage Location.Level II` = freezer_l2,
            `Collected Date` = collection_date,
            `Exhausted` = exhausted)
   
