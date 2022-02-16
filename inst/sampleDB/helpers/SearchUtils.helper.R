@@ -1,9 +1,83 @@
 
-SearchReset <- function(input){
+
+
+SearchWetlabSamples <- function(session, input, database, output){
+  
+  # SEARCH CHECKS... CHECK THAT SEARCH FILES ARE NOT MALFORMED
+  .SearchChecks(input, database, output)
+  
+  observe({
+    if(input$SearchByLocation != ""){
+      tmp_table.location <- filter(sampleDB::CheckTable(database = database, "location"), location_name == input$SearchByLocation)
+      updateSelectizeInput(session, "SearchByLevelI", label = NULL, choices = c(tmp_table.location$level_I))
+      updateSelectizeInput(session, "SearchByLevelII", label = NULL, choices = c(tmp_table.location$level_II))
+    }else{
+      updateSelectizeInput(session, "SearchByLevelI", label = NULL, choices = c(""))
+      updateSelectizeInput(session, "SearchByLevelII", label = NULL, choices = c(""))
+    }
+  })
+  
+  # ACTIVELY USE UI FILTERS TO RENDER A TABLE WITH SEARCH RESULTS
+  observe({
+    
+    if(!is.na(input$dateRange[1]) & !is.na(input$dateRange[2])){
+      eval.search.date <- list(date.from = input$dateRange[1], date.to = input$dateRange[2])
+    }else{
+      eval.search.date <- ""
+    }
+    
+    filters <- list(
+      search.date = eval.search.date,
+      search.exhausted = input$SearchByExhausted,
+      search.location = list(location_name = input$SearchByLocation, level_I = input$SearchByLevelI, level_II = input$SearchByLevelII),
+      search.specimen_type = input$SearchBySpecimenType,
+      search.study = input$SearchByStudy,
+      search.type = input$SearchBySampleType)
+    
+    # RETRIEVE SEARCH RESULTS
+    if(input$SubjectUIDSearchType == "individual"){
+      filters$name.study_subject <- input$SearchBySubjectUID
+      search_results <- sampleDB::SearchSamples(discard(filters, function(x) "" %in% x), study_subject.file = F)
+    }else{
+      filters$name.study_subject <- input$SearchBySubjectUIDFile$datapath
+      search_results <- sampleDB::SearchSamples(discard(filters, function(x) "" %in% x), study_subject.file = T)
+    }
+    
+    # PRINT SEARCH RESULTS
+    output$SearchResultsTable <- DT::renderDataTable({
+      if(!is.null(search_results)){
+        search_results
+      }else{
+        tibble(a = c(1)) %>% filter(a == 2)
+      }
+    },
+    options = list(
+      searching = T,
+      paging = T,
+      pageLength = 20,
+      lengthMenu = c(10, 20, 50, 100),
+      language = list(zeroRecords = "There are no EPPIcenter Wetlab Samples that match this search.")))
+    
+    # DOWNLOAD SEARCH RESULTS
+    output$downloadData <- downloadHandler(
+      filename = function() {
+        paste('data-', Sys.Date(), '.csv', sep='')
+      },
+      content = function(con) {
+        write.csv(search_results, con)
+      }
+    )
+  })
+  
+  # CLEAR FILES
+  .SearchReset(input)
+}
+
+.SearchReset <- function(input){
   observeEvent(input$ClearSearchBarcodes, ({reset("SearchByBarcode")}))
   observeEvent(input$ClearSearchUIDFile, ({reset("SearchBySubjectUIDFile")})) 
 }
-SearchChecks <- function(input, database, output){
+.SearchChecks <- function(input, database, output){
   #CHECK THAT UID FILE IS PROPERLY FORMED
   CheckSubjectBarcodeFileColnames <- reactive({helper.CheckSubjectBarcodeFileColnames(input, database)})
   output$WarnSubjectBarcodeFileColnames <- renderText(CheckSubjectBarcodeFileColnames())
