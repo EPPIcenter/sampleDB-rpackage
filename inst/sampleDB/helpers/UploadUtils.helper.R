@@ -3,6 +3,17 @@
 
 MatrixUpload <- function(session, output, input, database, ref.clear_action){
   
+  observe({
+    if(input$UploadMicronixLocation != ""){
+      tmp_table.location <- filter(sampleDB::CheckTable(database = database, "location"), location_name == input$UploadMicronixLocation)
+      updateSelectInput(session, "UploadLocationMicronixLevelI", label = NULL, choices = c(tmp_table.location$level_I))
+      updateSelectInput(session, "UploadLocationMicronixLevelII", label = NULL, choices = c(tmp_table.location$level_II))
+    }else{
+      updateSelectInput(session, "UploadLocationMicronixLevelI", label = NULL, choices = c(""))
+      updateSelectInput(session, "UploadLocationMicronixLevelII", label = NULL, choices = c(""))
+    }
+  })
+  
   # A. PERFORM UPLOAD CHECKS... PRINT GOOD USER MESSAGES
   UploadChecks(database = database,
                input = input,
@@ -242,12 +253,6 @@ RDTUpload <- function(session, output, input, database, ref.clear_action){
                               UploadReturnMessage2 = "UploadRDTReturnMessage2"))
       
       # E. EXAMPLES
-      # UploadExamples(input = input,
-      #                database = database, 
-      #                output = output,
-      #                type = "rdt",
-      #                ui.output = list(ExampleUploadCSVNoDate = "ExampleUploadRDTCSVNoDate",
-      #                                 ExampleUploadCSVDate = "ExampleUploadRDTCSVDate"))
       UploadExamples(input = input,
                      database = database,
                      output = output,
@@ -605,7 +610,7 @@ UploadExamples <- function(input, database, output, ui.output, type){
            TubeCode = paste0("XXX", 1:10),
            study_subject_id = paste0("subject_", 1:10),
            specimen_type = "PLASMA",
-           study_short_code = "KAM06") %>% as.data.frame() 
+           study_short_code = "KAM06") %>% print.data.frame(row.names = FALSE) 
   }
   else if(type == "cryo"){
     tibble(row = 1:10,
@@ -613,13 +618,13 @@ UploadExamples <- function(input, database, output, ui.output, type){
            label = c("A","B","C","D","E","F","G","H","I","J"),
            study_subject = paste0("subject_", 1:10),
            specimen_type = "PLASMA",
-           study_code = "KAM06") %>% as.data.frame()
+           study_code = "KAM06") %>% print.data.frame(row.names = FALSE)
   }
   else{
     tibble(label = c("A","B","C","D","E","F","G","H","I","J"),
            study_subject = paste0("subject_", 1:10),
            specimen_type = "PLASMA",
-           study_code = "KAM06") %>% as.data.frame()
+           study_code = "KAM06") %>% print.data.frame(row.names = FALSE)
   }
 }
 
@@ -631,7 +636,7 @@ UploadExamples <- function(input, database, output, ui.output, type){
            study_subject_id = paste0("subject_", 1:10),
            specimen_type = "PLASMA",
            study_short_code = "KAM06",
-           collection_date = paste("2022", "1", c(1,1,1,2,2,2,3,3,3,4), sep = "-")) %>% as.data.frame() 
+           collection_date = paste("2022", "1", c(1,1,1,2,2,2,3,3,3,4), sep = "-")) %>% print.data.frame(row.names = FALSE) 
   }
   else if(type == "cryo"){
     tibble(row = 1:10,
@@ -640,13 +645,13 @@ UploadExamples <- function(input, database, output, ui.output, type){
            study_subject = paste0("subject_", 1:10),
            specimen_type = "PLASMA",
            study_code = "KAM06",
-           collection_date = paste("2022", "1", c(1,1,1,2,2,2,3,3,3,4), sep = "-")) %>% as.data.frame()
+           collection_date = paste("2022", "1", c(1,1,1,2,2,2,3,3,3,4), sep = "-")) %>% print.data.frame(row.names = FALSE)
   }
   else{
     tibble(label = c("A","B","C","D","E","F","G","H","I","J"),
            study_subject = paste0("subject_", 1:10),
            specimen_type = "PLASMA",
            study_code = "KAM06",
-           collection_date = paste("2022", "1", c(1,1,1,2,2,2,3,3,3,4), sep = "-")) %>% as.data.frame()
+           collection_date = paste("2022", "1", c(1,1,1,2,2,2,3,3,3,4), sep = "-")) %>% print.data.frame(row.names = FALSE)
   }
 }

@@ -1,6 +1,325 @@
 
 
+UpdateLabFreezers <- function(session, input, output, database){
+  FreezerChangesChecks(input, database, output)
+  
+  #ADD FREEZER TO DATABASE
+  observeEvent(
+    input$AddFreezerAction,
+    ({
+      
+      #SAVE FREEZER NAMES INVOLVED
+      new.freezer_name <- input$AddFreezerName
+      new.freezer_type <- input$AddFreezerType
+      new.freezer_levelI <- input$AddFreezerLevel_I
+      new.freezer_levelII <- input$AddFreezerLevel_II
+      
+      #SET REQUIREMENTS
+      req(input$AddFreezerName,
+          !(new.freezer_name %in% c(sampleDB::CheckTable(database = database, "location")$location_name)))
+      
+      #ADD FREEZER NAME
+      sampleDB::UpdateReferences(reference = "freezer",
+                                 operation = "add",
+                                 information = list(NewFreezerName = new.freezer_name,
+                                                    NewFreezerLocationType = new.freezer_type,
+                                                    NewFreezerLevelI = new.freezer_levelI,
+                                                    NewFreezerLevelII = new.freezer_levelII))
+      
+      #PRINT EXIT MESSAGE
+      output$FreezerReturnMessage <- renderText({paste("Added Freezer:", 
+                                                       new.freezer_name, 
+                                                       new.freezer_type, 
+                                                       new.freezer_levelI, 
+                                                       new.freezer_levelII,
+                                                       emoji('tada'))})
+      
+      #MODIFY TABLE
+      ShowFreezers(output, database)
+      
+      #UPDATE DROPDOWNS
+      UpdateFreezerDropdowns(database, session)
+    }))
+  
+  # CHANGE FREEZER NAMES
+  
+  observe({
+    if(input$RenameFreezerName1 != ""){
+      tmp_table.location <- filter(sampleDB::CheckTable(database = database, "location"), location_name == input$RenameFreezerName1)
+      updateSelectInput(session, "RenameFreezerLevelI1", label = NULL, choices = c(tmp_table.location$level_I))
+      updateSelectInput(session, "RenameFreezerLevelII1", label = NULL, choices = c(tmp_table.location$level_II))
+    }else{
+      updateSelectInput(session, "RenameFreezerLevelI1", label = NULL, choices = c(""))
+      updateSelectInput(session, "RenameFreezerLevelII1", label = NULL, choices = c(""))
+    }
+  })
+  
+  observeEvent(
+    input$RenameFreezerAction,
+    ({
+      
+      #SAVE FREEZER NAMES INVOLVED
+      old.freezer_name <- input$RenameFreezerName1
+      old.freezer_levelI <- input$RenameFreezerLevelI1
+      old.freezer_levelII <- input$RenameFreezerLevelII1
+      new.freezer_name <- input$RenameFreezerName2
+      new.freezer_type <- input$RenameFreezerType2
+      new.freezer_levelI <- input$RenameFreezerLevelI2
+      new.freezer_levelII <- input$RenameFreezerLevelI2
+      
+      # #MODIFY TABLE IF NEW FREEZER NAME IS UNIQUE
+      # req(input$RenameFreezer1,
+      #     input$RenameFreezer2,
+      #     !(new.name %in% c(sampleDB::CheckTable(database = database, "location")$location_name)))
+      
+      #CHANGE FREEZER NAME
+      sampleDB::UpdateReferences(reference = "freezer",
+                                 operation = "modify",
+                                 information = list(OldFreezerName = old.freezer_name,
+                                                    OldFreezerLevelI = old.freezer_levelI,
+                                                    OldFreezerLevelII = old.freezer_levelII,
+                                                    NewFreezerName = new.freezer_name,
+                                                    NewFreezerLocationType = new.freezer_type,
+                                                    NewFreezerLevelI = new.freezer_levelI,
+                                                    NewFreezerLevelII = new.freezer_levelII) %>% purrr::discard(function(x){is.null(x) || x == ""}))
+      
+      #PRINT EXIT MESSAGE
+      # NOTE PRINT MESSAGE IS MISSING TYPE
+      output$FreezerReturnMessage <- renderText({paste("Renamed Freezer", 
+                                                       old.freezer_name,
+                                                       old.freezer_levelI,
+                                                       old.freezer_levelII,
+                                                       "to",
+                                                       new.freezer_name,
+                                                       new.freezer_levelI,
+                                                       new.freezer_levelII,
+                                                       emoji('tada'))})
+      
+      #REFRESH REFERENCES
+      ShowFreezers(output, database)
+      
+      #UPDATE DROPDOWNS
+      UpdateFreezerDropdowns(database, session)
+    }))
+  
+  #REMOVE FREEZER FROM DATABASE
+  
+  observe({
+    if(input$DeleteFreezerName != ""){
+      tmp_table.location <- filter(sampleDB::CheckTable(database = database, "location"), location_name == input$DeleteFreezerName)
+      updateSelectInput(session, "DeleteFreezerLevelI", label = NULL, choices = c(tmp_table.location$level_I))
+      updateSelectInput(session, "DeleteFreezerLevelII", label = NULL, choices = c(tmp_table.location$level_II))
+    }else{
+      updateSelectInput(session, "DeleteFreezerLevelI", label = NULL, choices = c(""))
+      updateSelectInput(session, "DeleteFreezerLevelII", label = NULL, choices = c(""))
+    }
+  })
+  
+  observeEvent(
+    input$DeleteFreezerAction,
+    ({
+      
+      #SAVE FREEZER NAMES INVOLVED
+      delete.freezer_name <- input$DeleteFreezerName
+      delete.freezer_levelI <- input$DeleteFreezerLevelI
+      delete.freezer_levelII <- input$DeleteFreezerLevelII
+      
+      # #SET REQUIREMENTS
+      # req(input$DeleteFreezer,
+      #     !(filter(sampleDB::CheckTable(database = database, "location"), location_name == delete.freezer_name)$id %in% sampleDB::CheckTable(database = database, "matrix_plate")$location_id))
+      
+      #DELETE FREEZER
+      sampleDB::UpdateReferences(reference = "freezer",
+                                 operation = "delete",
+                                 information = list(DeleteFreezerName = delete.freezer_name,
+                                                    DeleteFreezerLevelI = delete.freezer_levelI,
+                                                    DeleteFreezerLevelII = delete.freezer_levelII))
+      #PRINT EXIT MESSAGE
+      output$FreezerReturnMessage <- renderText({paste("Deleted Freezer",
+                                                       delete.freezer_name, 
+                                                       delete.freezer_levelI,
+                                                       delete.freezer_levelII,
+                                                       emoji('tada'))})
+      
+      #REFRESH REFERENCES
+      ShowFreezers(output, database)
+      
+      #UPDATE DROPDOWNS
+      UpdateFreezerDropdowns(database, session)
+    })
+  )
+  
+  # IDLY PRESENT FREEZERS IN DATATABLE
+  ShowFreezers(output, database)
+}
 
+UpdateSpecimenTypes <- function(session, input, output, database){
+  SpecimenTypeChangesChecks(input, database, output)
+  
+  #ADD A SPECIMEN TYPE TO THE DATABASE
+  observeEvent(
+    input$AddSpecimenTypeAction,
+    ({
+      
+      #SAVE SPECIMEN_TYPE NAMES INVOLVED
+      new.specimen_type <- input$AddSpecimenType
+      
+      # #SET REQUIREMENT
+      # req(input$AddSpecimenType,
+      #     !(new.specimen_type %in% c(sampleDB::CheckTable(database = database, "specimen_type")$label)))
+      
+      #ADD SPECIMEN TYPE
+      sampleDB::UpdateReferences(reference = "specimen_type",
+                                 operation = "add",
+                                 information = list(NewSpecimenTypeName = new.specimen_type))
+      
+      #PRINT EXIT MESSAGE
+      output$SpecimenReturnMessage <- renderText({paste("Added Specimen Type", new.specimen_type, emoji('tada'))})
+      
+      #REFRESH REFERENCES
+      ShowSpecimenTypes(output, database)
+      
+      #UPDATE DROPDOWNS
+      UpdateSpecimenTypeDropdowns(database, session)
+    }))
+  
+  #CHANGE A SPECIMEN TPYE
+  observeEvent(
+    input$RenameSpecimenTypeAction,
+    ({
+      
+      #SAVE SPECIMEN_TYPE NAMES INVOLVED
+      old.name <- input$RenameSpecimenType1
+      new.name <- input$RenameSpecimenType2
+      
+      # #CHANGE SPECIMEN_TYPE IF IT IS UNIQUE
+      # req(input$RenameSpecimenType1,
+      #     input$RenameSpecimenType2,
+      #     !(new.name %in% c(sampleDB::CheckTable(database = database, "specimen_type")$label)))
+      
+      #CHANGE SPECIMEN TYPE NAME
+      sampleDB::UpdateReferences(reference = "specimen_type",
+                                 operation = "modify",
+                                 information = list(NewSpecimenTypeName = new.name,
+                                                    OldSpecimenTypeName = old.name))
+      
+      #PRINT EXIT MESSAGE
+      output$SpecimenReturnMessage <- renderText({paste("Renamed Specimen Type", old.name, "to", new.name, emoji('tada'))})
+      
+      #REFRESH REFERENCES
+      ShowSpecimenTypes(output, database)
+      
+      #UPDATE DROPDOWNS
+      UpdateSpecimenTypeDropdowns(database, session)
+    }))
+  
+  #DELETE A SPECIMEN TYPE
+  observeEvent(
+    input$DeleteSpecimenTypeAction,
+    ({
+      
+      #SAVE SPECIMEN_TYPE NAMES INVOLVED
+      delete.specimen_type <- input$DeleteSpecimenType
+      
+      # #SET REQUIREMENT
+      # req(input$DeleteSpecimenTypeAction,
+      #     !(filter(sampleDB::CheckTable(database = database, "specimen_type"), label == delete.specimen_type)$id %in% sampleDB::CheckTable(database = database, "specimen")$specimen_type_id))
+      
+      #DELETE SPECIMEN TYPE
+      sampleDB::UpdateReferences(reference = "specimen_type",
+                                 operation = "delete",
+                                 information = list(DeleteSpecimenTypeName = delete.specimen_type))
+      
+      #PRINT EXIT MESSAGE
+      output$SpecimenReturnMessage <- renderText({paste("Deleted Specimen Type", delete.specimen_type, emoji('tada'))})
+      
+      #REFRESH REFERENCES
+      ShowSpecimenTypes(output, database)
+      
+      #UPDATE DROPDOWNS
+      UpdateSpecimenTypeDropdowns(database, session)
+    }))
+  
+  #IDLY PRESENT SPECIMEN TYPES
+  ShowSpecimenTypes(output, database)      
+}
+
+UpdateLabStudies <- function(session, input, output, database){
+  StudyChangesChecks(input, database, output)
+  
+  #ADD A STUDY TO THE DATABASE
+  observeEvent(
+    input$AddStudyAction,
+    ({
+      
+      # # SET REQUIREMENTS
+      # AddStudyRequirements(input)
+      
+      #ADD STUDY
+      sampleDB::UpdateReferences(reference = "study",
+                                 operation = "add",
+                                 information = list(NewStudyTitle = input$AddStudyTitle,
+                                                    NewStudyDescription = input$AddStudyDescription,
+                                                    NewStudyShortCode = input$AddStudyShortCode,
+                                                    NewStudyLeadPerson = input$AddStudyLeadPerson,
+                                                    NewStudyLongitudinal = input$AddStudyIsLongitudinal))
+      
+      #PRINT EXIT MESSAGE
+      output$StudyReturnMessage <- renderText({paste("Added Study to the Database", emoji('tada'))})
+      
+      #REFRESH REFERENCES
+      ShowStudies(output, database)
+      
+      #UPDATE DROPDOWNS
+      UpdateStudyDropdowns(session)
+    })
+  )
+  
+  # CHANGE A STUDY
+  observeEvent(
+    input$RenameStudyAction,
+    ({
+      
+      # MODIFY STUDY
+      sampleDB::UpdateReferences(reference = "study",
+                                 operation = "modify",
+                                 information = list(OldStudyShortCode = input$ChangeStudyShortCode,
+                                                    NewStudyTitle = input$RenameStudyTitle,
+                                                    NewStudyDescription = input$RenameStudyDescription,
+                                                    NewStudyShortCode = input$RenameStudyShortCode,
+                                                    NewStudyLeadPerson = input$RenameStudyLeadPerson,
+                                                    NewStudyLongitudinal = sum(input$RenameStudyIsLongitudinal)))
+      #PRINT EXIT MESSAGE
+      output$StudyReturnMessage <- renderText({paste("Modified Study in the Database", emoji('tada'))})
+      
+      #REFRESH REFERENCES
+      ShowStudies(output, database)
+      
+      #UPDATE DROPDOWNS
+      UpdateStudyDropdowns(database, session)
+    }))
+  
+  # DELETE A STUDY FROM THE DATABASE
+  observeEvent(
+    input$DeleteStudyAction,
+    ({
+      #DELETE STUDY
+      sampleDB::UpdateReferences(reference = "study",
+                                 operation = "delete",
+                                 information = list(DeleteStudyShortCode = input$DeleteStudyShortCode))
+      
+      #PRINT EXIT MESSAGE
+      output$StudyReturnMessage <- renderText({paste("Deleted Study from the Database", emoji('tada'))})
+      
+      #REFRESH REFERENCES
+      ShowStudies(output, database)
+      
+    })
+  )
+  
+  #IDLY SHOW STUDIES
+  ShowStudies(output, database) 
+}
 
 UpdateFreezerDropdowns <- function(database, session){
   updateTextInput(session = session, inputId ="AddFreezer", value = "", placeholder = "New Name")
@@ -36,22 +355,36 @@ UpdateStudyDropdowns <- function(database, session){
 ShowStudies <- function(output, database){
   output$TableStudy <- DT::renderDataTable({
     sampleDB::CheckTable(database = database, "study") %>%
-      dplyr::select(-c(id, created, last_updated, hidden))}, selection = 'single')  
+      dplyr::select(-c(id, created, last_updated)) %>%
+      mutate(is_longitudinal = as.logical(is_longitudinal)) %>%
+      rename(Title = title,
+             Description = description,
+            `Study Code` = short_code,
+            `Longitudinal` = is_longitudinal,
+            `Lead Person` = lead_person)
+    }, selection = 'single')
+  
+  # output$TableStudy <- DT::renderDataTable({
+  #   sampleDB::CheckTable(database = database, "study") %>%
+  #     dplyr::select(-c(id, created, last_updated, hidden))}, selection = 'single')
 }
 
 ShowFreezers <- function(output, database){
   output$TableFreezer <- DT::renderDataTable({
     sampleDB::CheckTable(database = database, "location") %>%
-      dplyr::select(created, location_name) %>%
-      rename(`Date Created` = created, Name = location_name) %>%
-      relocate(Name, `Date Created`)})
+      dplyr::select(-c(created:id, level_III)) %>%
+      rename(`Freezer Name` = location_name,
+             `Type` = location_type,
+             `Level I` = level_I,
+             `Level II` = level_II)
+    })
 }
 
 ShowSpecimenTypes <- function(output, database){
   output$TableSpecimenType <- DT::renderDataTable({
     sampleDB::CheckTable(database = database, "specimen_type") %>%
-      rename(`Date Created` = created) %>%
-      relocate(`Date Created`)})
+      dplyr::select(-c(`created`:id)) %>%
+      rename(`Specimen Type` = label)})
 }
 
 AddStudyRequirements <- function(input){
@@ -128,9 +461,9 @@ helper.CheckStudyUnique <- function(id.input, type.dup, input, database){
 }
 
 helper.CheckFreezerDeletion <- function(input, database){
-  freezer_id <- sampleDB::CheckTable(database = database, "location") %>% filter(location_name == input$DeleteFreezer) %>% pull(id)
+  freezer_id <- sampleDB::CheckTable(database = database, "location") %>% filter(location_name == input$DeleteFreezerName) %>% pull(id)
   toggle <- freezer_id %in% sampleDB::CheckTable(database = database, "matrix_plate")$location_id
-  shinyFeedback::feedbackWarning("DeleteFreezer", toggle, "Freezer is currently is use") 
+  shinyFeedback::feedbackWarning("DeleteFreezerName", toggle, "Freezer is currently is use") 
 }
 
 helper.CheckSpecimenTypeDeletion <- function(input, database){
