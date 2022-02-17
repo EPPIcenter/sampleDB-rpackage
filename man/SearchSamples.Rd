@@ -4,7 +4,7 @@
 \alias{SearchSamples}
 \title{Search for Wetlab Samples in the EPPIcenter sampleDB database}
 \usage{
-SearchSamples(filters, study_subject.file = F)
+SearchSamples(filters, study_subject.file = FALSE)
 }
 \arguments{
 \item{filters}{A list containing micronix barcodes, plate name, study code, location and/or specimen_type}
@@ -15,6 +15,20 @@ SearchSamples(filters, study_subject.file = F)
 Search for Wetlab Samples in the EPPIcenter sampleDB database
 }
 \examples{
-SearchSamples(filters = list(name.plate = c("100","101"), name.location = c("Left -20 Freezer")))
-SearchSamples(filters = list(file.barcodes = "/path/to/barcodes.csv", name.plate = "dummy_name", name.study = "dummy_study", name.location = "fridge", name.specimen_type = "specimen_type1"))
+x search.container = #tricky bc are container names uniq throughout the whole db or just within a certain sample type?
+- search.date = list(date.from = "YMD", date.to = "YMD")
+- search.exhausted = T/F
+x search.label = #tricky bc are labels uniq throughout the whole db or just within a certain sample type?
++ search.location = list(location_name = c(), level_I = c(), level_II = c())
++ search.specimen_type = c()
++ search.study = c()
++ search.study_subject = c()
++ search.type = c("RDT", "Micronix", "Paper", "Cryovile")
+
+NOTE: Ufortunately the whole database has to be read into memory inorder to search for something
+Im sure there is a faster sql way to do this
+Examples:
+SearchSamples(filters = list(name.plate = c("100","101"), search.location = c("Left -20 Freezer")))
+SearchSamples(filters = list(file.barcodes = "/path/to/barcodes.csv", name.plate = "dummy_name", search.study = "dummy_study", search.location = "fridge", search.specimen_type = "specimen_type1"))
+SearchSamples(filters = list(search.location = list(location_name = "Freezer A", level_I = "dummy.levelI", level_II = "dummy.levelII"))) # feb 10 2022
 }

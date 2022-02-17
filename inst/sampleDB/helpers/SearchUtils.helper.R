@@ -1,6 +1,5 @@
 
 
-
 SearchWetlabSamples <- function(session, input, database, output){
   
   # SEARCH CHECKS... CHECK THAT SEARCH FILES ARE NOT MALFORMED

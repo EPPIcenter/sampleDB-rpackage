@@ -48,7 +48,7 @@ MoveSamples <- function(type, file.container_samples){
   }
 }
 
-.GetFailedOrphanCheckSamples <- function(dummy.tbl){
+.GetFailedOrphanCheckSamples <- function(type, dummy.tbl){
   # GET LABEL STILL IN DUMMY PLATE
   if(type == "matrix"){
     label.missing <- filter(dummy.tbl, plate_id < 0)$barcode

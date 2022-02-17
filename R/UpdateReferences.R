@@ -47,7 +47,7 @@ UpdateReferences <- function(reference, operation, information){
     if(operation == "modify"){
       
       # MODIFY FREEZER
-      stopifnot(setequal(names(information), c("OldFreezerName", "OldFreezerLevelI", "OldFreezerLevelII")))
+      stopifnot(all(c("OldFreezerName", "OldFreezerLevelI", "OldFreezerLevelII") %in% names(information)))
       tmp_table.location <- filter(sampleDB::CheckTable(database = database, "location"), location_name == information$OldFreezerName & level_I == information$OldFreezerLevelI & level_II == information$OldFreezerLevelII)
       id.OldFreezerName <- as.character(tmp_table.location$id)
       eval.created <- as.character(tmp_table.location$created)
@@ -139,7 +139,7 @@ UpdateReferences <- function(reference, operation, information){
                                 id = id.DeleteSpecimenTypeName)
       message(
         paste0("Deleted Specimen Type:\n",
-               "\tName: \"", DeleteSpecimenTypeName, "\""))
+               "\tName: \"", information$DeleteSpecimenTypeName, "\""))
     }
   }
   if(reference == "study"){
@@ -167,7 +167,7 @@ UpdateReferences <- function(reference, operation, information){
     }
     if(operation == "modify"){
       
-      stopifnot(all(names(information) %in% c("OldStudyShortCode")))
+      stopifnot(all(c("OldStudyShortCode") %in% names(information)))
       tmp_table.study <- filter(sampleDB::CheckTable(database = database, "study"), short_code == information$OldStudyShortCode)
       eval.created <- as.character(tmp_table.study$created)
       id.OldStudyShortCode <- as.character(tmp_table.study$id)
