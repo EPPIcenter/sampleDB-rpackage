@@ -1,49 +1,53 @@
 
 
-SearchWetlabSamples <- function(session, input, database, output){
+SearchWetlabSamples <- function(session, input, database, output, inputs, outputs, DelArch = FALSE){
   
   # SEARCH CHECKS... CHECK THAT SEARCH FILES ARE NOT MALFORMED
-  .SearchChecks(input, database, output)
+  # .SearchChecks(input, database, output)
   
   observe({
-    if(input$SearchByLocation != ""){
-      tmp_table.location <- filter(sampleDB::CheckTable(database = database, "location"), location_name == input$SearchByLocation)
-      updateSelectizeInput(session, "SearchByLevelI", label = NULL, choices = c(tmp_table.location$level_I))
-      updateSelectizeInput(session, "SearchByLevelII", label = NULL, choices = c(tmp_table.location$level_II))
+    if(input[[inputs$SearchByLocation]] != ""){
+      tmp_table.location <- filter(sampleDB::CheckTable(database = database, "location"), location_name == input[[inputs$SearchByLocation]])
+      updateSelectizeInput(session, inputs$SearchByLevelI, label = NULL, choices = c(tmp_table.location$level_I))
+      updateSelectizeInput(session, inputs$SearchByLevelII, label = NULL, choices = c(tmp_table.location$level_II))
     }else{
-      updateSelectizeInput(session, "SearchByLevelI", label = NULL, choices = c(""))
-      updateSelectizeInput(session, "SearchByLevelII", label = NULL, choices = c(""))
+      updateSelectizeInput(session, inputs$SearchByLevelI, label = NULL, choices = c(""))
+      updateSelectizeInput(session, inputs$SearchByLevelII, label = NULL, choices = c(""))
     }
   })
   
   # ACTIVELY USE UI FILTERS TO RENDER A TABLE WITH SEARCH RESULTS
   observe({
     
-    if(!is.na(input$dateRange[1]) & !is.na(input$dateRange[2])){
-      eval.search.date <- list(date.from = input$dateRange[1], date.to = input$dateRange[2])
+    if(!is.na(input[[inputs$dateRange]][1]) & !is.na(input[[inputs$dateRange]][2])){
+      eval.search.date <- list(date.from = input[[inputs$dateRange]][1], date.to = input[[inputs$dateRange]][2])
     }else{
       eval.search.date <- ""
     }
     
     filters <- list(
       search.date = eval.search.date,
-      search.exhausted = input$SearchByExhausted,
-      search.location = list(location_name = input$SearchByLocation, level_I = input$SearchByLevelI, level_II = input$SearchByLevelII),
-      search.specimen_type = input$SearchBySpecimenType,
-      search.study = input$SearchByStudy,
-      search.type = input$SearchBySampleType)
+      search.exhausted = input[[inputs$SearchByExhausted]],
+      search.location = list(location_name = input[[inputs$SearchByLocation]], level_I = input[[inputs$SearchByLevelI]], level_II = input[[inputs$SearchByLevelII]]),
+      search.specimen_type = input[[inputs$SearchBySpecimenType]],
+      search.study = input[[inputs$SearchByStudy]],
+      search.type = input[[inputs$SearchBySampleType]])
     
     # RETRIEVE SEARCH RESULTS
-    if(input$SubjectUIDSearchType == "individual"){
-      filters$name.study_subject <- input$SearchBySubjectUID
-      search_results <- sampleDB::SearchSamples(discard(filters, function(x) "" %in% x), study_subject.file = F)
+    if(input[[inputs$SubjectUIDSearchType]] == "individual"){
+      filters$name.study_subject <- input[[inputs$SearchBySubjectUID]]
+      list.search_results <- sampleDB::SearchSamples(discard(filters, function(x) "" %in% x), study_subject.file = F)
+      search_results <- list.search_results$tbl.usr_results
+      storage_container_ids <- list.search_results$storage_container_ids
     }else{
-      filters$name.study_subject <- input$SearchBySubjectUIDFile$datapath
-      search_results <- sampleDB::SearchSamples(discard(filters, function(x) "" %in% x), study_subject.file = T)
+      filters$name.study_subject <- input[[inputs$SearchBySubjectUIDFile]]$datapath
+      list.search_results <- sampleDB::SearchSamples(discard(filters, function(x) "" %in% x), study_subject.file = T)
+      search_results <- list.search_results$tbl.usr_results
+      storage_container_ids <- list.search_results$storage_container_ids
     }
     
     # PRINT SEARCH RESULTS
-    output$SearchResultsTable <- DT::renderDataTable({
+    output[[outputs$SearchResultsTable]] <- DT::renderDataTable({
       if(!is.null(search_results)){
         search_results
       }else{
@@ -52,13 +56,14 @@ SearchWetlabSamples <- function(session, input, database, output){
     },
     options = list(
       searching = T,
+      server = F,
       paging = T,
       pageLength = 20,
       lengthMenu = c(10, 20, 50, 100),
       language = list(zeroRecords = "There are no EPPIcenter Wetlab Samples that match this search.")))
     
     # DOWNLOAD SEARCH RESULTS
-    output$downloadData <- downloadHandler(
+    output[[outputs$downloadData]] <- downloadHandler(
       filename = function() {
         paste('data-', Sys.Date(), '.csv', sep='')
       },
@@ -66,10 +71,41 @@ SearchWetlabSamples <- function(session, input, database, output){
         write.csv(search_results, con)
       }
     )
+    
+    if(DelArch == TRUE){
+      updateTextInput(session = session, "RenameStudyLeadPerson", value = storage_container_ids) 
+    }
+    
   })
   
+  if(DelArch == TRUE){
+    observe({
+      selected <- input$"DelArchSearchResultsTable_rows_selected"
+      if(length(selected) > 0){
+        a <- input$"RenameStudyLeadPerson"
+        sc_ids <- strsplit(a, ",")[[1]]
+        output$ShowSelectedSamples <- renderPrint({paste(length(sc_ids[selected]),"samples selected")})
+      }
+      observeEvent(
+        input$DeleteAction,({
+          ArchiveAndDeleteSamples("delete", storage_container_ids = sc_ids[selected])
+        }))
+      observeEvent(
+        input$ArchiveAction,({
+          ArchiveAndDeleteSamples("archive", storage_container_ids = sc_ids[selected])
+        }))
+      observeEvent(
+        input$UnArchiveAction,({
+          ArchiveAndDeleteSamples("unarchive", storage_container_ids = sc_ids[selected])
+        }))
+      
+      # RESET UI VALUE
+      updateTextInput(session = session, "RenameStudyLeadPerson", value = "")
+      })
+  }
+  
   # CLEAR FILES
-  .SearchReset(input)
+  # .SearchReset(input)
 }
 
 .SearchReset <- function(input){

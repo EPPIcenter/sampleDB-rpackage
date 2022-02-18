@@ -72,12 +72,17 @@ SearchSamples <- function(filters, study_subject.file = FALSE){
                                                       results.search_term = results.search_term)
     
     # BEAUTIFY RESULTS TABLE
-    usr_results <- .BeautifyResultsTable(results.filter_and_search = results.filter_and_search)
+    tbl.usr_results <- .BeautifyResultsTable(results.filter_and_search = results.filter_and_search)
     
     # OUTPUT MESSAGE IF NO RESULTS ARE FOUND
-    if(nrow(usr_results) == 0){
+    if(nrow(tbl.usr_results) == 0){
       message("THERE ARE NO EPPICENTER WETLAB SAMPLES THAT MATCH THIS SEARCH")
       usr_results <- NULL
+    }else{
+      eval.storage_container_ids <- tbl.usr_results$"storage_container_id"
+      tbl.usr_results <- tbl.usr_results %>% select(-c("storage_container_id"))
+      usr_results <- list(storage_container_ids = eval.storage_container_ids,
+                          tbl.usr_results = tbl.usr_results)
     }
   }
   return(usr_results)

@@ -10,23 +10,27 @@
 #' 
 
 
-ArchiveAndDeleteSamples <- function(operation, filters){
+ArchiveAndDeleteSamples <- function(operation, filters = NULL, storage_container_ids = NULL){
   
   database <- "/databases/new.sampleDB.db"
-  stopifnot("Operation is not valid" = operation %in% c("archive", "delete", "make_active"))
+  stopifnot("Operation is not valid" = operation %in% c("archive", "delete", "unarchive"))
   
-  storage_container_id <- sampleDB::SearchSamples(filters)$storage_container_id
+  if(!is.null(filters)){
+    storage_container_ids <- sampleDB::SearchSamples(filters)$storage_container_ids 
+  }else{
+    storage_container_ids <- storage_container_ids
+  }
   
   if(operation == "archive"){
-    for(eval.id in storage_container_id){
+    for(eval.id in storage_container_ids){
       sampleDB::ModifyTable(database = database,
                             "storage_container",
                             info_list = list(exhausted == 1),
                             id = eval.id)
     }
   }
-  else if(operation == "make_active"){
-    for(eval.id in storage_container_id){
+  else if(operation == "unarchive"){
+    for(eval.id in storage_container_ids){
       sampleDB::ModifyTable(database = database,
                             "storage_container",
                             info_list = list(exhausted == 0),
@@ -44,7 +48,7 @@ ArchiveAndDeleteSamples <- function(operation, filters){
         
         # DELETE EXTERNAL DATA IF IT IS NOT BEING USED FOR A DIFFERENT SAMPLE
         # DELETE INTERNAL DATA
-        for(eval.id in storage_container_id){
+        for(eval.id in storage_container_ids){
           # DELETE INTERNAL DATA
           tmp_table.storage_container <- filter(database.tables$table.storage_container, id %in% eval.id)
           tmp.specimen_id <- tmp_table.storage_container$specimen_id

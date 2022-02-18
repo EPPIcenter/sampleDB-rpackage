@@ -99,7 +99,7 @@ navbarPage("EPPIcenter SampleDB",
                         textOutput("WarningCryoUploadDateFormat"),
                         textOutput("WarningUploadCryoStudyShortCodes"),
                         textOutput("WarningCryoSpecimenExists"),
-                        textInput("UploadCryoPlateID", label = "Unique Plate Name"),
+                        textInput("UploadCryoPlateID", label = "Box Name"),
                         textOutput("WarningCryoUploadContainer"),
                         selectInput("UploadLocationCryoFreezerName", label = "Freezer Name", choices = c("", sampleDB::CheckTable(database = database, "location")$location_name)),
                         selectInput("UploadLocationCryoLevelI", label = HTML("<h5>Level I</h5>"), width = '25%', choices = c("", sampleDB::CheckTable(database = database, "location")$level_I)),
@@ -112,16 +112,29 @@ navbarPage("EPPIcenter SampleDB",
                       ),
                       mainPanel(
                         width = 9,
-                        HTML("<h4>This is an <b>Example SampleDB UploadCryoCSV</b>.</h4>"),
-                        verbatimTextOutput("ExampleUploadCryoCSVNoDate"),
+                        HTML("<h4><center>This is an <b>Example SampleDB UploadCryoCSV</b>.</center></h4>"),
+                        fluidRow(
+                          column(width = 2),
+                          column(width = 8,
+                                 span(verbatimTextOutput("ExampleUploadCryoCSVNoDate"), style ="max-width: 75px; text-align: center"),
+                          )),
+                        fluidPage(
+                          column(width = 1),
+                          column(width = 10,
                         HTML("<h5>The combination of <code>study_subject</code>, <code>specimen_type</code> and <code>study_code</code> must be unique.
-                             Consider adding a collection_date for the sample</h5>"),
-                        HTML("<h4><b>Longitudinal Data</b></h4>"),
-                        HTML("<h5>Simply append a column named <code>collection_date</code> to your CSV in order to add
-                             longitudinal information to the samples. (Date format is YMD.)</h5>"),
-                        HTML("<center><h4><b>Example SampleDB UploadCryoCSV</b> with <code>collection_date</code> Column</h4></center>"),
-                        verbatimTextOutput("ExampleUploadCryoCSVDate"),
-                        HTML("<h5>The combination of <code>study_subject</code>, <code>specimen_type</code>, <code>study_code</code> and <code>collection_date</code> must be unique</h5>")
+                             Consider adding a collection_date for the sample</h5><h4><b>Longitudinal Data</b></h4>
+                             <h5>Simply append a column named <code>collection_date</code> to your CSV in order to add
+                             longitudinal information to the samples. (Date format is YMD.)</h5>
+                             <center><h4><b>Example SampleDB UploadCryoCSV</b> with <code>collection_date</code> Column</h4></center>"),
+                          ),
+                        column(width = 1)
+                        ),
+                        fluidRow(
+                          column(width = 2),
+                          column(width = 8,
+                                 span(verbatimTextOutput("ExampleUploadCryoCSVDate"), style ="max-width: 75px; text-align: center"),
+                          )),
+                        # HTML("<h5>The combination of <code>study_subject</code>, <code>specimen_type</code>, <code>study_code</code> and <code>collection_date</code> must be unique</h5>")
                       ))),
            
            tabPanel("RDT Form",
@@ -219,7 +232,7 @@ navbarPage("EPPIcenter SampleDB",
                         selectizeInput("SearchByLevelI", "Storage Location: Level I", choices = c("")),
                         selectizeInput("SearchByLevelII", "Storage Location: Level II", choices = c("")),
                         selectizeInput("SearchBySpecimenType", "Specimen Type", choices = c("", sampleDB::CheckTable(database = database, "specimen_type")$label)),
-                        selectizeInput("SearchBySampleType", "Sample Type", choices = c("", "Micronix", "Cryo", "RDT", "Paper")),
+                        selectizeInput("SearchBySampleType", "Sample Type", choices = c("", "Micronix", "Cryovile", "RDT", "Paper")),
                         radioButtons("SubjectUIDSearchType", label = "Study Subject Search Method", choices = list("Single Study Subject" = "individual", "Multiple Study Subjects" = "multiple"), selected = "individual"),
                         conditionalPanel(condition = "input.SubjectUIDSearchType == \"individual\"",
                                          selectizeInput("SearchBySubjectUID", label = "Study Subject", choices = c("", sampleDB::CheckTable(database = database, "study_subject")$subject %>% unique()))),
@@ -230,92 +243,100 @@ navbarPage("EPPIcenter SampleDB",
                       ),
                     mainPanel(
                       width = 10,
-                          DT::dataTableOutput("SearchResultsTable"),
-                          downloadButton("downloadData", "Download")
+                        DT::dataTableOutput("SearchResultsTable"),
+                        downloadButton("downloadData", "Download")
                     ))),
            navbarMenu("Move WetLab Samples",
-           tabPanel("Move WetLab Samples",
-
-                    sidebarLayout(
-                      sidebarPanel(
-                        width = 3,
-                        HTML("<h4><b>Move Samples Form</b></h4>"),
-                        hr(),
-                        radioButtons("MoveSampleType","Sample Type", c("Micronix" = "Micronix", "Cryovile" = "Cryovile", "RDT" = "RDT", "Paper" = "Paper"), inline = T),
-                        fileInput("MoveDataSet", "SampleDB MoveSamplesCSV", multiple = TRUE, accept = c("text/csv", "text/comma-separated-values,text/plain", ".csv")),
-                        fluidRow(column(width = 12,
-                                        actionButton("MoveAction", label = "Move Samples", style="color: #fff; background-color: #337ab7; border-color: #2e6da4"),
-                                        actionButton("ClearMoveForm", label = "Clear Form"))),
-                        br(),
-                        textOutput("WarningMoveColnames"),
-                        verbatimTextOutput("MoveReturnMessage1"),
-                        verbatimTextOutput("MoveReturnMessage2"),
+             tabPanel("Move WetLab Samples",
+  
+                      sidebarLayout(
+                        sidebarPanel(
+                          width = 3,
+                          HTML("<h4><b>Move Samples Form</b></h4>"),
+                          hr(),
+                          radioButtons("MoveSampleType","Sample Type", c("Micronix" = "Micronix", "Cryovile" = "Cryovile", "RDT" = "RDT", "Paper" = "Paper"), inline = T),
+                          fileInput("MoveDataSet", "SampleDB MoveSamplesCSV", multiple = TRUE, accept = c("text/csv", "text/comma-separated-values,text/plain", ".csv")),
+                          fluidRow(column(width = 12,
+                                          actionButton("MoveAction", label = "Move Samples", style="color: #fff; background-color: #337ab7; border-color: #2e6da4"),
+                                          actionButton("ClearMoveForm", label = "Clear Form"))),
+                          br(),
+                          textOutput("WarningMoveColnames"),
+                          verbatimTextOutput("MoveReturnMessage1"),
+                          verbatimTextOutput("MoveReturnMessage2"),
+                        ),
+                        mainPanel(
+                          width = 9,
+                          HTML("<h4>This is an <b>Example SampleDB MoveSamplesCSV</b> from VisionMate.</h4>"),
+                          verbatimTextOutput("ExampleMoveSamplesCSV"),
+                          HTML("<h5>This format is essentially just the CSV that any micronix instrument creates.
+                               No CSV reformating is required.</h5>"),
+                          HTML("<h5>To perform moves:</h5>"),
+                          HTML("<ol> <li>All plates involved in the move need to be scanned</li> <li>The Micronix .csv file needs to be given the plate name</li> <li>All the scans must be uploaded together</li> </ol>"))),
                       ),
-                      mainPanel(
-                        width = 9,
-                        HTML("<h4>This is an <b>Example SampleDB MoveSamplesCSV</b> from VisionMate.</h4>"),
-                        verbatimTextOutput("ExampleMoveSamplesCSV"),
-                        HTML("<h5>This format is essentially just the CSV that any micronix instrument creates.
-                             No CSV reformating is required.</h5>"),
-                        HTML("<h5>To perform moves:</h5>"),
-                        HTML("<ol> <li>All plates involved in the move need to be scanned</li> <li>The Micronix .csv file needs to be given the plate name</li> <li>All the scans must be uploaded together</li> </ol>"))),
-                        # HTML("<h6>*Note that no new samples can be added during moves. This is because no
-                        #       study subject nor specimen type information is processed during moves.</h6>")
-                    ),
-           tabPanel("Move Container of Samples",
-                    
+             tabPanel("Move Container of Samples",
+                      
+                      sidebarLayout(
+                        sidebarPanel(
+                          width = 3,
+                          #shouldnt need sample type but bc it is unknown at this point if container names are unique, sample type specifies the db table to use to find the container name
+                          radioButtons("MoveContainerSampleType","Move Container Sample Type", c("Micronix" = "Micronix", "Cryovile" = "Cryovile", "RDT" = "RDT", "Paper" = "Paper"), inline = T),
+                          selectizeInput("MoveContainerName", label = "Container Name", choices = NULL),
+                          #should print to user the current location of the container
+                          selectInput("MoveContainerLocation", label = "Storage Location", choices = c("", sampleDB::CheckTable(database = database, "location")$location_name)),
+                          fluidRow(column(width = 1), column(width = 11, selectInput("MoveContainerLocationLevelI", label = HTML("<h5>Storage Location: Level I</h5>"), width = '100%', choices = NULL))),
+                          fluidRow(column(width = 1), column(width = 11, selectInput("MoveContainerLocationLevelII", label = HTML("<h5>Storage Location: Level II</h5>"), width = '100%', choices = NULL))),
+                          fluidRow(column(width = 12,
+                                          actionButton("MoveContainerAction", width = '49%', label = "Upload Samples", style="color: #fff; background-color: #337ab7; border-color: #2e6da4"))),
+                        ),
+                        mainPanel()
+           ))),
+           navbarMenu("Delete and Archive Samples",
+             tabPanel("Delete and Archive Samples",
+                      sidebarLayout(
+                        sidebarPanel(
+                          width = 2,
+                          HTML("<h4>Delete and Archive Samples</h4>"),
+                          hr(),
+                          # fileInput("SearchByLabel", label = HTML("Barcode <h6>Single column named \"barcode\"</h6>")), actionButton("ClearSearchBarcodes", label = "Clear Barcodes"), textOutput("WarnSubjectBarcodeFileColnames"), textOutput("WarnSubjectBarcodeFileColnames2"),
+                          dateRangeInput("DelArchdateRange", label = "Collection Dates", start = NA, end = NA) %>% suppressWarnings(),
+                          selectizeInput("DelArchSearchByExhausted", "Archived", choices = c("", TRUE, FALSE)),
+                          # selectizeInput("SearchByBarcode", "Plate Name", choices = c("", sampleDB::CheckTable(database = database, "matrix_plate")$plate_name)),
+                          selectizeInput("DelArchSearchByStudy", "Study", choices = c("", sampleDB::CheckTable(database = database, "study")$short_code)),
+                          selectizeInput("DelArchSearchByLocation", "Storage Location", choices = c("", sampleDB::CheckTable("location")$location_name)),
+                          selectizeInput("DelArchSearchByLevelI", "Storage Location: Level I", choices = c("")),
+                          selectizeInput("DelArchSearchByLevelII", "Storage Location: Level II", choices = c("")),
+                          selectizeInput("DelArchSearchBySpecimenType", "Specimen Type", choices = c("", sampleDB::CheckTable(database = database, "specimen_type")$label)),
+                          selectizeInput("DelArchSearchBySampleType", "Sample Type", choices = c("", "Micronix", "Cryo", "RDT", "Paper")),
+                          radioButtons("DelArchSubjectUIDSearchType", label = "Study Subject Search Method", choices = list("Single Study Subject" = "individual", "Multiple Study Subjects" = "multiple"), selected = "individual"),
+                          conditionalPanel(condition = "input.SubjectUIDSearchType == \"individual\"",
+                                           selectizeInput("DelArchSearchBySubjectUID", label = "Study Subject", choices = c("", sampleDB::CheckTable(database = database, "study_subject")$subject %>% unique()))),
+                          conditionalPanel(condition = "input.SubjectUIDSearchType == \"multiple\"",
+                                           fileInput("DelArchSearchBySubjectUIDFile", label = HTML("Study Subjects <h6>Single column named \"subject_uid\"</h6>")), actionButton("ClearSearchUIDFile", label = "Clear Study Subjects")),
+                          # textOutput("WarnSubjectUIDFileColnames"),
+                          # textOutput("WarnSubjectUIDFileColnames2")
+                        ),
+                        mainPanel(
+                          width = 10,
+                          DT::dataTableOutput("DelArchSearchResultsTable"),
+                          downloadButton("DelArchdownloadData", "Download"),
+                          hr(),
+                          verbatimTextOutput("ShowSelectedSamples"),
+                          fluidRow(column(width = 12,
+                                          actionButton("ArchiveAction", label = "Archive Samples"),
+                                          actionButton("UnArchiveAction", label = "Un-Archive Samples"),
+                                          actionButton("DeleteAction", label = "Delete Samples", style="color: #fff; background-color: #337ab7; border-color: #2e6da4"))),
+                        ))),
+           tabPanel("Delete Empty Container of Samples",
                     sidebarLayout(
                       sidebarPanel(
                         width = 3,
                         #shouldnt need sample type but bc it is unknown at this point if container names are unique, sample type specifies the db table to use to find the container name
-                        radioButtons("MoveContainerSampleType","Move Container Sample Type", c("Micronix" = "Micronix", "Cryovile" = "Cryovile", "RDT" = "RDT", "Paper" = "Paper"), inline = T),
-                        selectizeInput("MoveContainerName", label = "Container Name", choices = NULL),
-                        #should print to user the current location of the container
-                        selectInput("MoveContainerLocation", label = "Storage Location", choices = c("", sampleDB::CheckTable(database = database, "location")$location_name)),
-                        fluidRow(column(width = 1), column(width = 11, selectInput("MoveContainerLocationLevelI", label = HTML("<h5>Storage Location: Level I</h5>"), width = '100%', choices = NULL))),
-                        fluidRow(column(width = 1), column(width = 11, selectInput("MoveContainerLocationLevelII", label = HTML("<h5>Storage Location: Level II</h5>"), width = '100%', choices = NULL))),
+                        radioButtons("DeleteContainerSampleType","Delete Container Sample Type", c("Micronix" = "Micronix", "Cryovial" = "Cryovile", "RDT" = "RDT", "Paper" = "Paper"), inline = T),
+                        selectInput("DelteContainerName", label = "Container Name", choices = c("")),
                         fluidRow(column(width = 12,
-                                        actionButton("MoveContainerAction", width = '49%', label = "Upload Samples", style="color: #fff; background-color: #337ab7; border-color: #2e6da4"))),
+                                        actionButton("DeleteContainerAction", width = '49%', label = "Delete Container", style="color: #fff; background-color: #337ab7; border-color: #2e6da4"))),
                       ),
-                      mainPanel()
-           ))
-           ),
-           navbarMenu("Delete and Archive Samples",
-           tabPanel("Delete and Archive Samples",
-                    fluidRow(
-                      column(
-                        width = 4,
-
-                        fluidRow(
-                          column(
-                            width = 12,
-                            HTML("<h4><b>Delete Empty Plate</b></h4>"),
-                            selectizeInput("DeletePlateName",
-                                           "Plate Name",
-                                           choices = c("", sampleDB::CheckTable(database = database, "matrix_plate")$plate_name)),
-                            actionButton("DeletePlateAction", "Delete Plate")),
-                          column(
-                            width = 6,
-                            br(),
-                            textOutput("WarningDeletePlateMessage"),
-                            br(),
-                            verbatimTextOutput("DeletePlateMessage"),
-                          ))),
-
-                      column(
-                        width = 4,
-                        HTML("<code>ARCHIVE SAMPLES</code>")),
-                      column(
-                        width = 4,
-                        HTML("<code>DELETE SAMPLES</code>")),
-                        )
-                    ),
-           tabPanel("Delete Empty Container of Samples",
-           fluidRow(
-             column(
-               width = 4))
-           )
-           ),
+                      mainPanel()))),
            
            navbarMenu("Update Lab References",
                       tabPanel("Freezers",

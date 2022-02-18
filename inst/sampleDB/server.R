@@ -35,7 +35,19 @@ function(input, output, session) {
     # SERVER-SIDE DROPDOWN -- SAVES LOADING TIME
     updateSelectizeInput(session, 'SearchBySubjectUID', choices = c("", sampleDB::CheckTable(database = database, "study_subject")$subject %>% unique()), server = TRUE)
     
-    SearchWetlabSamples(session, input, database, output)
+    SearchWetlabSamples(session, input, database, output,
+                        inputs = list(SearchByLocation = "SearchByLocation",
+                                      SearchByLevelI = "SearchByLevelI",
+                                      SearchByLevelII = "SearchByLevelII",
+                                      dateRange = "dateRange",
+                                      SearchByExhausted = "SearchByExhausted",
+                                      SearchBySpecimenType = "SearchBySpecimenType",
+                                      SearchByStudy = "SearchByStudy",
+                                      SearchBySampleType = "SearchBySampleType",
+                                      SubjectUIDSearchType = "SubjectUIDSearchType",
+                                      SearchBySubjectUID = "SearchBySubjectUID"),
+                        outputs = list(SearchResultsTable = "SearchResultsTable",
+                                       downloadData = "downloadData"))
     
     # -------- Move Samples -------------
 
@@ -83,28 +95,62 @@ function(input, output, session) {
     }))
     
     # -------- Archive Samples --------
-    
     # -------- Delete Samples --------
+    
+    # SERVER-SIDE DROPDOWN -- SAVES LOADING TIME
+    updateSelectizeInput(session, 'DelArchSearchBySubjectUID', choices = c("", sampleDB::CheckTable(database = database, "study_subject")$subject %>% unique()), server = TRUE)
+    
+    SearchWetlabSamples(session, input, database, output,
+                        inputs = list(SearchByLocation = "DelArchSearchByLocation",
+                                      SearchByLevelI = "DelArchSearchByLevelI",
+                                      SearchByLevelII = "DelArchSearchByLevelII",
+                                      dateRange = "DelArchdateRange",
+                                      SearchByExhausted = "DelArchSearchByExhausted",
+                                      SearchBySpecimenType = "DelArchSearchBySpecimenType",
+                                      SearchByStudy = "DelArchSearchByStudy",
+                                      SearchBySampleType = "DelArchSearchBySampleType",
+                                      SubjectUIDSearchType = "DelArchSubjectUIDSearchType",
+                                      SearchBySubjectUID = "DelArchSearchBySubjectUID"),
+                        outputs = list(SearchResultsTable = "DelArchSearchResultsTable",
+                                       downloadData = "DelArchdownloadData"),
+                        DelArch = TRUE)
 
     # -------- Delete Empty Container --------
     
+    observe({
+      if(input$DeleteContainerSampleType == "Micronix"){
+        updateSelectizeInput(session, "DelteContainerName", label = NULL, choices = c(sampleDB::CheckTable("matrix_plate")$plate_name))
+      }
+      else if(input$DeleteContainerSampleType == "Cryovile"){
+        updateSelectizeInput(session, "DelteContainerName", label = NULL, choices = c(sampleDB::CheckTable("box")$box_name))
+      }
+      else if(input$DeleteContainerSampleType == "RDT"){
+        updateSelectizeInput(session, "DelteContainerName", label = NULL, choices = c(sampleDB::CheckTable("bag")$bag_name))
+      }else{
+        updateSelectizeInput(session, "DelteContainerName", label = NULL, choices = c(sampleDB::CheckTable("bag")$bag_name))
+      }
+    })
+    
     # DeletePlateChecks(input, database, output)
-    # 
-    # observeEvent(
-    #   input$DeletePlateAction,
-    #   ({
-    #     
-    #     # SET REQUIREMENT FOR DELETEING PLATE
-    #     DeleteEmptyPlateRequirement(input, database)
-    #     
-    #     # DELETE PLATE
-    #     plate_name <- input$DeletePlateName
-    #     output$DeletePlateMessage <- renderText({sampleDB::DeleteEmptyPlates(database = database, plate_name = plate_name)})
-    #     
-    #     # RESET PLATE NAMES DROPDOWN
-    #     DeleteEmptyPlateReset(session, database)
-    #   }))
-    #   
+    
+    observeEvent(
+      input$DeleteContainerAction,
+      ({
+
+        # # SET REQUIREMENT FOR DELETEING PLATE
+        # DeleteEmptyPlateRequirement(input, database)
+
+        # DELETE PLATE
+        type.container <- input$DeleteContainerSampleType
+        name.container <- input$DelteContainerName
+        print(type.container)
+        print(name.container)
+        # DeleteEmptyPlates(type.container, name.container)
+        
+        # RESET PLATE NAMES DROPDOWN
+        # DeleteEmptyPlateReset(session, database)
+      }))
+
     
     
     # -------- Update References ---------------
