@@ -32,7 +32,6 @@ MatrixUpload <- function(session, output, input, database, ref.clear_action){
   observeEvent(
     input$UploadMicronixAction,
     ({
-      print("hi")
       # TRIGGER UI CHANGE FOR REACTIVITY - RECYCLE RENAMESTUDYLEADPERSON
       updateTextInput(session = session, "RenameStudyLeadPerson", value = "@RBRLdB?GtnJ4kce")
       
@@ -99,6 +98,17 @@ MatrixUpload <- function(session, output, input, database, ref.clear_action){
 
 CryoUpload <- function(session, output, input, database, ref.clear_action){
 
+  observe({
+    if(input$UploadLocationCryoFreezerName != ""){
+      tmp_table.location <- filter(sampleDB::CheckTable(database = database, "location"), location_name == input$UploadLocationCryoFreezerName)
+      updateSelectInput(session, "UploadLocationCryoLevelI", label = NULL, choices = c(tmp_table.location$level_I))
+      updateSelectInput(session, "UploadLocationCryoLevelII", label = NULL, choices = c(tmp_table.location$level_II))
+    }else{
+      updateSelectInput(session, "UploadLocationCryoLevelI", label = NULL, choices = c(""))
+      updateSelectInput(session, "UploadLocationCryoLevelII", label = NULL, choices = c(""))
+    }
+  })
+  
   # A. PERFORM UPLOAD CHECKS... PRINT GOOD USER MESSAGES
   UploadChecks(database = database,
                input,
@@ -184,6 +194,17 @@ CryoUpload <- function(session, output, input, database, ref.clear_action){
 
 RDTUpload <- function(session, output, input, database, ref.clear_action){
   
+  observe({
+    if(input$UploadLocationRDTFreezerName != ""){
+      tmp_table.location <- filter(sampleDB::CheckTable(database = database, "location"), location_name == input$UploadLocationRDTFreezerName)
+      updateSelectInput(session, "UploadLocationRDTLevelI", label = NULL, choices = c(tmp_table.location$level_I))
+      updateSelectInput(session, "UploadLocationRDTLevelII", label = NULL, choices = c(tmp_table.location$level_II))
+    }else{
+      updateSelectInput(session, "UploadLocationRDTLevelI", label = NULL, choices = c(""))
+      updateSelectInput(session, "UploadLocationRDTLevelII", label = NULL, choices = c(""))
+    }
+  })
+  
   # A. PERFORM UPLOAD CHECKS... PRINT GOOD USER MESSAGES
   UploadChecks(database = database,
                input,
@@ -262,6 +283,17 @@ RDTUpload <- function(session, output, input, database, ref.clear_action){
 }
 
 PaperUpload <- function(session, output, input, database, ref.clear_action){
+  
+  observe({
+    if(input$UploadLocationPaperFreezerName != ""){
+      tmp_table.location <- filter(sampleDB::CheckTable(database = database, "location"), location_name == input$UploadLocationPaperFreezerName)
+      updateSelectInput(session, "UploadLocationPaperLevelI", label = NULL, choices = c(tmp_table.location$level_I))
+      updateSelectInput(session, "UploadLocationPaperLevelII", label = NULL, choices = c(tmp_table.location$level_II))
+    }else{
+      updateSelectInput(session, "UploadLocationPaperLevelI", label = NULL, choices = c(""))
+      updateSelectInput(session, "UploadLocationPaperLevelII", label = NULL, choices = c(""))
+    }
+  })
   
   # A. PERFORM UPLOAD CHECKS... PRINT GOOD USER MESSAGES
   UploadChecks(database = database,
