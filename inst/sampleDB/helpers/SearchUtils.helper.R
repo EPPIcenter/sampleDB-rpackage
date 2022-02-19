@@ -26,22 +26,34 @@ SearchWetlabSamples <- function(session, input, database, output, inputs, output
     }
     
     filters <- list(
+      search.type = input[[inputs$SearchBySampleType]],
+      search.label = list(micronix.labels = input[[inputs$SearchByBarcode]]$datapath,
+                          cryovial.labels = input[[inputs$SearchByCryovialLabels]]$datapath,
+                          rdt.labels = input[[inputs$SearchByRDTLabels]]$datapath,
+                          paper.labels = input[[inputs$SearchByPaperLabels]]$datapath) %>% discard(., function(x) is.null(x) | "" %in% x),
+      search.container = list(micronix.container_name = input[[inputs$SearchByPlate]],
+                              cryovial.container_name = input[[inputs$SearchByBox]],
+                              rdt.container_name = input[[inputs$SearchByRDTBag]],
+                              paper.container_name = input[[inputs$SearchByPaperBag]]) %>% discard(., function(x) is.null(x) | "" %in% x),
       search.date = eval.search.date,
       search.exhausted = input[[inputs$SearchByExhausted]],
-      search.location = list(location_name = input[[inputs$SearchByLocation]], level_I = input[[inputs$SearchByLevelI]], level_II = input[[inputs$SearchByLevelII]]),
+      search.location = list(location_name = input[[inputs$SearchByLocation]],
+                             level_I = input[[inputs$SearchByLevelI]],
+                             level_II = input[[inputs$SearchByLevelII]]),
       search.specimen_type = input[[inputs$SearchBySpecimenType]],
-      search.study = input[[inputs$SearchByStudy]],
-      search.type = input[[inputs$SearchBySampleType]])
+      search.study = input[[inputs$SearchByStudy]])
+    
+    print(filters$search.container)
     
     # RETRIEVE SEARCH RESULTS
     if(input[[inputs$SubjectUIDSearchType]] == "individual"){
       filters$name.study_subject <- input[[inputs$SearchBySubjectUID]]
-      list.search_results <- sampleDB::SearchSamples(discard(filters, function(x) "" %in% x), study_subject.file = F)
+      list.search_results <- sampleDB::SearchSamples(discard(filters, function(x) length(x) == 0 | "" %in% x), study_subject.file = F)
       search_results <- list.search_results$tbl.usr_results
       storage_container_ids <- list.search_results$storage_container_ids
     }else{
       filters$name.study_subject <- input[[inputs$SearchBySubjectUIDFile]]$datapath
-      list.search_results <- sampleDB::SearchSamples(discard(filters, function(x) "" %in% x), study_subject.file = T)
+      list.search_results <- sampleDB::SearchSamples(discard(filters, function(x) length(x) == 0 | "" %in% x), study_subject.file = T)
       search_results <- list.search_results$tbl.usr_results
       storage_container_ids <- list.search_results$storage_container_ids
     }

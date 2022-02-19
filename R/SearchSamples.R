@@ -16,9 +16,9 @@
 #' NOTE: Ufortunately the whole database has to be read into memory inorder to search for something
 #' Im sure there is a faster sql way to do this
 #' Examples:
-#' SearchSamples(filters = list(name.plate = c("100","101"), search.location = c("Left -20 Freezer")))
-#' SearchSamples(filters = list(file.barcodes = "/path/to/barcodes.csv", name.plate = "dummy_name", search.study = "dummy_study", search.location = "fridge", search.specimen_type = "specimen_type1"))
-#' SearchSamples(filters = list(search.location = list(location_name = "Freezer A", level_I = "dummy.levelI", level_II = "dummy.levelII"))) # feb 10 2022
+#' SearchSamples(filters = list(search.type = c("cryo")))
+#' SearchSamples(filters = list(search.type = c("cryo"), search.label = list(cryovial.labels = c("PPPP 1"))))
+#' SearchSamples(filters = list(search.type = c("cryo", "micronix"), search.label = list(cryovial.labels = c("PPPP 1", "PPPP 2"), micronix.labels = c("XXXX 1"))))
 #' @import dplyr
 #' @import RSQLite
 #' @import emojifont
@@ -45,7 +45,7 @@ SearchSamples <- function(filters, study_subject.file = FALSE){
   term.search <- clean_filters[1] %>% names()
   terms.filter <- clean_filters[-1] %>% names()
   
-  # print(clean_filters)
+  stopifnot("SEARCH TYPE MUST BE PROVIDED IN ORDER TO SEARCH BY SAMPLES LABELS OR CONTAINER NAMES" = term.search != "search.labels" || term.search != "search.container")
   
   if(length(clean_filters) == 0){
     usr_results <- NULL
@@ -106,10 +106,19 @@ SearchSamples <- function(filters, study_subject.file = FALSE){
 }
 
 .UseSearchTermToGetStorageContainerIDs <- function(filters, term.search, tables.database){
-  # USE TYPE TO GET STORAGE CONTAINER ID -- 
+  # USE TYPE TO GET STORAGE CONTAINER ID
   if(term.search == "search.type"){
-    storage_container_id <- filter(tables.database$table.storage_container, type %in% filters$search.type)$id
+    if(length(filters$search.type) == 1){
+      if(filters$search.type == "all"){
+      storage_container_id <- tables.database$table.storage_container$id
+      }else{
+        storage_container_id <- filter(tables.database$table.storage_container, type %in% filters$search.type)$id
+      }
+    }else{
+      storage_container_id <- filter(tables.database$table.storage_container, type %in% filters$search.type)$id
+    }
   }
+  # USE ARCHIVAL INFO TO GET STORAGE CONTAINER ID
   if(term.search == "search.exhausted"){
     storage_container_id <- filter(tables.database$table.storage_container, as.logical(exhausted) == filters$search.exhausted)$id
   }
@@ -202,7 +211,7 @@ SearchSamples <- function(filters, study_subject.file = FALSE){
     select(-c(box_id)) %>%
     rename(container_position = box_position,
            container_name = box_name) %>%
-    mutate(type = "Cryovile")
+    mutate(type = "Cryovial")
   
   micr_dat <- inner_join(filter(tables.database$table.matrix_tube, id %in% storage_container_id), 
                          tables.database$table.plate[, c("id","plate_name", "location_id")], 
@@ -257,6 +266,23 @@ SearchSamples <- function(filters, study_subject.file = FALSE){
   if(length(terms.filter) > 0){
     #FILTER BY FILTER TERMS
     for(filter_term in terms.filter){
+      if(filter_term == "search.type"){
+        results.search_term <- filter(results.search_term, type %in% filters[["search.type"]])
+      }
+      if(!is.null(filters$search.label) &!is.null(filters$search.type)){
+        tmp_results.micronix_label <- filter(results.search_term, type == "Micronix" & label %in% filters$search.label$micronix.labels)
+        tmp_results.cryovial_label <- filter(results.search_term, type == "Cryovial" & label %in% filters$search.label$cryovial.labels)
+        tmp_results.rdt_label <- filter(results.search_term, type == "RDT" & label %in% filters$search.label$rdt.labels)
+        tmp_results.paper_label <- filter(results.search_term, type == "Paper" & label %in% filters$search.label$paper.labels)
+        results.search_term <- rbind(tmp_results.micronix_label, tmp_results.cryovial_label, tmp_results.rdt_label, tmp_results.paper_label)
+      }
+      if(!is.null(filters$search.container) &!is.null(filters$search.type)){
+        tmp_results.micronix_container_name <- filter(results.search_term, type == "Micronix" & container_name %in% filters$search.container$micronix.container_name)
+        tmp_results.cryovial_container_name <- filter(results.search_term, type == "Cryovial" & container_name %in% filters$search.container$cryovial.container_name)
+        tmp_results.rdt_container_name <- filter(results.search_term, type == "RDT" & container_name %in% filters$search.container$rdt.container_name)
+        tmp_results.paper_container_name <- filter(results.search_term, type == "Paper" & container_name %in% filters$search.container$paper.container_name)
+        results.search_term <- rbind(tmp_results.micronix_container_name, tmp_results.cryovial_container_name, tmp_results.rdt_container_name, tmp_results.paper_container_name)
+      }
       if(filter_term == "search.study"){
         results.search_term <- filter(results.search_term, study %in% filters[["search.study"]])
       }
@@ -274,9 +300,6 @@ SearchSamples <- function(filters, study_subject.file = FALSE){
         if(!is.null(filters[["search.location"]][["level_II"]])){
           results.search_term <- filter(results.search_term, freezer_l2 %in% filters[["search.location"]][["level_II"]])
         }
-      }
-      if(filter_term == "search.type"){
-        results.search_term <- filter(results.search_term, type %in% filters[["search.type"]])
       }
       if(filter_term == "search.exhausted"){
         results.search_term <- filter(results.search_term, as.logical(exhausted) == filters[["search.exhausted"]])
