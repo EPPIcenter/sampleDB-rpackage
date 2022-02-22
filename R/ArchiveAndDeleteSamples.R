@@ -12,7 +12,7 @@
 
 ArchiveAndDeleteSamples <- function(operation, filters = NULL, storage_container_ids = NULL){
   
-  database <- "/databases/new.sampleDB.db"
+  database <- "/databases/sampledb/v0.0.2/sampledb_database.sqlite"
   stopifnot("Operation is not valid" = operation %in% c("archive", "delete", "unarchive"))
   
   if(!is.null(filters)){

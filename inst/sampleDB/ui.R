@@ -10,7 +10,7 @@ library(shinyWidgets)
 #SET PATH TO SQLITE DATABASE
 # database <- "example_19-Oct-21.sample_db.sqlite"
 # database <- Sys.getenv("SAMPLEDB_DATABASE") #use the aragorn env var set at boot
-database <- "/databases/new.sampleDB.db"
+database <- "/databases/sampledb/v0.0.2/sampledb_database.sqlite"
 
 navbarPage("EPPIcenter SampleDB",
            navbarMenu("Upload WetLab Samples",
@@ -274,7 +274,7 @@ navbarPage("EPPIcenter SampleDB",
                         selectizeInput("SearchByStudy", "Study", choices = c("", sampleDB::CheckTable(database = database, "study")$short_code)),
                         radioButtons("SubjectUIDSearchType", label = "Study Subject Search Method", choices = list("Single Study Subject" = "individual", "Multiple Study Subjects" = "multiple"), selected = "individual"),
                         conditionalPanel(condition = "input.SubjectUIDSearchType == \"individual\"",
-                                         selectizeInput("SearchBySubjectUID", label = "Study Subject", choices = c("", sampleDB::CheckTable(database = database, "study_subject")$subject %>% unique()))),
+                                         selectizeInput("SearchBySubjectUID", label = "Study Subject", choices = c())),
                         conditionalPanel(condition = "input.SubjectUIDSearchType == \"multiple\"",
                                          fileInput("SearchBySubjectUIDFile", label = HTML("Study Subjects <h6>Single column named \"subject_uid\"</h6>")), actionButton("ClearSearchUIDFile", label = "Clear Study Subjects")),
                         selectizeInput("SearchBySpecimenType", "Specimen Type", choices = c("", sampleDB::CheckTable(database = database, "specimen_type")$label)),
@@ -373,7 +373,7 @@ navbarPage("EPPIcenter SampleDB",
                           selectizeInput("DelArchSearchByStudy", "Study", choices = c("", sampleDB::CheckTable(database = database, "study")$short_code)),
                           radioButtons("DelArchSubjectUIDSearchType", label = "Study Subject Search Method", choices = list("Single Study Subject" = "individual", "Multiple Study Subjects" = "multiple"), selected = "individual"),
                           conditionalPanel(condition = "input.DelArchSubjectUIDSearchType == \"individual\"",
-                                           selectizeInput("DelArchSearchBySubjectUID", label = "Study Subject", choices = c("", sampleDB::CheckTable(database = database, "study_subject")$subject %>% unique()))),
+                                           selectizeInput("DelArchSearchBySubjectUID", label = "Study Subject", choices = c())),
                           conditionalPanel(condition = "input.DelArchSubjectUIDSearchType == \"multiple\"",
                                            fileInput("DelArchSearchBySubjectUIDFile", label = HTML("Study Subjects <h6>Single column named \"subject_uid\"</h6>")), actionButton("ClearSearchUIDFile", label = "Clear Study Subjects")),
                           selectizeInput("DelArchSearchBySpecimenType", "Specimen Type", choices = c("", sampleDB::CheckTable(database = database, "specimen_type")$label)),

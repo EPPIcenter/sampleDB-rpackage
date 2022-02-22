@@ -43,7 +43,7 @@ SearchWetlabSamples <- function(session, input, database, output, inputs, output
       search.specimen_type = input[[inputs$SearchBySpecimenType]],
       search.study = input[[inputs$SearchByStudy]])
     
-    print(filters$search.container)
+    # print(filters$search.container)
     
     # RETRIEVE SEARCH RESULTS
     if(input[[inputs$SubjectUIDSearchType]] == "individual"){

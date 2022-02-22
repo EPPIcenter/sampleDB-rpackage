@@ -29,7 +29,7 @@
 
 SearchSamples <- function(filters, study_subject.file = FALSE){
   
-  database <- "/databases/new.sampleDB.db"
+  database <- "/databases/sampledb/v0.0.2/sampledb_database.sqlite"
   
   # FLEXIBLY USE STUDY SUBJECT ITEM OR FILE 
   if(study_subject.file == TRUE & !is.null(filters$search.study_subject)){

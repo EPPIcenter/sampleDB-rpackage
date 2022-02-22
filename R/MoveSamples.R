@@ -17,7 +17,7 @@
 #want to be able to move samples and to move containers
 MoveSamples <- function(type, file.container_samples){
   
-  database <- "/databases/new.sampleDB.db"
+  database <- "/databases/sampledb/v0.0.2/sampledb_database.sqlite"
   
   # READ IN FILES
   list.move <- modify(file.container_samples, function(x){x <- read_csv(x, col_types = cols()) %>% drop_na()})

@@ -14,7 +14,7 @@ for(helper in list.files(path = "helpers", full.names = T, recursive = T)){sourc
 function(input, output, session) {
   
     # SET PATH TO SQLITE DATABASE - WOULD PREFER DATABASE TO BE AT Sys.getenv("SAMPLEDB_DATABASE")
-    database <- "/databases/new.sampleDB.db"
+    database <- "/databases/sampledb/v0.0.2/sampledb_database.sqlite"
 
     # --------- Upload Samples -------------
 
@@ -102,8 +102,7 @@ function(input, output, session) {
                                                  freezer.levelII))
     }))
     
-    # -------- Archive Samples --------
-    # -------- Delete Samples --------
+    # -------- Archive and Delete Samples --------
     
     # SERVER-SIDE DROPDOWN -- SAVES LOADING TIME
     updateSelectizeInput(session, 'DelArchSearchBySubjectUID', choices = c("", sampleDB::CheckTable(database = database, "study_subject")$subject %>% unique()), server = TRUE)
@@ -159,8 +158,8 @@ function(input, output, session) {
         # DELETE PLATE
         type.container <- input$DeleteContainerSampleType
         name.container <- input$DelteContainerName
-        print(type.container)
-        print(name.container)
+        # print(type.container)
+        # print(name.container)
         # DeleteEmptyPlates(type.container, name.container)
         
         # RESET PLATE NAMES DROPDOWN
@@ -177,7 +176,7 @@ function(input, output, session) {
     # Update Specimen Types
     UpdateSpecimenTypes(session, input, output, database)
     
-    # Update EPPIlab Studies
+    # Update EPPIcenter Lab Studies
     UpdateLabStudies(session, input, output, database)
 
     # --------------- About ------------

@@ -28,7 +28,7 @@
 # C. Adds to the db tables occur not in a loop but all at once. (this is how things *should* be)
 UploadSamples <- function(type, csv.upload, container, list.location){
   
-  database <- "/databases/new.sampleDB.db"
+  database <- "/databases/sampledb/v0.0.2/sampledb_database.sqlite"
   message(paste("Connecting to database at", database))
 
   # Read in usr supplied upload csv

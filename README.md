@@ -6,7 +6,7 @@ sampleDB::Run_SampleDB()
 ```
 
 # The Database
-The database lives on Aragorn at `/databases/new.sampleDB.db`.
+The database lives on Aragorn at `/databases/sampledb/v0.0.2/sampledb_database.sqlite`.
 
 ## Database Schema
 ![db](https://user-images.githubusercontent.com/95319271/151049473-54f411e9-0fa2-4d3b-be33-32a0d8521a08.png)

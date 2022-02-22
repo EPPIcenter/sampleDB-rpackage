@@ -15,7 +15,7 @@
 #CAN GET ERR CODE FROM SQLITE EXECUTION?
 UpdateReferences <- function(reference, operation, information){
   
-  database <- "/databases/new.sampleDB.db"
+  database <- "/databases/sampledb/v0.0.2/sampledb_database.sqlite"
     
   references <- c("study", "freezer","specimen_type")
   stopifnot(reference %in% references)
