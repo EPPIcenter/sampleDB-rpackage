@@ -4,7 +4,11 @@
 \alias{ArchiveAndDeleteSamples}
 \title{Archive and Delete EPPIcenter Wetlab Samples}
 \usage{
-ArchiveAndDeleteSamples(operation, filters)
+ArchiveAndDeleteSamples(
+  operation,
+  filters = NULL,
+  storage_container_ids = NULL
+)
 }
 \description{
 Archive and Delete EPPIcenter Wetlab Samples
