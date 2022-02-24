@@ -26,7 +26,7 @@ ModifyTable <- function(database, table_name, info_list, id){
     RSQLite::dbSendQuery(conn,
                          paste0("UPDATE ", table_name," SET ", update_str," WHERE id = ", id, ";")),
     error=function(e){
-      message(e)
+      stop(e)
     }
   )
 
