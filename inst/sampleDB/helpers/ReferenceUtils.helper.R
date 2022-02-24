@@ -21,10 +21,10 @@ UpdateLabFreezers <- function(session, input, output, database){
       #ADD FREEZER NAME
       sampleDB::UpdateReferences(reference = "freezer",
                                  operation = "add",
-                                 information = list(NewFreezerName = new.freezer_name,
-                                                    NewFreezerLocationType = new.freezer_type,
-                                                    NewFreezerLevelI = new.freezer_levelI,
-                                                    NewFreezerLevelII = new.freezer_levelII))
+                                 update = list(freezer_name = new.freezer_name,
+                                               freezer_type = new.freezer_type,
+                                               freezer_levelI = new.freezer_levelI,
+                                               freezer_levelII = new.freezer_levelII))
       
       #PRINT EXIT MESSAGE
       output$FreezerReturnMessage <- renderText({paste("Added Freezer:", 
@@ -75,13 +75,13 @@ UpdateLabFreezers <- function(session, input, output, database){
       #CHANGE FREEZER NAME
       sampleDB::UpdateReferences(reference = "freezer",
                                  operation = "modify",
-                                 information = list(OldFreezerName = old.freezer_name,
-                                                    OldFreezerLevelI = old.freezer_levelI,
-                                                    OldFreezerLevelII = old.freezer_levelII,
-                                                    NewFreezerName = new.freezer_name,
-                                                    NewFreezerLocationType = new.freezer_type,
-                                                    NewFreezerLevelI = new.freezer_levelI,
-                                                    NewFreezerLevelII = new.freezer_levelII) %>% purrr::discard(function(x){is.null(x) || x == ""}))
+                                 identifier = list(freezer_name = old.freezer_name,
+                                                    freezer_levelI = old.freezer_levelI,
+                                                   freezer_levelII = old.freezer_levelII),
+                                 update = list(freezer_name = new.freezer_name,
+                                               freezer_type = new.freezer_type,
+                                               freezer_levelI = new.freezer_levelI,
+                                               freezer_levelII = new.freezer_levelII) %>% purrr::discard(function(x){is.null(x) || x == ""}))
       
       #PRINT EXIT MESSAGE
       # NOTE PRINT MESSAGE IS MISSING TYPE
@@ -131,9 +131,9 @@ UpdateLabFreezers <- function(session, input, output, database){
       #DELETE FREEZER
       sampleDB::UpdateReferences(reference = "freezer",
                                  operation = "delete",
-                                 information = list(DeleteFreezerName = delete.freezer_name,
-                                                    DeleteFreezerLevelI = delete.freezer_levelI,
-                                                    DeleteFreezerLevelII = delete.freezer_levelII))
+                                 identifier = list(freezer_name = delete.freezer_name,
+                                                   freezer_levelI = delete.freezer_levelI,
+                                                   freezer_levelII = delete.freezer_levelII))
       #PRINT EXIT MESSAGE
       output$FreezerReturnMessage <- renderText({paste("Deleted Freezer",
                                                        delete.freezer_name, 
@@ -171,7 +171,7 @@ UpdateSpecimenTypes <- function(session, input, output, database){
       #ADD SPECIMEN TYPE
       sampleDB::UpdateReferences(reference = "specimen_type",
                                  operation = "add",
-                                 information = list(NewSpecimenTypeName = new.specimen_type))
+                                 update = list(specimen_type_name = new.specimen_type))
       
       #PRINT EXIT MESSAGE
       output$SpecimenReturnMessage <- renderText({paste("Added Specimen Type", new.specimen_type, emoji('tada'))})
@@ -200,8 +200,8 @@ UpdateSpecimenTypes <- function(session, input, output, database){
       #CHANGE SPECIMEN TYPE NAME
       sampleDB::UpdateReferences(reference = "specimen_type",
                                  operation = "modify",
-                                 information = list(NewSpecimenTypeName = new.name,
-                                                    OldSpecimenTypeName = old.name))
+                                 identifier = list(specimen_type_name = new.name),
+                                 update = list(specimen_type_name = old.name))
       
       #PRINT EXIT MESSAGE
       output$SpecimenReturnMessage <- renderText({paste("Renamed Specimen Type", old.name, "to", new.name, emoji('tada'))})
@@ -228,7 +228,7 @@ UpdateSpecimenTypes <- function(session, input, output, database){
       #DELETE SPECIMEN TYPE
       sampleDB::UpdateReferences(reference = "specimen_type",
                                  operation = "delete",
-                                 information = list(DeleteSpecimenTypeName = delete.specimen_type))
+                                 identifier = list(freezer_type_name = delete.specimen_type))
       
       #PRINT EXIT MESSAGE
       output$SpecimenReturnMessage <- renderText({paste("Deleted Specimen Type", delete.specimen_type, emoji('tada'))})
@@ -258,11 +258,11 @@ UpdateLabStudies <- function(session, input, output, database){
       #ADD STUDY
       sampleDB::UpdateReferences(reference = "study",
                                  operation = "add",
-                                 information = list(NewStudyTitle = input$AddStudyTitle,
-                                                    NewStudyDescription = input$AddStudyDescription,
-                                                    NewStudyShortCode = input$AddStudyShortCode,
-                                                    NewStudyLeadPerson = input$AddStudyLeadPerson,
-                                                    NewStudyLongitudinal = input$AddStudyIsLongitudinal))
+                                 update = list(study_title = input$AddStudyTitle,
+                                               study_description = input$AddStudyDescription,
+                                               study_short_code = input$AddStudyShortCode,
+                                               study_lead_person = input$AddStudyLeadPerson,
+                                               study_longitudinal = input$AddStudyIsLongitudinal))
       
       #PRINT EXIT MESSAGE
       output$StudyReturnMessage <- renderText({paste("Added Study to the Database", emoji('tada'))})
@@ -283,12 +283,12 @@ UpdateLabStudies <- function(session, input, output, database){
       # MODIFY STUDY
       sampleDB::UpdateReferences(reference = "study",
                                  operation = "modify",
-                                 information = list(OldStudyShortCode = input$ChangeStudyShortCode,
-                                                    NewStudyTitle = input$RenameStudyTitle,
-                                                    NewStudyDescription = input$RenameStudyDescription,
-                                                    NewStudyShortCode = input$RenameStudyShortCode,
-                                                    NewStudyLeadPerson = input$RenameStudyLeadPerson,
-                                                    NewStudyLongitudinal = sum(input$RenameStudyIsLongitudinal)))
+                                 identifier = list(OldStudyShortCode = input$ChangeStudyShortCode),
+                                 update = list(study_title = input$RenameStudyTitle,
+                                               study_description = input$RenameStudyDescription,
+                                               study_short_code = input$RenameStudyShortCode,
+                                               study_lead_person = input$RenameStudyLeadPerson,
+                                               study_longitudinal = sum(input$RenameStudyIsLongitudinal)))
       #PRINT EXIT MESSAGE
       output$StudyReturnMessage <- renderText({paste("Modified Study in the Database", emoji('tada'))})
       
@@ -306,7 +306,7 @@ UpdateLabStudies <- function(session, input, output, database){
       #DELETE STUDY
       sampleDB::UpdateReferences(reference = "study",
                                  operation = "delete",
-                                 information = list(DeleteStudyShortCode = input$DeleteStudyShortCode))
+                                 identifier = list(study_short_code = input$DeleteStudyShortCode))
       
       #PRINT EXIT MESSAGE
       output$StudyReturnMessage <- renderText({paste("Deleted Study from the Database", emoji('tada'))})

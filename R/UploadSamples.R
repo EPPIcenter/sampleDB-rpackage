@@ -46,7 +46,7 @@ UploadSamples <- function(type, csv.upload, container, list.location){
   }
   
   # Perform sample upload checks
-  .UploadChecks(input, database, list.location, container, csv.upload = csv.upload)
+  .UploadChecks(type, input, database, list.location, container, csv.upload = csv.upload)
   
   # Parse through each row in the upload csv
   sc_ids <- .InternalUpload(csv.upload = csv.upload, database = database, toggle.is_longitudinal = toggle.is_longitudinal, type = type)
@@ -109,7 +109,7 @@ UploadSamples <- function(type, csv.upload, container, list.location){
   return(csv.reformatted)
 }
 
-.UploadChecks <- function(input, database, list.location, container, csv.upload){
+.UploadChecks <- function(type, input, database, list.location, container, csv.upload){
   message("PERFORMING CHECKS")
   
   stopifnot("SAMPLE TYPE IS NOT VALID" = type %in% c("cryo", "micronix", "paper", "rdt"))

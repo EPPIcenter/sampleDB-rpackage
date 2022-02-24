@@ -38,7 +38,7 @@ SearchSamples <- function(sample_type = NULL, sample_label = NULL, container_nam
                   search.study = study,
                   search.date = collection_dates,
                   search.exhausted = archived,
-                  search.location = freezer)
+                  search.location = freezer) %>% discard(., function(x) is.null(x) | "" %in% x | length(x) == 0)
   
   # FLEXIBLY USE STUDY SUBJECT ITEM OR FILE 
   if(study_subject.file == TRUE & !is.null(filters$search.study_subject)){
