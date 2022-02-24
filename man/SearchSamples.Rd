@@ -19,34 +19,31 @@ SearchSamples(
 )
 }
 \arguments{
-\item{sample_type}{c("micronix", "cryovile", "rdt", "paper")}
+\item{sample_type}{A string specifying the type of EPPIcenter sample. (\code{micronix}, \code{cryovile}, \code{rdt} and/or \code{paper})}
 
-\item{sample_label}{list(micronix.label_name = "", cryovile.label_name = "", rdt.label_name = "", paper.label_name = "")}
+\item{sample_label}{A list of vectors specifying the vector micronix, cryovile, rdt, and paper label names (\code{micronix.label_name}, \code{cryovile.label_name}, \code{rdt.label_name} and/or \code{paper.label_name})}
 
-\item{container_name}{list(micronix.container_name = "", cryovile.container_name = "", rdt.container_name = "", paper.container_name = "")}
+\item{container_name}{A list of vectors specifying the vector micronix, cryovile, rdt, and paper container names (\code{micronix.container_name}, \code{cryovile.container_name}, \code{rdt.container_name} and/or \code{paper.container_name})}
 
-\item{study_subject}{c("subj_1", subj_2")}
+\item{study_subject}{A study subjects string or a vector of study subject strings. If \code{study_subject.file} is TRUE the path to a .csv file containing one column named study_subject can be uploaded and used to search the database for study subjects.}
 
-\item{specimen_type}{c("PLASMA", "DNA (BS)")}
+\item{specimen_type}{A specimen type string or a vector of specimen type strings.}
 
-\item{study}{c("PRISM", "STUDY")}
+\item{study}{A study short code string or a vector of study short code strings.}
 
-\item{collection_dates}{list(date.to = "", date.from = "")}
+\item{collection_dates}{A list of date values strings (\code{date.to} and \code{date.from}) that can be used to filter EPPIcenter samples}
 
-\item{archived}{TRUE/FALSE}
+\item{archived}{A logical value. \code{TRUE} filters for archived samples and \code{FALSE} filters for active samples}
 
-\item{freezer}{list(location_name = "", level_I = "", level_II)}
+\item{freezer}{A list specifying the vector \code{location_name}, \code{level_I}, and/or\code{level_II}}
 
-\item{study_subject.file}{TRUE or FALSE}
+\item{study_subject.file}{A logical value.  Setting \code{study_subject.file} to \code{TRUE} allows the user to search for study subjects using a .csv file. Setting \code{study_subject.file} to \code{FALSE} specifies that the user searches for study subjects using either a string or vector of strings. Default value is \code{FALSE}.}
 
-\item{return_sample_ids}{TRUE or FALSE}
+\item{return_sample_ids}{A logical value. Setting \code{return_sample_ids} to \code{TRUE} means \code{SearchSamples} returns sample ids as well as search results. Setting \code{return_sample_ids} to \code{FALSE} means \code{SearchSamples} returns only search results. Default value is \code{FALSE}.}
 }
 \description{
-Search for Wetlab Samples in the EPPIcenter SampleDB database
+
 }
 \examples{
-SearchSamples(study = "MF", study_subject = "MF-20079")
-
-NOTE: Unfortunately the whole database has to be read into memory inorder to search for something
-Im sure there is a faster sql way to do this
+SearchSamples(study = "KAM06", study_subject = "subject_1")
 }

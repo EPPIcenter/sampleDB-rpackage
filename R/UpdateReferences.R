@@ -1,30 +1,42 @@
 #' Update References in the EPPIcenter SampleDB database
 #' 
-#' @param reference One of the following strings: "freezer", "specimen_type", "study"
-#' @param operation One of the following strings: "add", "modify", "delete"
-#' @param identifier A list that is used to retrieve the database reference item
-#' #' freezer identifier
-#' list(freezer_name, freezer_levelI, freezer_levelII)
+#' @param reference A string specifying a type of EPPIcenter reference (`freezer`, `specimen_type`, `study`).
+#' @param operation A string specifying the type of update operation to perform (`add`, `modify`, `delete`).
+#' @param identifier A reference-specific list that identifies the reference item that is being updated.
 #' 
-#' specimen type identifier
-#' identifier <- list(specimen_type_name)
+#' **If the `reference` is `freezer` the identifier list must include:** \cr
+#' `freezer_name`: A string specifying the freezer name \cr
+#' `freezer_levelI`: A string specifying the freezer levelI name \cr
+#' `freezer_levelII`: A string specifying the freezer levelII name \cr
 #' 
-#' study identifier
-#' list(study_short_code)
+#' **If the `reference` is `specimen_type` the identifier list must include:** \cr
+#' `specimen_type_name`: A string specifying the specimen type name \cr
 #' 
-#' @param update A list containing the new data, all items are optional
+#' **If the `reference` is `study` the identifier list must include:** \cr
+#' `study_short_code`: A string specifying the study short code \cr
 #' 
-#' freezer update
-#' list(freezer_name, freezer_type, freezer_levelI, freezer_levelII)
+#' @param update A reference-specific list that contains the reference update information
 #' 
-#' specimen type update
-#' list(specimen_type_name)
+#' **If the `reference` is `freezer` the update, for `add` operations the list must include:** \cr
+#' `freezer_name`: A string specifying the freezer name \cr
+#' `freezer_type`: A string specifying the freezer type \cr
+#' `freezer_levelI`: A string specifying the freezer levelI name \cr
+#' `freezer_levelII`: A string specifying the freezer levelII name \cr
 #' 
-#' study update
-#' list(study_title, study_description, study_short_code, study_lead_person, study_longitudinal)
+#' **If the `reference` is `specimen_type` the update, for `add` operations the list must include:** \cr
+#' `specimen_type_name`: A string specifying the specimen type name \cr
+#' 
+#' **If the `reference` is `study` the update, for `add` operations the list must include:** \cr
+#' `study_title`: A string specifying the study title \cr
+#' `study_description`: A string specifying the study description \cr
+#' `study_short_code`: A string specifying the study short code \cr
+#' `study_lead_person`: A string specifying the study lead person \cr
+#' `study_longitudinal`: A logical value. `TRUE` if the study is longitudinal and `FALSE` if the study is not longitudinal \cr
+#' 
+#' **For `modify` operations all update items are optional**
 #' 
 #' @examples
-#' 
+#' sampleDB::UpdateReferences(reference = "freezer", operation = "add", update = list(freezer_name = "Ruth", freezer_type = "-80", freezer_levelI = "rack1", freezer_levelII = "position_C1"))
 #' @import dplyr
 #' @import purrr
 #' @export

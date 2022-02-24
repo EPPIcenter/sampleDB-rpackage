@@ -7,34 +7,46 @@
 UpdateReferences(reference, operation, identifier = NULL, update = NULL)
 }
 \arguments{
-\item{reference}{One of the following strings: "freezer", "specimen_type", "study"}
+\item{reference}{A string specifying a type of EPPIcenter reference (\code{freezer}, \code{specimen_type}, \code{study}).}
 
-\item{operation}{One of the following strings: "add", "modify", "delete"}
+\item{operation}{A string specifying the type of update operation to perform (\code{add}, \code{modify}, \code{delete}).}
 
-\item{identifier}{A list that is used to retrieve the database reference item
-#' freezer identifier
-list(freezer_name, freezer_levelI, freezer_levelII)
+\item{identifier}{A reference-specific list that identifies the reference item that is being updated.
 
-specimen type identifier
-identifier <- list(specimen_type_name)
+\strong{If the \code{reference} is \code{freezer} the identifier list must include:} \cr
+\code{freezer_name}: A string specifying the freezer name \cr
+\code{freezer_levelI}: A string specifying the freezer levelI name \cr
+\code{freezer_levelII}: A string specifying the freezer levelII name \cr
 
-study identifier
-list(study_short_code)}
+\strong{If the \code{reference} is \code{specimen_type} the identifier list must include:} \cr
+\code{specimen_type_name}: A string specifying the specimen type name \cr
 
-\item{update}{A list containing the new data, all items are optional
+\strong{If the \code{reference} is \code{study} the identifier list must include:} \cr
+\code{study_short_code}: A string specifying the study short code \cr}
 
-freezer update
-list(freezer_name, freezer_type, freezer_levelI, freezer_levelII)
+\item{update}{A reference-specific list that contains the reference update information
 
-specimen type update
-list(specimen_type_name)
+\strong{If the \code{reference} is \code{freezer} the update, for \code{add} operations the list must include:} \cr
+\code{freezer_name}: A string specifying the freezer name \cr
+\code{freezer_type}: A string specifying the freezer type \cr
+\code{freezer_levelI}: A string specifying the freezer levelI name \cr
+\code{freezer_levelII}: A string specifying the freezer levelII name \cr
 
-study update
-list(study_title, study_description, study_short_code, study_lead_person, study_longitudinal)}
+\strong{If the \code{reference} is \code{specimen_type} the update, for \code{add} operations the list must include:} \cr
+\code{specimen_type_name}: A string specifying the specimen type name \cr
+
+\strong{If the \code{reference} is \code{study} the update, for \code{add} operations the list must include:} \cr
+\code{study_title}: A string specifying the study title \cr
+\code{study_description}: A string specifying the study description \cr
+\code{study_short_code}: A string specifying the study short code \cr
+\code{study_lead_person}: A string specifying the study lead person \cr
+\code{study_longitudinal}: A logical value. \code{TRUE} if the study is longitudinal and \code{FALSE} if the study is not longitudinal \cr
+
+\strong{For \code{modify} operations all update items are optional}}
 }
 \description{
 Update References in the EPPIcenter SampleDB database
 }
 \examples{
-
+sampleDB::UpdateReferences(reference = "freezer", operation = "add", update = list(freezer_name = "Ruth", freezer_type = "-80", freezer_levelI = "rack1", freezer_levelII = "position_C1"))
 }

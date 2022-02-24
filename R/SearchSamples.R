@@ -1,21 +1,20 @@
 #' Search for Wetlab Samples in the EPPIcenter SampleDB database
 #' 
-#' @param sample_type c("micronix", "cryovile", "rdt", "paper")
-#' @param sample_label list(micronix.label_name = "", cryovile.label_name = "", rdt.label_name = "", paper.label_name = "")
-#' @param container_name list(micronix.container_name = "", cryovile.container_name = "", rdt.container_name = "", paper.container_name = "")
-#' @param study_subject c("subj_1", subj_2")
-#' @param specimen_type c("PLASMA", "DNA (BS)")
-#' @param study c("PRISM", "STUDY")
-#' @param collection_dates list(date.to = "", date.from = "")
-#' @param archived TRUE/FALSE
-#' @param freezer list(location_name = "", level_I = "", level_II)
-#' @param study_subject.file TRUE or FALSE
-#' @param return_sample_ids TRUE or FALSE
-#' @examples
-#' SearchSamples(study = "MF", study_subject = "MF-20079")
+#' @description
 #' 
-#' NOTE: Unfortunately the whole database has to be read into memory inorder to search for something
-#' Im sure there is a faster sql way to do this
+#' @param sample_type A string specifying the type of EPPIcenter sample. (`micronix`, `cryovile`, `rdt` and/or `paper`)
+#' @param sample_label A list of vectors specifying the vector micronix, cryovile, rdt, and paper label names (`micronix.label_name`, `cryovile.label_name`, `rdt.label_name` and/or `paper.label_name`)
+#' @param container_name A list of vectors specifying the vector micronix, cryovile, rdt, and paper container names (`micronix.container_name`, `cryovile.container_name`, `rdt.container_name` and/or `paper.container_name`)
+#' @param study_subject A study subjects string or a vector of study subject strings. If `study_subject.file` is TRUE the path to a .csv file containing one column named study_subject can be uploaded and used to search the database for study subjects.
+#' @param specimen_type A specimen type string or a vector of specimen type strings.
+#' @param study A study short code string or a vector of study short code strings.
+#' @param collection_dates A list of date values strings (`date.to` and `date.from`) that can be used to filter EPPIcenter samples
+#' @param archived A logical value. `TRUE` filters for archived samples and `FALSE` filters for active samples
+#' @param freezer A list specifying the vector `location_name`, `level_I`, and/or`level_II`
+#' @param study_subject.file A logical value.  Setting `study_subject.file` to `TRUE` allows the user to search for study subjects using a .csv file. Setting `study_subject.file` to `FALSE` specifies that the user searches for study subjects using either a string or vector of strings. Default value is `FALSE`.
+#' @param return_sample_ids A logical value. Setting `return_sample_ids` to `TRUE` means `SearchSamples` returns sample ids as well as search results. Setting `return_sample_ids` to `FALSE` means `SearchSamples` returns only search results. Default value is `FALSE`.
+#' @examples
+#' SearchSamples(study = "KAM06", study_subject = "subject_1")
 #' @import dplyr
 #' @import RSQLite
 #' @import emojifont
@@ -23,6 +22,10 @@
 #' @import readr
 #' @import tidyr
 #' @export
+
+
+#NOTE: Unfortunately the whole database has to be read into memory inorder to search for something
+#Im sure there is a faster sql way to do this
 
 SearchSamples <- function(sample_type = NULL, sample_label = NULL, container_name = NULL, study_subject = NULL, specimen_type = NULL, 
                           study = NULL, collection_dates = NULL, archived = NULL, freezer = NULL, study_subject.file = FALSE, return_sample_ids = FALSE){
