@@ -2,22 +2,39 @@
 % Please edit documentation in R/UpdateReferences.R
 \name{UpdateReferences}
 \alias{UpdateReferences}
-\title{Update References in the EPPIcenter sampleDB database}
+\title{Update References in the EPPIcenter SampleDB database}
 \usage{
-UpdateReferences(reference, operation, information)
+UpdateReferences(reference, operation, identifier = NULL, update = NULL)
 }
 \arguments{
-\item{reference}{One of the following strings: freezer, specimen_type, study}
+\item{reference}{One of the following strings: "freezer", "specimen_type", "study"}
 
-\item{operation}{One of the following strings: add, modify, delete}
+\item{operation}{One of the following strings: "add", "modify", "delete"}
 
-\item{information}{A key value pair that matches the specified reference and operation}
+\item{identifier}{A list that is used to retrieve the database reference item
+#' freezer identifier
+list(freezer_name, freezer_levelI, freezer_levelII)
+
+specimen type identifier
+identifier <- list(specimen_type_name)
+
+study identifier
+list(study_short_code)}
+
+\item{update}{A list containing the new data, all items are optional
+
+freezer update
+list(freezer_name, freezer_type, freezer_levelI, freezer_levelII)
+
+specimen type update
+list(specimen_type_name)
+
+study update
+list(study_title, study_description, study_short_code, study_lead_person, study_longitudinal)}
 }
 \description{
-Update References in the EPPIcenter sampleDB database
+Update References in the EPPIcenter SampleDB database
 }
 \examples{
 
-UpdateReferences(reference = "study", operation = "modify", information = list(OldStudyShortCode = "C", NewStudyTitle = "AA", NewLeadPerson = "EE"))
-UpdateReferences(reference = "study", operation = "delete", information = list(DeleteStudyShortCode = "MNP"))
 }

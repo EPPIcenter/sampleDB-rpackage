@@ -28,7 +28,7 @@ x search.label = #tricky bc are labels uniq throughout the whole db or just with
 NOTE: Ufortunately the whole database has to be read into memory inorder to search for something
 Im sure there is a faster sql way to do this
 Examples:
-SearchSamples(filters = list(name.plate = c("100","101"), search.location = c("Left -20 Freezer")))
-SearchSamples(filters = list(file.barcodes = "/path/to/barcodes.csv", name.plate = "dummy_name", search.study = "dummy_study", search.location = "fridge", search.specimen_type = "specimen_type1"))
-SearchSamples(filters = list(search.location = list(location_name = "Freezer A", level_I = "dummy.levelI", level_II = "dummy.levelII"))) # feb 10 2022
+SearchSamples(filters = list(search.type = c("cryo")))
+SearchSamples(filters = list(search.type = c("cryo"), search.label = list(cryovial.labels = c("PPPP 1"))))
+SearchSamples(filters = list(search.type = c("cryo", "micronix"), search.label = list(cryovial.labels = c("PPPP 1", "PPPP 2"), micronix.labels = c("XXXX 1"))))
 }
