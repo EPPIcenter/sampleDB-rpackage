@@ -1,78 +1,103 @@
-#' Update References in the EPPIcenter sampleDB database
+#' Update References in the EPPIcenter SampleDB database
 #' 
-#' @param reference One of the following strings: freezer, specimen_type, study
-#' @param operation One of the following strings: add, modify, delete
-#' @param information A key value pair that matches the specified reference and operation
+#' @param reference One of the following strings: "freezer", "specimen_type", "study"
+#' @param operation One of the following strings: "add", "modify", "delete"
+#' @param identifier A list that is used to retrieve the database reference item
+#' #' freezer identifier
+#' list(freezer_name, freezer_levelI, freezer_levelII)
+#' 
+#' specimen type identifier
+#' identifier <- list(specimen_type_name)
+#' 
+#' study identifier
+#' list(study_short_code)
+#' 
+#' @param update A list containing the new data, all items are optional
+#' 
+#' freezer update
+#' list(freezer_name, freezer_type, freezer_levelI, freezer_levelII)
+#' 
+#' specimen type update
+#' list(specimen_type_name)
+#' 
+#' study update
+#' list(study_title, study_description, study_short_code, study_lead_person, study_longitudinal)
+#' 
 #' @examples
 #' 
-#' UpdateReferences(reference = "study", operation = "modify", information = list(OldStudyShortCode = "C", NewStudyTitle = "AA", NewLeadPerson = "EE"))
-#' UpdateReferences(reference = "study", operation = "delete", information = list(DeleteStudyShortCode = "MNP"))
 #' @import dplyr
 #' @import purrr
 #' @export
 
 #NEED TO ADD CHECKS AGAINST DUPLICATE NAMING --
 #CAN GET ERR CODE FROM SQLITE EXECUTION?
-UpdateReferences <- function(reference, operation, information){
+UpdateReferences <- function(reference, operation, identifier = NULL, update = NULL){
   
   database <- "/databases/sampledb/v0.0.2/sampledb_database.sqlite"
     
   references <- c("study", "freezer","specimen_type")
-  stopifnot(reference %in% references)
+  stopifnot("invalid reference\n vaid options are: study, freezer and specimen_type" = 
+              reference %in% references)
   
   operations <- c("add", "modify", "delete")
-  stopifnot(operation %in% operations)
+  stopifnot("invalid operation\n vaid options are: add, modify and delete" = 
+              operation %in% operations)
   
   if(reference == "freezer"){
     if(operation == "add"){
       
       #ADD FREEZER
-      stopifnot(setequal(names(information), c("NewFreezerName", "NewFreezerLocationType", "NewFreezerLevelI", "NewFreezerLevelII")))
-      out <- sampleDB::AddToTable(database = database, 
+      stopifnot("update list must include: freezer_name, freezer_type, freezer_levelI and freezer_levelII" = 
+                  setequal(names(update), c("freezer_name", "freezer_type", "freezer_levelI", "freezer_levelII")))
+      sampleDB::AddToTable(database = database, 
                            table_name = "location",
                            list(created = as.character(lubridate::now("UTC")),
                                 last_updated = as.character(lubridate::now("UTC")),
-                                location_name = information$NewFreezerName,
-                                location_type = information$NewFreezerLocationType,
-                                level_I = information$NewFreezerLevelI,
-                                level_II = information$NewFreezerLevelII,
-                                level_III = "NA"))
+                                location_name = update$freezer_name,
+                                location_type = update$freezer_type,
+                                level_I = update$freezer_levelI,
+                                level_II = update$freezer_levelII,
+                                level_III = NA))
       message(
         paste0("Added New Freezer:\n",
-               "\tName: \"", information$NewFreezerName, "\"\n",
-               "\tType: \"", information$NewFreezerLocationType, "\"\n",
-               "\tLevel I: \"", information$NewFreezerLevelI, "\"\n",
-               "\tLevel II: \"", level_II = information$NewFreezerLevelII, "\""))
+               "\tName: \"", update$freezer_name, "\"\n",
+               "\tType: \"", update$freezer_type, "\"\n",
+               "\tLevel I: \"", update$freezer_levelI, "\"\n",
+               "\tLevel II: \"", level_II = update$freezer_levelII, "\""))
     }
     if(operation == "modify"){
       
       # MODIFY FREEZER
-      stopifnot(all(c("OldFreezerName", "OldFreezerLevelI", "OldFreezerLevelII") %in% names(information)))
-      tmp_table.location <- filter(sampleDB::CheckTable(database = database, "location"), location_name == information$OldFreezerName & level_I == information$OldFreezerLevelI & level_II == information$OldFreezerLevelII)
-      id.OldFreezerName <- as.character(tmp_table.location$id)
+      stopifnot("identifier list must include: freezer_name, freezer_levelI and freezer_levelII"= 
+                  all(c("freezer_name", "freezer_levelI", "freezer_levelII") %in% names(identifier)))
+
+      tmp_table.location <- filter(sampleDB::CheckTable(database = database, "location"), location_name == identifier$freezer_name & level_I == identifier$freezer_levelI & level_II == identifier$freezer_levelII)
+      stopifnot("freezer could not be identified" = nrow(tmp_table.location) != 0)
+      id.ref_freezer_space <- as.character(tmp_table.location$id)
       eval.created <- as.character(tmp_table.location$created)
-      
+
       eval.info_list <- list(created = eval.created,
                              last_updated = as.character(lubridate::now("UTC")),
-                             location_name = information$NewFreezerName,
-                             location_type = information$NewFreezerLocationType,
-                             level_I = information$NewFreezerLevelI,
-                             level_II = information$NewFreezerLevelII,
-                             level_III = "NA") %>% purrr::discard(function(x){is.null(x) || x == ""})
-      
+                             location_name = update$freezer_name,
+                             location_type = update$freezer_type,
+                             level_I = update$freezer_levelI,
+                             level_II = update$freezer_levelII,
+                             level_III = NA) %>% 
+        purrr::discard(function(x){is.null(x) || x == "" || is.na(x)})
+
       sampleDB::ModifyTable(database = database,
                             table_name = "location",
                             info_list = eval.info_list,
-                            id = id.OldFreezerName)
+                            id = id.ref_freezer_space)
       
-      tmp_table2.location <- filter(sampleDB::CheckTable(database = database, "location"), location_name == information$OldFreezerName & level_I == information$OldFreezerLevelI & level_II == information$OldFreezerLevelII)
+      tmp_table2.location <- filter(sampleDB::CheckTable(database = database, "location"), location_name == update$freezer_name & level_I == update$freezer_levelI & level_II == update$freezer_levelII)
 
       message(
         paste0("Modified Freezer:\n",
                "\tPrevious Name: \"", tmp_table.location$location_name, "\"\n",
                "\tPrevious Type: \"", tmp_table.location$location_type, "\"\n",
                "\tPrevious Level I: \"", tmp_table.location$level_I, "\"\n",
-               "\tPrevious Level II: \"", tmp_table.location$level_II, "\"",
+               "\tPrevious Level II: \"", tmp_table.location$level_II, "\"\n",
                "New Freezer:\n",
                "\tCurrent Name: \"", tmp_table2.location$location_name, "\"\n",
                "\tCurrent Type: \"", tmp_table2.location$location_type, "\"\n",
@@ -83,15 +108,17 @@ UpdateReferences <- function(reference, operation, information){
     if(operation == "delete"){
       
       # DELETE FREEZER
-      stopifnot(names(information) == c("DeleteFreezerName", "DeleteFreezerLevelI", "DeleteFreezerLevelII"))
-      tmp_table.location <- filter(sampleDB::CheckTable(database = database, "location"), location_name == information$DeleteFreezerName & level_I == information$DeleteFreezerLevelI & level_II == information$DeleteFreezerLevelII)
-      id.DeleteFreezerName <- as.character(tmp_table.location$id)
+      stopifnot("identifier list must include: freezer_name, freezer_levelI and freezer_levelII" = 
+                  all(c("freezer_name", "freezer_levelI", "freezer_levelII") %in% names(identifier)))
+      tmp_table.location <- filter(sampleDB::CheckTable(database = database, "location"), location_name == identifier$freezer_name & level_I == identifier$freezer_levelI & level_II == identifier$freezer_levelII)
+      stopifnot("freezer could not be identified" = nrow(tmp_table.location) != 0)
+      id.ref_freezer_space <- as.character(tmp_table.location$id)
       sampleDB::DeleteFromTable(database = database, 
                                 table_name = "location",
-                                id = id.DeleteFreezerName)
+                                id = id.ref_freezer_space)
       message(
         paste0("Deleted Freezer:\n",
-                "\tName: \"",information$DeleteFreezerName, "\"\n",
+                "\tName: \"",identifier$freezer_name, "\"\n",
                 "\tType: \"", tmp_table.location$location_type, "\"\n",
                 "\tLevel I: \"", tmp_table.location$level_I, "\"\n",
                 "\tLevel II: \"", tmp_table.location$level_II, "\""))
@@ -101,99 +128,108 @@ UpdateReferences <- function(reference, operation, information){
     if(operation == "add"){
       
       #ADD SPECIMEN TYPE
-      stopifnot(names(information) == "NewSpecimenTypeName")
+      stopifnot("update list must include: specimen_type_name" = 
+                  names(update) == "specimen_type_name")
       sampleDB::AddToTable(database = database, 
                            table_name = "specimen_type",
                            list(created = as.character(lubridate::now("UTC")),
                                 last_updated = as.character(lubridate::now("UTC")),
-                                label = information$NewSpecimenTypeName))
+                                label = update$specimen_type_name))
       message(
         paste0("Added New Specimen Type:\n",
-               "\tName: \"", information$NewSpecimenTypeName, "\""))
+               "\tName: \"", update$specimen_type_name, "\""))
     }
     if(operation == "modify"){
       
       # MODIFY SPECIMEN TYPE
-      stopifnot(setequal(names(information), c("NewSpecimenTypeName","OldSpecimenTypeName")))
-      id.OldSpecimenTypeName <- as.character(filter(sampleDB::CheckTable(database = database, "specimen_type"), label == information$OldSpecimenTypeName)$id)
-      eval.created <- as.character(filter(sampleDB::CheckTable(database = database, "specimen_type"), label == information$OldSpecimenTypeName)$created)
+      stopifnot("identifier list must include: specimen_type_name" = 
+                  names(identifier) == "specimen_type_name")
+      tmp_table.specimen_type <- filter(sampleDB::CheckTable(database = database, "specimen_type"), label == identifier$specimen_type_name)
+      stopifnot("specimen type could not be identified" = nrow(tmp_table.specimen_type) != 0)
+      id.ref_specimen_type <- as.character(tmp_table.specimen_type$id)
+      eval.created <- as.character(tmp_table.specimen_type$created)
       sampleDB::ModifyTable(database = database,
                             table_name = "specimen_type",
                             info_list = list(created = eval.created,
                                              last_updated = as.character(lubridate::now("UTC")),
-                                             label = information$NewSpecimenTypeName),
-                            id = id.OldSpecimenTypeName)
+                                             label = update$specimen_type_name),
+                            id = id.ref_specimen_type)
       message(
         paste0("Modified Specimen Type with:\n",
-               "\tPrevious Name: \"", information$OldSpecimenTypeName, "\"\n",
-               "\tCurrent Name: \"", information$NewSpecimenTypeName, "\""))
+               "\tPrevious Name: \"", identifier$specimen_type_name, "\"\n",
+               "\tCurrent Name: \"", update$specimen_type_name, "\""))
     }
     
     if(operation == "delete"){
       
       # DELETE SPECIMEN TYPE
-      stopifnot(names(information) == c("DeleteSpecimenTypeName"))
-      id.DeleteSpecimenTypeName <- as.character(filter(sampleDB::CheckTable(database = database, "specimen_type"), label == information$DeleteSpecimenTypeName)$id)
+      stopifnot("identifier list must include: specimen_type_name" = 
+                  names(identifier) == c("specimen_type_name"))
+      tmp_table.specimen_type <- filter(sampleDB::CheckTable(database = database, "specimen_type"), label == identifier$specimen_type_name)
+      stopifnot("specimen type could not be identified" = nrow(tmp_table.specimen_type) != 0)
+      id.ref_specimen_type <- as.character(tmp_table.specimen_type$id)
       sampleDB::DeleteFromTable(database = database, 
                                 table_name = "specimen_type",
-                                id = id.DeleteSpecimenTypeName)
+                                id = id.ref_specimen_type)
       message(
         paste0("Deleted Specimen Type:\n",
-               "\tName: \"", information$DeleteSpecimenTypeName, "\""))
+               "\tName: \"", identifier$specimen_type_name, "\""))
     }
   }
   if(reference == "study"){
     if(operation == "add"){
 
       #ADD STUDY
-      stopifnot(setequal(names(information), c("NewStudyTitle", "NewStudyDescription", "NewStudyShortCode", "NewStudyLongitudinal", "NewStudyLeadPerson")))
+      stopifnot(setequal(names(update), c("study_title", "study_description", "study_short_code", "study_longitudinal", "study_lead_person")))
       sampleDB::AddToTable(database = database, 
                            table_name = "study", 
                            info_list = list(created = as.character(lubridate::now("UTC")),
                                             last_updated = as.character(lubridate::now("UTC")),
-                                            title = information$NewStudyTitle,
-                                            description = information$NewStudyDescription,
-                                            short_code = information$NewStudyShortCode,
-                                            is_longitudinal = information$NewStudyLongitudinal,
-                                            lead_person = information$NewStudyLeadPerson))
+                                            title = update$study_title,
+                                            description = update$study_description,
+                                            short_code = update$study_short_code,
+                                            is_longitudinal = as.numeric(update$study_longitudinal),
+                                            lead_person = update$study_lead_person))
       message(
         paste0("Added New Study:\n",
-               "\tTitle: \"", information$NewStudyTitle, "\"\n",
-               "\tDescription: \"", information$NewStudyDescription, "\"\n",
-               "\tShort Code: \"", information$NewStudyShortCode, "\"\n",
-               "\tLead Person: \"", information$NewStudyLeadPerson, "\"\n",
-               "\tLongitudinal: \"", information$NewStudyLongitudinal, "\""))
+               "\tTitle: \"", update$NewStudyTitle, "\"\n",
+               "\tDescription: \"", update$study_description, "\"\n",
+               "\tShort Code: \"", update$study_short_code, "\"\n",
+               "\tLead Person: \"", update$study_lead_person, "\"\n",
+               "\tLongitudinal: \"", update$study_longitudinal, "\""))
 
     }
     if(operation == "modify"){
       
-      stopifnot(all(c("OldStudyShortCode") %in% names(information)))
-      tmp_table.study <- filter(sampleDB::CheckTable(database = database, "study"), short_code == information$OldStudyShortCode)
+      stopifnot(all(c("study_short_code") %in% names(identifier)))
+      tmp_table.study <- filter(sampleDB::CheckTable(database = database, "study"), short_code == identifier$study_short_code)
+      stopifnot("study could not be identified" = nrow(tmp_table.study) != 0)
       eval.created <- as.character(tmp_table.study$created)
-      id.OldStudyShortCode <- as.character(tmp_table.study$id)
+      id.ref_study <- as.character(tmp_table.study$id)
       
       eval.list <- list(created = eval.created,
                              last_updated = as.character(lubridate::now("UTC")),
-                             title = information$NewStudyTitle,
-                             description = information$NewStudyDescription,
-                             short_code = information$NewStudyShortCode,
-                             is_longitudinal = information$NewStudyLongitudinal,
-                             lead_person = information$NewStudyLeadPerson,
-                             hidden = information$NewStudyHidden) %>% purrr::discard(function(x) is.null(x) || x == "")
+                             title = update$study_title,
+                             description = update$study_description,
+                             short_code = update$study_short_code,
+                             is_longitudinal = as.numeric(update$study_longitudinal),
+                             lead_person = update$study_lead_person) %>% 
+        purrr::discard(function(x) is.null(x) || x == "")
       
       sampleDB::ModifyTable(database = database,
                             table_name = "study",
                             info_list = eval.list,
-                            id = id.OldStudyShortCode)
-      tmp_table2.study <- filter(sampleDB::CheckTable(database = database, "study"), short_code == information$OldStudyShortCode)
+                            id = id.ref_study)
+      
+      tmp_table2.study <- filter(sampleDB::CheckTable(database = database, "study"), short_code == update$study_short_code)
       
       message(
-        paste0("Modified Study with:\n",
+        paste0("Modified Study:\n",
                "\tPrevious Title: \"", tmp_table.study$title, "\"\n",
                "\tPrevious Description: \"", tmp_table.study$description, "\"\n",
                "\tPrevious Short Code: \"", tmp_table.study$short_code, "\"\n",
                "\tPrevious Lead Person: \"", tmp_table.study$lead_person, "\"\n",
-               "\tPrevious Longitudinal: \"", tmp_table.study$is_longitudinal, "\"",
+               "\tPrevious Longitudinal: \"", tmp_table.study$is_longitudinal, "\"\n",
                "New Study:\n",
                "\tCurrent Title: \"", tmp_table2.study$title, "\"\n",
                "\tCurrent Description: \"", tmp_table2.study$description, "\"\n",
@@ -203,12 +239,13 @@ UpdateReferences <- function(reference, operation, information){
     }
     
     if(operation == "delete"){
-      stopifnot(names(information) == c("DeleteStudyShortCode"))
-      tmp_table.study <- filter(sampleDB::CheckTable(database = database, "study"), short_code == information$DeleteStudyShortCode)
-      id.DeleteStudyShortCode <- as.character(tmp_table.study$id)
+      stopifnot(names(identifier) == c("study_short_code"))
+      tmp_table.study <- filter(sampleDB::CheckTable(database = database, "study"), short_code == identifier$study_short_code)
+      stopifnot("study could not be identified" = nrow(tmp_table.study) != 0)
+      id.ref_study <- as.character(tmp_table.study$id)
       sampleDB::DeleteFromTable(database = database, 
                                 table_name = "study", 
-                                id = id.DeleteStudyShortCode)
+                                id = id.ref_study)
       
       message(
         paste0("Deleted Study:\n",
