@@ -2,33 +2,51 @@
 % Please edit documentation in R/SearchSamples.R
 \name{SearchSamples}
 \alias{SearchSamples}
-\title{Search for Wetlab Samples in the EPPIcenter sampleDB database}
+\title{Search for Wetlab Samples in the EPPIcenter SampleDB database}
 \usage{
-SearchSamples(filters, study_subject.file = FALSE)
+SearchSamples(
+  sample_type = NULL,
+  sample_label = NULL,
+  container_name = NULL,
+  study_subject = NULL,
+  specimen_type = NULL,
+  study = NULL,
+  collection_dates = NULL,
+  archived = NULL,
+  freezer = NULL,
+  study_subject.file = FALSE,
+  return_sample_ids = FALSE
+)
 }
 \arguments{
-\item{filters}{A list containing micronix barcodes, plate name, study code, location and/or specimen_type}
+\item{sample_type}{c("micronix", "cryovile", "rdt", "paper")}
+
+\item{sample_label}{list(micronix.label_name = "", cryovile.label_name = "", rdt.label_name = "", paper.label_name = "")}
+
+\item{container_name}{list(micronix.container_name = "", cryovile.container_name = "", rdt.container_name = "", paper.container_name = "")}
+
+\item{study_subject}{c("subj_1", subj_2")}
+
+\item{specimen_type}{c("PLASMA", "DNA (BS)")}
+
+\item{study}{c("PRISM", "STUDY")}
+
+\item{collection_dates}{list(date.to = "", date.from = "")}
+
+\item{archived}{TRUE/FALSE}
+
+\item{freezer}{list(location_name = "", level_I = "", level_II)}
 
 \item{study_subject.file}{TRUE or FALSE}
+
+\item{return_sample_ids}{TRUE or FALSE}
 }
 \description{
-Search for Wetlab Samples in the EPPIcenter sampleDB database
+Search for Wetlab Samples in the EPPIcenter SampleDB database
 }
 \examples{
-x search.container = #tricky bc are container names uniq throughout the whole db or just within a certain sample type?
-- search.date = list(date.from = "YMD", date.to = "YMD")
-- search.exhausted = T/F
-x search.label = #tricky bc are labels uniq throughout the whole db or just within a certain sample type?
-+ search.location = list(location_name = c(), level_I = c(), level_II = c())
-+ search.specimen_type = c()
-+ search.study = c()
-+ search.study_subject = c()
-+ search.type = c("RDT", "Micronix", "Paper", "Cryovile")
+SearchSamples(study = "MF", study_subject = "MF-20079")
 
-NOTE: Ufortunately the whole database has to be read into memory inorder to search for something
+NOTE: Unfortunately the whole database has to be read into memory inorder to search for something
 Im sure there is a faster sql way to do this
-Examples:
-SearchSamples(filters = list(search.type = c("cryo")))
-SearchSamples(filters = list(search.type = c("cryo"), search.label = list(cryovial.labels = c("PPPP 1"))))
-SearchSamples(filters = list(search.type = c("cryo", "micronix"), search.label = list(cryovial.labels = c("PPPP 1", "PPPP 2"), micronix.labels = c("XXXX 1"))))
 }

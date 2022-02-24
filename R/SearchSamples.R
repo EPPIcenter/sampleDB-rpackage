@@ -1,24 +1,21 @@
-#' Search for Wetlab Samples in the EPPIcenter sampleDB database
+#' Search for Wetlab Samples in the EPPIcenter SampleDB database
 #' 
-#' @param filters A list containing micronix barcodes, plate name, study code, location and/or specimen_type
+#' @param sample_type c("micronix", "cryovile", "rdt", "paper")
+#' @param sample_label list(micronix.label_name = "", cryovile.label_name = "", rdt.label_name = "", paper.label_name = "")
+#' @param container_name list(micronix.container_name = "", cryovile.container_name = "", rdt.container_name = "", paper.container_name = "")
+#' @param study_subject c("subj_1", subj_2")
+#' @param specimen_type c("PLASMA", "DNA (BS)")
+#' @param study c("PRISM", "STUDY")
+#' @param collection_dates list(date.to = "", date.from = "")
+#' @param archived TRUE/FALSE
+#' @param freezer list(location_name = "", level_I = "", level_II)
 #' @param study_subject.file TRUE or FALSE
+#' @param return_sample_ids TRUE or FALSE
 #' @examples
-#' x search.container = #tricky bc are container names uniq throughout the whole db or just within a certain sample type?
-#' - search.date = list(date.from = "YMD", date.to = "YMD")
-#' - search.exhausted = T/F
-#' x search.label = #tricky bc are labels uniq throughout the whole db or just within a certain sample type?
-#' + search.location = list(location_name = c(), level_I = c(), level_II = c())
-#' + search.specimen_type = c()
-#' + search.study = c()
-#' + search.study_subject = c()
-#' + search.type = c("RDT", "Micronix", "Paper", "Cryovile")
+#' SearchSamples(study = "MF", study_subject = "MF-20079")
 #' 
-#' NOTE: Ufortunately the whole database has to be read into memory inorder to search for something
+#' NOTE: Unfortunately the whole database has to be read into memory inorder to search for something
 #' Im sure there is a faster sql way to do this
-#' Examples:
-#' SearchSamples(filters = list(search.type = c("cryo")))
-#' SearchSamples(filters = list(search.type = c("cryo"), search.label = list(cryovial.labels = c("PPPP 1"))))
-#' SearchSamples(filters = list(search.type = c("cryo", "micronix"), search.label = list(cryovial.labels = c("PPPP 1", "PPPP 2"), micronix.labels = c("XXXX 1"))))
 #' @import dplyr
 #' @import RSQLite
 #' @import emojifont
@@ -27,15 +24,26 @@
 #' @import tidyr
 #' @export
 
-SearchSamples <- function(filters, study_subject.file = FALSE){
+SearchSamples <- function(sample_type = NULL, sample_label = NULL, container_name = NULL, study_subject = NULL, specimen_type = NULL, 
+                          study = NULL, collection_dates = NULL, archived = NULL, freezer = NULL, study_subject.file = FALSE, return_sample_ids = FALSE){
   
   database <- "/databases/sampledb/v0.0.2/sampledb_database.sqlite"
+  
+  # SET FILTERS
+  filters <- list(search.type = sample_type,
+                  search.label = sample_label,
+                  search.container = container_name,
+                  search.study_subject = study_subject,
+                  search.specimen_type = specimen_type,
+                  search.study = study,
+                  search.date = collection_dates,
+                  search.exhausted = archived,
+                  search.location = freezer)
   
   # FLEXIBLY USE STUDY SUBJECT ITEM OR FILE 
   if(study_subject.file == TRUE & !is.null(filters$search.study_subject)){
     eval.search.study_subject  <- read.csv(filters$search.study_subject)$subject_uid
-    filters$search.study_subject <- eval.search.study_subject[eval.search.study_subject != ""] # remove any blank entries that may be in vector
-  }
+    filters$search.study_subject <- eval.search.study_subject[eval.search.study_subject != ""]} # remove any blank entries that may be in vector
 
   # GET ALL THE TABLES FROM THE DATABASE
   tables.database <- .GetDatabaseTables(database = database)
@@ -45,47 +53,43 @@ SearchSamples <- function(filters, study_subject.file = FALSE){
   term.search <- clean_filters[1] %>% names()
   terms.filter <- clean_filters[-1] %>% names()
   
-  stopifnot("SEARCH TYPE MUST BE PROVIDED IN ORDER TO SEARCH BY SAMPLES LABELS OR CONTAINER NAMES" = term.search != "search.labels" || term.search != "search.container")
+  # ERR IF SAMPLE LABEL AND CONTAINER IS SEARCHED FOR WITH OUT PROVIDING SEARCH TYPE
+  stopifnot("SEARCH TYPE MUST BE PROVIDED IN ORDER TO SEARCH BY SAMPLES LABELS OR CONTAINER NAMES" = term.search != "search.label" || term.search != "search.container")
+
+  # RETURN NULL IF THERE ARE NO FILTERS
+  stopifnot("THERE ARE NO EPPICENTER WETLAB SAMPLES THAT MATCH THIS SEARCH" = length(clean_filters) != 0)
   
-  if(length(clean_filters) == 0){
-    usr_results <- NULL
-  }else{
+  # AGGREGATE THE DATASET INTO A TABLE BY USING A "SEARCH TERM" -- OUTPUT IS STORAGE CONTAINER IDS
+  aggregated.storage_container_id <- .UseSearchTermToAggregateSamples(filters = filters, term.search = term.search, tables.database = tables.database)
+
+  # RETRIEVE INTERNAL DATA USING STORAGE CONTAINER IDS
+  aggregated.internal_data <- .UseStorageContainerIDToGetInternalData(storage_container_id = aggregated.storage_container_id, 
+                                                                      tables.database = tables.database)
+  
+  # RETRIEVE EXTERNAL DATA USING STORAGE CONTAINER IDS
+  aggregated.external_data <- .UseStorageContainerIDToGetExternalData(storage_container_id = aggregated.storage_container_id,
+                                                                      tables.database = tables.database)
     
-    # AGGREGATE THE DATASET INTO A TABLE BY USING A "SEARCH TERM" -- OUTPUT IS STORAGE CONTAINER IDS
-    storage_container_id <- .UseSearchTermToGetStorageContainerIDs(filters = filters, term.search = term.search, tables.database = tables.database)
-    
-    # RETRIEVE INTERNAL DATA USING STORAGE CONTAINER IDS
-    internal_data <- .UseStorageContainerIDToGetInternalData(storage_container_id = storage_container_id, 
-                                                             tables.database = tables.database)
-    
-    # RETRIEVE EXTERNAL DATA USING STORAGE CONTAINER IDS
-    external_data <- .UseStorageContainerIDToGetExternalData(storage_container_id = storage_container_id,
-                                                             tables.database = tables.database)
-      
-    # COMBINE INTERNAL AND EXTERNAL DATA TO CREATE SEARCH RESULTS
-    results.search_term <- .UseInternalAndExternalDataToGetResults(internal_data = internal_data, 
-                                                                   external_data = external_data)
-    
-    # FILTER THE AGGREGATED TABLE BY FILTER TERMS
-    results.filter_and_search <- .FilterSearchResults(filters = filters, 
-                                                      terms.filter = terms.filter,
-                                                      results.search_term = results.search_term)
-    
-    # BEAUTIFY RESULTS TABLE
-    tbl.usr_results <- .BeautifyResultsTable(results.filter_and_search = results.filter_and_search)
-    
-    # OUTPUT MESSAGE IF NO RESULTS ARE FOUND
-    if(nrow(tbl.usr_results) == 0){
-      message("THERE ARE NO EPPICENTER WETLAB SAMPLES THAT MATCH THIS SEARCH")
-      usr_results <- NULL
-    }else{
-      eval.storage_container_ids <- tbl.usr_results$"storage_container_id"
-      tbl.usr_results <- tbl.usr_results %>% select(-c("storage_container_id"))
-      usr_results <- list(storage_container_ids = eval.storage_container_ids,
-                          tbl.usr_results = tbl.usr_results)
-    }
-  }
-  return(usr_results)
+  # COMBINE INTERNAL AND EXTERNAL DATA TO CREATE SEARCH RESULTS
+  aggregated.results <- .UseInternalAndExternalDataToGetResults(internal_data = aggregated.internal_data, 
+                                                                 external_data = aggregated.external_data)
+  
+  # FILTER THE AGGREGATED TABLE BY FILTER TERMS
+  results.filtered <- .FilterSearchResults(filters = filters, 
+                                           terms.filter = terms.filter,
+                                           results.search_term = aggregated.results)
+  
+  # BEAUTIFY RESULTS TABLE
+  results.cleaned_and_filtered <- .BeautifyResultsTable(results.filter_and_search = results.filtered)
+  
+  # OUTPUT MESSAGE IF NO RESULTS ARE FOUND
+  stopifnot("THERE ARE NO EPPICENTER WETLAB SAMPLES THAT MATCH THIS SEARCH" = nrow(results.cleaned_and_filtered) != 0)
+  id.wetlab_samples <- results.cleaned_and_filtered$"storage_container_id"
+  results <- results.cleaned_and_filtered %>% select(-c("storage_container_id"))
+  if(return_sample_ids == TRUE){
+    results <- list(id.wetlab_samples = id.wetlab_samples,
+                    results = results)}
+  return(results)
 }
 
 .GetDatabaseTables <- function(database){
@@ -105,7 +109,7 @@ SearchSamples <- function(filters, study_subject.file = FALSE){
   return(database.tables)
 }
 
-.UseSearchTermToGetStorageContainerIDs <- function(filters, term.search, tables.database){
+.UseSearchTermToAggregateSamples <- function(filters, term.search, tables.database){
   # USE TYPE TO GET STORAGE CONTAINER ID
   if(term.search == "search.type"){
     if(length(filters$search.type) == 1){
@@ -180,6 +184,7 @@ SearchSamples <- function(filters, study_subject.file = FALSE){
 }
 
 .UseStorageContainerIDToGetInternalData <- function(storage_container_id, tables.database){
+
   exhausted_info <- filter(tables.database$table.storage_container, id %in% storage_container_id)$exhausted
   # comments <- filter(tables.database$table.storage_container, id %in% storage_container_id)$comments
   specimen_ids <- filter(tables.database$table.storage_container, id %in% storage_container_id)
