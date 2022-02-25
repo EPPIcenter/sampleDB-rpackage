@@ -2,14 +2,24 @@
 % Please edit documentation in R/ArchiveAndDeleteSamples.R
 \name{ArchiveAndDeleteSamples}
 \alias{ArchiveAndDeleteSamples}
-\title{Archive and Delete EPPIcenter Wetlab Samples}
+\title{Archive and Delete Wetlab EPPIcenter Samples}
 \usage{
-ArchiveAndDeleteSamples(
-  operation,
-  filters = NULL,
-  storage_container_ids = NULL
-)
+ArchiveAndDeleteSamples(operation, sample_id)
+}
+\arguments{
+\item{operation}{A string specifying the type of operation to perform. Valid operations are \code{archive} and \code{delete}.
+
+\code{archive} should be used to delete all external data from the sample (tube/paper/rdt information, container information, storage location)
+but preserve internal data (sample id, specimen information, study subject information).
+This operation can be used for example when a micronix tube is emptied or rancid and needs to be discarded. \cr
+\code{delete} should be used to remove all traces of the sample (internal and external data).
+Deletions are recursive in the sense that they if sample ids associated with samples from an entire box are deleted then the box is automatically deleted.}
+
+\item{sample_id}{A numeric vector of a one or more sample IDs (also referred to as storage container IDs). Can be accessed using sampleDB::SearchSamples().}
 }
 \description{
-Archive and Delete EPPIcenter Wetlab Samples
+
+}
+\examples{
+
 }
