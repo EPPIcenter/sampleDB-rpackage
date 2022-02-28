@@ -2,20 +2,40 @@
 % Please edit documentation in R/UploadSamples.R
 \name{UploadSamples}
 \alias{UploadSamples}
-\title{Upload EPPIcenter Wetlab Samples to the sampleDB database}
+\title{Upload EPPIcenter Wetlab Samples to the SampleDB database}
 \usage{
-UploadSamples(type, csv.upload, container, list.location)
+UploadSamples(sample_type, upload_file, container_name, freezer)
 }
 \arguments{
-\item{csv.upload}{An UploadCSV}
+\item{sample_type}{A string specifying the type of samples that are being moved. Options include: \code{micronix}, \code{cryovial}, \code{rdt} and \code{paper}}
 
-\item{container}{A plate name}
+\item{upload_file}{A path string for the SampleDB Upload CSV file.
 
-\item{list.location}{A freezer in the lab + a level I in that freezer + a level II in that freezer}
+\strong{The Upload Micronix CSV file structure}\tabular{llllll}{
+   row \tab column \tab label \tab study_subject_id \tab specimen_type \tab study_short_code \cr
+   A \tab 0 \tab xxx1 \tab subject_1 \tab PLASMA \tab KAM06 \cr
+   A \tab 1 \tab xxx2 \tab subject_2 \tab PLASMA \tab KAM06 \cr
+}
+
+
+\strong{The Upload Cryovial CSV file structure}\tabular{llllll}{
+   row \tab column \tab label \tab study_subject_id \tab specimen_type \tab study_short_code \cr
+   A \tab 0 \tab xxx1 \tab subject_1 \tab PLASMA \tab KAM06 \cr
+   A \tab 1 \tab xxx2 \tab subject_2 \tab PLASMA \tab KAM06 \cr
+}}
+
+\item{container_name}{A string specifying the name of the container the samples are in. Names must be unique within each sample type.}
+
+\item{freezer}{A list specifying the freezer used to store samples. \cr
+Required items in the freezer list are \code{location_name}, \code{level_I} and \code{level_II}.
+If the freezer type is \verb{minus eighty} then \code{level_I} and \code{level_II} items specify the rack and position, respecively.
+If the freezer type is \verb{minus twenty} then \code{level_I} and \code{level_II} items specify the shelf and basket, respecively.}
 }
 \description{
-Upload EPPIcenter Wetlab Samples to the sampleDB database
+Upload EPPIcenter Wetlab Samples to the SampleDB database
 }
 \examples{
-UploadSamples(csv.upload = "/path/to/UploadCSV.csv", container = "dummy_name", location = list.location = list(location_name = "Freezer A", level_I = "dummy.levelI", level_II = "dummy.levelII"))
+\dontrun{
+UploadSamples(upload_file = "/path/to/UploadCSV.csv", container_name = "dummy_name", location = freezer = list(location_name = "Freezer A", level_I = "dummy.levelI", level_II = "dummy.levelII"))
+}
 }

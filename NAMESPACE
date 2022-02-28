@@ -3,7 +3,7 @@
 export(AddToTable)
 export(ArchiveAndDeleteSamples)
 export(CheckTable)
-export(DeleteEmptyPlates)
+export(DeleteEmptyContainers)
 export(DeleteFromTable)
 export(ListTables)
 export(ModifyTable)

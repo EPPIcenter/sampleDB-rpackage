@@ -14,7 +14,9 @@
 #' @param study_subject.file A logical value.  Setting `study_subject.file` to `TRUE` allows the user to search for study subjects using a .csv file. Setting `study_subject.file` to `FALSE` specifies that the user searches for study subjects using either a string or vector of strings. Default value is `FALSE`.
 #' @param return_sample_ids A logical value. Setting `return_sample_ids` to `TRUE` means `SearchSamples` returns sample ids as well as search results. Setting `return_sample_ids` to `FALSE` means `SearchSamples` returns only search results. Default value is `FALSE`.
 #' @examples
+#' \dontrun{
 #' SearchSamples(study = "KAM06", study_subject = "subject_1")
+#' }
 #' @import dplyr
 #' @import RSQLite
 #' @import emojifont

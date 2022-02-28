@@ -21,5 +21,8 @@ Deletions are recursive in the sense that they if sample ids associated with sam
 
 }
 \examples{
-
+\dontrun{
+ArchiveAndDeleteSamples(operation = "delete", sample_id = c(7:10))
+ArchiveAndDeleteSamples(operation = "archive", sample_id = 100)
+}
 }

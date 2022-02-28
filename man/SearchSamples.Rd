@@ -45,5 +45,7 @@ SearchSamples(
 
 }
 \examples{
+\dontrun{
 SearchSamples(study = "KAM06", study_subject = "subject_1")
+}
 }

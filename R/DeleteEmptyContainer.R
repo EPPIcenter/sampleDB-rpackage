@@ -1,7 +1,8 @@
+#' Delete Empty Wetlab Containers in the EPPIcenter SampleDB database
 #' @import dplyr
 #' @export
 
-DeleteEmptyPlates <- function(database, type, container_name){
+DeleteEmptyContainers <- function(database, type, container_name){
   
   stopifnot("Sample Type is not valid" = type %in% c("micronix", "cryovile", "rdt", "paper"))
   if(type == "micronix"){

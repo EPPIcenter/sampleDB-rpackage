@@ -4,17 +4,31 @@
 \alias{MoveSamples}
 \title{Move Wetlab Samples in the EPPIcenter sampleDB database}
 \usage{
-MoveSamples(type, file.container_samples)
+MoveSamples(sample_type, move_files)
 }
 \arguments{
-\item{file.container_samples}{A list containing an item for each plate involved in the move. Key is plate name, value is path to MoveCSV}
+\item{sample_type}{A string specifying the type of samples that are being moved. Options include: \code{micronix}, \code{cryovial}, \code{rdt} and \code{paper}}
+
+\item{move_files}{A list of paths to SampleDB Move CSV files. The items in the \code{move_files} list must be named after the container associate with each Move CSV file.
+
+The basic structure of a Move CSV file is shown below.\tabular{lll}{
+   row \tab column \tab label \cr
+   A \tab 0 \tab xxx1 \cr
+   A \tab 1 \tab xxx2 \cr
+}
+
+
+Accepted names for the \code{row} column include: \code{row}, \code{Row}, and \code{LocationRow}. \cr
+Accepted names for the \code{column} column include: \code{column}, \code{Column}, and \code{LocationColumn}. \cr
+Also accepted is a single column named \code{Position} that represents the both the \code{row} column and the \code{column} column.
+If the \code{Position} column is used then the \code{row} and \code{column} columns can be ommited.}
 }
 \description{
 Move Wetlab Samples in the EPPIcenter sampleDB database
 }
 \examples{
-sampleDB::MoveTubes(file.container_samples = list("container_name_1" = "~/path/container_1_samples.csv", "container_name_2" = "~/path/container_2_samples.csv"))
-write.csv(tibble(LocationRow = rep("A", 10), LocationColumn = c(1:10), TubeCode = c(paste("XXXXX", 0:9))), "~/path/container_1_samples.csv")
-write.csv(tibble(Position = rep("A", 10), "Tube ID" = c(paste("XXXXX", 0:9)), "Status" = NA,	"Error Count" = NA,	"Rack ID" = NA,	"Date" = NA), "~/path/container_1_samples.csv")
-write.csv(tibble(row = rep("A", 10), column = c(1:10), "label" = c(paste("XXXXX", 0:9)), "~/path/container_1_samples.csv")
+\dontrun{
+move_files <- list("move_csv1_container_name" = "~/path/to/move_csv1.csv", "move_csv2_container_name" = "~/path/to/move_csv2.csv")
+MoveSamples(sample_type = "micronix", move_files = move_files)
+}
 }

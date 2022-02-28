@@ -2,10 +2,17 @@
 % Please edit documentation in R/MoveContainers.R
 \name{MoveContainers}
 \alias{MoveContainers}
-\title{location <- list(name.freezer = "", level_II = "", level_II = "")}
+\title{Move Wetlab Containers in the EPPIcenter SampleDB database}
 \usage{
-MoveContainers(type, container_name, location)
+MoveContainers(sample_type, container_name, freezer)
+}
+\arguments{
+\item{sample_type}{A string specifying the type of samples that are being moved. Options include: \code{micronix}, \code{cryovial}, \code{rdt} and \code{paper}}
+
+\item{container_name}{A vector specifying the name of the container being moved}
+
+\item{freezer}{A list specifying the vector \code{location_name}, \code{level_I}, and/or\code{level_II}}
 }
 \description{
-location <- list(name.freezer = "", level_II = "", level_II = "")
+Move Wetlab Containers in the EPPIcenter SampleDB database
 }

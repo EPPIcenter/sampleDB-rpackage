@@ -13,7 +13,10 @@
 #' @param sample_id A numeric vector of a one or more sample IDs (also referred to as storage container IDs). Can be accessed using sampleDB::SearchSamples().
 #' 
 #' @examples
-#' 
+#' \dontrun{
+#' ArchiveAndDeleteSamples(operation = "delete", sample_id = c(7:10))
+#' ArchiveAndDeleteSamples(operation = "archive", sample_id = 100)
+#' }
 #' @import dplyr
 #' @import RSQLite
 #' @import emojifont

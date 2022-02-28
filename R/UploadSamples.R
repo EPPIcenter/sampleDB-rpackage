@@ -1,10 +1,31 @@
-#' Upload EPPIcenter Wetlab Samples to the sampleDB database
+#' Upload EPPIcenter Wetlab Samples to the SampleDB database
 #' 
-#' @param csv.upload An UploadCSV
-#' @param container A plate name
-#' @param list.location A freezer in the lab + a level I in that freezer + a level II in that freezer
+#' @param sample_type A string specifying the type of samples that are being moved. Options include: `micronix`, `cryovial`, `rdt` and `paper`
+#' @param upload_file A path string for the SampleDB Upload CSV file.
+#' 
+#' **Upload Micronix CSV structure**
+#' 
+#' | row | column | label | study_subject_id | specimen_type | study_short_code |
+#' | --- |------- | ----- | ---------------- | ------------- | ---------------- |
+#' | A   | 0      | xxx1  | subject_1        | PLASMA        | KAM06            |
+#' | A   | 1      | xxx2  | subject_2        | PLASMA        | KAM06            |
+#' 
+#' **Upload Cryovial CSV structure**
+#' 
+#' | row | column | label | study_subject_id | specimen_type | study_short_code |
+#' | --- |------- | ----- | ---------------- | ------------- | ---------------- |
+#' | A   | 0      | xxx1  | subject_1        | PLASMA        | KAM06            |
+#' | A   | 1      | xxx2  | subject_2        | PLASMA        | KAM06            |
+#' 
+#' @param container_name A string specifying the name of the container the samples are in. Names must be unique within each sample type.
+#' @param freezer A list specifying the freezer used to store samples. \cr 
+#' Required items in the freezer list are `location_name`, `level_I` and `level_II`.
+#' If the freezer type is `minus eighty` then `level_I` and `level_II` items specify the rack and position, respecively. 
+#' If the freezer type is `minus twenty` then `level_I` and `level_II` items specify the shelf and basket, respecively. 
 #' @examples
-#' UploadSamples(csv.upload = "/path/to/UploadCSV.csv", container = "dummy_name", location = list.location = list(location_name = "Freezer A", level_I = "dummy.levelI", level_II = "dummy.levelII"))
+#' \dontrun{
+#' UploadSamples(upload_file = "/path/to/UploadCSV.csv", container_name = "dummy_name", location = freezer = list(location_name = "Freezer A", level_I = "dummy.levelI", level_II = "dummy.levelII"))
+#' }
 #' @import dplyr
 #' @import RSQLite
 #' @import emojifont
@@ -26,54 +47,55 @@
 # B. open a connection to the database only at the beginning of the upload and close the connection only at the end on the upload. many sampleDB funs open and close the db so the use of those funs here is
 # very problematic (it is how things i think *need* to be in order for 2+ users to work with the db at the same time)
 # C. Adds to the db tables occur not in a loop but all at once. (this is how things *should* be)
-UploadSamples <- function(type, csv.upload, container, list.location){
+
+UploadSamples <- function(sample_type, upload_file, container_name, freezer){
   
   database <- "/databases/sampledb/v0.0.2/sampledb_database.sqlite"
   message(paste("Connecting to database at", database))
 
   # Read in usr supplied upload csv
-  csv.upload <- read.csv(csv.upload, check.names = F) %>% tidyr::drop_na()
+  upload_file <- read.csv(upload_file, check.names = F) %>% tidyr::drop_na()
   
-  # If type equals micronix reformat the csv.upload
-  if(type == "micronix"){
-    csv.upload <- .ReformatUploadMicronixCSV(csv.upload)
+  # If type equals micronix reformat the upload_file
+  if(sample_type == "micronix"){
+    upload_file <- .ReformatUploadMicronixCSV(upload_file)
     }
   
   # Check for a date col
   toggle.is_longitudinal <- FALSE
-  if("collection_date" %in% names(csv.upload)){
+  if("collection_date" %in% names(upload_file)){
     toggle.is_longitudinal <- TRUE
   }
   
   # Perform sample upload checks
-  .UploadChecks(type, input, database, list.location, container, csv.upload = csv.upload)
+  .UploadChecks(sample_type, input, database, freezer, container_name, upload_file = upload_file)
   
   # Parse through each row in the upload csv
-  sc_ids <- .InternalUpload(csv.upload = csv.upload, database = database, toggle.is_longitudinal = toggle.is_longitudinal, type = type)
+  sc_ids <- .InternalUpload(upload_file = upload_file, database = database, toggle.is_longitudinal = toggle.is_longitudinal, sample_type = sample_type)
   
   # Upload samples
-  if(type == "micronix"){
-    .UploadMicronixPlate(database, container, list.location)    
-    .UploadMicronixTubes(database, csv.upload, sc_ids)
-    message(paste("UPLOADING PLATE", container, "CONTAINING", nrow(csv.upload), "MICRONIX SAMPLES"))
+  if(sample_type == "micronix"){
+    .UploadMicronixPlate(database, container_name, freezer)    
+    .UploadMicronixTubes(database, upload_file, sc_ids)
+    message(paste("UPLOADING PLATE", container_name, "CONTAINING", nrow(upload_file), "MICRONIX SAMPLES"))
   }
-  else if(type == "cryo"){
-    stopifnot("Malformed csv.upload column names" = setequal(names(csv.upload), c("label", "row","column","study_short_code", "study_subject_id", "specimen_type")) || setequal(names(csv.upload), c("label", "row","column", "study_short_code", "study_subject_id", "specimen_type", "collection_date")))
-    .UploadCryoBox(database, container, list.location)
-    .UploadCryoTubes(database, csv.upload, sc_ids)
-    message(paste("UPLOADING BOX", container, "CONTAINING", nrow(csv.upload), "TUBES"))
+  else if(sample_type == "cryo"){
+    stopifnot("Malformed upload_file column names" = setequal(names(upload_file), c("label", "row","column","study_short_code", "study_subject_id", "specimen_type")) || setequal(names(upload_file), c("label", "row","column", "study_short_code", "study_subject_id", "specimen_type", "collection_date")))
+    .UploadCryoBox(database, container_name, freezer)
+    .UploadCryoTubes(database, upload_file, sc_ids)
+    message(paste("UPLOADING BOX", container_name, "CONTAINING", nrow(upload_file), "TUBES"))
   }
-  else if(type == "rdt"){
-    stopifnot("Malformed csv.upload column names" = setequal(names(csv.upload), c("label", "study_short_code", "study_subject_id", "specimen_type")) || setequal(names(csv.upload), c("label", "study_short_code", "study_subject_id", "specimen_type", "collection_date")))
-    .UploadBag(database, container, list.location) 
-    .UploadRDT(database, csv.upload, sc_ids)
-    message(paste("UPLOADING BAG", container, "CONTAINING", nrow(csv.upload), "RDT SAMPLES"))
+  else if(sample_type == "rdt"){
+    stopifnot("Malformed upload_file column names" = setequal(names(upload_file), c("label", "study_short_code", "study_subject_id", "specimen_type")) || setequal(names(upload_file), c("label", "study_short_code", "study_subject_id", "specimen_type", "collection_date")))
+    .UploadBag(database, container_name, freezer) 
+    .UploadRDT(database, upload_file, sc_ids)
+    message(paste("UPLOADING BAG", container_name, "CONTAINING", nrow(upload_file), "RDT SAMPLES"))
   }
-  else if(type == "paper"){
-    stopifnot("Malformed csv.upload column names" = setequal(names(csv.upload), c("label", "study_short_code", "study_subject_id", "specimen_type")) || setequal(names(csv.upload), c("label", "study_short_code", "study_subject_id", "specimen_type", "collection_date")))
-    .UploadBag(database, container, list.location) 
-    .UploadPaper(database, csv.upload, sc_ids)
-    message(paste("UPLOADING BAG", container, "CONTAINING", nrow(csv.upload), "PAPER SAMPLES"))
+  else if(sample_type == "paper"){
+    stopifnot("Malformed upload_file column names" = setequal(names(upload_file), c("label", "study_short_code", "study_subject_id", "specimen_type")) || setequal(names(upload_file), c("label", "study_short_code", "study_subject_id", "specimen_type", "collection_date")))
+    .UploadBag(database, container_name, freezer) 
+    .UploadPaper(database, upload_file, sc_ids)
+    message(paste("UPLOADING BAG", container_name, "CONTAINING", nrow(upload_file), "PAPER SAMPLES"))
   }
   else{
     message("User Upload Type was not a valid option. Valid options are: micronix, cryo, rdt and paper")
@@ -82,24 +104,24 @@ UploadSamples <- function(type, csv.upload, container, list.location){
   # message("UPLOAD COMPLETE")
 }
 
-.ReformatUploadMicronixCSV <- function(csv.upload){
+.ReformatUploadMicronixCSV <- function(upload_file){
   names.base <- c("study_subject_id", "specimen_type", "study_short_code")
   names.traxer.nodate <- c(names.base, "Position", "Tube ID",	"Status",	"Error Count",	"Rack ID",	"Date")
   names.traxer.date <- c(names.traxer.nodate, "collection_date")
   names.visionmate.nodate <- c(names.base, "LocationRow", "LocationColumn", "TubeCode")
   names.visionmate.date <- c(names.visionmate.nodate, "collection_date")
   
-  stopifnot("UPLOADCSV COLNAMES ARE MALFORMED" = (setequal(names.traxer.nodate, names(csv.upload)) || setequal(names.traxer.date, names(csv.upload)) || setequal(names.visionmate.nodate, names(csv.upload)) || setequal(names.visionmate.date, names(csv.upload))))
+  stopifnot("UPLOADCSV COLNAMES ARE MALFORMED" = (setequal(names.traxer.nodate, names(upload_file)) || setequal(names.traxer.date, names(upload_file)) || setequal(names.visionmate.nodate, names(upload_file)) || setequal(names.visionmate.date, names(upload_file))))
   
   #REFORMAT CSV -- IF LOCATIONROW IS A COLUMN THEN THE DATA CAME OFF VISIONMATE
-  if(!("LocationRow" %in% names(csv.upload))){
-    csv.reformatted <- csv.upload %>%
+  if(!("LocationRow" %in% names(upload_file))){
+    csv.reformatted <- upload_file %>%
       mutate(label = `Tube ID`,
              well_position = paste0(substring(Position, 1, 1), substring(Position, 2))) %>%
       select(-c(Position:Date))
     message("UploadCSV from Traxer detected...")
   }else{
-    csv.reformatted <- csv.upload %>%
+    csv.reformatted <- upload_file %>%
       mutate(label = TubeCode,
              well_position = paste0(LocationRow, LocationColumn)) %>%
       select(-c(LocationRow, LocationColumn, TubeCode))
@@ -109,37 +131,37 @@ UploadSamples <- function(type, csv.upload, container, list.location){
   return(csv.reformatted)
 }
 
-.UploadChecks <- function(type, input, database, list.location, container, csv.upload){
+.UploadChecks <- function(sample_type, input, database, freezer, container_name, upload_file){
   message("PERFORMING CHECKS")
   
-  stopifnot("SAMPLE TYPE IS NOT VALID" = type %in% c("cryo", "micronix", "paper", "rdt"))
+  stopifnot("SAMPLE TYPE IS NOT VALID" = sample_type %in% c("cryo", "micronix", "paper", "rdt"))
   
   # CHECK FREEZER EXISTS
-  tmp.location.tbl <- inner_join(tibble(location_name = list.location$location_name, level_I = list.location$level_I, level_II = list.location$level_II), 
+  tmp.location.tbl <- inner_join(tibble(location_name = freezer$location_name, level_I = freezer$level_I, level_II = freezer$level_II), 
                                  sampleDB::CheckTable(database = database, "location"), 
                                  by = c("location_name", "level_I", "level_II"))
   stopifnot("FREEZER NAME + LEVEL I + LEVEL II DOES NOT EXITS" = nrow(tmp.location.tbl) != 0)
   
   # CHECK PLATE NAME IS UNIQUE
-  stopifnot("CONTAINER NAME IS NOT UNIQUE" = !(container %in% c(sampleDB::CheckTable(database = database, "matrix_plate")$plate_name,
+  stopifnot("CONTAINER NAME IS NOT UNIQUE" = !(container_name %in% c(sampleDB::CheckTable(database = database, "matrix_plate")$plate_name,
                                                             sampleDB::CheckTable(database = database, "box")$box_name,
                                                             sampleDB::CheckTable(database = database, "bag")$bag_name)))
   
   # CHECK THAT SPECIMEN TYPE(S) EXISTS
-  stopifnot("ERROR: SPECIMEN TYPE(S) NOT FOUND" = all(csv.upload$"specimen_type" %in% CheckTable(database = database, table = "specimen_type")$label))
+  stopifnot("ERROR: SPECIMEN TYPE(S) NOT FOUND" = all(upload_file$"specimen_type" %in% CheckTable(database = database, table = "specimen_type")$label))
   
   # CHECK DATE (IF PRESENT) IS IN CORRECT FORMAT
-  if("collection_date" %in% names(csv.upload)){
-    stopifnot("COLLECTION DATE MUST BE YMD" = all(!is.na(parse_date_time(csv.upload$"collection_date", orders = "ymd")) == TRUE))
+  if("collection_date" %in% names(upload_file)){
+    stopifnot("COLLECTION DATE MUST BE YMD" = all(!is.na(parse_date_time(upload_file$"collection_date", orders = "ymd")) == TRUE))
   }
   
   # CHECK THAT NO BARCODE ALREADY EXISTS
-  stopifnot("Error: Barcode Unique Constraint" = all(!csv.upload$label %in% c(sampleDB::CheckTable(database = database, "matrix_tube")$barcode,
+  stopifnot("Error: Barcode Unique Constraint" = all(!upload_file$label %in% c(sampleDB::CheckTable(database = database, "matrix_tube")$barcode,
                                                                               sampleDB::CheckTable(database = database, "tube")$label,
                                                                               sampleDB::CheckTable(database = database, "rdt")$label,
                                                                               sampleDB::CheckTable(database = database, "paper")$label)))
   
-  NonUniqueLabels <- csv.upload$label[which(csv.upload$label %in% c(sampleDB::CheckTable(database = database, "matrix_tube")$barcode,
+  NonUniqueLabels <- upload_file$label[which(upload_file$label %in% c(sampleDB::CheckTable(database = database, "matrix_tube")$barcode,
                                                                     sampleDB::CheckTable(database = database, "tube")$label,
                                                                     sampleDB::CheckTable(database = database, "rdt")$label,
                                                                     sampleDB::CheckTable(database = database, "paper")$label))]
@@ -148,16 +170,16 @@ UploadSamples <- function(type, csv.upload, container, list.location){
 
   #CHECK IF SPECIMEN ALREADY EXISTS
   # check.study_subject <- inner_join(sampleDB::CheckTable(database = database, "study_subject"),
-  #                                   tibble(subject = csv.upload$"study_subject_id",
-  #                                          study_id = filter(sampleDB::CheckTable(database = database, "study"), short_code %in% csv.upload$study_short_code)$id,
-  #                                          specimen_type_id = filter(sampleDB::CheckTable(database = database, "specimen_type"), label %in% csv.upload$specimen_type)$id),
+  #                                   tibble(subject = upload_file$"study_subject_id",
+  #                                          study_id = filter(sampleDB::CheckTable(database = database, "study"), short_code %in% upload_file$study_short_code)$id,
+  #                                          specimen_type_id = filter(sampleDB::CheckTable(database = database, "specimen_type"), label %in% upload_file$specimen_type)$id),
   #                                   by = c("subject", "study_id"))
   # 
   # if(nrow(check.study_subject) != 0){
   #   
-  #   if("collection_date" %in% names(csv.upload)){
+  #   if("collection_date" %in% names(upload_file)){
   #     test_table.specimen <- check.study_subject %>% rename("study_subject_id" = "id")
-  #     test_table.specimen$collection_date <- as.double(as.Date(csv.upload$collection_date))
+  #     test_table.specimen$collection_date <- as.double(as.Date(upload_file$collection_date))
   #   }else{
   #     test_table.specimen <- check.study_subject %>% rename("study_subject_id" = "id")
   #     test_table.specimen$collection_date <- as.double(as.Date(NA))
@@ -171,7 +193,7 @@ UploadSamples <- function(type, csv.upload, container, list.location){
   # }
 }
 
-.InternalUpload <- function(csv.upload, database, toggle.is_longitudinal, type){
+.InternalUpload <- function(upload_file, database, toggle.is_longitudinal, sample_type){
   #GET THE CURRENT NEWEST STORAGE CONTAINER ID
   if(nrow(sampleDB::CheckTable(database = database, "storage_container")) == 0){
     before_upload.newest_sc_id <- 0
@@ -179,14 +201,14 @@ UploadSamples <- function(type, csv.upload, container, list.location){
     before_upload.newest_sc_id <- tail(sampleDB::CheckTable(database = database, "storage_container"), 1)$id 
   }
   
-  for(i in 1:nrow(csv.upload)){
+  for(i in 1:nrow(upload_file)){
     
     #GET VARIABLES IN UPLOAD
-    eval.specimen_type_id <- filter(sampleDB::CheckTable(database = database, "specimen_type"), label == csv.upload[i, ]$"specimen_type")$id
-    eval.study_id <- filter(sampleDB::CheckTable(database = database, "study"), short_code == csv.upload[i, ]$"study_short_code")$id
-    eval.subject <- csv.upload[i, ]$"study_subject_id"
+    eval.specimen_type_id <- filter(sampleDB::CheckTable(database = database, "specimen_type"), label == upload_file[i, ]$"specimen_type")$id
+    eval.study_id <- filter(sampleDB::CheckTable(database = database, "study"), short_code == upload_file[i, ]$"study_short_code")$id
+    eval.subject <- upload_file[i, ]$"study_subject_id"
     if(toggle.is_longitudinal){
-      eval.collection_date <- ymd(csv.upload[i, ]$"collection_date")
+      eval.collection_date <- ymd(upload_file[i, ]$"collection_date")
       eval.collection_date <- as.double(as.Date(paste(year(eval.collection_date), month(eval.collection_date), day(eval.collection_date), sep = "-")))
     }else{
       eval.collection_date <- as.double(as.Date(NA))
@@ -243,7 +265,7 @@ UploadSamples <- function(type, csv.upload, container, list.location){
       sampleDB::AddToTable(database = database, "storage_container",
                            list(created = lubridate::now("UTC") %>% as.character(),
                                 last_updated = lubridate::now("UTC") %>% as.character(),
-                                type = type,
+                                sample_type = sample_type,
                                 specimen_id = eval.specimen_id,
                                 exhausted = 0))
       
@@ -285,7 +307,7 @@ UploadSamples <- function(type, csv.upload, container, list.location){
       sampleDB::AddToTable(database = database, "storage_container",
                            list(created = lubridate::now("UTC") %>% as.character(),
                                 last_updated = lubridate::now("UTC") %>% as.character(),
-                                type = type,
+                                sample_type = sample_type,
                                 specimen_id = eval.specimen_id,
                                 exhausted = 0))
     }
@@ -313,14 +335,14 @@ UploadSamples <- function(type, csv.upload, container, list.location){
   }
 }
 
-.UploadMicronixPlate <- function(database, container, list.location){
-  eval.location_id <- filter(CheckTable(database = database, "location"), location_name == list.location$location, level_I == list.location$level_I, level_II == list.location$level_II)$id
+.UploadMicronixPlate <- function(database, container_name, freezer){
+  eval.location_id <- filter(CheckTable(database = database, "location"), location_name == freezer$location, level_I == freezer$level_I, level_II == freezer$level_II)$id
   sampleDB::AddToTable(database = database, 
                        "matrix_plate",
                        list(created = lubridate::now("UTC") %>% as.character(),
                             last_updated = lubridate::now("UTC") %>% as.character(),
                             location_id = eval.location_id,
-                            plate_name = container)) 
+                            plate_name = container_name)) 
 }
 
 .UploadCryoTubes <- function(database, csv, sc_ids){
@@ -338,14 +360,14 @@ UploadSamples <- function(type, csv.upload, container, list.location){
   }
 }
 
-.UploadCryoBox <- function(database, container, list.location){
-  eval.location_id <- filter(CheckTable(database = database, "location"), location_name == list.location$location, level_I == list.location$level_I, level_II == list.location$level_II)$id
+.UploadCryoBox <- function(database, container_name, freezer){
+  eval.location_id <- filter(CheckTable(database = database, "location"), location_name == freezer$location, level_I == freezer$level_I, level_II == freezer$level_II)$id
   sampleDB::AddToTable(database = database,
                        "box",
                        list(created = lubridate::now("UTC") %>% as.character(),
                             last_updated = lubridate::now("UTC") %>% as.character(),
                             location_id = eval.location_id,
-                            box_name = container)) 
+                            box_name = container_name)) 
 }
 
 .UploadRDT <- function(database, csv, sc_ids){
@@ -374,12 +396,12 @@ UploadSamples <- function(type, csv.upload, container, list.location){
   }
 }
 
-.UploadBag <- function(database, container, list.location){
-  eval.location_id <- filter(CheckTable(database = database, "location"), location_name == list.location$location, level_I == list.location$level_I, level_II == list.location$level_II)$id
+.UploadBag <- function(database, container_name, freezer){
+  eval.location_id <- filter(CheckTable(database = database, "location"), location_name == freezer$location, level_I == freezer$level_I, level_II == freezer$level_II)$id
   sampleDB::AddToTable(database = database, 
                        "bag",
                        list(created = lubridate::now("UTC") %>% as.character(),
                             last_updated = lubridate::now("UTC") %>% as.character(),
                             location_id = eval.location_id,
-                            bag_name = container)) 
+                            bag_name = container_name)) 
 }
