@@ -1,5 +1,5 @@
 Package: sampleDB
-Title: Print Table in SQLite Database
+Title: Organization for EPPIcenter Wetlab Samples
 Version: 0.0.0.9000
 Authors@R: 
     person(given = "Severiano",

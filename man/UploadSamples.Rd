@@ -11,14 +11,14 @@ UploadSamples(sample_type, upload_file, container_name, freezer)
 
 \item{upload_file}{A path string for the SampleDB Upload CSV file.
 
-\strong{The Upload Micronix CSV file structure}\tabular{llllll}{
+\strong{Upload Micronix CSV structure}\tabular{llllll}{
    row \tab column \tab label \tab study_subject_id \tab specimen_type \tab study_short_code \cr
    A \tab 0 \tab xxx1 \tab subject_1 \tab PLASMA \tab KAM06 \cr
    A \tab 1 \tab xxx2 \tab subject_2 \tab PLASMA \tab KAM06 \cr
 }
 
 
-\strong{The Upload Cryovial CSV file structure}\tabular{llllll}{
+\strong{Upload Cryovial CSV structure}\tabular{llllll}{
    row \tab column \tab label \tab study_subject_id \tab specimen_type \tab study_short_code \cr
    A \tab 0 \tab xxx1 \tab subject_1 \tab PLASMA \tab KAM06 \cr
    A \tab 1 \tab xxx2 \tab subject_2 \tab PLASMA \tab KAM06 \cr
