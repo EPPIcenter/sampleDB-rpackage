@@ -54,7 +54,7 @@ ArchiveAndDeleteSamples <- function(operation, sample_id){
                               id = eval.id)
         
         # DELETE EXTERNAL DATA
-        .DeleteExternalData(eval.id, database.tables, database)
+        .DeleteExternalData(eval.id, database.tables, database, archive = F)
       }
       
       # USER MSG
@@ -103,38 +103,32 @@ ArchiveAndDeleteSamples <- function(operation, sample_id){
                           table.matrix_tube = sampleDB::CheckTable(database = database, "matrix_tube"))
   return(database.tables)
 }
+
 .DeleteInternalData <- function(eval.id, database.tables, database){
   tmp_table.storage_container <- filter(database.tables$table.storage_container, id %in% eval.id)
-  # print(tmp_table.storage_container)
   specimen_id <- tmp_table.storage_container$specimen_id
-  # print(specimen_id)
   study_subject_id <- filter(database.tables$table.specimen, id %in% specimen_id)$study_subject_id
-  # print(study_subject_id)
-  # stop("HERE")
   
   # DELETE INTERNAL DATA -- storage container categorically
   sampleDB::DeleteFromTable(database = database, 
                             table_name = "storage_container", 
                             id = as.character(tmp_table.storage_container$id))
-  # print(sampleDB::CheckTable(database = database, "storage_container"))
   
   # DELETE INTERNAL DATA -- delete specimen if it is no longer being reference
   if(!specimen_id %in% sampleDB::CheckTable(database = database, "storage_container")$specimen_id){
     sampleDB::DeleteFromTable(database = database, 
                               table_name = "specimen",
                               id = as.character(specimen_id))
-    # print(sampleDB::CheckTable(database = database, "specimen"))
     
     # DELETE INTERNAL DATA -- delete study subject if it is no longer being reference
     if(!study_subject_id %in% sampleDB::CheckTable(database = database, "specimen")$study_subject_id){
       sampleDB::DeleteFromTable(database = database, 
                                 table_name = "study_subject", 
                                 id = as.character(study_subject_id))
-      # print(sampleDB::CheckTable(database = database, "study_subject"))
     }
   } 
 }
-.DeleteExternalData <- function(eval.id, database.tables, database){
+.DeleteExternalData <- function(eval.id, database.tables, database, archive = F){
   
   # DELETE EXTERNAL DATA -- matrix_tube & matrix_plate if deletion empties plate
   if(eval.id %in% database.tables$table.matrix_tube$id){
@@ -143,9 +137,18 @@ ArchiveAndDeleteSamples <- function(operation, sample_id){
     matrix_plate_id <- filter(database.tables$table.matrix_tube, id %in% eval.id)$plate_id
     
     # delete sample
-    sampleDB::DeleteFromTable(database = database, 
-                              table_name = "matrix_tube", 
-                              id = as.character(eval.id))
+    if(archive == T){
+      sampleDB::ModifyTable(database = database, 
+                            table_name = "matrix_tube", 
+                            info_list = list(plate_id = NA,
+                                             barcode = NA,
+                                             well_position = NA),
+                            id = as.character(eval.id))
+    }else{
+      sampleDB::DeleteFromTable(database = database, 
+                                table_name = "matrix_tube", 
+                                id = as.character(eval.id)) 
+    }
     
     # delete container if container id is no longer in micronix table
     if(!matrix_plate_id %in% sampleDB::CheckTable(database = database, "matrix_tube")$plate_id){

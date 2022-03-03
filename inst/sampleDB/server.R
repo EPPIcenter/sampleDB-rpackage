@@ -31,31 +31,8 @@ function(input, output, session) {
     PaperUpload(session, output, input, database, ref.clear_action = "ClearPaperUploadForm")
     
     # -------- Search Samples -------------
-
-    # SERVER-SIDE DROPDOWN -- SAVES LOADING TIME
-    updateSelectizeInput(session, 'SearchBySubjectUID', choices = c("", sampleDB::CheckTable(database = database, "study_subject")$subject %>% unique()), server = TRUE)
     
-    SearchWetlabSamples(session, input, database, output,
-                        inputs = list(SearchByLocation = "SearchByLocation",
-                                      SearchByLevelI = "SearchByLevelI",
-                                      SearchByLevelII = "SearchByLevelII",
-                                      dateRange = "dateRange",
-                                      SearchByExhausted = "SearchByExhausted",
-                                      SearchBySpecimenType = "SearchBySpecimenType",
-                                      SearchByStudy = "SearchByStudy",
-                                      SearchBySampleType = "SearchBySampleType",
-                                      SubjectUIDSearchType = "SubjectUIDSearchType",
-                                      SearchBySubjectUID = "SearchBySubjectUID",
-                                      SearchByBarcode = "SearchByBarcode",
-                                      SearchByCryovialLabels = "SearchByCryovialLabels",
-                                      SearchByRDTLabels = "SearchByRDTLabels",
-                                      SearchByPaperLabels = "SearchByPaperLabels",
-                                      SearchByPlate = "SearchByPlate",
-                                      SearchByBox = "SearchByBox",
-                                      SearchByRDTBag = "SearchByRDTBag",
-                                      SearchByPaperBag = "SearchByPaperBag"),
-                        outputs = list(SearchResultsTable = "SearchResultsTable",
-                                       downloadData = "downloadData"))
+    SearchWetlabSamples(session, input, database, output)
     
     # -------- Move Samples -------------
 
@@ -63,110 +40,15 @@ function(input, output, session) {
 
     # -------- Move Container --------
     
-    observe({
-      if(input$MoveContainerSampleType == "Micronix"){
-        updateSelectizeInput(session, "MoveContainerName", label = NULL, choices = c(sampleDB::CheckTable("matrix_plate")$plate_name))
-      }
-      else if(input$MoveContainerSampleType == "Cryovile"){
-        updateSelectizeInput(session, "MoveContainerName", label = NULL, choices = c(sampleDB::CheckTable("box")$box_name))
-      }
-      else if(input$MoveContainerSampleType == "RDT"){
-        updateSelectizeInput(session, "MoveContainerName", label = NULL, choices = c(sampleDB::CheckTable("bag")$bag_name))
-      }else{
-        updateSelectizeInput(session, "MoveContainerName", label = NULL, choices = c(sampleDB::CheckTable("bag")$bag_name))
-      }
-    })
-    
-    observe({
-      if(input$MoveContainerLocation != ""){
-        tmp_table.location <- filter(sampleDB::CheckTable(database = database, "location"), location_name == input$MoveContainerLocation)
-        updateSelectizeInput(session, "MoveContainerLocationLevelI", label = NULL, choices = c(tmp_table.location$level_I))
-        updateSelectizeInput(session, "MoveContainerLocationLevelII", label = NULL, choices = c(tmp_table.location$level_II))
-      }else{
-        updateSelectizeInput(session, "MoveContainerLocationLevelI", label = NULL, choices = c(""))
-        updateSelectizeInput(session, "MoveContainerLocationLevelII", label = NULL, choices = c(""))
-      }
-    })
-    
-    observeEvent(
-      input$MoveContainerAction,({
-        container.type <- input$MoveContainerSampleType
-        container.name <- input$MoveContainerName
-        freezer.name <- input$MoveContainerLocation
-        freezer.levelI <- input$MoveContainerLocationLevelI
-        freezer.levelII <- input$MoveContainerLocationLevelII
-        sampleDB::MoveContainers(type = container.type,
-                                 container_name = container.name,
-                                 location = list(freezer.name,
-                                                 freezer.levelI,
-                                                 freezer.levelII))
-    }))
+    MoveWetlabContainers(session, input, database, output)
     
     # -------- Archive and Delete Samples --------
     
-    # SERVER-SIDE DROPDOWN -- SAVES LOADING TIME
-    updateSelectizeInput(session, 'DelArchSearchBySubjectUID', choices = c("", sampleDB::CheckTable(database = database, "study_subject")$subject %>% unique()), server = TRUE)
-    
-    SearchWetlabSamples(session, input, database, output,
-                        inputs = list(SearchByLocation = "DelArchSearchByLocation",
-                                      SearchByLevelI = "DelArchSearchByLevelI",
-                                      SearchByLevelII = "DelArchSearchByLevelII",
-                                      dateRange = "DelArchdateRange",
-                                      SearchByExhausted = "DelArchSearchByExhausted",
-                                      SearchBySpecimenType = "DelArchSearchBySpecimenType",
-                                      SearchByStudy = "DelArchSearchByStudy",
-                                      SearchBySampleType = "DelArchSearchBySampleType",
-                                      SubjectUIDSearchType = "DelArchSubjectUIDSearchType",
-                                      SearchBySubjectUID = "DelArchSearchBySubjectUID",
-                                      SearchByBarcode = "DelArchSearchByBarcode",
-                                      SearchByCryovialLabels = "DelArchSearchByCryovialLabels",
-                                      SearchByRDTLabels = "DelArchSearchByRDTLabels",
-                                      SearchByPaperLabels = "DelArchSearchByPaperLabels",
-                                      SearchByPlate = "DelArchSearchByPlate",
-                                      SearchByBox = "DelArchSearchByBox",
-                                      SearchByRDTBag = "DelArchSearchByRDTBag",
-                                      SearchByPaperBag = "DelArchSearchByPaperBag"),
-                        outputs = list(SearchResultsTable = "DelArchSearchResultsTable",
-                                       downloadData = "DelArchdownloadData"),
-                        DelArch = TRUE)
+    SearchWetlabSamples(session, input, database, output, DelArch = TRUE)
 
     # -------- Delete Empty Container --------
     
-    observe({
-      if(input$DeleteContainerSampleType == "Micronix"){
-        updateSelectizeInput(session, "DelteContainerName", label = NULL, choices = c(sampleDB::CheckTable("matrix_plate")$plate_name))
-      }
-      else if(input$DeleteContainerSampleType == "Cryovile"){
-        updateSelectizeInput(session, "DelteContainerName", label = NULL, choices = c(sampleDB::CheckTable("box")$box_name))
-      }
-      else if(input$DeleteContainerSampleType == "RDT"){
-        updateSelectizeInput(session, "DelteContainerName", label = NULL, choices = c(sampleDB::CheckTable("bag")$bag_name))
-      }else{
-        updateSelectizeInput(session, "DelteContainerName", label = NULL, choices = c(sampleDB::CheckTable("bag")$bag_name))
-      }
-    })
-    
-    # DeletePlateChecks(input, database, output)
-    
-    observeEvent(
-      input$DeleteContainerAction,
-      ({
-
-        # # SET REQUIREMENT FOR DELETEING PLATE
-        # DeleteEmptyPlateRequirement(input, database)
-
-        # DELETE PLATE
-        type.container <- input$DeleteContainerSampleType
-        name.container <- input$DelteContainerName
-        # print(type.container)
-        # print(name.container)
-        # DeleteEmptyPlates(type.container, name.container)
-        
-        # RESET PLATE NAMES DROPDOWN
-        # DeleteEmptyPlateReset(session, database)
-      }))
-
-    
+    DeleteEmptyWetlabContainers(session, input, database, output)
     
     # -------- Update References ---------------
     

@@ -265,7 +265,7 @@ UploadSamples <- function(sample_type, upload_file, container_name, freezer){
       sampleDB::AddToTable(database = database, "storage_container",
                            list(created = lubridate::now("UTC") %>% as.character(),
                                 last_updated = lubridate::now("UTC") %>% as.character(),
-                                sample_type = sample_type,
+                                type = sample_type,
                                 specimen_id = eval.specimen_id,
                                 exhausted = 0))
       
@@ -307,7 +307,7 @@ UploadSamples <- function(sample_type, upload_file, container_name, freezer){
       sampleDB::AddToTable(database = database, "storage_container",
                            list(created = lubridate::now("UTC") %>% as.character(),
                                 last_updated = lubridate::now("UTC") %>% as.character(),
-                                sample_type = sample_type,
+                                type = sample_type,
                                 specimen_id = eval.specimen_id,
                                 exhausted = 0))
     }

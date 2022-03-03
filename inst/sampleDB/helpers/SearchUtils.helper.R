@@ -5,6 +5,69 @@ SearchWetlabSamples <- function(session, input, database, output, inputs, output
   # SEARCH CHECKS... CHECK THAT SEARCH FILES ARE NOT MALFORMED
   # .SearchChecks(input, database, output)
   
+  rowCallback <- c(
+    "function(row, data){",
+    "  for(var i=0; i<data.length; i++){",
+    "    if(data[i] === null){",
+    "      $('td:eq('+i+')', row).html('NA')",
+    "        .css({'color': 'rgb(151,151,151)', 'font-style': 'italic'});",
+    "    }",
+    "  }",
+    "}"  
+  )
+  
+  if(DelArch == FALSE){
+    
+    # SERVER-SIDE DROPDOWN -- SAVES LOADING TIME
+    updateSelectizeInput(session, 'SearchBySubjectUID', choices = c("", sampleDB::CheckTable(database = database, "study_subject")$subject %>% unique()), server = TRUE)
+    
+    inputs <- list(SearchByLocation = "SearchByLocation",
+                  SearchByLevelI = "SearchByLevelI",
+                  SearchByLevelII = "SearchByLevelII",
+                  dateRange = "dateRange",
+                  SearchByExhausted = "SearchByExhausted",
+                  SearchBySpecimenType = "SearchBySpecimenType",
+                  SearchByStudy = "SearchByStudy",
+                  SearchBySampleType = "SearchBySampleType",
+                  SubjectUIDSearchType = "SubjectUIDSearchType",
+                  SearchBySubjectUID = "SearchBySubjectUID",
+                  SearchByBarcode = "SearchByBarcode",
+                  SearchByCryovialLabels = "SearchByCryovialLabels",
+                  SearchByRDTLabels = "SearchByRDTLabels",
+                  SearchByPaperLabels = "SearchByPaperLabels",
+                  SearchByPlate = "SearchByPlate",
+                  SearchByBox = "SearchByBox",
+                  SearchByRDTBag = "SearchByRDTBag",
+                  SearchByPaperBag = "SearchByPaperBag")
+    outputs <- list(SearchResultsTable = "SearchResultsTable",
+                   downloadData = "downloadData")
+  }else{
+    
+    # SERVER-SIDE DROPDOWN -- SAVES LOADING TIME
+    updateSelectizeInput(session, 'DelArchSearchBySubjectUID', choices = c("", sampleDB::CheckTable(database = database, "study_subject")$subject %>% unique()), server = TRUE)
+    
+    inputs <- list(SearchByLocation = "DelArchSearchByLocation",
+                  SearchByLevelI = "DelArchSearchByLevelI",
+                  SearchByLevelII = "DelArchSearchByLevelII",
+                  dateRange = "DelArchdateRange",
+                  SearchByExhausted = "DelArchSearchByExhausted",
+                  SearchBySpecimenType = "DelArchSearchBySpecimenType",
+                  SearchByStudy = "DelArchSearchByStudy",
+                  SearchBySampleType = "DelArchSearchBySampleType",
+                  SubjectUIDSearchType = "DelArchSubjectUIDSearchType",
+                  SearchBySubjectUID = "DelArchSearchBySubjectUID",
+                  SearchByBarcode = "DelArchSearchByBarcode",
+                  SearchByCryovialLabels = "DelArchSearchByCryovialLabels",
+                  SearchByRDTLabels = "DelArchSearchByRDTLabels",
+                  SearchByPaperLabels = "DelArchSearchByPaperLabels",
+                  SearchByPlate = "DelArchSearchByPlate",
+                  SearchByBox = "DelArchSearchByBox",
+                  SearchByRDTBag = "DelArchSearchByRDTBag",
+                  SearchByPaperBag = "DelArchSearchByPaperBag")
+    outputs <- list(SearchResultsTable = "DelArchSearchResultsTable",
+                   downloadData = "DelArchdownloadData")
+  }
+  
   observe({
     if(input[[inputs$SearchByLocation]] != ""){
       tmp_table.location <- filter(sampleDB::CheckTable(database = database, "location"), location_name == input[[inputs$SearchByLocation]])
@@ -47,7 +110,6 @@ SearchWetlabSamples <- function(session, input, database, output, inputs, output
     # RETRIEVE SEARCH RESULTS
     if(input[[inputs$SubjectUIDSearchType]] == "individual"){
       search.study_subject <- input[[inputs$SearchBySubjectUID]]
-      # list.search_results <- sampleDB::SearchSamples(discard(filters, function(x) length(x) == 0 | "" %in% x), study_subject.file = F)
       list.search_results <- sampleDB::SearchSamples(sample_type = search.type, sample_label = search.label, container_name = search.container, study_subject = search.study_subject,
                                                      specimen_type = search.specimen_type, study = search.study, collection_dates = search.date, archived = search.exhausted,
                                                      freezer = search.location, study_subject.file = F, return_sample_ids = T)
@@ -55,10 +117,9 @@ SearchWetlabSamples <- function(session, input, database, output, inputs, output
       storage_container_ids <- list.search_results$id.wetlab_samples
     }else{
       search.study_subject <- input[[inputs$SearchBySubjectUIDFile]]$datapath
-      # list.search_results <- sampleDB::SearchSamples(discard(filters, function(x) length(x) == 0 | "" %in% x), study_subject.file = T)
       list.search_results <- sampleDB::SearchSamples(sample_type = search.type, sample_label = search.label, container_name = search.container, study_subject = search.study_subject,
                                                      specimen_type = search.specimen_type, study = search.study, collection_dates = search.date, archived = search.exhausted,
-                                                     freezer = search.location, study_subject.file = F, return_sample_ids = T)
+                                                     freezer = search.location, study_subject.file = T, return_sample_ids = T)
       search_results <- list.search_results$results
       storage_container_ids <- list.search_results$id.wetlab_samples
     }
@@ -75,9 +136,10 @@ SearchWetlabSamples <- function(session, input, database, output, inputs, output
       searching = T,
       server = F,
       paging = T,
-      pageLength = 20,
+      pageLength = 10,
       lengthMenu = c(10, 20, 50, 100),
-      language = list(zeroRecords = "There are no EPPIcenter Wetlab Samples that match this search.")))
+      language = list(zeroRecords = "There are no EPPIcenter Wetlab Samples that match this search."),
+      rowCallback = JS(rowCallback)))
     
     # DOWNLOAD SEARCH RESULTS
     output[[outputs$downloadData]] <- downloadHandler(
@@ -92,32 +154,33 @@ SearchWetlabSamples <- function(session, input, database, output, inputs, output
     if(DelArch == TRUE){
       updateTextInput(session = session, "RenameStudyLeadPerson", value = storage_container_ids) 
     }
-    
   })
   
   if(DelArch == TRUE){
     observe({
       selected <- input$"DelArchSearchResultsTable_rows_selected"
       if(length(selected) > 0){
-        a <- input$"RenameStudyLeadPerson"
-        sc_ids <- strsplit(a, ",")[[1]]
+        sc_ids <- strsplit(input$"RenameStudyLeadPerson", ",")[[1]]
         output$ShowSelectedSamples <- renderPrint({paste(length(sc_ids[selected]),"samples selected")})
+        updateTextInput(session = session, "RenameStudyTitle", value = sc_ids[selected])
+        print("here")
+        print(input$"RenameStudyTitle")
       }
       observeEvent(
         input$DeleteAction,({
-          ArchiveAndDeleteSamples("delete", storage_container_ids = sc_ids[selected])
+          print("here1")
+          a <- input$"RenameStudyTitle"
+          ArchiveAndDeleteSamples("delete", sample_id = a)
         }))
       observeEvent(
         input$ArchiveAction,({
-          ArchiveAndDeleteSamples("archive", storage_container_ids = sc_ids[selected])
-        }))
-      observeEvent(
-        input$UnArchiveAction,({
-          ArchiveAndDeleteSamples("unarchive", storage_container_ids = sc_ids[selected])
+          print("here2")
+          a <- input$"RenameStudyTitle"
+          ArchiveAndDeleteSamples("archive", sample_id = a)
         }))
       
-      # RESET UI VALUE
-      updateTextInput(session = session, "RenameStudyLeadPerson", value = "")
+      # # RESET UI VALUE
+      # updateTextInput(session = session, "RenameStudyLeadPerson", value = "")
       })
   }
   

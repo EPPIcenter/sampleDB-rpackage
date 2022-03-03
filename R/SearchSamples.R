@@ -208,7 +208,6 @@ SearchSamples <- function(sample_type = NULL, sample_label = NULL, container_nam
                         collection_date = collection_date,
                         study_short_code = study_short_code,
                         subject_uids = subject_uids,
-                        subject_uids = subject_uids,
                         specimen_type_labels = specimen_type_labels)
   
   return(internal_data)
@@ -250,8 +249,16 @@ SearchSamples <- function(sample_type = NULL, sample_label = NULL, container_nam
   
   # add freezer data to external date
   external_data <- rbind(tube_dat, micr_dat, rdt_dat, paper_dat)
+  
   external_data <- inner_join(external_data, tables.database$table.location, by = c("location_id" = "id")) %>%
-    select(-c("created", "last_updated", "id"))
+    select(-c("created", "last_updated"))
+  
+  archived_df <-  tibble(id = setdiff(storage_container_id, external_data$id), label = NA, 
+                         container_position = NA, container_name = NA, location_id = NA, type = NA,
+                         location_name = NA, location_type = NA, level_I = NA, level_II = NA, level_III = NA)
+  
+  external_data <- rbind(external_data, archived_df) %>% arrange(id)
+
   return(external_data)
 }
 
