@@ -254,7 +254,7 @@ navbarPage("EPPIcenter SampleDB",
                     sidebarLayout(
                       sidebarPanel(
                         width = 2,
-                        HTML("<h4>Search Filters</h4>"),
+                        HTML("<h4>Search Samples</h4>"),
                         hr(),
                         # fileInput("SearchByLabel", label = HTML("Barcode <h6>Single column named \"barcode\"</h6>")), actionButton("ClearSearchBarcodes", label = "Clear Barcodes"), textOutput("WarnSubjectBarcodeFileColnames"), textOutput("WarnSubjectBarcodeFileColnames2"),
                         radioButtons("SearchBySampleType","Sample Type", c("All" = "all", "Micronix" = "micronix", "Cryovial" = "cryo", "RDT" = "rdt", "Paper" = "paper"), inline = T),

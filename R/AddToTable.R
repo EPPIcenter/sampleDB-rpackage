@@ -5,11 +5,12 @@
 #' @export
 
 #table options
-AddToTable <- function(database, table_name, info_list){
+AddToTable <- function(database, table_name, info_list, established_conn = FALSE){
 
-  #OPEN THE DATABASE CONNECTION
-  conn <-  RSQLite::dbConnect(RSQLite::SQLite(),
-                              database)
+  if(established_conn == TRUE){
+    #OPEN THE DATABASE CONNECTION
+    conn <-  RSQLite::dbConnect(RSQLite::SQLite(), database)
+  }
 
   #PREVENT EMPTY ADDITIONS TO DATABASE -- REMOVE NAs FROM THIS EVALUATION
   for(i in discard(info_list, is.na)){
@@ -41,10 +42,10 @@ AddToTable <- function(database, table_name, info_list){
       }
   )
 
-  #close connection
-  tryCatch(
-    RSQLite::dbDisconnect(conn),
-    warning=function(w){
-      # NULL
-    })
+  if(established_conn == TRUE){
+    #close connection
+    tryCatch(
+      RSQLite::dbDisconnect(conn),
+      warning=function(w){})
+  }
 }

@@ -51,29 +51,25 @@
 UploadSamples <- function(sample_type, upload_file, container_name, freezer){
   
   database <- "/databases/sampledb/v0.0.2/sampledb_database.sqlite"
-  message(paste("Connecting to database at", database))
-
+  conn <-  RSQLite::dbConnect(RSQLite::SQLite(), database)
+  
   # Read in usr supplied upload csv
   upload_file <- read.csv(upload_file, check.names = F) %>% tidyr::drop_na()
   
-  # If type equals micronix reformat the upload_file
-  if(sample_type == "micronix"){
-    upload_file <- .ReformatUploadMicronixCSV(upload_file)
-    }
+  # If sample type is micronix; then reformat the upload_file
+  if(sample_type == "micronix"){upload_file <- .ReformatUploadMicronixCSV(upload_file)}
   
-  # Check for a date col
+  # If a collection date is present; switch a longitudinal toggle to true
   toggle.is_longitudinal <- FALSE
-  if("collection_date" %in% names(upload_file)){
-    toggle.is_longitudinal <- TRUE
-  }
+  if("collection_date" %in% names(upload_file)){toggle.is_longitudinal <- TRUE}
   
-  # Perform sample upload checks
+  # Perform upload checks
   .UploadChecks(sample_type, input, database, freezer, container_name, upload_file = upload_file)
   
-  # Parse through each row in the upload csv
+  # Upload internal data
   sc_ids <- .InternalUpload(upload_file = upload_file, database = database, toggle.is_longitudinal = toggle.is_longitudinal, sample_type = sample_type)
   
-  # Upload samples
+  # Upload external data
   if(sample_type == "micronix"){
     .UploadMicronixPlate(database, container_name, freezer)    
     .UploadMicronixTubes(database, upload_file, sc_ids)
@@ -101,7 +97,11 @@ UploadSamples <- function(sample_type, upload_file, container_name, freezer){
     message("User Upload Type was not a valid option. Valid options are: micronix, cryo, rdt and paper")
   }
   
-  # message("UPLOAD COMPLETE")
+  #close connection
+  tryCatch(
+    RSQLite::dbDisconnect(conn),
+    warning=function(w){})
+
 }
 
 .ReformatUploadMicronixCSV <- function(upload_file){
@@ -255,7 +255,8 @@ UploadSamples <- function(sample_type, upload_file, container_name, freezer){
                                   last_updated = lubridate::now("UTC") %>% as.character(),
                                   study_subject_id = eval.study_subject_id,
                                   specimen_type_id = eval.specimen_type_id,
-                                  collection_date = eval.collection_date))
+                                  collection_date = eval.collection_date),
+                             established_conn = TRUE)
         
         #GET SPECIMEN ID
         eval.specimen_id <- tail(sampleDB::CheckTable(database = database, "specimen"), 1)$id
@@ -267,7 +268,8 @@ UploadSamples <- function(sample_type, upload_file, container_name, freezer){
                                 last_updated = lubridate::now("UTC") %>% as.character(),
                                 type = sample_type,
                                 specimen_id = eval.specimen_id,
-                                exhausted = 0))
+                                exhausted = 0),
+                           established_conn = TRUE)
       
     }else{
       
@@ -278,7 +280,8 @@ UploadSamples <- function(sample_type, upload_file, container_name, freezer){
                            list(created = lubridate::now("UTC") %>% as.character(),
                                 last_updated = lubridate::now("UTC") %>% as.character(),
                                 subject = eval.subject,
-                                study_id = eval.study_id))
+                                study_id = eval.study_id),
+                           established_conn = TRUE)
       
       #GET STUDY_SUBJECT ID
       eval.study_subject_id <- tail(sampleDB::CheckTable(database = database, "study_subject"), 1)$id
@@ -290,14 +293,16 @@ UploadSamples <- function(sample_type, upload_file, container_name, freezer){
                                   last_updated = lubridate::now("UTC") %>% as.character(),
                                   study_subject_id = eval.study_subject_id,
                                   specimen_type_id = eval.specimen_type_id,
-                                  collection_date = eval.collection_date))        
+                                  collection_date = eval.collection_date),
+                             established_conn = TRUE)        
       }else{
         sampleDB::AddToTable(database = database, "specimen",
                              list(created = lubridate::now("UTC") %>% as.character(),
                                   last_updated = lubridate::now("UTC") %>% as.character(),
                                   study_subject_id = eval.study_subject_id,
                                   specimen_type_id = eval.specimen_type_id,
-                                  collection_date = NA))
+                                  collection_date = NA),
+                             established_conn = TRUE)
       }
       
       #GET SPECIMEN ID
@@ -309,7 +314,8 @@ UploadSamples <- function(sample_type, upload_file, container_name, freezer){
                                 last_updated = lubridate::now("UTC") %>% as.character(),
                                 type = sample_type,
                                 specimen_id = eval.specimen_id,
-                                exhausted = 0))
+                                exhausted = 0),
+                           established_conn = TRUE)
     }
     after_upload.newest_sc_id <- tail(sampleDB::CheckTable(database = database, "storage_container"), 1)$id
     # message("UPLOAD COMPLETE")
@@ -331,7 +337,8 @@ UploadSamples <- function(sample_type, upload_file, container_name, freezer){
                          list(id = sc_ids$before_upload.newest_sc_id + i,
                               plate_id = eval.plate_id,
                               barcode = eval.barcode,
-                              well_position = eval.well_position))
+                              well_position = eval.well_position),
+                         established_conn = TRUE)
   }
 }
 
@@ -342,7 +349,8 @@ UploadSamples <- function(sample_type, upload_file, container_name, freezer){
                        list(created = lubridate::now("UTC") %>% as.character(),
                             last_updated = lubridate::now("UTC") %>% as.character(),
                             location_id = eval.location_id,
-                            plate_name = container_name)) 
+                            plate_name = container_name),
+                       established_conn = TRUE) 
 }
 
 .UploadCryoTubes <- function(database, csv, sc_ids){
@@ -356,7 +364,8 @@ UploadSamples <- function(sample_type, upload_file, container_name, freezer){
                          list(id = sc_ids$before_upload.newest_sc_id + i,
                               box_id = eval.box_id,
                               label = eval.label,
-                              box_position = eval.box_position))
+                              box_position = eval.box_position),
+                         established_conn = TRUE)
   }
 }
 
@@ -367,7 +376,8 @@ UploadSamples <- function(sample_type, upload_file, container_name, freezer){
                        list(created = lubridate::now("UTC") %>% as.character(),
                             last_updated = lubridate::now("UTC") %>% as.character(),
                             location_id = eval.location_id,
-                            box_name = container_name)) 
+                            box_name = container_name),
+                       established_conn = TRUE) 
 }
 
 .UploadRDT <- function(database, csv, sc_ids){
@@ -379,7 +389,8 @@ UploadSamples <- function(sample_type, upload_file, container_name, freezer){
                          "rdt",
                          list(id = sc_ids$before_upload.newest_sc_id + i,
                               bag_id = eval.bag_id,
-                              label = eval.label))
+                              label = eval.label),
+                         established_conn = TRUE)
   }
 }
 
@@ -392,7 +403,8 @@ UploadSamples <- function(sample_type, upload_file, container_name, freezer){
                          "paper",
                          list(id = sc_ids$before_upload.newest_sc_id + i,
                               bag_id = eval.bag_id,
-                              label = eval.label))
+                              label = eval.label),
+                         established_conn = TRUE)
   }
 }
 
@@ -403,5 +415,6 @@ UploadSamples <- function(sample_type, upload_file, container_name, freezer){
                        list(created = lubridate::now("UTC") %>% as.character(),
                             last_updated = lubridate::now("UTC") %>% as.character(),
                             location_id = eval.location_id,
-                            bag_name = container_name)) 
+                            bag_name = container_name),
+                       established_conn = TRUE) 
 }
