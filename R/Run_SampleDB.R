@@ -1,3 +1,11 @@
+#' Run sampleDB as a R Shiny App
+#' 
+#' @description
+#' 
+#' @examples
+#' \dontrun{
+#' RunSampleDB()
+#' }
 #' @import dplyr
 #' @import shiny
 #' @import shinyFeedback

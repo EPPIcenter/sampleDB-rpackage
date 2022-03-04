@@ -1,6 +1,6 @@
 #' Upload EPPIcenter Wetlab Samples to the SampleDB database
 #' 
-#' @param sample_type A string specifying the type of samples that are being moved. Options include: `micronix`, `cryovial`, `rdt` and `paper`
+#' @param sample_type A string specifying the type of samples that are being uploaded Options include: `micronix`, `cryovial`, `rdt` and `paper`
 #' @param upload_file A path string for the SampleDB Upload CSV file.
 #' 
 #' **Upload Micronix CSV structure**
@@ -43,7 +43,7 @@
 # 2. connections to the database are (to the best of my knowledge) opening and closing all throughout the upload. This is bad, it means that if two usrs try to upload something at the same time
 # the can get their connections to the db (via an upload) can get crossed and ids storage container ids could be useless
 # There are three ways to overcome these problems:
-# A. upload internal data and container/sample data at the same time (is this possible? idk. it is how thing *should* be)
+# A. upload internal data and external data at the same time (is this possible? idk. it is how thing *should* be)
 # B. open a connection to the database only at the beginning of the upload and close the connection only at the end on the upload. many sampleDB funs open and close the db so the use of those funs here is
 # very problematic (it is how things i think *need* to be in order for 2+ users to work with the db at the same time)
 # C. Adds to the db tables occur not in a loop but all at once. (this is how things *should* be)

@@ -7,7 +7,7 @@
 UploadSamples(sample_type, upload_file, container_name, freezer)
 }
 \arguments{
-\item{sample_type}{A string specifying the type of samples that are being moved. Options include: \code{micronix}, \code{cryovial}, \code{rdt} and \code{paper}}
+\item{sample_type}{A string specifying the type of samples that are being uploaded Options include: \code{micronix}, \code{cryovial}, \code{rdt} and \code{paper}}
 
 \item{upload_file}{A path string for the SampleDB Upload CSV file.
 

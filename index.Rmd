@@ -46,7 +46,7 @@ The database is broken down into three sections
 
   + `study subjects` a list of participants involved in EPPIcenter studies
 
-  + `specimens` the unique combination of specimen type, study subject, and collection date that currently exists at the EPPIcenter
+  + `specimens` the unique combination of specimen type, study subject, study and collection date that currently exists at the EPPIcenter
 
   + `storage containers` the link between the `specimen`, the `sample type`, and the `sample statuses` to a freezer in the EPPIcenter lab
 
