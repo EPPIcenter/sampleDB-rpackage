@@ -8,8 +8,6 @@ library(shinyWidgets)
 
 
 #SET PATH TO SQLITE DATABASE
-# database <- "example_19-Oct-21.sample_db.sqlite"
-# database <- Sys.getenv("SAMPLEDB_DATABASE") #use the aragorn env var set at boot
 database <- "/databases/sampledb/v0.0.2/sampledb_database.sqlite"
 
 navbarPage("EPPIcenter SampleDB",
@@ -394,6 +392,12 @@ navbarPage("EPPIcenter SampleDB",
                           fluidRow(column(width = 12,
                                           actionButton("ArchiveAction", label = "Archive Samples"),
                                           actionButton("DeleteAction", label = "Delete Samples", style="color: #fff; background-color: #337ab7; border-color: #2e6da4"))),
+                          conditionalPanel(condition = "input.RenameStudyDescription == \"xxx\"",
+                                           br(),
+                                           HTML("Type \"Yes\" if you would like to archive these samples."),
+                                           textInput("zzz", label = NULL),
+                                           actionButton("yes1", label = "Enter"),
+                                           verbatimTextOutput("yesout")),
                         ))),
            tabPanel("Delete Empty Container of Samples",
                     sidebarLayout(

@@ -105,8 +105,6 @@ SearchWetlabSamples <- function(session, input, database, output, inputs, output
     search.specimen_type <- input[[inputs$SearchBySpecimenType]]
     search.study <- input[[inputs$SearchByStudy]]
     
-    # print(filters$search.container)
-    
     # RETRIEVE SEARCH RESULTS
     if(input[[inputs$SubjectUIDSearchType]] == "individual"){
       search.study_subject <- input[[inputs$SearchBySubjectUID]]
@@ -163,20 +161,33 @@ SearchWetlabSamples <- function(session, input, database, output, inputs, output
         sc_ids <- strsplit(input$"RenameStudyLeadPerson", ",")[[1]]
         output$ShowSelectedSamples <- renderPrint({paste(length(sc_ids[selected]),"samples selected")})
         updateTextInput(session = session, "RenameStudyTitle", value = sc_ids[selected])
-        print("here")
-        print(input$"RenameStudyTitle")
       }
       observeEvent(
-        input$DeleteAction,({
-          print("here1")
-          a <- input$"RenameStudyTitle"
-          ArchiveAndDeleteSamples("delete", sample_id = a)
+        input$DeleteAction,
+        ({
+          updateTextInput(session = session, "RenameStudyDescription", value = "xxx")
+          observeEvent(
+            input$yes1,
+            ({
+              if(input$"zzz" == "Yes"){
+                ArchiveAndDeleteSamples("delete", sample_id = input$"RenameStudyTitle", verification = FALSE)
+                output$yesout <- renderPrint({paste("Successfully deleted", length(input$"RenameStudyTitle"), "sample(s)")})
+              }
+            }))
         }))
       observeEvent(
-        input$ArchiveAction,({
-          print("here2")
-          a <- input$"RenameStudyTitle"
-          ArchiveAndDeleteSamples("archive", sample_id = a)
+        input$ArchiveAction,
+        ({
+          updateTextInput(session = session, "RenameStudyDescription", value = "xxx")
+          observeEvent(
+            input$yes1,
+            ({
+              # print("hi")
+              if(input$"zzz" == "Yes"){
+                ArchiveAndDeleteSamples("archive", sample_id = input$"RenameStudyTitle", verification = FALSE)
+                output$yesout <- renderPrint({paste("Successfully archived", length(input$"RenameStudyTitle"), "sample(s)")})
+              }
+            }))
         }))
       
       # # RESET UI VALUE
