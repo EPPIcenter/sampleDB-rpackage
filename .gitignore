@@ -5,5 +5,5 @@ inst/.DS_Store
 inst/sampleDB/rsconnect/
 trash/
 tests/
-helpers/
 docs
+aid/
