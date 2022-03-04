@@ -11,17 +11,73 @@ UploadSamples(sample_type, upload_file, container_name, freezer)
 
 \item{upload_file}{A path string for the SampleDB Upload CSV file.
 
-\strong{Upload Micronix CSV structure}\tabular{llllll}{
+\strong{Upload Micronix CSV structure (vision mate + no collection date)}\tabular{llllll}{
+   LocationRow \tab LocationColumn \tab TubeCode \tab study_subject_id \tab specimen_type \tab study_short_code \cr
+   A \tab 0 \tab xxx1 \tab subject_1 \tab PLASMA \tab KAM06 \cr
+   A \tab 1 \tab xxx2 \tab subject_2 \tab PLASMA \tab KAM06 \cr
+}
+
+
+\strong{Upload Micronix CSV structure (vision mate + collection date)}\tabular{lllllll}{
+   LocationRow \tab LocationColumn \tab TubeCode \tab study_subject_id \tab specimen_type \tab study_short_code \tab collection_date \cr
+   A \tab 0 \tab xxx1 \tab subject_1 \tab PLASMA \tab KAM06 \tab 2022-02-11 \cr
+   A \tab 1 \tab xxx2 \tab subject_2 \tab PLASMA \tab KAM06 \tab 2022-02-11 \cr
+}
+
+
+\strong{Upload Micronix CSV structure (traxer + no collection date)}\tabular{lllllllll}{
+   Position \tab Tube ID \tab Status \tab Error Count \tab Rack ID \tab Date \tab study_subject_id \tab specimen_type \tab study_short_code \cr
+   A0 \tab xxx1 \tab  \tab  \tab  \tab  \tab subject_1 \tab PLASMA \tab KAM06 \cr
+   A1 \tab xxx2 \tab  \tab  \tab  \tab  \tab subject_2 \tab PLASMA \tab KAM06 \cr
+}
+
+
+\strong{Upload Micronix CSV structure (traxer + collection date)}\tabular{llllllllll}{
+   Position \tab Tube ID \tab Status \tab Error Count \tab Rack ID \tab Date \tab study_subject_id \tab specimen_type \tab study_short_code \tab collection_date \cr
+   A0 \tab xxx1 \tab  \tab  \tab  \tab  \tab subject_1 \tab PLASMA \tab KAM06 \tab 2022-02-11 \cr
+   A1 \tab xxx2 \tab  \tab  \tab  \tab  \tab subject_2 \tab PLASMA \tab KAM06 \tab 2022-02-11 \cr
+}
+
+
+\strong{Upload Cryovial CSV structure (no collection date)}\tabular{llllll}{
    row \tab column \tab label \tab study_subject_id \tab specimen_type \tab study_short_code \cr
    A \tab 0 \tab xxx1 \tab subject_1 \tab PLASMA \tab KAM06 \cr
    A \tab 1 \tab xxx2 \tab subject_2 \tab PLASMA \tab KAM06 \cr
 }
 
 
-\strong{Upload Cryovial CSV structure}\tabular{llllll}{
-   row \tab column \tab label \tab study_subject_id \tab specimen_type \tab study_short_code \cr
-   A \tab 0 \tab xxx1 \tab subject_1 \tab PLASMA \tab KAM06 \cr
-   A \tab 1 \tab xxx2 \tab subject_2 \tab PLASMA \tab KAM06 \cr
+\strong{Upload Cryovial CSV structure (collection date)}\tabular{lllllll}{
+   row \tab column \tab label \tab study_subject_id \tab specimen_type \tab study_short_code \tab collection_date \cr
+   A \tab 0 \tab xxx1 \tab subject_1 \tab PLASMA \tab KAM06 \tab 2022-02-11 \cr
+   A \tab 1 \tab xxx2 \tab subject_2 \tab PLASMA \tab KAM06 \tab 2022-02-11 \cr
+}
+
+
+\strong{Upload RDT CSV structure (no collection date)}\tabular{llll}{
+   label \tab study_subject_id \tab specimen_type \tab study_short_code \cr
+   xxx1 \tab subject_1 \tab PLASMA \tab KAM06 \cr
+   xxx2 \tab subject_2 \tab PLASMA \tab KAM06 \cr
+}
+
+
+\strong{Upload RDT CSV structure (collection date)}\tabular{lllll}{
+   label \tab study_subject_id \tab specimen_type \tab study_short_code \tab collection_date \cr
+   xxx1 \tab subject_1 \tab PLASMA \tab KAM06 \tab 2022-02-11 \cr
+   xxx2 \tab subject_2 \tab PLASMA \tab KAM06 \tab 2022-02-11 \cr
+}
+
+
+\strong{Upload Paper CSV structure}\tabular{llll}{
+   label \tab study_subject_id \tab specimen_type \tab study_short_code \cr
+   xxx1 \tab subject_1 \tab PLASMA \tab KAM06 \cr
+   xxx2 \tab subject_2 \tab PLASMA \tab KAM06 \cr
+}
+
+
+\strong{Upload Paper CSV structure}\tabular{lllll}{
+   label \tab study_subject_id \tab specimen_type \tab study_short_code \tab collection_date \cr
+   xxx1 \tab subject_1 \tab PLASMA \tab KAM06 \tab 2022-02-11 \cr
+   xxx2 \tab subject_2 \tab PLASMA \tab KAM06 \tab 2022-02-11 \cr
 }}
 
 \item{container_name}{A string specifying the name of the container the samples are in. Names must be unique within each sample type.}

@@ -3,19 +3,75 @@
 #' @param sample_type A string specifying the type of samples that are being uploaded Options include: `micronix`, `cryovial`, `rdt` and `paper`
 #' @param upload_file A path string for the SampleDB Upload CSV file.
 #' 
-#' **Upload Micronix CSV structure**
+#' **Upload Micronix CSV structure (vision mate + no collection date)**
+#' 
+#' | LocationRow | LocationColumn | TubeCode | study_subject_id | specimen_type | study_short_code |
+#' | ----------- |--------------- | -------- | ---------------- | ------------- | ---------------- |
+#' | A           | 0              | xxx1     | subject_1        | PLASMA        | KAM06            |
+#' | A           | 1              | xxx2     | subject_2        | PLASMA        | KAM06            |
+#' 
+#' **Upload Micronix CSV structure (vision mate + collection date)**
+#' 
+#' | LocationRow | LocationColumn | TubeCode | study_subject_id | specimen_type | study_short_code | collection_date |
+#' | ----------- |--------------- | -------- | ---------------- | ------------- | ---------------- | --------------- |
+#' | A           | 0              | xxx1     | subject_1        | PLASMA        | KAM06            | 2022-02-11      |
+#' | A           | 1              | xxx2     | subject_2        | PLASMA        | KAM06            | 2022-02-11      |
+#' 
+#' **Upload Micronix CSV structure (traxer + no collection date)**
+#' 
+#' | Position | Tube ID | Status | Error Count | Rack ID | Date | study_subject_id | specimen_type | study_short_code |
+#' | -------- | ------- | ------ | ----------- | ------- | ---- | ---------------- | ------------- | ---------------- |
+#' | A0       | xxx1    |        |             |         |      | subject_1        | PLASMA        | KAM06            |
+#' | A1       | xxx2    |        |             |         |      | subject_2        | PLASMA        | KAM06            |
+#' 
+#' **Upload Micronix CSV structure (traxer + collection date)**
+#' 
+#' | Position | Tube ID | Status | Error Count | Rack ID | Date | study_subject_id | specimen_type | study_short_code | collection_date |
+#' | -------- | ------- | ------ | ----------- | ------- | ---- | ---------------- | ------------- | ---------------- | --------------- |
+#' | A0       | xxx1    |        |             |         |      | subject_1        | PLASMA        | KAM06            | 2022-02-11      |
+#' | A1       | xxx2    |        |             |         |      | subject_2        | PLASMA        | KAM06            | 2022-02-11      |
+#' 
+#' **Upload Cryovial CSV structure (no collection date)**
 #' 
 #' | row | column | label | study_subject_id | specimen_type | study_short_code |
 #' | --- |------- | ----- | ---------------- | ------------- | ---------------- |
 #' | A   | 0      | xxx1  | subject_1        | PLASMA        | KAM06            |
 #' | A   | 1      | xxx2  | subject_2        | PLASMA        | KAM06            |
 #' 
-#' **Upload Cryovial CSV structure**
+#' **Upload Cryovial CSV structure (collection date)**
 #' 
-#' | row | column | label | study_subject_id | specimen_type | study_short_code |
-#' | --- |------- | ----- | ---------------- | ------------- | ---------------- |
-#' | A   | 0      | xxx1  | subject_1        | PLASMA        | KAM06            |
-#' | A   | 1      | xxx2  | subject_2        | PLASMA        | KAM06            |
+#' | row | column | label | study_subject_id | specimen_type | study_short_code | collection_date |
+#' | --- |------- | ----- | ---------------- | ------------- | ---------------- | --------------- |
+#' | A   | 0      | xxx1  | subject_1        | PLASMA        | KAM06            | 2022-02-11      |
+#' | A   | 1      | xxx2  | subject_2        | PLASMA        | KAM06            | 2022-02-11      |
+#'
+#' **Upload RDT CSV structure (no collection date)**
+#' 
+#' | label | study_subject_id | specimen_type | study_short_code |
+#' | ----- | ---------------- | ------------- | ---------------- |
+#' | xxx1  | subject_1        | PLASMA        | KAM06            |
+#' | xxx2  | subject_2        | PLASMA        | KAM06            |
+#'  
+#' **Upload RDT CSV structure (collection date)**
+#' 
+#' | label | study_subject_id | specimen_type | study_short_code | collection_date |
+#' | ----- | ---------------- | ------------- | ---------------- | --------------- |
+#' | xxx1  | subject_1        | PLASMA        | KAM06            | 2022-02-11      |
+#' | xxx2  | subject_2        | PLASMA        | KAM06            | 2022-02-11      |
+#' 
+#' **Upload Paper CSV structure**
+#' 
+#' | label | study_subject_id | specimen_type | study_short_code |
+#' | ----- | ---------------- | ------------- | ---------------- |
+#' | xxx1  | subject_1        | PLASMA        | KAM06            |
+#' | xxx2  | subject_2        | PLASMA        | KAM06            |
+#' 
+#' **Upload Paper CSV structure**
+#' 
+#' | label | study_subject_id | specimen_type | study_short_code | collection_date |
+#' | ----- | ---------------- | ------------- | ---------------- | --------------- |
+#' | xxx1  | subject_1        | PLASMA        | KAM06            | 2022-02-11      |
+#' | xxx2  | subject_2        | PLASMA        | KAM06            | 2022-02-11      |
 #' 
 #' @param container_name A string specifying the name of the container the samples are in. Names must be unique within each sample type.
 #' @param freezer A list specifying the freezer used to store samples. \cr 
