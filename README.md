@@ -7,6 +7,8 @@ sampleDB::Run_SampleDB()
 
 # The Database
 The database lives on Aragorn (`128.218.162.121`) at `/databases/sampledb/v0.0.2/sampledb_database.sqlite`.
+The packages uses the R environment variable `SDB_PATH` to connect to the database.
+To set this variable edit the Renviron file (which typically exists at: `/etc/R/Renviron`). Use `Sys.getenv("SDB_PATH")` to check that edits have taken affect.
 
 ## Database Schema
 ![db](https://user-images.githubusercontent.com/95319271/151049473-54f411e9-0fa2-4d3b-be33-32a0d8521a08.png)

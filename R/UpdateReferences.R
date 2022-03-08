@@ -47,7 +47,7 @@
 #CAN GET ERR CODE FROM SQLITE EXECUTION?
 UpdateReferences <- function(reference, operation, identifier = NULL, update = NULL){
   
-  database <- "/databases/sampledb/v0.0.2/sampledb_database.sqlite"
+  database <- Sys.getenv("SDB_PATH")
     
   references <- c("study", "freezer","specimen_type")
   stopifnot("invalid reference\n vaid options are: study, freezer and specimen_type" = 

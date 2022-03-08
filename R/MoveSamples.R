@@ -32,7 +32,7 @@ MoveSamples <- function(sample_type, move_files){
   
   stopifnot("Sample type is not valid" = operation %in% c("micronix", "cryovial", "rdt", "paper"))
   
-  database <- "/databases/sampledb/v0.0.2/sampledb_database.sqlite"
+  database <- Sys.getenv("SDB_PATH")
   
   # READ IN FILES
   list.move <- modify(move_files, function(x){x <- read_csv(x, col_types = cols()) %>% drop_na()})

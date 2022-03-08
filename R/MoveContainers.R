@@ -8,7 +8,7 @@
 
 MoveContainers <- function(sample_type, container_name, freezer){
   
-  database <- "/databases/sampledb/v0.0.2/sampledb_database.sqlite"
+  database <- Sys.getenv("SDB_PATH")
   stopifnot("Sample Type is not valid" = sample_type %in% c("micronix", "cryovile", "rdt", "paper"))
   stopifnot("Location does not exist" = nrow(filter(sampleDB::CheckTable(database = database, table = "location"), 
                                                     location_name == location$name.freezer & level_I == location$level_I & level_II == location$level_II) == 0))

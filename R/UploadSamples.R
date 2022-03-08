@@ -106,7 +106,7 @@
 
 UploadSamples <- function(sample_type, upload_file, container_name, freezer){
   
-  database <- "/databases/sampledb/v0.0.2/sampledb_database.sqlite"
+  database <- Sys.getenv("SDB_PATH")
   conn <-  RSQLite::dbConnect(RSQLite::SQLite(), database)
   
   # Read in usr supplied upload csv

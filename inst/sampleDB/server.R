@@ -14,7 +14,7 @@ for(helper in list.files(path = "helpers", full.names = T, recursive = T)){sourc
 function(input, output, session) {
   
     # SET PATH TO SQLITE DATABASE - WOULD PREFER DATABASE TO BE AT Sys.getenv("SAMPLEDB_DATABASE")
-    database <- "/databases/sampledb/v0.0.2/sampledb_database.sqlite"
+    database <- Sys.getenv("SDB_PATH")
 
     # --------- Upload Samples -------------
 

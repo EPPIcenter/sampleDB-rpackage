@@ -8,7 +8,7 @@ library(shinyWidgets)
 
 
 #SET PATH TO SQLITE DATABASE
-database <- "/databases/sampledb/v0.0.2/sampledb_database.sqlite"
+database <- Sys.getenv("SDB_PATH")
 
 navbarPage("EPPIcenter SampleDB",
            navbarMenu("Upload WetLab Samples",
