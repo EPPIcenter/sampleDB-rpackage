@@ -36,7 +36,9 @@
 #' **For `modify` operations all update items are optional**
 #' 
 #' @examples
-#' sampleDB::UpdateReferences(reference = "freezer", operation = "add", update = list(freezer_name = "Ruth", freezer_type = "-80", freezer_levelI = "rack1", freezer_levelII = "position_C1"))
+#' \dontrun{
+#' UpdateReferences(reference = "freezer", operation = "add", update = list(freezer_name = "Ruth", freezer_type = "-80", freezer_levelI = "rack1", freezer_levelII = "position_C1"))
+#' }
 #' @import dplyr
 #' @import purrr
 #' @export

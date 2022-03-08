@@ -48,5 +48,7 @@ UpdateReferences(reference, operation, identifier = NULL, update = NULL)
 Update References in the EPPIcenter SampleDB database
 }
 \examples{
-sampleDB::UpdateReferences(reference = "freezer", operation = "add", update = list(freezer_name = "Ruth", freezer_type = "-80", freezer_levelI = "rack1", freezer_levelII = "position_C1"))
+\dontrun{
+UpdateReferences(reference = "freezer", operation = "add", update = list(freezer_name = "Ruth", freezer_type = "-80", freezer_levelI = "rack1", freezer_levelII = "position_C1"))
+}
 }
