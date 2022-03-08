@@ -7,7 +7,7 @@
 #table options
 AddToTable <- function(database, table_name, info_list, established_conn = FALSE){
 
-  if(established_conn == TRUE){
+  if(established_conn == FALSE){
     #OPEN THE DATABASE CONNECTION
     conn <-  RSQLite::dbConnect(RSQLite::SQLite(), database)
   }
@@ -42,10 +42,11 @@ AddToTable <- function(database, table_name, info_list, established_conn = FALSE
       }
   )
 
-  if(established_conn == TRUE){
+  if(established_conn == FALSE){
     #close connection
     tryCatch(
       RSQLite::dbDisconnect(conn),
       warning=function(w){})
   }
+  
 }
