@@ -43,6 +43,7 @@ UpdateLabFreezers <- function(session, input, output, database){
   
   # CHANGE FREEZER NAMES
   
+  # AUTO FILTER LEVELS ACCORDING TO USER SELECTED FREEZER
   observe({
     if(input$RenameFreezerName1 != ""){
       tmp_table.location <- filter(sampleDB::CheckTable(database = database, "location"), location_name == input$RenameFreezerName1)
@@ -100,10 +101,12 @@ UpdateLabFreezers <- function(session, input, output, database){
       
       #UPDATE DROPDOWNS
       UpdateFreezerDropdowns(database, session)
+      
     }))
   
   #REMOVE FREEZER FROM DATABASE
   
+  # AUTO FILTER LEVELS ACCORDING TO USER SELECTED FREEZER
   observe({
     if(input$DeleteFreezerName != ""){
       tmp_table.location <- filter(sampleDB::CheckTable(database = database, "location"), location_name == input$DeleteFreezerName)
@@ -146,6 +149,7 @@ UpdateLabFreezers <- function(session, input, output, database){
       
       #UPDATE DROPDOWNS
       UpdateFreezerDropdowns(database, session)
+      
     })
   )
   
@@ -200,8 +204,8 @@ UpdateSpecimenTypes <- function(session, input, output, database){
       #CHANGE SPECIMEN TYPE NAME
       sampleDB::UpdateReferences(reference = "specimen_type",
                                  operation = "modify",
-                                 identifier = list(specimen_type_name = new.name),
-                                 update = list(specimen_type_name = old.name))
+                                 identifier = list(specimen_type_name = old.name),
+                                 update = list(specimen_type_name = new.name))
       
       #PRINT EXIT MESSAGE
       output$SpecimenReturnMessage <- renderText({paste("Renamed Specimen Type", old.name, "to", new.name, emoji('tada'))})
@@ -228,7 +232,7 @@ UpdateSpecimenTypes <- function(session, input, output, database){
       #DELETE SPECIMEN TYPE
       sampleDB::UpdateReferences(reference = "specimen_type",
                                  operation = "delete",
-                                 identifier = list(freezer_type_name = delete.specimen_type))
+                                 identifier = list(specimen_type_name = delete.specimen_type))
       
       #PRINT EXIT MESSAGE
       output$SpecimenReturnMessage <- renderText({paste("Deleted Specimen Type", delete.specimen_type, emoji('tada'))})
@@ -271,7 +275,7 @@ UpdateLabStudies <- function(session, input, output, database){
       ShowStudies(output, database)
       
       #UPDATE DROPDOWNS
-      UpdateStudyDropdowns(session)
+      UpdateStudyDropdowns(database, session)
     })
   )
   
@@ -283,7 +287,7 @@ UpdateLabStudies <- function(session, input, output, database){
       # MODIFY STUDY
       sampleDB::UpdateReferences(reference = "study",
                                  operation = "modify",
-                                 identifier = list(OldStudyShortCode = input$ChangeStudyShortCode),
+                                 identifier = list(study_short_code = input$ChangeStudyShortCode),
                                  update = list(study_title = input$RenameStudyTitle,
                                                study_description = input$RenameStudyDescription,
                                                study_short_code = input$RenameStudyShortCode,
@@ -322,10 +326,10 @@ UpdateLabStudies <- function(session, input, output, database){
 }
 
 UpdateFreezerDropdowns <- function(database, session){
-  updateTextInput(session = session, inputId ="AddFreezer", value = "", placeholder = "New Name")
-  updateTextInput(session = session, inputId = "RenameFreezer2", value = "", placeholder = "New Name")
-  updateSelectInput(session = session, inputId = "RenameFreezer1", choices = c("", sampleDB::CheckTable(database = database, "location")$location_name))
-  updateSelectInput(session = session, inputId = "DeleteFreezer", choices = c("", sampleDB::CheckTable(database = database, "location")$location_name))
+  updateTextInput(session = session, inputId ="AddFreezerName", value = "", placeholder = "New Name")
+  updateTextInput(session = session, inputId = "RenameFreezerName2", value = "", placeholder = "New Name")
+  updateSelectInput(session = session, inputId = "RenameFreezerName1", choices = c("", sampleDB::CheckTable(database = database, "location")$location_name))
+  updateSelectInput(session = session, inputId = "DeleteFreezerName", choices = c("", sampleDB::CheckTable(database = database, "location")$location_name))
 }
 
 UpdateSpecimenTypeDropdowns <- function(database, session){
@@ -352,6 +356,24 @@ UpdateStudyDropdowns <- function(database, session){
   updateCheckboxInput(session = session, "RenameStudyIsHidden", value = FALSE)
 }
 
+ShowFreezers <- function(output, database){
+  output$TableFreezer <- DT::renderDataTable({
+    sampleDB::CheckTable(database = database, "location") %>%
+      dplyr::select(-c(created:id, level_III)) %>%
+      rename(`Freezer Name` = location_name,
+             `Type` = location_type,
+             `Level I` = level_I,
+             `Level II` = level_II)
+  })
+}
+
+ShowSpecimenTypes <- function(output, database){
+  output$TableSpecimenType <- DT::renderDataTable({
+    sampleDB::CheckTable(database = database, "specimen_type") %>%
+      dplyr::select(-c(`created`:id)) %>%
+      rename(`Specimen Type` = label)})
+}
+
 ShowStudies <- function(output, database){
   output$TableStudy <- DT::renderDataTable({
     sampleDB::CheckTable(database = database, "study") %>%
@@ -367,24 +389,6 @@ ShowStudies <- function(output, database){
   # output$TableStudy <- DT::renderDataTable({
   #   sampleDB::CheckTable(database = database, "study") %>%
   #     dplyr::select(-c(id, created, last_updated, hidden))}, selection = 'single')
-}
-
-ShowFreezers <- function(output, database){
-  output$TableFreezer <- DT::renderDataTable({
-    sampleDB::CheckTable(database = database, "location") %>%
-      dplyr::select(-c(created:id, level_III)) %>%
-      rename(`Freezer Name` = location_name,
-             `Type` = location_type,
-             `Level I` = level_I,
-             `Level II` = level_II)
-    })
-}
-
-ShowSpecimenTypes <- function(output, database){
-  output$TableSpecimenType <- DT::renderDataTable({
-    sampleDB::CheckTable(database = database, "specimen_type") %>%
-      dplyr::select(-c(`created`:id)) %>%
-      rename(`Specimen Type` = label)})
 }
 
 AddStudyRequirements <- function(input){

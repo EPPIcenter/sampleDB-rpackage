@@ -234,8 +234,11 @@ UpdateReferences <- function(reference, operation, identifier = NULL, update = N
                             table_name = "study",
                             info_list = eval.list,
                             id = id.ref_study)
-      
-      tmp_table2.study <- filter(sampleDB::CheckTable(database = database, "study"), short_code == update$study_short_code)
+      if(update$study_short_code == "" | is.na(update$study_short_code)){
+        tmp_table2.study <- filter(sampleDB::CheckTable(database = database, "study"), short_code == identifier$study_short_code)
+      }else{
+        tmp_table2.study <- filter(sampleDB::CheckTable(database = database, "study"), short_code == update$study_short_code) 
+      }
       
       message(
         paste0("Modified Study:\n",
