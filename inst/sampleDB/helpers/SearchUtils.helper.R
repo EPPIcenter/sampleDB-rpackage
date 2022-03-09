@@ -150,7 +150,7 @@ SearchWetlabSamples <- function(session, input, database, output, inputs, output
     )
     
     if(DelArch == TRUE){
-      updateTextInput(session = session, "RenameStudyLeadPerson", value = storage_container_ids) 
+      updateTextInput(session = session, "delarch_toggle1", value = storage_container_ids) 
     }
   })
   
@@ -158,7 +158,7 @@ SearchWetlabSamples <- function(session, input, database, output, inputs, output
     observe({
       selected <- input$"DelArchSearchResultsTable_rows_selected"
       if(length(selected) > 0){
-        sc_ids <- strsplit(input$"RenameStudyLeadPerson", ",")[[1]]
+        sc_ids <- strsplit(input$"delarch_toggle1", ",")[[1]]
         output$ShowSelectedSamples <- renderPrint({paste(length(sc_ids[selected]),"samples selected")})
         updateTextInput(session = session, "RenameStudyTitle", value = sc_ids[selected])
       }
@@ -191,7 +191,7 @@ SearchWetlabSamples <- function(session, input, database, output, inputs, output
         }))
       
       # # RESET UI VALUE
-      # updateTextInput(session = session, "RenameStudyLeadPerson", value = "")
+      # updateTextInput(session = session, "delarch_toggle1", value = "")
       })
   }
   

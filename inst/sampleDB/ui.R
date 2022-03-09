@@ -351,6 +351,7 @@ navbarPage("EPPIcenter SampleDB",
                       sidebarLayout(
                         sidebarPanel(
                           width = 2,
+                          hidden(textInput("delarch_toggle1", label = NULL)),
                           HTML("<h4>Delete and Archive Samples</h4>"),
                           hr(),
                           # fileInput("SearchByLabel", label = HTML("Barcode <h6>Single column named \"barcode\"</h6>")), actionButton("ClearSearchBarcodes", label = "Clear Barcodes"), textOutput("WarnSubjectBarcodeFileColnames"), textOutput("WarnSubjectBarcodeFileColnames2"),
