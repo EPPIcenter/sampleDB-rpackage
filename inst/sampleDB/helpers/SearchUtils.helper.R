@@ -82,6 +82,7 @@ SearchWetlabSamples <- function(session, input, database, output, inputs, output
   })
   
   # ACTIVELY USE UI FILTERS TO RENDER A TABLE WITH SEARCH RESULTS
+  list.search_results <- NULL
   observe({
     
     if(!is.na(input[[inputs$dateRange]][1]) & !is.na(input[[inputs$dateRange]][2])){
@@ -107,26 +108,30 @@ SearchWetlabSamples <- function(session, input, database, output, inputs, output
     search.specimen_type <- input[[inputs$SearchBySpecimenType]]
     search.study <- input[[inputs$SearchByStudy]]
     
-    # RETRIEVE SEARCH RESULTS
-    if(input[[inputs$SubjectUIDSearchType]] == "individual"){
-      search.study_subject <- input[[inputs$SearchBySubjectUID]]
-      list.search_results <- sampleDB::SearchSamples(sample_type = search.type, sample_label = search.label, container_name = search.container, study_subject = search.study_subject,
-                                                     specimen_type = search.specimen_type, study = search.study, collection_dates = search.date, archived = search.exhausted,
-                                                     freezer = search.location, study_subject.file = F, return_sample_ids = T)
+    tryCatch(
+      # RETRIEVE SEARCH RESULTS
+      if(input[[inputs$SubjectUIDSearchType]] == "individual"){
+        search.study_subject <- input[[inputs$SearchBySubjectUID]]
+        list.search_results <- sampleDB::SearchSamples(sample_type = search.type, sample_label = search.label, container_name = search.container, study_subject = search.study_subject,
+                                                       specimen_type = search.specimen_type, study = search.study, collection_dates = search.date, archived = search.exhausted,
+                                                       freezer = search.location, study_subject.file = F, return_sample_ids = T) %>% suppressWarnings()
+      }else{
+        search.study_subject <- input[[inputs$SearchBySubjectUIDFile]]$datapath
+        list.search_results <- sampleDB::SearchSamples(sample_type = search.type, sample_label = search.label, container_name = search.container, study_subject = search.study_subject,
+                                                       specimen_type = search.specimen_type, study = search.study, collection_dates = search.date, archived = search.exhausted,
+                                                       freezer = search.location, study_subject.file = T, return_sample_ids = T) %>% suppressWarnings()
+        
+      },
+    error=function(e){}
+    )
+    if(!is.null(list.search_results)){
       search_results <- list.search_results$results
-      storage_container_ids <- list.search_results$id.wetlab_samples
-    }else{
-      search.study_subject <- input[[inputs$SearchBySubjectUIDFile]]$datapath
-      list.search_results <- sampleDB::SearchSamples(sample_type = search.type, sample_label = search.label, container_name = search.container, study_subject = search.study_subject,
-                                                     specimen_type = search.specimen_type, study = search.study, collection_dates = search.date, archived = search.exhausted,
-                                                     freezer = search.location, study_subject.file = T, return_sample_ids = T)
-      search_results <- list.search_results$results
-      storage_container_ids <- list.search_results$id.wetlab_samples
+      storage_container_ids <- list.search_results$id.wetlab_samples 
     }
     
     # PRINT SEARCH RESULTS
     output[[outputs$SearchResultsTable]] <- DT::renderDataTable({
-      if(!is.null(search_results)){
+      if(!is.null(list.search_results)){
         search_results
       }else{
         tibble(a = c(1)) %>% filter(a == 2)
