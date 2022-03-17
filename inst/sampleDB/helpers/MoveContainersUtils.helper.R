@@ -1,19 +1,22 @@
 
 MoveWetlabContainers <- function(session, input, database, output){
+  
+  # auto filter container names
   observe({
-    if(input$MoveContainerSampleType == "Micronix"){
+    if(input$MoveContainerSampleType == "micronix"){
       updateSelectizeInput(session, "MoveContainerName", label = NULL, choices = c(sampleDB::CheckTable("matrix_plate")$plate_name))
     }
-    else if(input$MoveContainerSampleType == "Cryovile"){
+    else if(input$MoveContainerSampleType == "cryovile"){
       updateSelectizeInput(session, "MoveContainerName", label = NULL, choices = c(sampleDB::CheckTable("box")$box_name))
     }
-    else if(input$MoveContainerSampleType == "RDT"){
+    else if(input$MoveContainerSampleType == "rdt"){
       updateSelectizeInput(session, "MoveContainerName", label = NULL, choices = c(sampleDB::CheckTable("bag")$bag_name))
     }else{
       updateSelectizeInput(session, "MoveContainerName", label = NULL, choices = c(sampleDB::CheckTable("bag")$bag_name))
     }
   })
   
+  # auto filter freezers
   observe({
     if(input$MoveContainerLocation != ""){
       tmp_table.location <- filter(sampleDB::CheckTable(database = database, "location"), location_name == input$MoveContainerLocation)
@@ -25,6 +28,7 @@ MoveWetlabContainers <- function(session, input, database, output){
     }
   })
   
+  # move container
   observeEvent(
     input$MoveContainerAction,({
       container.type <- input$MoveContainerSampleType
@@ -32,10 +36,15 @@ MoveWetlabContainers <- function(session, input, database, output){
       freezer.name <- input$MoveContainerLocation
       freezer.levelI <- input$MoveContainerLocationLevelI
       freezer.levelII <- input$MoveContainerLocationLevelII
-      sampleDB::MoveContainers(type = container.type,
+      sampleDB::MoveContainers(sample_type = container.type,
                                container_name = container.name,
-                               location = list(freezer.name,
-                                               freezer.levelI,
-                                               freezer.levelII))
+                               freezer = list(freezer.name = freezer.name,
+                                              freezer.levelI = freezer.levelI,
+                                              freezer.levelII = freezer.levelII))
+      output$MoveContainerMessage <- renderText("Successfully Moved Container")
+      reset("MoveContainerName")
+      reset("MoveContainerLocation")
+      reset("MoveContainerMessage")
     }))
+  
 }

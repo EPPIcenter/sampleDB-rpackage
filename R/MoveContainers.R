@@ -10,10 +10,10 @@ MoveContainers <- function(sample_type, container_name, freezer){
   
   database <- Sys.getenv("SDB_PATH")
   stopifnot("Sample Type is not valid" = sample_type %in% c("micronix", "cryovile", "rdt", "paper"))
-  stopifnot("Location does not exist" = nrow(filter(sampleDB::CheckTable(database = database, table = "location"), 
-                                                    location_name == location$name.freezer & level_I == location$level_I & level_II == location$level_II) == 0))
-            
-  eval.location_id <- filter(sampleDB::CheckTable(database = database, table = "location"), location_name == location$name.freezer & level_I == location$level_I & level_II == location$level_II)$id
+  eval.location <- filter(sampleDB::CheckTable(database = database, table = "location"), 
+                          location_name == freezer$freezer.name & level_I == freezer$freezer.levelI & level_II == freezer$freezer.levelII)
+  stopifnot("Location does not exist" = nrow(eval.location) > 0)
+  eval.location_id <- eval.location$id
   
   if(sample_type == "micronix"){
     container_id <- filter(sampleDB::CheckTable("matrix_plate"), plate_name == container_name)$id
