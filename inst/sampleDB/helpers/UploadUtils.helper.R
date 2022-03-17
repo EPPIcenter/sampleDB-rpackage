@@ -48,17 +48,20 @@ MatrixUpload <- function(session, output, input, database, ref.clear_action){
       
       # B. CHECK REQUIREMENTS
       UploadRequirements(input = input,
-                         database = database, 
+                         database = database,
                          ui.input = list(UploadPlateID = "UploadMicronixPlateID",
-                                         UploadDataSet = "UploadMicronixDataSet"))
+                                         UploadDataSet = "UploadMicronixDataSet",
+                                         UploadFreezerName = "UploadMicronixLocation",
+                                         UploadFreezerNameLevelI = "UploadLocationMicronixLevelI",
+                                         UploadFreezerNameLevelII = "UploadLocationMicronixLevelII"))
       
       # C. UPLOAD SAMPLES
-      sampleDB::UploadSamples(type = "micronix",
-                              csv.upload = input$UploadDataSet$datapath,
-                              container = input$UploadPlateID,
-                              list.location = list(location_name = input$UploadLocation, 
-                                                   level_I = input$UploadLocationMatrixLevelI, 
-                                                   level_II = input$UploadLocationMatrixLevelII))
+      sampleDB::UploadSamples(sample_type = "micronix",
+                              upload_file = input$"UploadMicronixDataSet"$datapath,
+                              container_name = input$"UploadMicronixPlateID",
+                              freezer = list(location_name = input$"UploadMicronixLocation", 
+                                                   level_I = input$"UploadLocationMicronixLevelI", 
+                                                   level_II = input$"UploadLocationMicronixLevelII"))
       
       # #UPDATE THE SEARCH DROPDOWNS
       warning("search dropdowns are not updated")
@@ -146,13 +149,16 @@ CryoUpload <- function(session, output, input, database, ref.clear_action){
       UploadRequirements(input = input,
                          database = database, 
                          ui.input = list(UploadPlateID = "UploadCryoPlateID",
-                                         UploadDataSet = "UploadCryoDataSet"))
+                                         UploadDataSet = "UploadCryoDataSet",
+                                         UploadFreezerName = "UploadLocationCryoFreezerName",
+                                         UploadFreezerNameLevelI = "UploadLocationCryoLevelI",
+                                         UploadFreezerNameLevelII = "UploadLocationCryoLevelII"))
       
       # UPLOAD SAMPLES
-      sampleDB::UploadSamples(type = "cryo",
-                              csv.upload = input$UploadCryoSamples$datapath,
-                              container = input$UploadBoxID,
-                              list.location = list(location_name = input$UploadLocationCryoFreezerName, 
+      sampleDB::UploadSamples(sample_type = "cryo",
+                              upload_file = input$UploadCryoSamples$datapath,
+                              container_name = input$UploadBoxID,
+                              freezer = list(location_name = input$UploadLocationCryoFreezerName, 
                                                    level_I = input$UploadLocationCryoLevelI, 
                                                    level_II = input$UploadLocationCryoLevelII))
       # 
@@ -242,13 +248,16 @@ RDTUpload <- function(session, output, input, database, ref.clear_action){
       UploadRequirements(input = input,
                          database = database,
                          ui.input = list(UploadPlateID = "UploadRDTPlateID",
-                                         UploadDataSet = "UploadRDTDataSet"))
+                                         UploadDataSet = "UploadRDTDataSet",
+                                         UploadFreezerName = "UploadLocationRDTFreezerName",
+                                         UploadFreezerNameLevelI = "UploadLocationRDTLevelI",
+                                         UploadFreezerNameLevelII = "UploadLocationRDTLevelII"))
       
       # UPLOAD SAMPLES
-      sampleDB::UploadSamples(type = "rdt",
-                              csv.upload = input$UploadRDTSamples$datapath,
-                              container = input$UploadBagID,
-                              list.location = list(location_name = input$UploadLocationRDTFreezerName,
+      sampleDB::UploadSamples(sample_type = "rdt",
+                              upload_file = input$UploadRDTSamples$datapath,
+                              container_name = input$UploadBagID,
+                              freezer = list(location_name = input$UploadLocationRDTFreezerName,
                                                    level_I = input$UploadLocationRDTLevelI,
                                                    level_II = input$UploadLocationRDTLevelII))
 
@@ -332,13 +341,16 @@ PaperUpload <- function(session, output, input, database, ref.clear_action){
       UploadRequirements(input = input,
                          database = database, 
                          ui.input = list(UploadPlateID = "UploadPaperPlateID",
-                                         UploadDataSet = "UploadPaperDataSet"))
+                                         UploadDataSet = "UploadPaperDataSet",
+                                         UploadFreezerName = "UploadLocationPaperFreezerName",
+                                         UploadFreezerNameLevelI = "UploadLocationPaperLevelI",
+                                         UploadFreezerNameLevelII = "UploadLocationPaperLevelII"))
       
       # UPLOAD SAMPLES
-      sampleDB::UploadSamples(type = "cryo",
-                              csv.upload = input$UploadPaperSamples$datapath,
-                              container = input$UploadBagID2,
-                              list.location = list(location_name = input$UploadLocationPaperFreezerName, 
+      sampleDB::UploadSamples(sample_type = "cryo",
+                              upload_file = input$UploadPaperSamples$datapath,
+                              container_name = input$UploadBagID2,
+                              freezer = list(location_name = input$UploadLocationPaperFreezerName, 
                                                    level_I = input$UploadLocationPaperLevelI, 
                                                    level_II = input$UploadLocationPaperLevelII))
       # 
@@ -422,7 +434,13 @@ UploadRequirements <- function(input, database, ui.input){
     input[[ui.input$UploadPlateID]],
     
     # - USER MUST UPLOAD LOCATION
-    input[[ui.input$UploadLocation]],
+    input[[ui.input$UploadFreezerName]],
+    
+    # - USER MUST UPLOAD LOCATION
+    input[[ui.input$UploadFreezerName]],
+    
+    # - USER MUST UPLOAD LOCATION
+    input[[ui.input$UploadFreezerNameLevelII]],
     
     # # - DATASET BARCODES CANNOT BE IN DATABASE
     # !(upload_barcodes %in% c(sampleDB::CheckTable(database = database, "matrix_tube")$barcode)),
@@ -521,25 +539,25 @@ UploadExamples <- function(input, database, output, ui.output, type){
     message("CHECK: UPLOAD CSV COLUMN NAMES REQUIREMENTS")    
     upload_names <- read.csv(input[[ui.input$UploadDataSet]]$datapath, check.names=FALSE) %>% tidyr::drop_na() %>% names()
     
-    if("Tube ID" %in% names(input[[ui.input$UploadDataSet]]$datapath)){
+    if("Tube ID" %in% upload_names){
       names.traxer.nodate <- c(names.base, "Position", "Tube ID",	"Status",	"Error Count",	"Rack ID",	"Date")
       names.traxer.date <- c(names.base, "Position", "Tube ID",	"Status",	"Error Count",	"Rack ID",	"Date", "collection_date")
-      out <- validate(need(setequal(names.traxer.nodate, upload_names) || setequal(names.traxer.date, upload_names)), 
-                           "Error: Malformed Colnames")
+      out <- validate(need(setequal(names.traxer.nodate, upload_names) || setequal(names.traxer.date, upload_names), 
+                           "Error: Malformed Colnames"))
     }
-    else if("TubeCode" %in% names(input[[ui.input$UploadDataSet]]$datapath)){
+    else if("TubeCode" %in% upload_names){
       names.visionmate.nodate <- c(names.base, "LocationRow", "LocationColumn", "TubeCode")
       names.visionmate.date <- c(names.base, "LocationRow", "LocationColumn", "TubeCode", "collection_date")
-      out <- validate(need(setequal(names.visionmate.nodate, upload_names) || setequal(names.visionmate.date, upload_names)),
-                           "Error: Malformed Colnames")
+      out <- validate(need(setequal(names.visionmate.nodate, upload_names) || setequal(names.visionmate.date, upload_names),
+                           "Error: Malformed Colnames"))
     }
     else if(type == "rdt" || type == "paper"){
-      out <- validate(need(setequal(c(names.base, "label"), upload_names) || setequal(c(names.base, "label", "collection_date"), upload_names)),
-                      "Error: Malformed Colnames")
+      out <- validate(need(setequal(c(names.base, "label"), upload_names) || setequal(c(names.base, "label", "collection_date"), upload_names),
+                      "Error: Malformed Colnames"))
     }
     else{
-      out <- validate(need(setequal(c(names.base, "row", "column", "label"), upload_names) || setequal(c(names.base, "row", "column", "label", "collection_date"), upload_names)),
-                      "Error: Malformed Colnames")
+      out <- validate(need(setequal(c(names.base, "row", "column", "label"), upload_names) || setequal(c(names.base, "row", "column", "label", "collection_date"), upload_names),
+                      "Error: Malformed Colnames"))
     }
   }else{
     out <- NULL
