@@ -16,15 +16,22 @@ UpdateLabFreezers <- function(session, input, output, database){
       
       #SET REQUIREMENTS
       req(input$AddFreezerName,
-          !(new.freezer_name %in% c(sampleDB::CheckTable(database = database, "location")$location_name)))
+          input$AddFreezerType,
+          input$AddFreezerLevel_I,
+          input$AddFreezerLevel_II)
       
       #ADD FREEZER NAME
-      sampleDB::UpdateReferences(reference = "freezer",
-                                 operation = "add",
-                                 update = list(freezer_name = new.freezer_name,
-                                               freezer_type = new.freezer_type,
-                                               freezer_levelI = new.freezer_levelI,
-                                               freezer_levelII = new.freezer_levelII))
+      tryCatch(
+        sampleDB::UpdateReferences(reference = "freezer",
+                                   operation = "add",
+                                   update = list(freezer_name = new.freezer_name,
+                                                 freezer_type = new.freezer_type,
+                                                 freezer_levelI = new.freezer_levelI,
+                                                 freezer_levelII = new.freezer_levelII)),
+        error=function(e){
+          print(e)
+        }
+      )
       
       #PRINT EXIT MESSAGE
       output$FreezerReturnMessage <- renderText({paste("Added Freezer:", 
