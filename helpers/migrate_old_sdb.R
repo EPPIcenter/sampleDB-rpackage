@@ -8,11 +8,13 @@ args <- commandArgs(trailingOnly = TRUE)
 # * cp v2 template to /database scratch space
 # * run this script which saves v1 tables in v2 format to the scratch /tbl dir
 # * use sqlite on the command line to import each table from /tbl to the template in the scratch space
+# - .mode csv
+# - .import tbl.csv  tbl
 # * move this populated database to /database/sampleDB/v0.0.2/sampledb_database.sqlite
 
 # ------- read in data
 # old_sdb <- args[1]
-old_sdb <- "/databases/sampledb/scratch/07-Mar-2022.v0.01.sqlite"
+old_sdb <- "/databases/sampledb/scratch/16-Mar-2022.v0.0.1.sqlite"
 
 # ------ reformat references
 # location
@@ -52,10 +54,12 @@ sampleDB::CheckTable(database = old_sdb, "storage_container") %>%
   select(-c(comments)) %>% 
   write.table(file = "/databases/sampledb/scratch/tbls/storage_container.csv", ., sep = ",", row.names = FALSE, col.names = FALSE)
 
-# specimens
+# specimens 
+#UPDATE specimen SET collection_date = null WHERE collection_date = "NA"
 sampleDB::CheckTable(database = old_sdb, "specimen") %>%
   mutate(last_updated = last_updated %>% gsub("\\..*","",.),
-         created = created %>% gsub("\\..*","",.)) %>%
+         created = created %>% gsub("\\..*","",.),
+         collection_date = collection_date %>% lubridate::as_date() %>% as.numeric()) %>%
   relocate(id, .before = study_subject_id) %>% 
   write.table(file = "/databases/sampledb/scratch/tbls/specimen.csv", ., sep = ",", row.names = FALSE, col.names = FALSE)
 
