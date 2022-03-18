@@ -44,7 +44,8 @@ function(input, output, session) {
     
     # -------- Archive and Delete Samples --------
     
-    SearchWetlabSamples(session, input, database, output, DelArch = TRUE)
+    # does not work at the moment
+    # SearchWetlabSamples(session, input, database, output, DelArch = TRUE)
 
     # -------- Delete Empty Container --------
     

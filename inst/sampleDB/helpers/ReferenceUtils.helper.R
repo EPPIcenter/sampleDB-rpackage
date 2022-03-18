@@ -334,6 +334,9 @@ UpdateLabStudies <- function(session, input, output, database){
 
 UpdateFreezerDropdowns <- function(database, session){
   updateTextInput(session = session, inputId ="AddFreezerName", value = "", placeholder = "New Name")
+  updateTextInput(session = session, inputId ="AddFreezerType", value = "", placeholder = "New Name")
+  updateTextInput(session = session, inputId ="AddFreezerLevel_I", value = "", placeholder = "New Name")
+  updateTextInput(session = session, inputId ="AddFreezerLevel_II", value = "", placeholder = "New Name")
   updateTextInput(session = session, inputId = "RenameFreezerName2", value = "", placeholder = "New Name")
   updateSelectInput(session = session, inputId = "RenameFreezerName1", choices = c("", sampleDB::CheckTable(database = database, "location")$location_name))
   updateSelectInput(session = session, inputId = "DeleteFreezerName", choices = c("", sampleDB::CheckTable(database = database, "location")$location_name))

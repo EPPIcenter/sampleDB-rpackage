@@ -64,7 +64,7 @@ MatrixUpload <- function(session, output, input, database, ref.clear_action){
                                                    level_II = input$"UploadLocationMicronixLevelII"))
       
       # #UPDATE THE SEARCH DROPDOWNS
-      warning("search dropdowns are not updated")
+      # warning("search dropdowns are not updated")
       # updateSelectizeInput(session = session,
       #                      "SearchByPlateID",
       #                      choices = c("", sampleDB::CheckTable(database = database, "matrix_plate")$plate_name),
@@ -163,7 +163,7 @@ CryoUpload <- function(session, output, input, database, ref.clear_action){
                                                    level_II = input$UploadLocationCryoLevelII))
       # 
       # #UPDATE THE SEARCH DROPDOWNS
-      warning("search dropdowns are not updated")
+      # warning("search dropdowns are not updated")
       # updateSelectizeInput(session = session,
       #                      "SearchByPlateID",
       #                      choices = c("", sampleDB::CheckTable(database = database, "matrix_plate")$plate_name),
@@ -262,7 +262,7 @@ RDTUpload <- function(session, output, input, database, ref.clear_action){
                                                    level_II = input$UploadLocationRDTLevelII))
 
       #UPDATE THE SEARCH DROPDOWNS
-      warning("search dropdowns are not updated")
+      # warning("search dropdowns are not updated")
       # updateSelectizeInput(session = session,
       #                      "SearchByPlateID",
       #                      choices = c("", sampleDB::CheckTable(database = database, "matrix_plate")$plate_name),
@@ -355,7 +355,7 @@ PaperUpload <- function(session, output, input, database, ref.clear_action){
                                                    level_II = input$UploadLocationPaperLevelII))
       # 
       # #UPDATE THE SEARCH DROPDOWNS
-      warning("search dropdowns are not updated")
+      # warning("search dropdowns are not updated")
       # updateSelectizeInput(session = session,
       #                      "SearchByPlateID",
       #                      choices = c("", sampleDB::CheckTable(database = database, "matrix_plate")$plate_name),

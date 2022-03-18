@@ -34,10 +34,10 @@ MoveSamples <- function(sample_type, move_files){
   
   database <- Sys.getenv("SDB_PATH")
   
-  # READ IN FILES
+  # READ IN THE MOVE FILES (EACH CONTAINER WILL HAVE A MOVE FILE)
   list.move <- modify(move_files, function(x){x <- read_csv(x, col_types = cols()) %>% drop_na()})
   
-  # RUN CHECKS
+  # CHECK IF MOVE WOULD CREATE ORPHANED SAMPLES
   outs.oprhan_check <- .CheckForOrphans(list.move, database, sample_type = sample_type)
   
   # GET CHECK DATA
@@ -56,7 +56,7 @@ MoveSamples <- function(sample_type, move_files){
     # CLEAR SPACE IN THE EXISTING PLATE BY PUTTING ALL TUBES IN THE EXISTING PLATE INTO DUMMY PLATE -100
     .ClearSpaceInContainers(sample_type = sample_type, list.move = list.move, database = database)
     
-    # MODIFY THE SAMPLES SO THEY ARE IN NEW CONTAINERS
+    # MODIFY THE SAMPLES SO THEY ARE PLACED INTO THEIR CORRECT CONTAINER
     message.successful <- .MoveSamples(sample_type = sample_type, list.move = list.move, database = database)
     
     return(message(message.successful))
@@ -67,13 +67,13 @@ MoveSamples <- function(sample_type, move_files){
   
   message("Checking for oprhaned samples...")
   
-  # GET COPY OF THE CONTAINERS INVOLVED IN THE MOVE - SAVE AS A LIST WITH KEYS BEING FILENAMES
+  # CREATE A LIST WHERE KEYS ARE THE CONTAINER NAMES AND VALUES ARE ID + BARCODES + CONTAINER_ID
   test.list <- .CopyContainersForTests(list.move = list.move, sample_type = sample_type, database = database)
   
-  # - CHANGE DUMMY LIST PLATES
+  # CLEAR ALL CONTAINER IDS
   dummy.tbl <- .ClearSpaceForTests(test.list = test.list, sample_type = sample_type)
   
-  # USE CSVS TO ASSIGN PLATES TO TUBES
+  # USE CSVS TO ASSIGN CONTAINER IDS TO SAMPLES
   for(csv.name in names(list.move)){
     
     # - GET MOVECSV
@@ -96,7 +96,7 @@ MoveSamples <- function(sample_type, move_files){
         #GET ROW BARCODE IS IN
         m <- which(dummy.tbl$barcode == eval.barcode)
         
-        # PUT THAT BARCODE/TUBE IN A NEW PLATE
+        # PUT THAT BARCODE/TUBE INTO THE CORRECT PLATE
         dummy.tbl[m, "plate_id"] <- filter(sampleDB::CheckTable(database = database, "matrix_plate"), plate_name == csv.name)$id 
         
         # PUT THAT BARCODE/TUBE IN A WELL
@@ -107,7 +107,7 @@ MoveSamples <- function(sample_type, move_files){
         #GET ROW BARCODE IS IN
         m <- which(dummy.tbl$label == csv[i,]$"label")
         
-        # PUT THAT BARCODE/TUBE IN A NEW PLATE
+        # PUT THAT BARCODE/TUBE INTO THE CORRECT BOX
         dummy.tbl[m, "box_id"] <- filter(sampleDB::CheckTable(database = database, "box"), box_name == csv.name)$id 
         
         # PUT THAT BARCODE/TUBE IN A WELL
@@ -118,7 +118,7 @@ MoveSamples <- function(sample_type, move_files){
         #GET ROW LABEL IS IN
         m <- which(dummy.tbl$label == csv[i,]$"label")
         
-        # PUT THAT LABEL IN A NEW PLATE
+        # PUT THAT LABEL INTO THE CORRECT BAG
         dummy.tbl[m, "bag_id"] <- filter(sampleDB::CheckTable(database = database, "bag"), bag_name == csv.name)$id 
       }
       else{
@@ -126,7 +126,7 @@ MoveSamples <- function(sample_type, move_files){
         #GET ROW LABEL IS IN
         m <- which(dummy.tbl$label == csv[i,]$"label")
         
-        # PUT THAT LABEL IN A NEW PLATE
+        # PUT THAT LABEL INTO THE CORRECT BAG
         dummy.tbl[m, "bag_id"] <- filter(sampleDB::CheckTable(database = database, "bag"), bag_name == csv.name)$id 
       }
     }
