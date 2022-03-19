@@ -2,8 +2,11 @@
 #' @import RSQLite
 #' @export
 
-ModifyTable <- function(database, table_name, info_list, id){
-  conn <- RSQLite::dbConnect(RSQLite::SQLite(), database)
+ModifyTable <- function(database, table_name, info_list, id, conn = NULL){
+  if(is.null(conn)){
+    #OPEN THE DATABASE CONNECTION
+    conn <-  RSQLite::dbConnect(RSQLite::SQLite(), database)
+  }
 
   #PREVENT EMPTY ADDITIONS TO DATABASE -- REMOVE NAs FROM THIS EVALUATION
   for(i in discard(info_list, is.na)){
@@ -30,10 +33,10 @@ ModifyTable <- function(database, table_name, info_list, id){
     }
   )
 
-  #close connection
-  tryCatch(
-    RSQLite::dbDisconnect(conn),
-    warning=function(w){
-      
-    })
+  if(is.null(conn)){
+    #close connection
+    tryCatch(
+      RSQLite::dbDisconnect(conn),
+      warning=function(w){})
+  }
 }

@@ -4,11 +4,6 @@ MoveWetlabSamples <- function(session, input, database, output){
   # Run Checks
   .MoveChecks(input,database, output)
   
-  # PLAN:
-  # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
-  # Move function should take, as the `barcode_file` arg, a list of paths/to/file/platename.csv  #
-  # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
-  
   observeEvent(
     input$MoveAction,
     ({
@@ -38,11 +33,14 @@ MoveWetlabSamples <- function(session, input, database, output){
         eval.file.barcode[[plate.name]] <- input$MoveDataSet[[i, 'datapath']]
       }
       
+      print(eval.file.barcode)
+      
       # MOVE SAMPLES -- FUN INPUT SHOULD PROBABLY BE A LIST OF FILES
-      message <- sampleDB::MoveTubes(file.barcode = eval.file.barcode)
+      sampleDB::MoveSamples(sample_type = input$MoveSampleType,
+                            move_files = eval.file.barcode)
       
       # PRINT UPLOAD MSG
-      output$MoveReturnMessage2 <- renderText({message})
+      output$MoveReturnMessage2 <- renderText({"Successfully Moved Samples"})
       
       # RESET UI VALUE
       updateTextInput(session = session, "RenameStudyLeadPerson", value = "")

@@ -30,9 +30,10 @@
 #want to be able to move samples and to move containers
 MoveSamples <- function(sample_type, move_files){
   
-  stopifnot("Sample type is not valid" = operation %in% c("micronix", "cryovial", "rdt", "paper"))
+  stopifnot("Sample type is not valid" = sample_type %in% c("micronix", "cryovial", "rdt", "paper"))
   
   database <- Sys.getenv("SDB_PATH")
+  conn <-  RSQLite::dbConnect(RSQLite::SQLite(), database)
   
   # READ IN THE MOVE FILES (EACH CONTAINER WILL HAVE A MOVE FILE)
   list.move <- modify(move_files, function(x){x <- read_csv(x, col_types = cols()) %>% drop_na()})
@@ -54,11 +55,15 @@ MoveSamples <- function(sample_type, move_files){
   }else{
 
     # CLEAR SPACE IN THE EXISTING PLATE BY PUTTING ALL TUBES IN THE EXISTING PLATE INTO DUMMY PLATE -100
-    .ClearSpaceInContainers(sample_type = sample_type, list.move = list.move, database = database)
+    .ClearSpaceInContainers(sample_type = sample_type, list.move = list.move, database = database, conn = conn)
     
     # MODIFY THE SAMPLES SO THEY ARE PLACED INTO THEIR CORRECT CONTAINER
-    message.successful <- .MoveSamples(sample_type = sample_type, list.move = list.move, database = database)
+    message.successful <- .MoveSamples(sample_type = sample_type, list.move = list.move, database = database, conn = conn)
     
+    #close connection
+    tryCatch(
+      RSQLite::dbDisconnect(conn),
+      warning=function(w){})
     return(message(message.successful))
   }
 }
@@ -81,7 +86,7 @@ MoveSamples <- function(sample_type, move_files){
     
     # - GET DATA FOR MOVE (BARCODE, WELL, POS)
     for (i in 1:nrow(csv)){
-      if(sample_type == "matrix"){
+      if(sample_type == "micronix"){
         
         if("TubeCode" %in% names(csv)){
           eval.barcode <- csv[i,]$"TubeCode"
@@ -102,7 +107,7 @@ MoveSamples <- function(sample_type, move_files){
         # PUT THAT BARCODE/TUBE IN A WELL
         dummy.tbl[m, "well_position"] <- paste0(eval.well, eval.pos)
       }
-      else if(sample_type == "cryo"){
+      else if(sample_type == "cryovial"){
         
         #GET ROW BARCODE IS IN
         m <- which(dummy.tbl$label == csv[i,]$"label")
@@ -143,15 +148,15 @@ MoveSamples <- function(sample_type, move_files){
 
 .CopyContainersForTests <- function(list.move, sample_type, database){
   
-  stopifnot("Type is not a valid option" = sample_type %in% c("matrix", "cryo", "rdt", "paper"))
+  stopifnot("Type is not a valid option" = sample_type %in% c("micronix", "cryovial", "rdt", "paper"))
   
-  if(sample_type == "matrix"){
+  if(sample_type == "micronix"){
     container_type <- "matrix_plate"
     sample_type <- "matrix_tube"
     colname.container_name <- "plate_name"
     colname.container_id <- "plate_id"
   }
-  else if(sample_type == "cryo"){
+  else if(sample_type == "cryovial"){
     container_type <- "box"
     sample_type <- "tube"
     colname.container_name <- "box_name"
@@ -172,7 +177,7 @@ MoveSamples <- function(sample_type, move_files){
   
   test.list <- list()
   for(container.name in names(list.move)){
-    tmp.container <- filter(sampleDB::CheckTable(database = database, container_type), !!as.name(colname.container_name) == container.name) 
+    tmp.container <- filter(sampleDB::CheckTable(database = database, container_type), !!as.name(colname.container_name) == container.name)
     stopifnot("CONTAINER IS NOT FOUND IN THE DATABASE" = nrow(tmp.container) != 0)
     eval.container_id <- tmp.container$id
     test.list[[as.character(eval.container_id)]] <- filter(sampleDB::CheckTable(database = database, sample_type), !!as.name(colname.container_id) == eval.container_id)
@@ -187,10 +192,10 @@ MoveSamples <- function(sample_type, move_files){
   for(i in 1:length(names(dummy.list))){
     eval.container_id <- names(dummy.list)[i]
     
-    if(sample_type == "matrix"){
+    if(sample_type == "micronix"){
       dummy.list[[eval.container_id]]$"plate_id" <- -(i) 
     }
-    if(sample_type == "cryo"){
+    if(sample_type == "cryovial"){
       dummy.list[[eval.container_id]]$"box_id" <- -(i) 
     }
     else{
@@ -206,14 +211,14 @@ MoveSamples <- function(sample_type, move_files){
 
 .GetOrphanedSamples <- function(sample_type, dummy.tbl){
   # GET LABEL STILL IN DUMMY PLATE
-  if(sample_type == "matrix"){
+  if(sample_type == "micronix"){
     label.missing <- filter(dummy.tbl, plate_id < 0)$barcode
     
     # GET PLATE ID/PLATE NAME WHICH CONTAINED BARCODE STILL IN DUMMY
     container_id_with_missing_label <- filter(CheckTable(database = database, "matrix_tube"), barcode %in% label.missing)$plate_id
     container_name_with_missing_label <- filter(CheckTable(database = database, "matrix_plate"), id %in% container_id_with_missing_label)$plate_name
   }
-  else if(sample_type == "cryo"){
+  else if(sample_type == "cryovial"){
     label.missing <- filter(dummy.tbl, box_id < 0)$label
     container_id_with_missing_label <- filter(CheckTable(database = database, "tube"), label %in% label.missing)$box_id
     container_name_with_missing_label <- filter(CheckTable(database = database, "box"), id %in% container_id_with_missing_label)$box_name
@@ -236,47 +241,47 @@ MoveSamples <- function(sample_type, move_files){
   return(message.fail)
 }
 
-.ClearSpaceInContainers <- function(sample_type, list.move, database){
-  stopifnot(sample_type %in% c("matrix", "cryo", "rdt", "paper"))
+.ClearSpaceInContainers <- function(sample_type, list.move, database, conn){
+  stopifnot(sample_type %in% c("micronix", "cryovial", "rdt", "paper"))
   
   for(i in 1:length(names(list.move))){
     container.name <- names(list.move)[i]
     
-    if(sample_type == "matrix"){
+    if(sample_type == "micronix"){
       container_type <- "matrix_plate"
-      sample_type <- "matrix_tube"
+      sample_type_tbl <- "matrix_tube"
     }
-    else if(sample_type == "cryo"){
+    else if(sample_type == "cryovial"){
       container_type <- "box"
-      sample_type <- "tube"
+      sample_type_tbl <- "tube"
     }
     else if(sample_type == "rdt"){
       container_type <- "bag"
-      sample_type <- "rdt"
+      sample_type_tbl <- "rdt"
     }
     else{
       container_type <- "bag"
-      sample_type <- "paper"
+      sample_type_tbl <- "paper"
     }
     
     # - GET THE PLATE ID FOR EXISTING PLATE
-    existing.container <- filter(CheckTable(database = database, container_type), plate_name == container.name)$id
+    existing.container <- filter(sampleDB::CheckTable(database = database, container_type), plate_name == container.name)$id
     
     # - CREATE REF DF FOR ALL TUBES IN THE EXISTING PLATE
-    sample_data.existing_container <- filter(CheckTable(database = database, sample_type), plate_id == existing.container)
+    sample_data.existing_container <- filter(sampleDB::CheckTable(database = database, sample_type_tbl), plate_id == existing.container)
     
     # - PUT SAMPLES INTO A DUMMY PLATE (USING NEW DATABASE)
     for(id in sample_data.existing_container$id){
-      
       ModifyTable(database = database,
-                  sample_type,
+                  sample_type_tbl,
                   info_list = list(plate_id = -(i)),
-                  id = id)
+                  id = id,
+                  conn = conn)
     }
   }
 }
 
-.MoveSamples <- function(sample_type, list.move, database){
+.MoveSamples <- function(sample_type, list.move, database, conn){
   
   container_names <- c()
   number_samples <- c()
@@ -290,7 +295,7 @@ MoveSamples <- function(sample_type, move_files){
     
     # - GET DATA FOR MOVE (BARCODE, WELL, POS)
     for (i in 1:nrow(csv)){
-      if(sample_type == "matrix"){
+      if(sample_type == "micronix"){
         
         if("TubeCode" %in% names(csv)){
           eval.barcode <- csv[i,]$"TubeCode"
@@ -312,9 +317,10 @@ MoveSamples <- function(sample_type, move_files){
                     "matrix_tube",
                     info_list = list(plate_id = eval.container_id,
                                      well_position = paste0(eval.well, eval.pos)),
-                    id = id)
+                    id = id,
+                    conn = conn)
       }
-      else if(sample_type == "cryo"){
+      else if(sample_type == "cryovial"){
         # - GET LABEL_ID
         id <- filter(sampleDB::CheckTable(database = database, "tube"), label == csv[i,]$"label")$id
         # - GET CONTAINER_ID
@@ -325,7 +331,8 @@ MoveSamples <- function(sample_type, move_files){
                     "tube",
                     info_list = list(box_id = eval.container_id,
                                      box_position = paste0(csv[i,]$"row", csv[i,]$"column")),
-                    id = id)
+                    id = id,
+                    conn = conn)
       }
       else if(sample_type == "rdt"){
         # - GET LABEL_ID
@@ -338,7 +345,8 @@ MoveSamples <- function(sample_type, move_files){
         ModifyTable(database = database,
                     "rdt",
                     info_list = list(bag_id = eval.container_id),
-                    id = id)
+                    id = id,
+                    conn = conn)
       }
       else{
         # - GET LABEL_ID
@@ -351,14 +359,15 @@ MoveSamples <- function(sample_type, move_files){
         ModifyTable(database = database,
                     "paper",
                     info_list = list(bag_id = eval.container_id),
-                    id = id)
+                    id = id,
+                    conn = conn)
       }
     }
   }
   #NOTE: number of samples from each container
   message <- paste0("Sucessfully Moved Samples:\n",
-                    "\tType:", sample_type, "\n",
+                    "\tType: ", sample_type, "\n",
                     "\tContainer Name: Number of Samples\n",
-                    "\t", container_name, ":", number_samples, "\n")
+                    "\t", container_names, ":", number_samples, "\n")
   return(message)
 }
