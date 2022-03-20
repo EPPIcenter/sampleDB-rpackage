@@ -17,8 +17,8 @@ for(i in 1:5){
 
 sampleDB::UpdateReferences(reference = "freezer",
                            operation = "add",
-                           update = list(freezer_name = "countess",
-                                         freezer_type = "minus_twenty",
+                           update = list(freezer_name = "TBD",
+                                         freezer_type = "minus20",
                                          freezer_levelI = "i",
                                          freezer_levelII = "j"))
 

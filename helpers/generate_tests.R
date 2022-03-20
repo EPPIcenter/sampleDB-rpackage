@@ -12,21 +12,21 @@ tbl.matrix_1 <- tibble(LocationRow = rep("A", 10),
                        TubeCode = paste("XXXX", 0:9),
                        collection_date = paste0("2022-11-", 1:10))
 write.csv(cbind(tbl.matrix_1, tbl.base), paste0("~/lib/packages/sampleDB-rpackage/tests/matrix/tbl.matrix_1.csv"), row.names=FALSE)
-sampleDB::UploadSamples(sample_type = "micronix", upload_file = "~/lib/packages/sampleDB-rpackage/tests/matrix/tbl.matrix_1.csv", 
-                        container_name = "plate_1",
-                        freezer = list(location_name = "Freezer A",
-                                             level_I = "A_dummy.level_I",
-                                             level_II = "A_dummy.level_II"))
+# sampleDB::UploadSamples(sample_type = "micronix", upload_file = "~/lib/packages/sampleDB-rpackage/tests/matrix/tbl.matrix_1.csv", 
+#                         container_name = "plate_1",
+#                         freezer = list(location_name = "Freezer A",
+#                                              level_I = "A_dummy.level_I",
+#                                              level_II = "A_dummy.level_II"))
 
 tbl.matrix_2 <- tibble(LocationRow = rep("A", 10), 
                        LocationColumn = c(0:9),
                        TubeCode = paste("XXXX", 10:19),
                        collection_date = paste0("2022-11-", 11:20))
 write.csv(cbind(tbl.matrix_2, tbl.base), paste0("~/lib/packages/sampleDB-rpackage/tests/matrix/tbl.matrix_2.csv"), row.names=FALSE)
-sampleDB::UploadSamples(sample_type = "micronix", upload_file = "~/lib/packages/sampleDB-rpackage/tests/matrix/tbl.matrix_2.csv", container_name = "plate_2",
-                        freezer = list(location_name = "Freezer A",
-                                             level_I = "A_dummy.level_I",
-                                             level_II = "A_dummy.level_II"))
+# sampleDB::UploadSamples(sample_type = "micronix", upload_file = "~/lib/packages/sampleDB-rpackage/tests/matrix/tbl.matrix_2.csv", container_name = "plate_2",
+#                         freezer = list(location_name = "Freezer A",
+#                                              level_I = "A_dummy.level_I",
+#                                              level_II = "A_dummy.level_II"))
 
 
 tbl.matrix_3 <- tibble(LocationRow = rep("A", 10), 
@@ -34,11 +34,20 @@ tbl.matrix_3 <- tibble(LocationRow = rep("A", 10),
                        TubeCode = paste("XXXX", 20:29),
                        collection_date = paste0("2022-11-", 11:20))
 write.csv(cbind(tbl.matrix_3, tbl.base), paste0("~/lib/packages/sampleDB-rpackage/tests/matrix/tbl.matrix_3.csv"), row.names=FALSE)
-sampleDB::UploadSamples(sample_type = "micronix", upload_file = "~/lib/packages/sampleDB-rpackage/tests/matrix/tbl.matrix_3.csv", container_name = "plate_3",
-                        freezer = list(location_name = "Freezer A",
-                                             level_I = "A_dummy.level_I",
-                                             level_II = "A_dummy.level_II"))
+# sampleDB::UploadSamples(sample_type = "micronix", upload_file = "~/lib/packages/sampleDB-rpackage/tests/matrix/tbl.matrix_3.csv", container_name = "plate_3",
+#                         freezer = list(location_name = "Freezer A",
+#                                              level_I = "A_dummy.level_I",
+#                                              level_II = "A_dummy.level_II"))
 
+tbl.matrix_4 <- tibble(LocationRow = rep("A", 3), 
+                       LocationColumn = c(0:2),
+                       TubeCode = paste("XXXX", 1000:1002, sep = "_"),
+                       collection_date = paste0("2022-11-", 11:13))
+write.csv(cbind(tbl.matrix_4, tbl.base %>% slice(1:3)), paste0("~/lib/packages/sampleDB-rpackage/tests/matrix/tbl.matrix_4.csv"), row.names=FALSE)
+sampleDB::UploadSamples(sample_type = "micronix", upload_file = "~/lib/packages/sampleDB-rpackage/tests/matrix/tbl.matrix_4.csv", container_name = "plate_3",
+                        freezer = list(location_name = "TBD",
+                                             level_I = "unknown",
+                                             level_II = "basket_1"))
 # GENERATE CRYO UPLOADCSV
 
 tbl.cryo_1 <- tibble(row = rep("A", 10), 
@@ -46,66 +55,66 @@ tbl.cryo_1 <- tibble(row = rep("A", 10),
                      label = paste("PPPP", 0:9),
                      collection_date = paste0("2022-11-", 1:10))
 write.csv(cbind(tbl.cryo_1, tbl.base), paste0("~/lib/packages/sampleDB-rpackage/tests/cryovial/tbl.cryo_1.csv"), row.names=FALSE)
-sampleDB::UploadSamples(sample_type = "cryo",
-                        upload_file = "~/lib/packages/sampleDB-rpackage/tests/cryovial/tbl.cryo_1.csv",
-                        container_name = "box_1",
-                        freezer = list(location_name = "Freezer A",
-                                             level_I = "A_dummy.level_I",
-                                             level_II = "A_dummy.level_II"))
+# sampleDB::UploadSamples(sample_type = "cryo",
+#                         upload_file = "~/lib/packages/sampleDB-rpackage/tests/cryovial/tbl.cryo_1.csv",
+#                         container_name = "box_1",
+#                         freezer = list(location_name = "Freezer A",
+#                                              level_I = "A_dummy.level_I",
+#                                              level_II = "A_dummy.level_II"))
 
 tbl.cryo_2 <- tibble(row = rep("A", 10), 
                      column = c(0:9),
                      label = paste("PPPP", 10:19),
                      collection_date = paste0("2022-11-", 11:20))
 write.csv(cbind(tbl.cryo_2, tbl.base), paste0("~/lib/packages/sampleDB-rpackage/tests/cryovial/tbl.cryo_2.csv"), row.names=FALSE)
-sampleDB::UploadSamples(sample_type = "cryo",
-                        upload_file = "~/lib/packages/sampleDB-rpackage/tests/cryovial/tbl.cryo_2.csv",
-                        container_name = "box_2",
-                        freezer = list(location_name = "Freezer A",
-                                             level_I = "A_dummy.level_I",
-                                             level_II = "A_dummy.level_II"))
+# sampleDB::UploadSamples(sample_type = "cryo",
+#                         upload_file = "~/lib/packages/sampleDB-rpackage/tests/cryovial/tbl.cryo_2.csv",
+#                         container_name = "box_2",
+#                         freezer = list(location_name = "Freezer A",
+#                                              level_I = "A_dummy.level_I",
+#                                              level_II = "A_dummy.level_II"))
 
 # GENERATE RDT UPLOADCSV
 tbl.rdt_1 <- tibble(label = paste("MMMM", 0:9),
                     collection_date = paste0("2022-11-", 1:10))
 write.csv(cbind(tbl.rdt_1, tbl.base), paste0("~/lib/packages/sampleDB-rpackage/tests/rdt/tbl.rdt_1.csv"), row.names=FALSE)
-sampleDB::UploadSamples(sample_type = "rdt",
-                        upload_file = "~/lib/packages/sampleDB-rpackage/tests/rdt/tbl.rdt_1.csv",
-                        container_name = "bag_1",
-                        freezer = list(location_name = "Freezer A",
-                                             level_I = "A_dummy.level_I",
-                                             level_II = "A_dummy.level_II"))
+# sampleDB::UploadSamples(sample_type = "rdt",
+#                         upload_file = "~/lib/packages/sampleDB-rpackage/tests/rdt/tbl.rdt_1.csv",
+#                         container_name = "bag_1",
+#                         freezer = list(location_name = "Freezer A",
+#                                              level_I = "A_dummy.level_I",
+#                                              level_II = "A_dummy.level_II"))
 
 tbl.rdt_2 <- tibble(label = paste("MMMM", 10:19),
                     collection_date = paste0("2022-11-", 11:20))
 write.csv(cbind(tbl.rdt_2, tbl.base), paste0("~/lib/packages/sampleDB-rpackage/tests/rdt/tbl.rdt_2.csv"), row.names=FALSE)
-sampleDB::UploadSamples(sample_type = "rdt",
-                        upload_file = "~/lib/packages/sampleDB-rpackage/tests/rdt/tbl.rdt_2.csv",
-                        container_name = "bag_2",
-                        freezer = list(location_name = "Freezer A",
-                                             level_I = "A_dummy.level_I",
-                                             level_II = "A_dummy.level_II"))
+# sampleDB::UploadSamples(sample_type = "rdt",
+#                         upload_file = "~/lib/packages/sampleDB-rpackage/tests/rdt/tbl.rdt_2.csv",
+#                         container_name = "bag_2",
+#                         freezer = list(location_name = "Freezer A",
+#                                              level_I = "A_dummy.level_I",
+#                                              level_II = "A_dummy.level_II"))
 
 # GENERATE PAPER UPLOADCSV
 tbl.paper_1 <- tibble(label = paste("QQQQ", 0:9),
                       collection_date = paste0("2022-11-", 1:10))
 write.csv(cbind(tbl.paper_1, tbl.base), paste0("~/lib/packages/sampleDB-rpackage/tests/paper/tbl.paper_1.csv"), row.names=FALSE)
-sampleDB::UploadSamples(sample_type = "paper",
-                        upload_file = "~/lib/packages/sampleDB-rpackage/tests/paper/tbl.paper_1.csv",
-                        container_name = "bag_3",
-                        freezer = list(location_name = "Freezer A",
-                                             level_I = "A_dummy.level_I",
+# sampleDB::UploadSamples(sample_type = "paper",
+#                         upload_file = "~/lib/packages/sampleDB-rpackage/tests/paper/tbl.paper_1.csv",
+#                         container_name = "bag_3",
+#                         freezer = list(location_name = "Freezer A",
+#                                              level_I = "A_dummy.level_I",
                                              level_II = "A_dummy.level_II"))
 
 tbl.paper_2 <- tibble(label = paste("QQQQ", 10:19),
                       collection_date = paste0("2022-11-", 11:20))
 write.csv(cbind(tbl.paper_2, tbl.base), paste0("~/lib/packages/sampleDB-rpackage/tests/paper/tbl.paper_2.csv"), row.names=FALSE)
-sampleDB::UploadSamples(sample_type = "paper",
-                        upload_file = "~/lib/packages/sampleDB-rpackage/tests/paper/tbl.paper_2.csv",
-                        container_name = "bag_4",
-                        freezer = list(location_name = "Freezer A",
-                                             level_I = "A_dummy.level_I",
-                                             level_II = "A_dummy.level_II"))
+# sampleDB::UploadSamples(sample_type = "paper",
+#                         upload_file = "~/lib/packages/sampleDB-rpackage/tests/paper/tbl.paper_2.csv",
+#                         container_name = "bag_4",
+#                         freezer = list(location_name = "Freezer A",
+#                                              level_I = "A_dummy.level_I",
+#                                              level_II = "A_dummy.level_II"))
 ##########################
 
 #NOTE how can these moves go wrong?
