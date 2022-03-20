@@ -12,7 +12,7 @@
 #' @import markdown
 #' @import lubridate
 #' @import shinyWidgets
-#' @import shinyjs
+#' @importFrom shinyjs hidden
 #' @export
 
 Run_SampleDB <- function(){
