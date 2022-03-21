@@ -2,7 +2,8 @@
 # Running SampleDB
 To spin up the app run the command below in the console of an Aragorn instance of R.
 ```
-sampleDB::Run_SampleDB()
+library(sampleDB)
+Run_SampleDB()
 ```
 
 # The Database
