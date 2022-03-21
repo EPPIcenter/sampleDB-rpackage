@@ -6,7 +6,7 @@ library(readr)
 library(markdown)
 library(lubridate)
 library(emojifont)
-library(shinyjs)
+# library(shinyjs)
 library(DT)
 library(purrr)
 for(helper in list.files(path = "helpers", full.names = T, recursive = T)){source(helper, local = TRUE)}

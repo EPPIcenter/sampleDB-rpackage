@@ -21,7 +21,8 @@ Imports:
     purrr,
     readr,
     tidyr,
-    markdown
+    markdown,
+    shinyjs
 License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
