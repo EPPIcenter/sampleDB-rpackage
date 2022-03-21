@@ -11,7 +11,7 @@ The packages uses the R environment variable `SDB_PATH` to connect to the databa
 To set this variable edit the Renviron file (which typically exists at: `/etc/R/Renviron`). Use `Sys.getenv("SDB_PATH")` to check that edits have taken affect.
 
 ## Database Schema
-![db](https://user-images.githubusercontent.com/95319271/151049473-54f411e9-0fa2-4d3b-be33-32a0d8521a08.png)
+![SampleDB v2](https://user-images.githubusercontent.com/95319271/159344494-62fb6d59-66b6-4a9a-b4ae-decd74fc9739.svg)
 
 # Installation
 For **Admins** to install sampleDB on Aragorn use:
