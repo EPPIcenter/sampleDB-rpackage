@@ -22,13 +22,13 @@ function(input, output, session) {
     MatrixUpload(session, output, input, database, ref.clear_action = "ClearMicronixUploadForm")
     
     # Upload Cryo Samples
-    CryoUpload(session, output, input, database, ref.clear_action = "ClearCryoUploadForm")
+    # CryoUpload(session, output, input, database, ref.clear_action = "ClearCryoUploadForm")
 
     # Upload RDT Samples
-    RDTUpload(session, output, input, database, ref.clear_action = "ClearRDTUploadForm")
+    # RDTUpload(session, output, input, database, ref.clear_action = "ClearRDTUploadForm")
 
     # Upload Paper Samples
-    PaperUpload(session, output, input, database, ref.clear_action = "ClearPaperUploadForm")
+    # PaperUpload(session, output, input, database, ref.clear_action = "ClearPaperUploadForm")
     
     # -------- Search Samples -------------
     
