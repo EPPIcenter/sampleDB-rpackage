@@ -24,6 +24,10 @@ withr::with_libpaths(new = "/usr/lib/R/site-library/",
 
 System-wide Aragorn R packages are installed at `/usr/lib/R/site-library/`.
 
+# Migration from SDB v1 -> SDB v2
+In order to migrate from SDB v1 to SDB v2 use the script in `helpers/migrate_old_sdb.R`, following each step in the script. 
+To then update the freezer addresses for each matrix plate use the script `helpers/assign_freezer_addresses.R`
+
 # Backups
 - Backups are located at `/databases/sampleDB_backups/`
 - Cronjob to create backup is located at `/bin/sampleDB_backup_generator.sh`. 
