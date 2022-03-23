@@ -1,7 +1,11 @@
 #' Move Wetlab Samples in the EPPIcenter sampleDB database
 #' 
+#' `MoveSamples()` can be used to move existing wetlab samples from:
+#' 1. Between two (or more) existing containers
+#' 2. From one (or more) existing container into one (or more) existing container
+#' 
 #' @param sample_type A string specifying the type of samples that are being moved. Options include: `micronix`, `cryovial`, `rdt` and `paper`
-#' @param move_files A list of paths to SampleDB Move CSV files. The items in the `move_files` list must be named after the container associate with each Move CSV file.
+#' @param move_files A list of paths to SampleDB MoveCSV files, where the name of each path item is the container that the samples are in after the move.
 #' 
 #' The basic structure of a Move CSV file is shown below.
 #' 

@@ -88,7 +88,8 @@ If the freezer type is \verb{minus eighty} then \code{level_I} and \code{level_I
 If the freezer type is \verb{minus twenty} then \code{level_I} and \code{level_II} items specify the shelf and basket, respecively.}
 }
 \description{
-Upload EPPIcenter Wetlab Samples to the SampleDB database
+\code{UploadSamples()} can be used to upload wetlab samples to the sampleDB database.
+Currently the type of wetlab samples supported is only \code{micronix}. \code{cryovial}, \code{rdt} and \code{paper} sample uploads will appear in the next version.
 }
 \examples{
 \dontrun{

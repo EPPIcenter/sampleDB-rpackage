@@ -7,5 +7,12 @@
 SampleDB_Setup()
 }
 \description{
-Setup SampleDB Database
+Save SampleDB's database file to a specified location
+}
+\examples{
+\dontrun{
+library(sampleDB)
+SampleDB_Setup()
+}
+
 }

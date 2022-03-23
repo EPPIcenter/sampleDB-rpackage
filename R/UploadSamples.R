@@ -1,5 +1,8 @@
 #' Upload EPPIcenter Wetlab Samples to the SampleDB database
 #' 
+#' `UploadSamples()` can be used to upload wetlab samples to the sampleDB database.
+#' Currently the type of wetlab samples supported is only `micronix`. `cryovial`, `rdt` and `paper` sample uploads will appear in the next version.
+#' 
 #' @param sample_type A string specifying the type of samples that are being uploaded Options include: `micronix`, `cryovial`, `rdt` and `paper`
 #' @param upload_file A path string for the SampleDB Upload CSV file.
 #' 
@@ -113,7 +116,7 @@ UploadSamples <- function(sample_type, upload_file, container_name, freezer){
   upload_file <- read.csv(upload_file, check.names = F) %>% tidyr::drop_na()
   
   # Save a copy of the upload csv
-  .SaveUploadCSV(upload_file)
+  .SaveUploadCSV(upload_file, container_name)
   
   # If sample type is micronix; then reformat the upload_file
   if(sample_type == "micronix"){upload_file <- .ReformatUploadMicronixCSV(upload_file)}
@@ -479,7 +482,7 @@ UploadSamples <- function(sample_type, upload_file, container_name, freezer){
                        conn = conn) %>% suppressWarnings() 
 }
 
-.SaveUploadCSV <- function(upload_file){
+.SaveUploadCSV <- function(upload_file, container_name){
   path <- "/databases/sampledb/backups/sampleDB_user_uploaded_files/"
   if(dir.exists(path)){
     write.csv(upload_file, 

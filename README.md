@@ -7,7 +7,9 @@ Run_SampleDB()
 ```
 # Requirements
 
-All that is needed at this time is an installation of R >= 4.0
+1. Uniquely Barcoded Samples
+2. Rstudio Server or Rstudio Workbench with R >= 4.0
+3. Admin Privileges for server running RStudio
 
 # Installation
 To install sampleDB use:
