@@ -132,6 +132,7 @@ UploadSamples <- function(sample_type, upload_file, container_name, freezer){
   .InternalUpload(upload_file = upload_file, database = database, toggle.is_longitudinal = toggle.is_longitudinal, 
                   sample_type = sample_type, conn = conn, container_name = container_name, freezer = freezer)
   
+  stop()
   # Upload external data
   if(sample_type == "micronix"){
     .UploadMicronixPlate(database, container_name, freezer, conn)    
@@ -336,21 +337,13 @@ UploadSamples <- function(sample_type, upload_file, container_name, freezer){
       if(sample_type == "micronix"){
         # create a new container (if it does not already exist)
         if(!container_name %in% CheckTable(database = database, "matrix_plate")$plate_name){
+          print("creating container")
           eval.plate_id <- .UploadMicronixPlate(database = database, container_name = container_name, freezer = freezer, conn = conn) 
         }
         
         # upload micronix sample
         .UploadMicronixTubes(database = database, upload_file = upload_file, i = i, conn = conn, eval.plate_id = eval.plate_id) 
       }
-      # else if(sample_type == "cryo"){
-      #   
-      # }
-      # else if(sample_type == "rdt"){
-      #   
-      # }
-      # else{
-      #   
-      # }
       
     }else{
       
@@ -401,6 +394,7 @@ UploadSamples <- function(sample_type, upload_file, container_name, freezer){
       if(sample_type == "micronix"){
         # create a new container (if it does not already exist)
         if(!container_name %in% CheckTable(database = database, "matrix_plate")$plate_name){
+          print("creating container")
           eval.plate_id <- .UploadMicronixPlate(database = database, container_name = container_name, freezer = freezer, conn = conn) 
         }
         
@@ -433,11 +427,14 @@ UploadSamples <- function(sample_type, upload_file, container_name, freezer){
   
   eval.barcode <- upload_file[i,]$"label" %>% as.character()
   eval.well_position <- upload_file[i,]$"well_position"
+  print(eval.barcode)
+  print(eval.well_position)
+  print(eval.plate_id)
+  print(i)
   
   sampleDB::AddToTable(database = database,
                        "matrix_tube",
-                       list(id = i,
-                            plate_id = eval.plate_id,
+                       list(plate_id = eval.plate_id,
                             barcode = eval.barcode,
                             well_position = eval.well_position),
                        conn = conn) %>% suppressWarnings()
@@ -451,7 +448,7 @@ UploadSamples <- function(sample_type, upload_file, container_name, freezer){
                             last_updated = lubridate::now("UTC") %>% as.character(),
                             location_id = eval.location_id,
                             plate_name = container_name),
-                       conn = conn) %>% suppressWarnings()
+                            conn = conn) %>% suppressWarnings()
   eval.plate_id <- tail(sampleDB::CheckTable(database = database, "matrix_plate"), 1)$id
     
   return(eval.plate_id)
