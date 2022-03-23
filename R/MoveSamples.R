@@ -31,13 +31,15 @@
 MoveSamples <- function(sample_type, move_files){
   
   stopifnot("Sample type is not valid" = sample_type %in% c("micronix", "cryovial", "rdt", "paper"))
-  
   database <- Sys.getenv("SDB_PATH")
   conn <-  RSQLite::dbConnect(RSQLite::SQLite(), database)
   
   # Read in move files
   # Create list -- keys: container name; values: container's samples
   move_data_list <- modify(move_files, function(x){x <- read_csv(x, col_types = cols()) %>% drop_na()})
+  
+  # Save MoveCSVs
+  .SaveMoveCSVs(move_data_list)
   
   # Check if move creates orphans - returns TRUE if pass, FALSE if fail
   orphan_check_return <- .CheckForOrphans(move_data_list = move_data_list, database, sample_type = sample_type)
@@ -437,4 +439,19 @@ MoveSamples <- function(sample_type, move_files){
   stacked_orphaned_sample_data <- bind_rows(sample_data)
   
   return(stacked_orphaned_sample_data)
+}
+
+.SaveMoveCSVs <- function(move_data_list){
+  path <- "/databases/sampledb/backups/sampleDB_user_uploaded_files/"
+  for(container_name in names(move_data_list)){
+    move_file <- move_data_list[[container_name]]
+    if(dir.exists(path)){
+      write.csv(move_file,
+                paste0(path,
+                       gsub(" ", "-", date()),
+                       "_", container_name, "_",
+                       "MOVE.csv"),
+                row.names = FALSE)
+    }
+  } 
 }

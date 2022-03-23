@@ -112,6 +112,9 @@ UploadSamples <- function(sample_type, upload_file, container_name, freezer){
   # Read in usr supplied upload csv
   upload_file <- read.csv(upload_file, check.names = F) %>% tidyr::drop_na()
   
+  # Save a copy of the upload csv
+  .SaveUploadCSV(upload_file)
+  
   # If sample type is micronix; then reformat the upload_file
   if(sample_type == "micronix"){upload_file <- .ReformatUploadMicronixCSV(upload_file)}
   
@@ -474,4 +477,16 @@ UploadSamples <- function(sample_type, upload_file, container_name, freezer){
                             location_id = eval.location_id,
                             bag_name = container_name),
                        conn = conn) %>% suppressWarnings() 
+}
+
+.SaveUploadCSV <- function(upload_file){
+  path <- "/databases/sampledb/backups/sampleDB_user_uploaded_files/"
+  if(dir.exists(path)){
+    write.csv(upload_file, 
+              paste0(path, 
+                     gsub(" ", "-", date()),
+                     "_", container_name, "_", 
+                     "UPLOAD.csv"),
+              row.names = FALSE)
+  }
 }
