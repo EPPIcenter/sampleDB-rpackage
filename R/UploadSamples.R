@@ -116,7 +116,7 @@ UploadSamples <- function(sample_type, upload_file, container_name, freezer){
   upload_file <- read.csv(upload_file, check.names = F) %>% tidyr::drop_na()
   
   # Save a copy of the upload csv
-  .SaveUploadCSV(upload_file)
+  .SaveUploadCSV(upload_file, container_name)
   
   # If sample type is micronix; then reformat the upload_file
   if(sample_type == "micronix"){upload_file <- .ReformatUploadMicronixCSV(upload_file)}
@@ -129,7 +129,8 @@ UploadSamples <- function(sample_type, upload_file, container_name, freezer){
   .UploadChecks(sample_type, input, database, freezer, container_name, upload_file = upload_file)
   
   # Upload internal data
-  sc_ids <- .InternalUpload(upload_file = upload_file, database = database, toggle.is_longitudinal = toggle.is_longitudinal, sample_type = sample_type, conn = conn)
+  .InternalUpload(upload_file = upload_file, database = database, toggle.is_longitudinal = toggle.is_longitudinal, 
+                  sample_type = sample_type, conn = conn, container_name = container_name, freezer = freezer)
   
   # Upload external data
   if(sample_type == "micronix"){
@@ -255,13 +256,13 @@ UploadSamples <- function(sample_type, upload_file, container_name, freezer){
   # }
 }
 
-.InternalUpload <- function(upload_file, database, toggle.is_longitudinal, sample_type, conn){
-  #GET THE CURRENT NEWEST STORAGE CONTAINER ID
-  if(nrow(sampleDB::CheckTable(database = database, "storage_container")) == 0){
-    before_upload.newest_sc_id <- 0
-  }else{
-    before_upload.newest_sc_id <- tail(sampleDB::CheckTable(database = database, "storage_container"), 1)$id 
-  }
+.InternalUpload <- function(upload_file, database, toggle.is_longitudinal, sample_type, conn, container_name, freezer){
+  # #GET THE CURRENT NEWEST STORAGE CONTAINER ID
+  # if(nrow(sampleDB::CheckTable(database = database, "storage_container")) == 0){
+  #   before_upload.newest_sc_id <- 0
+  # }else{
+  #   before_upload.newest_sc_id <- tail(sampleDB::CheckTable(database = database, "storage_container"), 1)$id 
+  # }
   
   for(i in 1:nrow(upload_file)){
     
@@ -332,6 +333,25 @@ UploadSamples <- function(sample_type, upload_file, container_name, freezer){
                                 exhausted = 0),
                            conn = conn) %>% suppressWarnings()
       
+      if(sample_type == "micronix"){
+        # create a new container (if it does not already exist)
+        if(!container_name %in% CheckTable(database = database, "matrix_plate")$plate_name){
+          eval.plate_id <- .UploadMicronixPlate(database = database, container_name = container_name, freezer = freezer, conn = conn) 
+        }
+        
+        # upload micronix sample
+        .UploadMicronixTubes(database = database, upload_file = upload_file, i = i, conn = conn, eval.plate_id = eval.plate_id) 
+      }
+      # else if(sample_type == "cryo"){
+      #   
+      # }
+      # else if(sample_type == "rdt"){
+      #   
+      # }
+      # else{
+      #   
+      # }
+      
     }else{
       
       # IF THIS COMBINATION OF  SUBJECT AND STUDY DOES NOT EXIST 
@@ -377,32 +397,50 @@ UploadSamples <- function(sample_type, upload_file, container_name, freezer){
                                 specimen_id = eval.specimen_id,
                                 exhausted = 0),
                            conn = conn) %>% suppressWarnings()
+      
+      if(sample_type == "micronix"){
+        # create a new container (if it does not already exist)
+        if(!container_name %in% CheckTable(database = database, "matrix_plate")$plate_name){
+          eval.plate_id <- .UploadMicronixPlate(database = database, container_name = container_name, freezer = freezer, conn = conn) 
+        }
+        
+        # upload micronix sample
+        .UploadMicronixTubes(database = database, upload_file = upload_file, i = i, conn = conn, eval.plate_id = eval.plate_id) 
+      }
+      # else if(sample_type == "cryo"){
+      #   
+      # }
+      # else if(sample_type == "rdt"){
+      #   
+      # }
+      # else{
+      #   
+      # }
     }
-    after_upload.newest_sc_id <- tail(sampleDB::CheckTable(database = database, "storage_container"), 1)$id
+    # after_upload.newest_sc_id <- tail(sampleDB::CheckTable(database = database, "storage_container"), 1)$id
     # message("UPLOAD COMPLETE")
   }
-  sc_ids <- list(before_upload.newest_sc_id = before_upload.newest_sc_id, 
-                 after_upload.newest_sc_id = after_upload.newest_sc_id)
-  return(sc_ids)
+  # sc_ids <- list(before_upload.newest_sc_id = before_upload.newest_sc_id, 
+                 # after_upload.newest_sc_id = after_upload.newest_sc_id)
+  # return(sc_ids)
 }
 
 
 #another option may be to add micronix tubes while storage container table is being added to
-.UploadMicronixTubes <- function(database, csv, sc_ids, conn){
-  for(i in 1:nrow(csv)){
-    eval.plate_id <- tail(sampleDB::CheckTable(database = database, "matrix_plate"), 1)$id
-    eval.barcode <- csv[i,]$"label" %>% as.character()
-    eval.well_position <- csv[i,]$"well_position"
-    
-    # storage_container_ids <- tail(sampleDB::CheckTable(database = database, "storage_container"), 1)$id
-    sampleDB::AddToTable(database = database,
-                         "matrix_tube",
-                         list(id = sc_ids$before_upload.newest_sc_id + i,
-                              plate_id = eval.plate_id,
-                              barcode = eval.barcode,
-                              well_position = eval.well_position),
-                         conn = conn) %>% suppressWarnings()
-  }
+.UploadMicronixTubes <- function(database, upload_file, i, conn, eval.plate_id){
+  # for(i in 1:nrow(upload_file)){
+  # eval.plate_id <- tail(sampleDB::CheckTable(database = database, "matrix_plate"), 1)$id
+  
+  eval.barcode <- upload_file[i,]$"label" %>% as.character()
+  eval.well_position <- upload_file[i,]$"well_position"
+  
+  sampleDB::AddToTable(database = database,
+                       "matrix_tube",
+                       list(id = i,
+                            plate_id = eval.plate_id,
+                            barcode = eval.barcode,
+                            well_position = eval.well_position),
+                       conn = conn) %>% suppressWarnings()
 }
 
 .UploadMicronixPlate <- function(database, container_name, freezer, conn){
@@ -414,6 +452,10 @@ UploadSamples <- function(sample_type, upload_file, container_name, freezer){
                             location_id = eval.location_id,
                             plate_name = container_name),
                        conn = conn) %>% suppressWarnings()
+  eval.plate_id <- tail(sampleDB::CheckTable(database = database, "matrix_plate"), 1)$id
+    
+  return(eval.plate_id)
+  
 }
 
 .UploadCryoTubes <- function(database, csv, sc_ids, conn){
@@ -482,7 +524,7 @@ UploadSamples <- function(sample_type, upload_file, container_name, freezer){
                        conn = conn) %>% suppressWarnings() 
 }
 
-.SaveUploadCSV <- function(upload_file){
+.SaveUploadCSV <- function(upload_file, container_name){
   path <- "/databases/sampledb/backups/sampleDB_user_uploaded_files/"
   if(dir.exists(path)){
     write.csv(upload_file, 
