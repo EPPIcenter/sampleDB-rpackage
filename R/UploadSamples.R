@@ -128,38 +128,11 @@ UploadSamples <- function(sample_type, upload_file, container_name, freezer){
   # Perform upload checks
   .UploadChecks(sample_type, input, database, freezer, container_name, upload_file = upload_file)
   
-  # Upload internal data
-  .InternalUpload(upload_file = upload_file, database = database, toggle.is_longitudinal = toggle.is_longitudinal, 
+  # Upload data
+  .UploadSamples(upload_file = upload_file, database = database, toggle.is_longitudinal = toggle.is_longitudinal, 
                   sample_type = sample_type, conn = conn, container_name = container_name, freezer = freezer)
-  
-  stop()
-  # Upload external data
-  if(sample_type == "micronix"){
-    .UploadMicronixPlate(database, container_name, freezer, conn)    
-    .UploadMicronixTubes(database, upload_file, sc_ids, conn)
-    message(paste("UPLOADING PLATE", container_name, "CONTAINING", nrow(upload_file), "MICRONIX SAMPLES"))
-  }
-  else if(sample_type == "cryo"){
-    stopifnot("Malformed upload_file column names" = setequal(names(upload_file), c("label", "row","column","study_short_code", "study_subject_id", "specimen_type")) || setequal(names(upload_file), c("label", "row","column", "study_short_code", "study_subject_id", "specimen_type", "collection_date")))
-    .UploadCryoBox(database, container_name, freezer, conn)
-    .UploadCryoTubes(database, upload_file, sc_ids, conn)
-    message(paste("UPLOADING BOX", container_name, "CONTAINING", nrow(upload_file), "TUBES"))
-  }
-  else if(sample_type == "rdt"){
-    stopifnot("Malformed upload_file column names" = setequal(names(upload_file), c("label", "study_short_code", "study_subject_id", "specimen_type")) || setequal(names(upload_file), c("label", "study_short_code", "study_subject_id", "specimen_type", "collection_date")))
-    .UploadBag(database, container_name, freezer, conn) 
-    .UploadRDT(database, upload_file, sc_ids, conn)
-    message(paste("UPLOADING BAG", container_name, "CONTAINING", nrow(upload_file), "RDT SAMPLES"))
-  }
-  else if(sample_type == "paper"){
-    stopifnot("Malformed upload_file column names" = setequal(names(upload_file), c("label", "study_short_code", "study_subject_id", "specimen_type")) || setequal(names(upload_file), c("label", "study_short_code", "study_subject_id", "specimen_type", "collection_date")))
-    .UploadBag(database, container_name, freezer, conn) 
-    .UploadPaper(database, upload_file, sc_ids, conn)
-    message(paste("UPLOADING BAG", container_name, "CONTAINING", nrow(upload_file), "PAPER SAMPLES"))
-  }
-  else{
-    message("User Upload Type was not a valid option. Valid options are: micronix, cryo, rdt and paper")
-  }
+
+  message(paste("UPLOADING PLATE", container_name, "CONTAINING", nrow(upload_file), "MICRONIX SAMPLES"))
   
   #close connection
   tryCatch(
@@ -257,13 +230,7 @@ UploadSamples <- function(sample_type, upload_file, container_name, freezer){
   # }
 }
 
-.InternalUpload <- function(upload_file, database, toggle.is_longitudinal, sample_type, conn, container_name, freezer){
-  # #GET THE CURRENT NEWEST STORAGE CONTAINER ID
-  # if(nrow(sampleDB::CheckTable(database = database, "storage_container")) == 0){
-  #   before_upload.newest_sc_id <- 0
-  # }else{
-  #   before_upload.newest_sc_id <- tail(sampleDB::CheckTable(database = database, "storage_container"), 1)$id 
-  # }
+.UploadSamples <- function(upload_file, database, toggle.is_longitudinal, sample_type, conn, container_name, freezer){
   
   for(i in 1:nrow(upload_file)){
     
@@ -394,7 +361,6 @@ UploadSamples <- function(sample_type, upload_file, container_name, freezer){
       if(sample_type == "micronix"){
         # create a new container (if it does not already exist)
         if(!container_name %in% CheckTable(database = database, "matrix_plate")$plate_name){
-          print("creating container")
           eval.plate_id <- .UploadMicronixPlate(database = database, container_name = container_name, freezer = freezer, conn = conn) 
         }
         
@@ -411,26 +377,15 @@ UploadSamples <- function(sample_type, upload_file, container_name, freezer){
       #   
       # }
     }
-    # after_upload.newest_sc_id <- tail(sampleDB::CheckTable(database = database, "storage_container"), 1)$id
-    # message("UPLOAD COMPLETE")
   }
-  # sc_ids <- list(before_upload.newest_sc_id = before_upload.newest_sc_id, 
-                 # after_upload.newest_sc_id = after_upload.newest_sc_id)
-  # return(sc_ids)
 }
 
 
 #another option may be to add micronix tubes while storage container table is being added to
 .UploadMicronixTubes <- function(database, upload_file, i, conn, eval.plate_id){
-  # for(i in 1:nrow(upload_file)){
-  # eval.plate_id <- tail(sampleDB::CheckTable(database = database, "matrix_plate"), 1)$id
   
   eval.barcode <- upload_file[i,]$"label" %>% as.character()
   eval.well_position <- upload_file[i,]$"well_position"
-  print(eval.barcode)
-  print(eval.well_position)
-  print(eval.plate_id)
-  print(i)
   
   sampleDB::AddToTable(database = database,
                        "matrix_tube",
