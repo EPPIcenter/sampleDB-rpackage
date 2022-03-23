@@ -9,7 +9,7 @@ MoveSamples(sample_type, move_files)
 \arguments{
 \item{sample_type}{A string specifying the type of samples that are being moved. Options include: \code{micronix}, \code{cryovial}, \code{rdt} and \code{paper}}
 
-\item{move_files}{A list of paths to SampleDB Move CSV files. The items in the \code{move_files} list must be named after the container associate with each Move CSV file.
+\item{move_files}{A list of paths to SampleDB MoveCSV files, where the name of each path item is the container that the samples are in after the move.
 
 The basic structure of a Move CSV file is shown below.\tabular{lll}{
    row \tab column \tab label \cr
@@ -24,7 +24,11 @@ Also accepted is a single column named \code{Position} that represents the both 
 If the \code{Position} column is used then the \code{row} and \code{column} columns can be ommited.}
 }
 \description{
-Move Wetlab Samples in the EPPIcenter sampleDB database
+\code{MoveSamples()} can be used to move existing wetlab samples from:
+\enumerate{
+\item Between two (or more) existing containers
+\item From one (or more) existing container into one (or more) existing container
+}
 }
 \examples{
 \dontrun{
