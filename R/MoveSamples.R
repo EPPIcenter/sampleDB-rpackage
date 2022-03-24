@@ -5,7 +5,7 @@
 #' 2. From one (or more) existing container into one (or more) existing container
 #' 
 #' @param sample_type A string specifying the type of samples that are being moved. Options include: `micronix`, `cryovial`, `rdt` and `paper`
-#' @param move_files A list of paths to SampleDB MoveCSV files, where the name of each path item is the container that the samples are in after the move.
+#' @param move_data A list of SampleDB move dataframes, where the name of each dataframe item is the container that the samples are in after the move.
 #' 
 #' The basic structure of a Move CSV file is shown below.
 #' 
@@ -20,8 +20,8 @@
 #' If the `Position` column is used then the `row` and `column` columns can be ommited.
 #' @examples
 #' \dontrun{
-#' move_files <- list("move_csv1_container_name" = "~/path/to/move_csv1.csv", "move_csv2_container_name" = "~/path/to/move_csv2.csv")
-#' MoveSamples(sample_type = "micronix", move_files = move_files)
+#' move_data <- list("move_csv1_container_name" = dataframe(), "move_csv2_container_name" = dataframe())
+#' MoveSamples(sample_type = "micronix", move_data = move_data)
 #' }
 #' @import dplyr
 #' @import RSQLite
@@ -32,7 +32,7 @@
 #' @export
 
 #want to be able to move samples and to move containers
-MoveSamples <- function(sample_type, move_files){
+MoveSamples <- function(sample_type, move_data){
   
   stopifnot("Sample type is not valid" = sample_type %in% c("micronix", "cryovial", "rdt", "paper"))
   database <- Sys.getenv("SDB_PATH")
@@ -40,7 +40,8 @@ MoveSamples <- function(sample_type, move_files){
   
   # Read in move files
   # Create list -- keys: container name; values: container's samples
-  move_data_list <- modify(move_files, function(x){x <- read_csv(x, col_types = cols()) %>% drop_na()})
+  # move_data_list <- modify(move_data, function(x){x <- read_csv(x, col_types = cols()) %>% drop_na()})
+  move_data_list <- move_data
   
   # Save MoveCSVs
   .SaveMoveCSVs(move_data_list)
@@ -99,7 +100,7 @@ MoveSamples <- function(sample_type, move_files){
     for (i in 1:nrow(samples)){
       if(sample_type == "micronix"){
         
-        if("TubeCode" %in% names(samples)){
+        if("LocationRow" %in% names(samples)){
           eval.barcode <- samples[i,]$"TubeCode"
           eval.well <- samples[i,]$"LocationRow"
           eval.pos <- samples[i,]$"LocationColumn"
