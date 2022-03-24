@@ -157,11 +157,7 @@ UploadSamples <- function(sample_type, upload_data, container_name, freezer_addr
       tidyr::drop_na()
     
   }else{
-    
-    #change first row to header bc plate barcode is the first row
-    names(upload_data) <- upload_data[1,]
-    upload_data <- upload_data[-1,]
-    
+  
     stopifnot("UPLOADCSV COLNAMES ARE MALFORMED" = (all(names.traxer.nodate %in% names(upload_data)) || all(names.traxer.date %in% names(upload_data))))
     
     csv.reformatted <- upload_data %>%
