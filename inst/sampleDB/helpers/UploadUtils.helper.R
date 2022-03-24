@@ -56,8 +56,17 @@ MatrixUpload <- function(session, output, input, database, ref.clear_action){
                                          UploadFreezerNameLevelII = "UploadLocationMicronixLevelII"))
       
       # C. UPLOAD SAMPLES
+      
+      # skip first row if user uploaded traxcer csv
+      upload_data <- read.csv(input$"UploadMicronixDataSet"$datapath, check.names = F) %>% tidyr::drop_na()
+      if(!"LocationRow" %in% names(upload_data)){
+        #change first row to header bc plate barcode is the first row
+        names(upload_data) <- upload_data[1,]
+        upload_data <- upload_data[-1,]
+      }
+      
       sampleDB::UploadSamples(sample_type = "micronix",
-                              upload_data = read.csv(input$"UploadMicronixDataSet"$datapath, check.names = F) %>% tidyr::drop_na(),
+                              upload_data = upload_data,
                               container_name = input$"UploadMicronixPlateID",
                               freezer_address = list(location_name = input$"UploadMicronixLocation", 
                                                    level_I = input$"UploadLocationMicronixLevelI", 
