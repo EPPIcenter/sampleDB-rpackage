@@ -57,9 +57,9 @@ MatrixUpload <- function(session, output, input, database, ref.clear_action){
       
       # C. UPLOAD SAMPLES
       sampleDB::UploadSamples(sample_type = "micronix",
-                              upload_file = input$"UploadMicronixDataSet"$datapath,
+                              upload_data = read.csv(input$"UploadMicronixDataSet"$datapath, check.names = F) %>% tidyr::drop_na(),
                               container_name = input$"UploadMicronixPlateID",
-                              freezer = list(location_name = input$"UploadMicronixLocation", 
+                              freezer_address = list(location_name = input$"UploadMicronixLocation", 
                                                    level_I = input$"UploadLocationMicronixLevelI", 
                                                    level_II = input$"UploadLocationMicronixLevelII"))
       
@@ -155,8 +155,8 @@ CryoUpload <- function(session, output, input, database, ref.clear_action){
                                          UploadFreezerNameLevelII = "UploadLocationCryoLevelII"))
       
       # UPLOAD SAMPLES
-      sampleDB::UploadSamples(sample_type = "cryo",
-                              upload_file = input$UploadCryoSamples$datapath,
+      sampleDB::UploadSamples(sample_type = "cryovial",
+                              upload_data = input$UploadCryoSamples$datapath,
                               container_name = input$UploadBoxID,
                               freezer = list(location_name = input$UploadLocationCryoFreezerName, 
                                                    level_I = input$UploadLocationCryoLevelI, 
@@ -255,7 +255,7 @@ RDTUpload <- function(session, output, input, database, ref.clear_action){
       
       # UPLOAD SAMPLES
       sampleDB::UploadSamples(sample_type = "rdt",
-                              upload_file = input$UploadRDTSamples$datapath,
+                              upload_data = input$UploadRDTSamples$datapath,
                               container_name = input$UploadBagID,
                               freezer = list(location_name = input$UploadLocationRDTFreezerName,
                                                    level_I = input$UploadLocationRDTLevelI,
@@ -347,8 +347,8 @@ PaperUpload <- function(session, output, input, database, ref.clear_action){
                                          UploadFreezerNameLevelII = "UploadLocationPaperLevelII"))
       
       # UPLOAD SAMPLES
-      sampleDB::UploadSamples(sample_type = "cryo",
-                              upload_file = input$UploadPaperSamples$datapath,
+      sampleDB::UploadSamples(sample_type = "paper",
+                              upload_data = read.csv(input$UploadPaperSamples$datapath, check.names = F) %>% tidyr::drop_na(),
                               container_name = input$UploadBagID2,
                               freezer = list(location_name = input$UploadLocationPaperFreezerName, 
                                                    level_I = input$UploadLocationPaperLevelI, 
@@ -398,15 +398,15 @@ UploadChecks <- function(database, type, input, output, ui.output, ui.input){
   output[[ui.output$WarningUploadContainer]] <- renderText(CheckUploadContainerDuplication())
   
   # CHECK THAT USR SPECIMEN TYPES ARE VALID
-  CheckUploadSpecimenTypes <- reactive({.CheckUploadSpecimenTypes(input, database, ui.input)})
+  CheckUploadSpecimenTypes <- reactive({.CheckUploadSpecimenTypes(input, database, ui.input, type)})
   output[[ui.output$WarningUploadSpecimenTypes]] <- renderText(CheckUploadSpecimenTypes())
   
   # CHECK THAT DATE IS IN CORRECT FORMAT
-  CheckUploadDateFormat <- reactive({.CheckUploadDateFormat(input, database, ui.input)})
+  CheckUploadDateFormat <- reactive({.CheckUploadDateFormat(input, database, ui.input, type)})
   output[[ui.output$WarningUploadDateFormat]] <- renderText(CheckUploadDateFormat())
   
   # CHECK THAT USR STUDY SHORT CODES ARE VALID
-  CheckUploadStudyShortCode <- reactive({.CheckUploadStudyShortCodes(input, database, ui.input)})
+  CheckUploadStudyShortCode <- reactive({.CheckUploadStudyShortCodes(input, database, ui.input, type)})
   output[[ui.output$WarningUploadStudyShortCodes]] <- renderText(CheckUploadStudyShortCode())
   
   # CHECK THAT COLNAMES ARE CORRECT
@@ -486,25 +486,27 @@ UploadExamples <- function(input, database, output, ui.output, type){
   return(out)
 }
 
-.CheckUploadSpecimenTypes <- function(input, database, ui.input){
+.CheckUploadSpecimenTypes <- function(input, database, ui.input, type){
   
   if(!is.null(input[[ui.input$UploadDataSet]]$datapath)){
     message("CHECK: UPLOAD SPECIMEN TYPES EXISTS")
-    specimen_types <- read_csv(input[[ui.input$UploadDataSet]]$datapath, col_types = cols()) %>% tidyr::drop_na() %>% pull(specimen_type)
+    upload_data <- .ReadInDataForChecks(file = input[[ui.input$UploadDataSet]]$datapath, type = type)
+    specimen_types <- upload_data %>% pull(specimen_type)
     out <- validate(need(all(specimen_types %in% sampleDB::CheckTable(database = database, table = "specimen_type")$label), 
-                         "Error: Specimen Type Not found... Consider creating a new specimen type"))
+                         "Error: Specimen Type Not found... Consider creating a new specimen type")) 
   }else{
     out <- NULL
   }
   return(out)
 }
 
-.CheckUploadDateFormat <- function(input, database, ui.input){
+.CheckUploadDateFormat <- function(input, database, ui.input, type){
   
   if(!is.null(input[[ui.input$UploadDataSet]]$datapath)){
-    message("CHECK: UPLOAD DATE FORMAT REQUIREMENTS")
-    if("collection_date" %in% names(read.csv(input[[ui.input$UploadDataSet]]$datapath, check.names=FALSE))){
-      collection_dates <- read.csv(input[[ui.input$UploadDataSet]]$datapath, check.names=FALSE) %>% tidyr::drop_na() %>% pull(collection_date)
+    upload_data <- .ReadInDataForChecks(file = input[[ui.input$UploadDataSet]]$datapath, type = type)
+    if("collection_date" %in% names(upload_data)){
+      message("CHECK: UPLOAD DATE FORMAT REQUIREMENTS")
+      collection_dates <- upload_data %>% pull(collection_date)
       
       out <- validate(need(all(!is.na(parse_date_time(collection_dates, orders = "ymd")) == TRUE), 
                            "Error: All Collection Dates are Not in YMD format"))
@@ -517,11 +519,12 @@ UploadExamples <- function(input, database, output, ui.output, type){
   return(out)
 }
 
-.CheckUploadStudyShortCodes <- function(input, database, ui.input){
+.CheckUploadStudyShortCodes <- function(input, database, ui.input, type){
   
   if(!is.null(input[[ui.input$UploadDataSet]]$datapath)){
     message("CHECK: UPLOAD STUDY CODE EXISTS")
-    study_short_codes <- read_csv(input[[ui.input$UploadDataSet]]$datapath, col_types = cols()) %>% tidyr::drop_na() %>% pull(study_short_code)
+    upload_data <- .ReadInDataForChecks(file = input[[ui.input$UploadDataSet]]$datapath, type = type)
+    study_short_codes <- upload_data %>% pull(study_short_code)
     out <- validate(need(all(study_short_codes %in% sampleDB::CheckTable(database = database, table = "study")$short_code), 
                          "Error: Study Short Code Not found... Consider creating a new study"))
   }else{
@@ -532,33 +535,35 @@ UploadExamples <- function(input, database, output, ui.output, type){
 
 .CheckUploadColnames <- function(input, database, type, ui.input){
   
-  names.base <- c("study_subject_id", "specimen_type", "study_short_code")
-  
   if(!is.null(input[[ui.input$UploadDataSet]]$datapath)){
     
-    message("CHECK: UPLOAD CSV COLUMN NAMES REQUIREMENTS")    
-    upload_names <- read.csv(input[[ui.input$UploadDataSet]]$datapath, check.names=FALSE) %>% tidyr::drop_na() %>% names()
+    message("CHECK: UPLOAD CSV COLUMN NAMES REQUIREMENTS")
+    names.base <- c("study_subject_id", "specimen_type", "study_short_code")
+    upload_data <- .ReadInDataForChecks(file = input[[ui.input$UploadDataSet]]$datapath, type = type)
     
-    if("Tube ID" %in% upload_names){
-      names.traxer.nodate <- c(names.base, "Position", "Tube ID",	"Status",	"Error Count",	"Rack ID",	"Date")
-      names.traxer.date <- c(names.base, "Position", "Tube ID",	"Status",	"Error Count",	"Rack ID",	"Date", "collection_date")
-      out <- validate(need(setequal(names.traxer.nodate, upload_names) || setequal(names.traxer.date, upload_names), 
-                           "Error: Malformed Colnames"))
-    }
-    else if("TubeCode" %in% upload_names){
-      names.visionmate.nodate <- c(names.base, "LocationRow", "LocationColumn", "TubeCode")
-      names.visionmate.date <- c(names.base, "LocationRow", "LocationColumn", "TubeCode", "collection_date")
-      out <- validate(need(setequal(names.visionmate.nodate, upload_names) || setequal(names.visionmate.date, upload_names),
-                           "Error: Malformed Colnames"))
-    }
-    else if(type == "rdt" || type == "paper"){
-      out <- validate(need(setequal(c(names.base, "label"), upload_names) || setequal(c(names.base, "label", "collection_date"), upload_names),
-                      "Error: Malformed Colnames"))
+    if(type == "micronix"){
+      if("LocationRow" %in% names(upload_data)){
+        names.visionmate.nodate <- c(names.base, "LocationRow", "LocationColumn", "TubeCode")
+        names.visionmate.date <- c(names.base, "LocationRow", "LocationColumn", "TubeCode", "collection_date")
+        out <- validate(need(all(names.visionmate.nodate %in% names(upload_data)) || all(names.visionmate.date %in% names(upload_data)),
+                             "Error: Malformed Colnames"))
+      }
+      
+      else{
+        names.traxer.nodate <- c(names.base, "Position", "Tube ID")
+        names.traxer.date <- c(names.base, "Position", "Tube ID", "collection_date")
+        out <- validate(need(all(names.traxer.nodate %in% names(upload_data)) || all(names.traxer.date %in% names(upload_data)), 
+                             "Error: Malformed Colnames"))
+      } 
     }
     else{
-      out <- validate(need(setequal(c(names.base, "row", "column", "label"), upload_names) || setequal(c(names.base, "row", "column", "label", "collection_date"), upload_names),
+      out <- validate(need(setequal(c(names.base, "label"), names(upload_data)) || setequal(c(names.base, "label", "collection_date"), names(upload_data)),
                       "Error: Malformed Colnames"))
     }
+    # else{
+    #   out <- validate(need(setequal(c(names.base, "row", "column", "label"), names(upload_data)) || setequal(c(names.base, "row", "column", "label", "collection_date"), names(upload_data)),
+    #                   "Error: Malformed Colnames"))
+    # }
   }else{
     out <- NULL
   }
@@ -570,19 +575,20 @@ UploadExamples <- function(input, database, output, ui.output, type){
   
   if(!is.null(input[[ui.input$UploadDataSet]]$datapath)){
     message("CHECK: BARCODE/LABEL UNIQUENESS")
+    upload_data <- .ReadInDataForChecks(file = input[[ui.input$UploadDataSet]]$datapath, type = type)
     
     if(type == "micronix"){
       if("TubeCode" %in% names(read.csv(input[[ui.input$UploadDataSet]]$datapath, check.names=FALSE))){
-        upload_barcodes <- read.csv(input[[ui.input$UploadDataSet]]$datapath, check.names=FALSE) %>% tidyr::drop_na() %>% pull(TubeCode)
+        upload_barcodes <- upload_data %>% pull(TubeCode)
       }else{
-        upload_barcodes <- read.csv(input[[ui.input$UploadDataSet]]$datapath, check.names=FALSE) %>% tidyr::drop_na() %>% pull("Tube ID")
+        upload_barcodes <- upload_data %>% pull("Tube ID")
       }
       barcodes.existing <- upload_barcodes[which(upload_barcodes %in% c(sampleDB::CheckTable(database = database, "matrix_tube")$barcode))]
       out <- validate(need(all(!(upload_barcodes %in% c(sampleDB::CheckTable(database = database, "matrix_tube")$barcode))), 
                            paste("Error: Unique Barcode Constraint", barcodes.existing)))
    }
    else{
-     labels <- read.csv(input[[ui.input$UploadDataSet]]$datapath, check.names=FALSE) %>% tidyr::drop_na() %>% pull(TubeCode)
+     labels <- upload_data %>% pull(TubeCode)
      out <- validate(need(all(!(labels %in% c(sampleDB::CheckTable(database = database, "tube")$labels,
                                               sampleDB::CheckTable(database = database, "rdt")$labels,
                                               sampleDB::CheckTable(database = database, "paper")$labels))), 
@@ -594,46 +600,46 @@ UploadExamples <- function(input, database, output, ui.output, type){
   return(out)
 }
 
-.CheckSpecimenExists <- function(input, database, ui.input){
-  
-  toggle <- TRUE
-  if(!is.null(input[[ui.input$UploadDataSet]]$datapath)){
-    message("CHECK: STUDY SUBJECT LONGITUDINAL REQUIREMENTS")
-    csv <- read.csv(input[[ui.input$UploadDataSet]]$datapath, check.names = F) %>% tidyr::drop_na()
-    
-    check.study_subject <- inner_join(CheckTable(database = database, "study_subject"),
-                                      tibble(subject = csv$"study_subject_id", 
-                                             study_id = filter(CheckTable(database = database, "study"), short_code %in% csv$study_short_code)$id, 
-                                             specimen_type_id = filter(CheckTable(database = database, "specimen_type"), label %in% csv$specimen_type)$id),
-                                     by = c("subject", "study_id"))
-    
-    if(nrow(check.study_subject) != 0){
-      
-      if("collection_date" %in% names(csv.upload)){
-        test_table.specimen <- check.study_subject %>% rename("study_subject_id" = "id")
-        test_table.specimen$collection_date <- csv.upload$collection_date
-      }else{
-        test_table.specimen <- check.study_subject %>% rename("study_subject_id" = "id")
-        test_table.specimen$collection_date <- NA
-      } 
-      
-      #CHECK IF SPECIMEN ALREADY EXISTS
-      check.specimen <- inner_join(sampleDB::CheckTable(database = database, "specimen"), 
-                                       test_table.specimen,
-                                       by = c("study_subject_id", "specimen_type_id", "collection_date"))
-      
-      if(nrow(check.specimen) > 0){
-        toggle <- FALSE
-      }
-    }
-    
-    out <- validate(need(toggle, "Error: Specimen already exists in the database. Specimen Unique Constraint: SUBJECT + STUDY + SPECIMEN TYPE + COLLECTION DATE"))
-    
-  }else{
-    out <- NULL
-  }
-  return(out)
-}
+# .CheckSpecimenExists <- function(input, database, ui.input){
+#   
+#   toggle <- TRUE
+#   if(!is.null(input[[ui.input$UploadDataSet]]$datapath)){
+#     message("CHECK: STUDY SUBJECT LONGITUDINAL REQUIREMENTS")
+#     csv <- read.csv(input[[ui.input$UploadDataSet]]$datapath, check.names = F) %>% tidyr::drop_na()
+#     
+#     check.study_subject <- inner_join(CheckTable(database = database, "study_subject"),
+#                                       tibble(subject = csv$"study_subject_id", 
+#                                              study_id = filter(CheckTable(database = database, "study"), short_code %in% csv$study_short_code)$id, 
+#                                              specimen_type_id = filter(CheckTable(database = database, "specimen_type"), label %in% csv$specimen_type)$id),
+#                                      by = c("subject", "study_id"))
+#     
+#     if(nrow(check.study_subject) != 0){
+#       
+#       if("collection_date" %in% names(csv.upload)){
+#         test_table.specimen <- check.study_subject %>% rename("study_subject_id" = "id")
+#         test_table.specimen$collection_date <- csv.upload$collection_date
+#       }else{
+#         test_table.specimen <- check.study_subject %>% rename("study_subject_id" = "id")
+#         test_table.specimen$collection_date <- NA
+#       } 
+#       
+#       #CHECK IF SPECIMEN ALREADY EXISTS
+#       check.specimen <- inner_join(sampleDB::CheckTable(database = database, "specimen"), 
+#                                        test_table.specimen,
+#                                        by = c("study_subject_id", "specimen_type_id", "collection_date"))
+#       
+#       if(nrow(check.specimen) > 0){
+#         toggle <- FALSE
+#       }
+#     }
+#     
+#     out <- validate(need(toggle, "Error: Specimen already exists in the database. Specimen Unique Constraint: SUBJECT + STUDY + SPECIMEN TYPE + COLLECTION DATE"))
+#     
+#   }else{
+#     out <- NULL
+#   }
+#   return(out)
+# }
 
 .CheckUploadPlateUniqSampleIDConstraintFileInput <- function(input, database, ui.input){
   
@@ -704,4 +710,14 @@ UploadExamples <- function(input, database, output, ui.output, type){
            study_code = "KAM06",
            collection_date = paste("2022", "1", c(1,1,1,2,2,2,3,3,3,4), sep = "-")) %>% print.data.frame(row.names = FALSE)
   }
+}
+
+.ReadInDataForChecks <- function(type, file){
+  upload_data <- read.csv(file, check.names=FALSE)
+  if(type == "micronix" && !"LocationRow" %in% names(upload_data)){
+    names(upload_data) <- upload_data[1,]
+    upload_data <- upload_data[-1,]
+  }
+  upload_data <- upload_data %>% mutate(specimen_type = na_if(specimen_type, "")) %>% tidyr::drop_na()
+  return(upload_data)
 }
