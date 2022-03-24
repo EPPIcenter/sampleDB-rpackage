@@ -4,7 +4,7 @@
 #' Currently the type of wetlab samples supported is only `micronix`. `cryovial`, `rdt` and `paper` sample uploads will appear in the next version.
 #' 
 #' @param sample_type A string specifying the type of samples that are being uploaded Options include: `micronix`, `cryovial`, `rdt` and `paper`
-#' @param upload_file A path string for the SampleDB Upload CSV file.
+#' @param upload_data A dataframe of SampleDB Upload data.
 #' 
 #' **Upload Micronix CSV structure (vision mate + no collection date)**
 #' 
@@ -22,17 +22,17 @@
 #' 
 #' **Upload Micronix CSV structure (traxer + no collection date)**
 #' 
-#' | Position | Tube ID | Status | Error Count | Rack ID | Date | study_subject_id | specimen_type | study_short_code |
-#' | -------- | ------- | ------ | ----------- | ------- | ---- | ---------------- | ------------- | ---------------- |
-#' | A0       | xxx1    |        |             |         |      | subject_1        | PLASMA        | KAM06            |
-#' | A1       | xxx2    |        |             |         |      | subject_2        | PLASMA        | KAM06            |
+#' | Position | Tube ID | study_subject_id | specimen_type | study_short_code |
+#' | -------- | ------- | ---------------- | ------------- | ---------------- |
+#' | A0       | xxx1    | subject_1        | PLASMA        | KAM06            |
+#' | A1       | xxx2    | subject_2        | PLASMA        | KAM06            |
 #' 
 #' **Upload Micronix CSV structure (traxer + collection date)**
 #' 
-#' | Position | Tube ID | Status | Error Count | Rack ID | Date | study_subject_id | specimen_type | study_short_code | collection_date |
-#' | -------- | ------- | ------ | ----------- | ------- | ---- | ---------------- | ------------- | ---------------- | --------------- |
-#' | A0       | xxx1    |        |             |         |      | subject_1        | PLASMA        | KAM06            | 2022-02-11      |
-#' | A1       | xxx2    |        |             |         |      | subject_2        | PLASMA        | KAM06            | 2022-02-11      |
+#' | Position | Tube ID | study_subject_id | specimen_type | study_short_code | collection_date |
+#' | -------- | ------- | ---------------- | ------------- | ---------------- | --------------- |
+#' | A0       | xxx1    | subject_1        | PLASMA        | KAM06            | 2022-02-11      |
+#' | A1       | xxx2    | subject_2        | PLASMA        | KAM06            | 2022-02-11      |
 #' 
 #' **Upload Cryovial CSV structure (no collection date)**
 #' 
@@ -101,26 +101,28 @@
 # this leads to issue 2
 # 2. connections to the database are (to the best of my knowledge) opening and closing all throughout the upload. This is bad, it means that if two usrs try to upload something at the same time
 # the can get their connections to the db (via an upload) can get crossed and ids storage container ids could be useless
+#
 # There are three ways to overcome these problems:
 # A. upload internal data and external data at the same time (is this possible? idk. it is how thing *should* be)
 # B. open a connection to the database only at the beginning of the upload and close the connection only at the end on the upload. many sampleDB funs open and close the db so the use of those funs here is
 # very problematic (it is how things i think *need* to be in order for 2+ users to work with the db at the same time)
 # C. Adds to the db tables occur not in a loop but all at once. (this is how things *should* be)
 
-UploadSamples <- function(sample_type, upload_file, container_name, freezer){
+UploadSamples <- function(sample_type, upload_data, container_name, freezer){
   
   database <- Sys.getenv("SDB_PATH")
   conn <-  RSQLite::dbConnect(RSQLite::SQLite(), database)
   
   # Read in usr supplied upload csv
-  upload_file <- read.csv(upload_file, check.names = F) %>% tidyr::drop_na()
+  # upload_file <- read.csv(upload_file, check.names = F) %>% tidyr::drop_na()
   
   # Save a copy of the upload csv
-  .SaveUploadCSV(upload_file, container_name)
+  .SaveUploadCSV(upload_data, container_name)
   
   # If sample type is micronix; then reformat the upload_file
-  if(sample_type == "micronix"){upload_file <- .ReformatUploadMicronixCSV(upload_file)}
+  if(sample_type == "micronix"){upload_file <- .ReformatUploadMicronixCSV(upload_data)}
   
+  stop()
   # If a collection date is present; switch a longitudinal toggle to true
   toggle.is_longitudinal <- FALSE
   if("collection_date" %in% names(upload_file)){toggle.is_longitudinal <- TRUE}
