@@ -106,7 +106,7 @@
 # very problematic (it is how things i think *need* to be in order for 2+ users to work with the db at the same time)
 # C. Adds to the db tables occur not in a loop but all at once. (this is how things *should* be)
 
-UploadSamples <- function(sample_type, upload_file, container_name, freezer_address){
+UploadSamples <- function(sample_type, upload_data, container_name, freezer_address){
   
   database <- Sys.getenv("SDB_PATH")
   conn <-  RSQLite::dbConnect(RSQLite::SQLite(), database)
@@ -120,7 +120,6 @@ UploadSamples <- function(sample_type, upload_file, container_name, freezer_addr
   # If sample type is micronix; then reformat the upload_file
   if(sample_type == "micronix"){upload_data <- .ReformatUploadMicronixCSV(upload_data)}
   
-  stop()
   # If a collection date is present; switch a longitudinal toggle to true
   toggle.is_longitudinal <- FALSE
   if("collection_date" %in% names(upload_data)){toggle.is_longitudinal <- TRUE}
