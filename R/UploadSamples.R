@@ -143,26 +143,33 @@ UploadSamples <- function(sample_type, upload_file, container_name, freezer){
 
 .ReformatUploadMicronixCSV <- function(upload_file){
   names.base <- c("study_subject_id", "specimen_type", "study_short_code")
-  names.traxer.nodate <- c(names.base, "Position", "Tube ID",	"Status",	"Error Count",	"Rack ID",	"Date")
+  names.traxer.nodate <- c(names.base, "Position", "Tube ID")
   names.traxer.date <- c(names.traxer.nodate, "collection_date")
   names.visionmate.nodate <- c(names.base, "LocationRow", "LocationColumn", "TubeCode")
   names.visionmate.date <- c(names.visionmate.nodate, "collection_date")
   
-  stopifnot("UPLOADCSV COLNAMES ARE MALFORMED" = (setequal(names.traxer.nodate, names(upload_file)) || setequal(names.traxer.date, names(upload_file)) || setequal(names.visionmate.nodate, names(upload_file)) || setequal(names.visionmate.date, names(upload_file))))
-  
   #REFORMAT CSV -- IF LOCATIONROW IS A COLUMN THEN THE DATA CAME OFF VISIONMATE
-  if(!("LocationRow" %in% names(upload_file))){
+  if("LocationRow" %in% names(upload_file)){
+    stopifnot("UPLOADCSV COLNAMES ARE MALFORMED" = (all(names.visionmate.nodate %in% names(upload_file)) || all(names.visionmate.date %in% names(upload_file))))    
+    
     csv.reformatted <- upload_file %>%
-      mutate(label = `Tube ID`,
-             well_position = paste0(substring(Position, 1, 1), substring(Position, 2))) %>%
-      select(-c(Position:Date))
-    # message("UploadCSV from Traxer detected...")
-  }else{
-    csv.reformatted <- upload_file %>%
-      mutate(label = TubeCode,
+      mutate(label = na_if(TubeCode, ""),
              well_position = paste0(LocationRow, LocationColumn)) %>%
-      select(-c(LocationRow, LocationColumn, TubeCode))
-    # message("UploadCSV from VisionMate detected...")
+      tidyr::drop_na()
+    
+  }else{
+    
+    #change first row to header bc plate barcode is the first row
+    names(upload_file) <- upload_file[1,]
+    upload_file <- upload_file[-1,]
+    
+    stopifnot("UPLOADCSV COLNAMES ARE MALFORMED" = (all(names.traxer.nodate %in% names(upload_file)) || all(names.traxer.date %in% names(upload_file))))
+    
+    csv.reformatted <- upload_file %>%
+      mutate(label = na_if(`Tube ID`, ""),
+             well_position = paste0(substring(Position, 1, 1), substring(Position, 2))) %>%
+      tidyr::drop_na()
+
   }
   
   return(csv.reformatted)
