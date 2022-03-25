@@ -275,7 +275,7 @@ MoveSamples <- function(sample_type, move_data){
     for (i in 1:nrow(move_data)){
       if(sample_type == "micronix"){
         
-        if("TubeCode" %in% names(move_data)){
+        if("LocationRow" %in% names(move_data)){
           eval.barcode <- move_data[i,]$"TubeCode"
           eval.well <- move_data[i,]$"LocationRow"
           eval.pos <- move_data[i,]$"LocationColumn"
@@ -386,6 +386,8 @@ MoveSamples <- function(sample_type, move_data){
 
 .CopyContainersForTests <- function(move_data_list, sample_type, database){
   
+  # Extract sample level data from sampleDB (barcode, container position, container id) for containers involved in the move
+  
   # set sample type variables
   if(sample_type == "micronix"){
     container_type <- "matrix_plate"
@@ -412,7 +414,6 @@ MoveSamples <- function(sample_type, move_data){
     colname.container_id <- "bag_id"
   }
   
-  # Extract sample level data from sampleDB (barcode, container position, container id) for containers involved in the move
   sample_data <- list()
   for(container.name in names(move_data_list)){
     tmp.container <- filter(sampleDB::CheckTable(database = database, container_type), !!as.name(colname.container_name) == container.name)

@@ -27,17 +27,20 @@ MoveWetlabSamples <- function(session, input, database, output){
       # .MoveRequirements(input, database)
       
       #CREATE LIST FOR MOVE
-      eval.file.barcode <- list()
+      move_data_list <- list()
       for(i in 1:length(input$MoveDataSet[,1])){
         plate.name <- input$MoveDataSet[[i, 'name']] %>% gsub("\\.csv","",.)
-        eval.file.barcode[[plate.name]] <- input$MoveDataSet[[i, 'datapath']]
+        move_data <- read.csv(input$MoveDataSet[[i, 'datapath']])
+        if(input$MoveSampleType == "micronix" && !"LocationRow" %in% names(move_data)){
+          names(move_data) <- move_data[1,]
+          move_data <- move_data[-1,]
+        }
+        move_data_list[[plate.name]] <- move_data
       }
-      
-      print(eval.file.barcode)
       
       # MOVE SAMPLES -- FUN INPUT SHOULD PROBABLY BE A LIST OF FILES
       sampleDB::MoveSamples(sample_type = input$MoveSampleType,
-                            move_files = eval.file.barcode)
+                            move_data = move_data_list)
       
       # PRINT UPLOAD MSG
       output$MoveReturnMessage2 <- renderText({"Successfully Moved Samples"})
@@ -115,7 +118,7 @@ MoveWetlabSamples <- function(session, input, database, output){
 helper.CheckMoveColnames <- function(input, database){
   
   # VALID COLNAMES
-  names.traxer <- c("Position", "Tube ID",	"Status",	"Error Count",	"Rack ID",	"Date") 
+  names.traxer <- c("Position", "Tube ID")
   names.visionmate <- c("LocationRow", "LocationColumn", "TubeCode")
   
   if(!is.null(input$MoveDataSet)){
@@ -123,19 +126,21 @@ helper.CheckMoveColnames <- function(input, database){
     list.move <- list()
     for(i in 1:length(input$MoveDataSet[,1])){
       plate.name <- input$MoveDataSet[[i, 'name']] %>% gsub("\\.csv","",.)
-      list.move[[plate.name]] <- read_csv(input$MoveDataSet[[i, 'datapath']], col_types = cols()) %>% tidyr::drop_na()
+      move_data <- read.csv(input$MoveDataSet[[i, 'datapath']])
+      if(!"LocationRow" %in% names(move_data)){
+        names(move_data) <- move_data[1,]
+        move_data <- move_data[-1,]
+      }
+      list.move[[plate.name]] <- move_data
     }
     
     toggle <- TRUE
     for(lst.names in names(list.move)){
-      name.col <- names(list.move[[lst.names]])
-      if(!(identical(name.col, names.traxer) || identical(name.col, names.visionmate))){
+      if(!(all(names.traxer %in% names(list.move[[lst.names]])) || all(names.visionmate %in% names(list.move[[lst.names]])))){
         toggle <- FALSE
       }
     }
-    
-    
-    upload_names <- read_csv(input$UploadDataSet$datapath, col_types = cols()) %>% tidyr::drop_na() %>% names()
+
     out <- validate(need(toggle, "Failed: Malformed Colnames"))
   }else{
     out <- NULL
