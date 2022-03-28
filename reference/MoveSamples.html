@@ -51,15 +51,15 @@ From one (or more) existing container into one (or more) existing container
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="fu">MoveSamples</span><span class="op">(</span><span class="va">sample_type</span>, <span class="va">move_files</span><span class="op">)</span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="fu">MoveSamples</span><span class="op">(</span><span class="va">sample_type</span>, <span class="va">move_data</span><span class="op">)</span></code></pre></div>
     </div>
 
     <div class="section level2">
     <h2 id="arguments">Arguments<a class="anchor" aria-label="anchor" href="#arguments"></a></h2>
     <dl><dt>sample_type</dt>
 <dd><p>A string specifying the type of samples that are being moved. Options include: <code>micronix</code>, <code>cryovial</code>, <code>rdt</code> and <code>paper</code></p></dd>
-<dt>move_files</dt>
-<dd><p>A list of paths to SampleDB MoveCSV files, where the name of each path item is the container that the samples are in after the move.</p>
+<dt>move_data</dt>
+<dd><p>A list of SampleDB move dataframes, where the name of each dataframe item is the container that the samples are in after the move.</p>
 <p>The basic structure of a Move CSV file is shown below.</p><table class="table table"><tr><td>row</td><td>column</td><td>label</td></tr><tr><td>A</td><td>0</td><td>xxx1</td></tr><tr><td>A</td><td>1</td><td>xxx2</td></tr></table><p>Accepted names for the <code>row</code> column include: <code>row</code>, <code>Row</code>, and <code>LocationRow</code>. <br>
 Accepted names for the <code>column</code> column include: <code>column</code>, <code>Column</code>, and <code>LocationColumn</code>. <br>
 Also accepted is a single column named <code>Position</code> that represents the both the <code>row</code> column and the <code>column</code> column.
@@ -69,8 +69,8 @@ If the <code>Position</code> column is used then the <code>row</code> and <code>
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span></span>
-<span class="r-in"><span class="va">move_files</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="st">"move_csv1_container_name"</span> <span class="op">=</span> <span class="st">"~/path/to/move_csv1.csv"</span>, <span class="st">"move_csv2_container_name"</span> <span class="op">=</span> <span class="st">"~/path/to/move_csv2.csv"</span><span class="op">)</span></span>
-<span class="r-in"><span class="fu">MoveSamples</span><span class="op">(</span>sample_type <span class="op">=</span> <span class="st">"micronix"</span>, move_files <span class="op">=</span> <span class="va">move_files</span><span class="op">)</span></span>
+<span class="r-in"><span class="va">move_data</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="st">"move_csv1_container_name"</span> <span class="op">=</span> <span class="fu">dataframe</span><span class="op">(</span><span class="op">)</span>, <span class="st">"move_csv2_container_name"</span> <span class="op">=</span> <span class="fu">dataframe</span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
+<span class="r-in"><span class="fu">MoveSamples</span><span class="op">(</span>sample_type <span class="op">=</span> <span class="st">"micronix"</span>, move_data <span class="op">=</span> <span class="va">move_data</span><span class="op">)</span></span>
 <span class="r-in"><span class="op">}</span></span>
 </code></pre></div>
     </div>
