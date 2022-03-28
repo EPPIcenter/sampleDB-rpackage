@@ -2,9 +2,11 @@
 #' @import dplyr
 #' @export
 
-DeleteEmptyContainers <- function(database, type, container_name){
+DeleteEmptyContainer <- function(database, type, container_name){
   
-  stopifnot("Sample Type is not valid" = type %in% c("micronix", "cryovile", "rdt", "paper"))
+  stopifnot("Sample Type is not valid" = type %in% c("micronix", "cryovial", "rdt", "paper"))
+  database <- Sys.getenv("SDB_PATH")
+  
   if(type == "micronix"){
     id.container <- filter(sampleDB::CheckTable(database = database, "matrix_plate"), plate_name == container_name)$id
     if(filter(sampleDB::CheckTable("matrix_tube"), plate_id %in% id.container) %>% nrow() == 0){
@@ -16,7 +18,7 @@ DeleteEmptyContainers <- function(database, type, container_name){
       message("Error Contianer is not empty")
     }
   }
-  else if(type == "cryovile"){
+  else if(type == "cryovial"){
     id.container <- filter(sampleDB::CheckTable(database = database, "box"), box_name == container_name)$id
     if(filter(sampleDB::CheckTable("tube"), plate_id %in% id.container) %>% nrow() == 0){
       sampleDB::DeleteFromTable(database = database, 

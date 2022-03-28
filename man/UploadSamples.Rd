@@ -4,12 +4,12 @@
 \alias{UploadSamples}
 \title{Upload EPPIcenter Wetlab Samples to the SampleDB database}
 \usage{
-UploadSamples(sample_type, upload_file, container_name, freezer)
+UploadSamples(sample_type, upload_data, container_name, freezer_address)
 }
 \arguments{
 \item{sample_type}{A string specifying the type of samples that are being uploaded Options include: \code{micronix}, \code{cryovial}, \code{rdt} and \code{paper}}
 
-\item{upload_file}{A path string for the SampleDB Upload CSV file.
+\item{upload_data}{A dataframe of SampleDB Upload data.
 
 \strong{Upload Micronix CSV structure (vision mate + no collection date)}\tabular{llllll}{
    LocationRow \tab LocationColumn \tab TubeCode \tab study_subject_id \tab specimen_type \tab study_short_code \cr
@@ -25,17 +25,17 @@ UploadSamples(sample_type, upload_file, container_name, freezer)
 }
 
 
-\strong{Upload Micronix CSV structure (traxer + no collection date)}\tabular{lllllllll}{
-   Position \tab Tube ID \tab Status \tab Error Count \tab Rack ID \tab Date \tab study_subject_id \tab specimen_type \tab study_short_code \cr
-   A0 \tab xxx1 \tab  \tab  \tab  \tab  \tab subject_1 \tab PLASMA \tab KAM06 \cr
-   A1 \tab xxx2 \tab  \tab  \tab  \tab  \tab subject_2 \tab PLASMA \tab KAM06 \cr
+\strong{Upload Micronix CSV structure (traxer + no collection date)}\tabular{lllll}{
+   Position \tab Tube ID \tab study_subject_id \tab specimen_type \tab study_short_code \cr
+   A0 \tab xxx1 \tab subject_1 \tab PLASMA \tab KAM06 \cr
+   A1 \tab xxx2 \tab subject_2 \tab PLASMA \tab KAM06 \cr
 }
 
 
-\strong{Upload Micronix CSV structure (traxer + collection date)}\tabular{llllllllll}{
-   Position \tab Tube ID \tab Status \tab Error Count \tab Rack ID \tab Date \tab study_subject_id \tab specimen_type \tab study_short_code \tab collection_date \cr
-   A0 \tab xxx1 \tab  \tab  \tab  \tab  \tab subject_1 \tab PLASMA \tab KAM06 \tab 2022-02-11 \cr
-   A1 \tab xxx2 \tab  \tab  \tab  \tab  \tab subject_2 \tab PLASMA \tab KAM06 \tab 2022-02-11 \cr
+\strong{Upload Micronix CSV structure (traxer + collection date)}\tabular{llllll}{
+   Position \tab Tube ID \tab study_subject_id \tab specimen_type \tab study_short_code \tab collection_date \cr
+   A0 \tab xxx1 \tab subject_1 \tab PLASMA \tab KAM06 \tab 2022-02-11 \cr
+   A1 \tab xxx2 \tab subject_2 \tab PLASMA \tab KAM06 \tab 2022-02-11 \cr
 }
 
 
@@ -82,10 +82,10 @@ UploadSamples(sample_type, upload_file, container_name, freezer)
 
 \item{container_name}{A string specifying the name of the container the samples are in. Names must be unique within each sample type.}
 
-\item{freezer}{A list specifying the freezer used to store samples. \cr
-Required items in the freezer list are \code{location_name}, \code{level_I} and \code{level_II}.
-If the freezer type is \verb{minus eighty} then \code{level_I} and \code{level_II} items specify the rack and position, respecively.
-If the freezer type is \verb{minus twenty} then \code{level_I} and \code{level_II} items specify the shelf and basket, respecively.}
+\item{freezer_address}{A list specifying the freezer address used to store samples. \cr
+Required items in the freezer_address list are \code{location_name}, \code{level_I} and \code{level_II}.
+If the freezer_address type is \verb{minus eighty} then \code{level_I} and \code{level_II} items specify the rack and position, respecively.
+If the freezer_address type is \verb{minus twenty} then \code{level_I} and \code{level_II} items specify the shelf and basket, respecively.}
 }
 \description{
 \code{UploadSamples()} can be used to upload wetlab samples to the sampleDB database.
@@ -93,6 +93,6 @@ Currently the type of wetlab samples supported is only \code{micronix}. \code{cr
 }
 \examples{
 \dontrun{
-UploadSamples(upload_file = "/path/to/UploadCSV.csv", container_name = "dummy_name", location = freezer = list(location_name = "Freezer A", level_I = "dummy.levelI", level_II = "dummy.levelII"))
+UploadSamples(upload_data = dataframe(), container_name = "dummy_name", location = freezer_address = list(location_name = "Freezer A", level_I = "dummy.levelI", level_II = "dummy.levelII"))
 }
 }

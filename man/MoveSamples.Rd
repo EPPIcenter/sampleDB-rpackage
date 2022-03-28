@@ -4,12 +4,12 @@
 \alias{MoveSamples}
 \title{Move Wetlab Samples in the EPPIcenter sampleDB database}
 \usage{
-MoveSamples(sample_type, move_files)
+MoveSamples(sample_type, move_data)
 }
 \arguments{
 \item{sample_type}{A string specifying the type of samples that are being moved. Options include: \code{micronix}, \code{cryovial}, \code{rdt} and \code{paper}}
 
-\item{move_files}{A list of paths to SampleDB MoveCSV files, where the name of each path item is the container that the samples are in after the move.
+\item{move_data}{A list of SampleDB move dataframes, where the name of each dataframe item is the container that the samples are in after the move.
 
 The basic structure of a Move CSV file is shown below.\tabular{lll}{
    row \tab column \tab label \cr
@@ -32,7 +32,7 @@ If the \code{Position} column is used then the \code{row} and \code{column} colu
 }
 \examples{
 \dontrun{
-move_files <- list("move_csv1_container_name" = "~/path/to/move_csv1.csv", "move_csv2_container_name" = "~/path/to/move_csv2.csv")
-MoveSamples(sample_type = "micronix", move_files = move_files)
+move_data <- list("move_csv1_container_name" = dataframe(), "move_csv2_container_name" = dataframe())
+MoveSamples(sample_type = "micronix", move_data = move_data)
 }
 }
