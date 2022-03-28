@@ -270,11 +270,11 @@ MoveSamples <- function(sample_type, move_data){
     
     # Get samples in container
     move_data <- move_data_list[[container_name]]
-    
+    if(nrow(move_data) != 0){
+        
     # Get data for each sample
     for (i in 1:nrow(move_data)){
       if(sample_type == "micronix"){
-        
         if("LocationRow" %in% names(move_data)){
           eval.barcode <- move_data[i,]$"TubeCode"
           eval.well <- move_data[i,]$"LocationRow"
@@ -284,14 +284,13 @@ MoveSamples <- function(sample_type, move_data){
           eval.well <- move_data[i,]$"Position" %>% substring(., 1, 1)
           eval.pos <- move_data[i,]$"Position" %>% substring(., 2)
         }
-        
+  
         # get sample id
         id <- filter(sampleDB::CheckTable(database = database, "matrix_tube"), barcode == eval.barcode)$id
         
         # get container id
         eval.container_id <- filter(sampleDB::CheckTable(database = database, "matrix_plate"), plate_name == container_name)$id 
-        
-        # link sample with container id
+        # link sample with container id, if there is a sample id (which is not the case if an empty csv was intentionally uploaded)
         ModifyTable(database = database,
                     "matrix_tube",
                     info_list = list(plate_id = eval.container_id,
@@ -344,7 +343,8 @@ MoveSamples <- function(sample_type, move_data){
       }
     }
   }
-
+  }
+  
   message <- paste0("Sucessfully Moved Samples\n",
                     "\tType: ", sample_type, "\n",
                     "\tContainer Name: ", container_names, "\n",
