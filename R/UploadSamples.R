@@ -31,38 +31,22 @@
 #' @import lubridate
 #' @export
 
-# there are two problems
-# 1. is that internal upload (specimen, storage_container, study_subject) occurs before container (plates, boxes, bags) and samples (cryo tubes, rdt, micronix tubes)
-# this means that in order for the ids of samples to match the upload ids no errors can take place during either of these uploads. they work in tandem so must fail together or be successful together
-# this leads to issue 2
-# 2. connections to the database are (to the best of my knowledge) opening and closing all throughout the upload. This is bad, it means that if two usrs try to upload something at the same time
-# the can get their connections to the db (via an upload) can get crossed and ids storage container ids could be useless
-#
-# There are three ways to overcome these problems:
-# A. upload internal data and external data at the same time (is this possible? idk. it is how thing *should* be)
-# B. open a connection to the database only at the beginning of the upload and close the connection only at the end on the upload. many sampleDB funs open and close the db so the use of those funs here is
-# very problematic (it is how things i think *need* to be in order for 2+ users to work with the db at the same time)
-# C. Adds to the db tables occur not in a loop but all at once. (this is how things *should* be)
-
-UploadSamples <- function(sample_type, upload_data, container_name, container_barcode = NULL, freezer_address, scanner_model = NULL){
+UploadSamples <- function(sample_type, upload_data, container_name, freezer_address, container_barcode = NULL, scanner_model = NULL){
   
   database <- Sys.getenv("SDB_PATH")
   conn <-  RSQLite::dbConnect(RSQLite::SQLite(), database)
-  
-  # Read in usr supplied upload csv
-  # upload_data <- read.csv(upload_file, check.names = F) %>% tidyr::drop_na()
   
   # Save a copy of the upload csv
   .SaveUploadCSV(upload_data, container_name)
   
   # If scanner_model does not equal NULL then reformat data according to the scanner model 
-  if(!is.null(scanner_model)){
+  # if(!is.null(scanner_model)){
     upload_data <- .ReformatUploadData(upload_data, scanner_model)
   }
   
-  # If a collection date is present; switch a longitudinal toggle to true
-  toggle.is_longitudinal <- FALSE
-  if("collection_date" %in% names(upload_data)){toggle.is_longitudinal <- TRUE}
+  # # If a collection date is present; switch a longitudinal toggle to true
+  # toggle.is_longitudinal <- FALSE
+  # if("collection_date" %in% names(upload_data)){toggle.is_longitudinal <- TRUE}
   
   # Perform upload checks
   .UploadChecks(sample_type, input, database, freezer_address, container_name = container_name, container_barcode = container_barcode, upload_data = upload_data)
@@ -82,33 +66,27 @@ UploadSamples <- function(sample_type, upload_data, container_name, container_ba
 }
 
 .ReformatUploadData <- function(upload_data, scanner_model){
+  
   names.base <- c("study_subject_id", "specimen_type", "study_short_code")
-  names.traxer.nodate <- c(names.base, "Position", "Tube ID")
-  names.traxer.date <- c(names.traxer.nodate, "collection_date")
-  names.visionmate.nodate <- c(names.base, "LocationRow", "LocationColumn", "TubeCode")
-  names.visionmate.date <- c(names.visionmate.nodate, "collection_date")
-  
-  #REFORMAT CSV -- IF LOCATIONROW IS A COLUMN THEN THE DATA CAME OFF VISIONMATE
-  if("LocationRow" %in% names(upload_data)){
-    stopifnot("UPLOADCSV COLNAMES ARE MALFORMED" = (all(names.visionmate.nodate %in% names(upload_data)) || all(names.visionmate.date %in% names(upload_data))))    
-    
-    csv.reformatted <- upload_data %>%
-      mutate(label = na_if(TubeCode, ""),
-             well_position = paste0(LocationRow, LocationColumn)) %>%
+  if(scanner_model == "traxcer"){
+    names.visionmate.nodate <- c(names.base, "LocationRow", "LocationColumn", "TubeCode")
+    stopifnot("UPLOADCSV COLNAMES ARE MALFORMED" = (all(names.traxer.nodate %in% names(upload_data))))  
+    data.reformatted <- upload_data %>%
+      mutate(barcode = na_if(TubeCode, "")) %>%
+      rename(row = LocationRow, 
+             column = LocationColumn) %>%
       tidyr::drop_na()
-    
   }else{
-  
-    stopifnot("UPLOADCSV COLNAMES ARE MALFORMED" = (all(names.traxer.nodate %in% names(upload_data)) || all(names.traxer.date %in% names(upload_data))))
-    
-    csv.reformatted <- upload_data %>%
-      mutate(label = na_if(`Tube ID`, ""),
-             well_position = paste0(substring(Position, 1, 1), substring(Position, 2))) %>%
+    names_traxer <- c(names.base, "Position", "Tube ID")
+    stopifnot("UPLOADCSV COLNAMES ARE MALFORMED" = (all(names_visionmate %in% names(upload_data))))
+    data.reformatted <- upload_data %>%
+      mutate(barcode = na_if(`Tube ID`, ""),
+             row = substring(Position, 1, 1), 
+             column = substring(Position, 2)) %>%
       tidyr::drop_na()
-
   }
   
-  return(csv.reformatted)
+  return(data.reformatted)
 }
 
 .UploadChecks <- function(sample_type, input, database, freezer_address, container_name, container_barcode, upload_data){
@@ -129,8 +107,6 @@ UploadSamples <- function(sample_type, upload_data, container_name, container_ba
                                                             sampleDB::CheckTable(database = database, "bag")$bag_name)))
   
   # CHECK PLATE BARCODE IS UNIQUE
-  print("here")
-  print(container_barcode)
   if(!is.null(container_barcode)){
     if(container_barcode != ""){
       stopifnot("CONTAINER BARCODE IS NOT UNIQUE" = !(container_barcode %in% c(sampleDB::CheckTable(database = database, "matrix_plate")$plate_barcode)))
@@ -149,12 +125,12 @@ UploadSamples <- function(sample_type, upload_data, container_name, container_ba
   }
   
   # CHECK THAT NO BARCODE ALREADY EXISTS
-  stopifnot("Error: Barcode Unique Constraint" = all(!upload_data$label %in% c(sampleDB::CheckTable(database = database, "matrix_tube")$barcode,
+  stopifnot("Error: Barcode Unique Constraint" = all(!upload_data$barcode %in% c(sampleDB::CheckTable(database = database, "matrix_tube")$barcode,
                                                                               sampleDB::CheckTable(database = database, "tube")$label,
                                                                               sampleDB::CheckTable(database = database, "rdt")$label,
                                                                               sampleDB::CheckTable(database = database, "paper")$label)))
   
-  NonUniqueLabels <- upload_data$label[which(upload_data$label %in% c(sampleDB::CheckTable(database = database, "matrix_tube")$barcode,
+  NonUniqueLabels <- upload_data$barcode[which(upload_data$barcode %in% c(sampleDB::CheckTable(database = database, "matrix_tube")$barcode,
                                                                     sampleDB::CheckTable(database = database, "tube")$label,
                                                                     sampleDB::CheckTable(database = database, "rdt")$label,
                                                                     sampleDB::CheckTable(database = database, "paper")$label))]
@@ -194,12 +170,19 @@ UploadSamples <- function(sample_type, upload_data, container_name, container_ba
     eval.specimen_type_id <- filter(sampleDB::CheckTable(database = database, "specimen_type"), label == upload_data[i, ]$"specimen_type")$id
     eval.study_id <- filter(sampleDB::CheckTable(database = database, "study"), short_code == upload_data[i, ]$"study_short_code")$id
     eval.subject <- upload_data[i, ]$"study_subject_id"
-    if(toggle.is_longitudinal){
+    eval.collection_date <- upload_data[i, ]$"collection_date"
+    if(!is.na(eval.collection_date)){
       eval.collection_date <- ymd(upload_data[i, ]$"collection_date")
       eval.collection_date <- as.double(as.Date(paste(year(eval.collection_date), month(eval.collection_date), day(eval.collection_date), sep = "-")))
     }else{
       eval.collection_date <- as.double(as.Date(NA))
     }
+    # if(toggle.is_longitudinal){
+    #   eval.collection_date <- ymd(upload_data[i, ]$"collection_date")
+    #   eval.collection_date <- as.double(as.Date(paste(year(eval.collection_date), month(eval.collection_date), day(eval.collection_date), sep = "-")))
+    # }else{
+    #   eval.collection_date <- as.double(as.Date(NA))
+    # }
     
     #CHECK IF THIS SUBJECT + STUDY COMBO EXISTS
     tmp_table.study_subject <- inner_join(sampleDB::CheckTable(database = database, "study_subject")[, c("subject", "study_id")],
@@ -410,8 +393,8 @@ UploadSamples <- function(sample_type, upload_data, container_name, container_ba
 
 .UploadMicronixTubes <- function(database, upload_data, i, conn, eval.plate_id){
   
-  eval.barcode <- upload_data[i,]$"label" %>% as.character()
-  eval.well_position <- upload_data[i,]$"well_position"
+  eval.barcode <- upload_data[i,]$"barcode" %>% as.character()
+  eval.well_position <- paste0(upload_data[i,]$"row", upload_data[i,]$"column")
   
   sampleDB::AddToTable(database = database,
                        "matrix_tube",
@@ -494,3 +477,16 @@ UploadSamples <- function(sample_type, upload_data, container_name, container_ba
               row.names = FALSE)
   }
 }
+
+# there are two problems
+# 1. is that internal upload (specimen, storage_container, study_subject) occurs before container (plates, boxes, bags) and samples (cryo tubes, rdt, micronix tubes)
+# this means that in order for the ids of samples to match the upload ids no errors can take place during either of these uploads. they work in tandem so must fail together or be successful together
+# this leads to issue 2
+# 2. connections to the database are (to the best of my knowledge) opening and closing all throughout the upload. This is bad, it means that if two usrs try to upload something at the same time
+# the can get their connections to the db (via an upload) can get crossed and ids storage container ids could be useless
+#
+# There are three ways to overcome these problems:
+# A. upload internal data and external data at the same time (is this possible? idk. it is how thing *should* be)
+# B. open a connection to the database only at the beginning of the upload and close the connection only at the end on the upload. many sampleDB funs open and close the db so the use of those funs here is
+# very problematic (it is how things i think *need* to be in order for 2+ users to work with the db at the same time)
+# C. Adds to the db tables occur not in a loop but all at once. (this is how things *should* be)
