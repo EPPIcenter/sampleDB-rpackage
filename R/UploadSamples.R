@@ -77,6 +77,7 @@
 #' | xxx2  | subject_2        | PLASMA        | KAM06            | 2022-02-11      |
 #' 
 #' @param container_name A string specifying the name of the container the samples are in. Names must be unique within each sample type.
+#' @param container_barcode A string specifying the barcode for the container the samples are in. Container barcodes are optional. Barcodes must be unique within each sample type.
 #' @param freezer_address A list specifying the freezer address used to store samples. \cr 
 #' Required items in the freezer_address list are `location_name`, `level_I` and `level_II`.
 #' If the freezer_address type is `minus eighty` then `level_I` and `level_II` items specify the rack and position, respecively. 
@@ -106,7 +107,7 @@
 # very problematic (it is how things i think *need* to be in order for 2+ users to work with the db at the same time)
 # C. Adds to the db tables occur not in a loop but all at once. (this is how things *should* be)
 
-UploadSamples <- function(sample_type, upload_data, container_name, freezer_address){
+UploadSamples <- function(sample_type, upload_data, container_name, container_barcode = NULL, freezer_address){
   
   database <- Sys.getenv("SDB_PATH")
   conn <-  RSQLite::dbConnect(RSQLite::SQLite(), database)
@@ -125,11 +126,12 @@ UploadSamples <- function(sample_type, upload_data, container_name, freezer_addr
   if("collection_date" %in% names(upload_data)){toggle.is_longitudinal <- TRUE}
   
   # Perform upload checks
-  .UploadChecks(sample_type, input, database, freezer_address, container_name, upload_data = upload_data)
+  .UploadChecks(sample_type, input, database, freezer_address, container_name = container_name, container_barcode = container_barcode, upload_data = upload_data)
   
   # Upload data
   .UploadSamples(upload_data = upload_data, database = database, toggle.is_longitudinal = toggle.is_longitudinal, 
-                  sample_type = sample_type, conn = conn, container_name = container_name, freezer_address = freezer_address)
+                 sample_type = sample_type, conn = conn, container_name = container_name, freezer_address = freezer_address,
+                 container_barcode = container_barcode)
 
   message(paste("UPLOADING CONTAINER", container_name, "CONTAINING", nrow(upload_data), "SAMPLES"))
   
@@ -170,7 +172,7 @@ UploadSamples <- function(sample_type, upload_data, container_name, freezer_addr
   return(csv.reformatted)
 }
 
-.UploadChecks <- function(sample_type, input, database, freezer_address, container_name, upload_data){
+.UploadChecks <- function(sample_type, input, database, freezer_address, container_name, container_barcode, upload_data){
   
   message("PERFORMING CHECKS")
   
@@ -186,6 +188,18 @@ UploadSamples <- function(sample_type, upload_data, container_name, freezer_addr
   stopifnot("CONTAINER NAME IS NOT UNIQUE" = !(container_name %in% c(sampleDB::CheckTable(database = database, "matrix_plate")$plate_name,
                                                             sampleDB::CheckTable(database = database, "box")$box_name,
                                                             sampleDB::CheckTable(database = database, "bag")$bag_name)))
+  
+  # CHECK PLATE BARCODE IS UNIQUE
+  print("here")
+  print(container_barcode)
+  if(!is.null(container_barcode)){
+    if(container_barcode != ""){
+      stopifnot("CONTAINER BARCODE IS NOT UNIQUE" = !(container_barcode %in% c(sampleDB::CheckTable(database = database, "matrix_plate")$plate_barcode)))
+      # stopifnot("CONTAINER BARCODE IS NOT UNIQUE" = !(container_barcode %in% c(sampleDB::CheckTable(database = database, "matrix_plate")$plate_barcode,
+      #                                                                    sampleDB::CheckTable(database = database, "box")$box_barcode,
+      #                                                                    sampleDB::CheckTable(database = database, "bag")$bag_barcode)))  
+    }
+  }
   
   # CHECK THAT SPECIMEN TYPE(S) EXISTS
   stopifnot("ERROR: SPECIMEN TYPE(S) NOT FOUND" = all(upload_data$"specimen_type" %in% CheckTable(database = database, table = "specimen_type")$label))
@@ -233,7 +247,7 @@ UploadSamples <- function(sample_type, upload_data, container_name, freezer_addr
   # }
 }
 
-.UploadSamples <- function(upload_data, database, toggle.is_longitudinal, sample_type, conn, container_name, freezer_address){
+.UploadSamples <- function(upload_data, database, toggle.is_longitudinal, sample_type, conn, container_name, container_barcode, freezer_address){
   
   for(i in 1:nrow(upload_data)){
     
@@ -308,7 +322,7 @@ UploadSamples <- function(sample_type, upload_data, container_name, freezer_addr
       if(sample_type == "micronix"){
         # create a new container (if it does not already exist)
         if(!container_name %in% CheckTable(database = database, "matrix_plate")$plate_name){
-          eval.plate_id <- .UploadMicronixPlate(database = database, container_name = container_name, freezer_address = freezer_address, conn = conn) 
+          eval.plate_id <- .UploadMicronixPlate(database = database, container_name = container_name, container_barcode = container_barcode, freezer_address = freezer_address, conn = conn) 
         }
         
         # upload micronix sample
@@ -392,7 +406,7 @@ UploadSamples <- function(sample_type, upload_data, container_name, freezer_addr
       if(sample_type == "micronix"){
         # create a new container (if it does not already exist)
         if(!container_name %in% CheckTable(database = database, "matrix_plate")$plate_name){
-          eval.plate_id <- .UploadMicronixPlate(database = database, container_name = container_name, freezer_address = freezer_address, conn = conn) 
+          eval.plate_id <- .UploadMicronixPlate(database = database, container_name = container_name, container_barcode = container_barcode, freezer_address = freezer_address, conn = conn) 
         }
         
         # upload micronix sample
@@ -429,14 +443,25 @@ UploadSamples <- function(sample_type, upload_data, container_name, freezer_addr
   }
 }
 
-.UploadMicronixPlate <- function(database, container_name, freezer_address, conn){
+.UploadMicronixPlate <- function(database, container_name, container_barcode, freezer_address, conn){
   eval.location_id <- filter(CheckTable(database = database, "location"), location_name == freezer_address$location, level_I == freezer_address$level_I, level_II == freezer_address$level_II)$id
-  sampleDB::AddToTable(database = database, 
+  if(is.null(container_barcode)){
+    container_barcode <- NA
+  }
+  else if(container_barcode == ""){
+    container_barcode <- NA
+  }
+  else{
+    container_barcode <- container_barcode
+  }
+  print(container_barcode)
+  sampleDB::AddToTable(database = database,
                        "matrix_plate",
                        list(created = lubridate::now("UTC") %>% as.character(),
                             last_updated = lubridate::now("UTC") %>% as.character(),
                             location_id = eval.location_id,
-                            plate_name = container_name),
+                            plate_name = container_name,
+                            plate_barcode = container_barcode),
                        conn = conn) %>% suppressWarnings()
   eval.plate_id <- tail(sampleDB::CheckTable(database = database, "matrix_plate"), 1)$id
   
