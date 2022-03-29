@@ -4,77 +4,14 @@
 #' Currently the type of wetlab samples supported is only `micronix`. `cryovial`, `rdt` and `paper` sample uploads will appear in the next version.
 #' 
 #' @param sample_type A string specifying the type of samples that are being uploaded Options include: `micronix`, `cryovial`, `rdt` and `paper`
-#' @param upload_data A dataframe of SampleDB Upload data.
+#' @param upload_data A table of SampleDB Upload data. `barcode` and `collection_date` are optional and default to `NA`
 #' 
-#' **Upload Micronix CSV structure (vision mate + no collection date)**
+#' **upload_data table**
 #' 
-#' | LocationRow | LocationColumn | TubeCode | study_subject_id | specimen_type | study_short_code |
-#' | ----------- |--------------- | -------- | ---------------- | ------------- | ---------------- |
-#' | A           | 0              | xxx1     | subject_1        | PLASMA        | KAM06            |
-#' | A           | 1              | xxx2     | subject_2        | PLASMA        | KAM06            |
-#' 
-#' **Upload Micronix CSV structure (vision mate + collection date)**
-#' 
-#' | LocationRow | LocationColumn | TubeCode | study_subject_id | specimen_type | study_short_code | collection_date |
-#' | ----------- |--------------- | -------- | ---------------- | ------------- | ---------------- | --------------- |
-#' | A           | 0              | xxx1     | subject_1        | PLASMA        | KAM06            | 2022-02-11      |
-#' | A           | 1              | xxx2     | subject_2        | PLASMA        | KAM06            | 2022-02-11      |
-#' 
-#' **Upload Micronix CSV structure (traxer + no collection date)**
-#' 
-#' | Position | Tube ID | study_subject_id | specimen_type | study_short_code |
-#' | -------- | ------- | ---------------- | ------------- | ---------------- |
-#' | A0       | xxx1    | subject_1        | PLASMA        | KAM06            |
-#' | A1       | xxx2    | subject_2        | PLASMA        | KAM06            |
-#' 
-#' **Upload Micronix CSV structure (traxer + collection date)**
-#' 
-#' | Position | Tube ID | study_subject_id | specimen_type | study_short_code | collection_date |
-#' | -------- | ------- | ---------------- | ------------- | ---------------- | --------------- |
-#' | A0       | xxx1    | subject_1        | PLASMA        | KAM06            | 2022-02-11      |
-#' | A1       | xxx2    | subject_2        | PLASMA        | KAM06            | 2022-02-11      |
-#' 
-#' **Upload Cryovial CSV structure (no collection date)**
-#' 
-#' | row | column | label | study_subject_id | specimen_type | study_short_code |
-#' | --- |------- | ----- | ---------------- | ------------- | ---------------- |
-#' | A   | 0      | xxx1  | subject_1        | PLASMA        | KAM06            |
-#' | A   | 1      | xxx2  | subject_2        | PLASMA        | KAM06            |
-#' 
-#' **Upload Cryovial CSV structure (collection date)**
-#' 
-#' | row | column | label | study_subject_id | specimen_type | study_short_code | collection_date |
-#' | --- |------- | ----- | ---------------- | ------------- | ---------------- | --------------- |
-#' | A   | 0      | xxx1  | subject_1        | PLASMA        | KAM06            | 2022-02-11      |
-#' | A   | 1      | xxx2  | subject_2        | PLASMA        | KAM06            | 2022-02-11      |
-#'
-#' **Upload RDT CSV structure (no collection date)**
-#' 
-#' | label | study_subject_id | specimen_type | study_short_code |
-#' | ----- | ---------------- | ------------- | ---------------- |
-#' | xxx1  | subject_1        | PLASMA        | KAM06            |
-#' | xxx2  | subject_2        | PLASMA        | KAM06            |
-#'  
-#' **Upload RDT CSV structure (collection date)**
-#' 
-#' | label | study_subject_id | specimen_type | study_short_code | collection_date |
-#' | ----- | ---------------- | ------------- | ---------------- | --------------- |
-#' | xxx1  | subject_1        | PLASMA        | KAM06            | 2022-02-11      |
-#' | xxx2  | subject_2        | PLASMA        | KAM06            | 2022-02-11      |
-#' 
-#' **Upload Paper CSV structure**
-#' 
-#' | label | study_subject_id | specimen_type | study_short_code |
-#' | ----- | ---------------- | ------------- | ---------------- |
-#' | xxx1  | subject_1        | PLASMA        | KAM06            |
-#' | xxx2  | subject_2        | PLASMA        | KAM06            |
-#' 
-#' **Upload Paper CSV structure**
-#' 
-#' | label | study_subject_id | specimen_type | study_short_code | collection_date |
-#' | ----- | ---------------- | ------------- | ---------------- | --------------- |
-#' | xxx1  | subject_1        | PLASMA        | KAM06            | 2022-02-11      |
-#' | xxx2  | subject_2        | PLASMA        | KAM06            | 2022-02-11      |
+#' | row | column | barcode | study_subject_id | specimen_type | study_short_code | collection_date |
+#' | --- |------- | ------- | ---------------- | ------------- | ---------------- | --------------- |
+#' | A   | 0      | xxx1    | subject_1        | PLASMA        | KAM06            | NA              |
+#' | A   | 1      | NA      | subject_2        | PLASMA        | KAM06            | 2022-10-31      |
 #' 
 #' @param container_name A string specifying the name of the container the samples are in. Names must be unique within each sample type.
 #' @param container_barcode A string specifying the barcode for the container the samples are in. Container barcodes are optional. Barcodes must be unique within each sample type.
@@ -107,7 +44,7 @@
 # very problematic (it is how things i think *need* to be in order for 2+ users to work with the db at the same time)
 # C. Adds to the db tables occur not in a loop but all at once. (this is how things *should* be)
 
-UploadSamples <- function(sample_type, upload_data, container_name, container_barcode = NULL, freezer_address){
+UploadSamples <- function(sample_type, upload_data, container_name, container_barcode = NULL, freezer_address, scanner_model = NULL){
   
   database <- Sys.getenv("SDB_PATH")
   conn <-  RSQLite::dbConnect(RSQLite::SQLite(), database)
@@ -118,8 +55,10 @@ UploadSamples <- function(sample_type, upload_data, container_name, container_ba
   # Save a copy of the upload csv
   .SaveUploadCSV(upload_data, container_name)
   
-  # If sample type is micronix; then reformat the upload_file
-  if(sample_type == "micronix"){upload_data <- .ReformatUploadMicronixCSV(upload_data)}
+  # If scanner_model does not equal NULL then reformat data according to the scanner model 
+  if(!is.null(scanner_model)){
+    upload_data <- .ReformatUploadData(upload_data, scanner_model)
+  }
   
   # If a collection date is present; switch a longitudinal toggle to true
   toggle.is_longitudinal <- FALSE
@@ -142,7 +81,7 @@ UploadSamples <- function(sample_type, upload_data, container_name, container_ba
 
 }
 
-.ReformatUploadMicronixCSV <- function(upload_data){
+.ReformatUploadData <- function(upload_data, scanner_model){
   names.base <- c("study_subject_id", "specimen_type", "study_short_code")
   names.traxer.nodate <- c(names.base, "Position", "Tube ID")
   names.traxer.date <- c(names.traxer.nodate, "collection_date")
