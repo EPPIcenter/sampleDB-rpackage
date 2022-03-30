@@ -38,17 +38,24 @@ MoveSamples <- function(sample_type, move_data){
   database <- Sys.getenv("SDB_PATH")
   conn <-  RSQLite::dbConnect(RSQLite::SQLite(), database)
   
+  # Save MoveCSVs
+  .SaveMoveCSVs(move_data)
+  
   # Read in move files
   # Create list -- keys: container name; values: container's samples
-  # move_data_list <- modify(move_data, function(x){x <- read_csv(x, col_types = cols()) %>% drop_na()})
-  move_data_list <- move_data
-  
-  # Save MoveCSVs
-  .SaveMoveCSVs(move_data_list)
+  #For right now, if one of the move files has a column named "LocationRow", remove all of the rows with barcodes == ""
+  # and for all move files that do not have a column named "LocationRow" assume that the file is from a traxcer scanner and remove all rows with barcodes == ""
+  if(sample_type == "micronix"){
+    if("LocationRow" %in% names(move_data[[1]])){
+      move_data_list <- modify(move_data, function(x){x <- x %>% mutate(`TubeCode` = na_if(`TubeCode`,"")) %>% drop_na()})
+    }else{
+      move_data_list <- modify(move_data, function(x){x <- x %>% mutate(`Tube ID` = na_if(`Tube ID`,"")) %>% drop_na()})
+    } 
+  }
   
   # Check if move creates orphans - returns TRUE if pass, FALSE if fail
   orphan_check_return <- .CheckForOrphans(move_data_list = move_data_list, database, sample_type = sample_type)
-  
+
   # Link samples to containers in move
   if(orphan_check_return$orphan_check_toggle){
 
