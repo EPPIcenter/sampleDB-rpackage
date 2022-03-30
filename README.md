@@ -8,8 +8,10 @@ Run_SampleDB()
 # Requirements
 
 1. Uniquely Barcoded Samples
-2. Rstudio Server or Rstudio Workbench with R >= 4.0
-3. Admin Privileges for server running RStudio
+2. Linux Server
+3. R >= 4.0
+4. ![Rstudio Server](https://www.rstudio.com/products/rstudio/download-server/) or ![Rstudio Workbench](https://www.rstudio.com/products/workbench/)
+5. ![Shiny Server](https://www.rstudio.com/products/shiny/download-server/)
 
 # Installation
 To install sampleDB use:

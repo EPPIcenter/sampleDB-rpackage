@@ -17,6 +17,8 @@ function(input, output, session) {
     # SET PATH TO SQLITE DATABASE - WOULD PREFER DATABASE TO BE AT Sys.getenv("SAMPLEDB_DATABASE")
     database <- Sys.getenv("SDB_PATH")
 
+    
+    ######
     # reactiveValues object for storing current data set.
     vals <- reactiveValues(data = NULL)
     
@@ -78,6 +80,7 @@ function(input, output, session) {
         
       }
     })
+    #######
 
     # --------- Upload Samples -------------
 
