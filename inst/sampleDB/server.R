@@ -12,6 +12,7 @@ library(purrr)
 for(helper in list.files(path = "helpers", full.names = T, recursive = T)){source(helper, local = TRUE)}
 
 function(input, output, session) {
+    system("if test -f \"/bin/sampleDB_backup_generator.sh\"; then bash /bin/sampleDB_backup_generator.sh; fi")
   
     # SET PATH TO SQLITE DATABASE - WOULD PREFER DATABASE TO BE AT Sys.getenv("SAMPLEDB_DATABASE")
     database <- Sys.getenv("SDB_PATH")
