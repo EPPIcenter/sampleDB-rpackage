@@ -12,6 +12,7 @@ library(shinyWidgets)
 database <- Sys.getenv("SDB_PATH")
 
 navbarPage("EPPIcenter SampleDB",
+           shinyjs::hidden(textOutput("SDBSetup")), #hidden place to run sampledb setup
            navbarMenu("Upload WetLab Samples",
            tabPanel("Micronix Form",
 

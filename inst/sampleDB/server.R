@@ -19,16 +19,16 @@ function(input, output, session) {
     # reactiveValues object for storing current data set.
     vals <- reactiveValues(data = NULL)
     
-    # Return the UI for a modal dialog with data selection input. If 'failed' is
-    # TRUE, then display a message that the previous value was invalid.
+    # Show the UI for a modal dialog with admin password input if a sampledb db does not exist on the server.
+    # If 'failed' is TRUE, then display a message that the previous value was invalid.
     dataModal <- function(failed = FALSE){
       modalDialog(
-        textInput("dataset", "It looks like SampleDB has not yet been setup on your computer",
+        textInput("password", "It looks like SampleDB has not yet been setup on your computer",
                   placeholder = 'password'
         ),
         span('In order to setup SampleDB on this computer please provide the server admin password'),
         if (failed)
-          div(tags$b("Invalid name of data object", style = "color: red;")),
+          div(tags$b("Password is incorrect", style = "color: red;")),
         
         footer = tagList(
           modalButton("Cancel"),
@@ -37,24 +37,47 @@ function(input, output, session) {
       )
     }
     
-    showModal(dataModal())
+    # if(!file.exists("/databases/sampledb/v0.0.2/sampledb_database.sqlite")){
+    #   showModal(dataModal()) 
+    # }
     
-    # When OK button is pressed, attempt to load the data set. If successful,
+    # When OK button is pressed, attempt to use sudo. If successful,
     # remove the modal. If not show another modal, but this time with a failure
     # message.
     observeEvent(input$ok, {
-      print(input$dataset)
+      print(input$password)
+      #a will equal NULL if the password is correct, otherwise it will be not null
+      password_verification <- system("sudo -kS sudo -l", input = input$password, intern = TRUE) %>% attributes() %>% pluck("status")
+      print(password_verification)
       # Check that data object exists and is data frame.
-      if (!is.null(input$dataset) && nzchar(input$dataset) &&
-          exists(input$dataset) && is.data.frame(get(input$dataset))) {
-        vals$data <- get(input$dataset)
+      if(is.null(password_verification)){
+        # vals$data <- get(input$password)
         removeModal()
       } else {
         showModal(dataModal(failed = TRUE))
       }
     })
-
     
+    # Display information about selected data
+    output$SDBSetup <- renderPrint({
+      if(is.null(vals$data)){
+        print("Password has not been provided" )
+      }
+      else{
+        #write sampledb file to
+        path <- "var/lib/sampleDB/"
+        sqlite_file <- system.file("extdata", "sampledb_database.sqlite", package = "sampleDB")
+        system(paste("sudo -kS cp", sqlite_file, path), input = "Gr33nhouse")
+        # Sys.chmod(paste0(path, "/sampledb_database.sqlite"), mode = "0777") # may need to reformat cmd to include sudo
+        
+        #add variable to .Renviron-site
+        #check that "/etc/R/Renviron.site" exists
+        system(paste("sudo -kS bash -c \"echo SDB_PATH='\"'\"/databases/sampledb/v0.0.2/sampledb_database.sqlite\"'\"' >> /etc/R/Renviron.site\""), input = "Gr33nhouse")
+        # system("sudo -kS bash -c \"echo SDB_PATH='\"/databases/sampledb/v0.0.2/sampledb_database.sqlite\"' >> /etc/R/Renviron.site\"", input = "Gr33nhouse")
+        
+      }
+    })
+
     # --------- Upload Samples -------------
 
     # Upload Micronix Samples
