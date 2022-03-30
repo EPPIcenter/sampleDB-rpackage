@@ -40,7 +40,7 @@ MoveSamples <- function(sample_type, move_data){
   
   # Save MoveCSVs
   .SaveMoveCSVs(move_data)
-  stop()
+  
   # Read in move files
   # Create list -- keys: container name; values: container's samples
   #For right now, if one of the move files has a column named "LocationRow", remove all of the rows with barcodes == ""
