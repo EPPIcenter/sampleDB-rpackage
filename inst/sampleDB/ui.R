@@ -19,7 +19,7 @@ navbarPage("EPPIcenter SampleDB",
                     #GENERAL APP CSS
                     shinyFeedback::useShinyFeedback(),
                     shinyjs::useShinyjs(),
-                    includeCSS("app.css"),
+                    # includeCSS("app.css"),
                     tags$head(
                       tags$style(HTML("
                         h5 {
