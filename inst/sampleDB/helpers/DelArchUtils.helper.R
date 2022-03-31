@@ -158,6 +158,45 @@ DelArchSamples <- function(session, input, database, output, inputs, outputs, De
       }
     )
     
+    output$show_delarch_id <- renderPrint(input$delarch_id)
+    
+    observeEvent(input$DeleteAction, {
+      eval_delarch_id <- as.numeric(input$delarch_id)
+      print(eval_delarch_id)
+      sampleDB::ArchiveAndDeleteSamples(operation = "delete",
+                                        sample_id = eval_delarch_id,
+                                        verification = F)
+      })
+    
+    observeEvent(input$ArchiveAction, {
+      eval_delarch_id <- as.numeric(input$delarch_id)
+      print(eval_delarch_id)
+      sampleDB::ArchiveAndDeleteSamples(operation = "archive",
+                                        sample_id = eval_delarch_id,
+                                        verification = F)
+    })
+
+    #   # Display information about selected data
+    #   output$SDBSetup <- renderPrint({
+    #       if(is.null(vals$data)){
+    #           print("Password has not been provided" )
+    #         }
+    #       else{
+    #           #write sampledb file to
+    #             path <- "var/lib/sampleDB/"
+    #             sqlite_file <- system.file("extdata", "sampledb_database.sqlite", package = "sampleDB")
+    #             system(paste("sudo -kS cp", sqlite_file, path), input = "Gr33nhouse")
+    #             # Sys.chmod(paste0(path, "/sampledb_database.sqlite"), mode = "0777") # may need to reformat cmd to include sudo
+    #
+    #               #add variable to .Renviron-site
+    #               #check that "/etc/R/Renviron.site" exists
+    #               system(paste("sudo -kS bash -c \"echo SDB_PATH='\"'\"/databases/sampledb/v0.0.2/sampledb_database.sqlite\"'\"' >> /etc/R/Renviron.site\""), input = "Gr33nhouse")
+    #             # system("sudo -kS bash -c \"echo SDB_PATH='\"/databases/sampledb/v0.0.2/sampledb_database.sqlite\"' >> /etc/R/Renviron.site\"", input = "Gr33nhouse")
+    #
+    #             }
+    #     })
+    # #######
+    
     # if(DelArch == TRUE){
     #   updateTextInput(session = session, "delarch_toggle1", value = storage_container_ids) 
     # }
