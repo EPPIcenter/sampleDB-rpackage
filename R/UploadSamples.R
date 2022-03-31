@@ -284,8 +284,8 @@ UploadSamples <- function(sample_type, upload_data, container_name, freezer_addr
         
         #IF THIS SPECIMEN DOES NOT EXIST CREATE IT
         sampleDB::AddToTable(database = database, "specimen",
-                             list(created = lubridate::now("UTC") %>% as.character(),
-                                  last_updated = lubridate::now("UTC") %>% as.character(),
+                             list(created = lubridate::now() %>% as.character(),
+                                  last_updated = lubridate::now() %>% as.character(),
                                   study_subject_id = eval.study_subject_id,
                                   specimen_type_id = eval.specimen_type_id,
                                   collection_date = eval.collection_date),
@@ -297,8 +297,8 @@ UploadSamples <- function(sample_type, upload_data, container_name, freezer_addr
       
       #ADD SPECIMEN ID TO STORAGE CONTAINER
       sampleDB::AddToTable(database = database, "storage_container",
-                           list(created = lubridate::now("UTC") %>% as.character(),
-                                last_updated = lubridate::now("UTC") %>% as.character(),
+                           list(created = lubridate::now() %>% as.character(),
+                                last_updated = lubridate::now() %>% as.character(),
                                 type = sample_type,
                                 specimen_id = eval.specimen_id,
                                 exhausted = 0),
@@ -348,8 +348,8 @@ UploadSamples <- function(sample_type, upload_data, container_name, freezer_addr
       
       #CREATE STUDY_STUBJECT
       sampleDB::AddToTable(database = database, "study_subject",
-                           list(created = lubridate::now("UTC") %>% as.character(),
-                                last_updated = lubridate::now("UTC") %>% as.character(),
+                           list(created = lubridate::now() %>% as.character(),
+                                last_updated = lubridate::now() %>% as.character(),
                                 subject = eval.subject,
                                 study_id = eval.study_id),
                            conn = conn) %>% suppressWarnings()
@@ -360,16 +360,16 @@ UploadSamples <- function(sample_type, upload_data, container_name, freezer_addr
       #ADD STUDY + SUBJECT + SPECIMEN_TYPE COMBINATION TO SPECIMEN_TABLE
       if(toggle.is_longitudinal){
         sampleDB::AddToTable(database = database, "specimen",
-                             list(created = lubridate::now("UTC") %>% as.character(),
-                                  last_updated = lubridate::now("UTC") %>% as.character(),
+                             list(created = lubridate::now() %>% as.character(),
+                                  last_updated = lubridate::now() %>% as.character(),
                                   study_subject_id = eval.study_subject_id,
                                   specimen_type_id = eval.specimen_type_id,
                                   collection_date = eval.collection_date),
                              conn = conn) %>% suppressWarnings()    
       }else{
         sampleDB::AddToTable(database = database, "specimen",
-                             list(created = lubridate::now("UTC") %>% as.character(),
-                                  last_updated = lubridate::now("UTC") %>% as.character(),
+                             list(created = lubridate::now() %>% as.character(),
+                                  last_updated = lubridate::now() %>% as.character(),
                                   study_subject_id = eval.study_subject_id,
                                   specimen_type_id = eval.specimen_type_id,
                                   collection_date = NA),
@@ -381,8 +381,8 @@ UploadSamples <- function(sample_type, upload_data, container_name, freezer_addr
       
       #STORAGE CONTAINER TABLE
       sampleDB::AddToTable(database = database, "storage_container",
-                           list(created = lubridate::now("UTC") %>% as.character(),
-                                last_updated = lubridate::now("UTC") %>% as.character(),
+                           list(created = lubridate::now() %>% as.character(),
+                                last_updated = lubridate::now() %>% as.character(),
                                 type = sample_type,
                                 specimen_id = eval.specimen_id,
                                 exhausted = 0),
@@ -433,8 +433,8 @@ UploadSamples <- function(sample_type, upload_data, container_name, freezer_addr
   eval.location_id <- filter(CheckTable(database = database, "location"), location_name == freezer_address$location, level_I == freezer_address$level_I, level_II == freezer_address$level_II)$id
   sampleDB::AddToTable(database = database, 
                        "matrix_plate",
-                       list(created = lubridate::now("UTC") %>% as.character(),
-                            last_updated = lubridate::now("UTC") %>% as.character(),
+                       list(created = lubridate::now() %>% as.character(),
+                            last_updated = lubridate::now() %>% as.character(),
                             location_id = eval.location_id,
                             plate_name = container_name),
                        conn = conn) %>% suppressWarnings()
@@ -461,8 +461,8 @@ UploadSamples <- function(sample_type, upload_data, container_name, freezer_addr
   eval.location_id <- filter(CheckTable(database = database, "location"), location_name == freezer_address$location, level_I == freezer_address$level_I, level_II == freezer_address$level_II)$id
   sampleDB::AddToTable(database = database,
                        "box",
-                       list(created = lubridate::now("UTC") %>% as.character(),
-                            last_updated = lubridate::now("UTC") %>% as.character(),
+                       list(created = lubridate::now() %>% as.character(),
+                            last_updated = lubridate::now() %>% as.character(),
                             location_id = eval.location_id,
                             box_name = container_name),
                        conn = conn) %>% suppressWarnings()
@@ -488,8 +488,8 @@ UploadSamples <- function(sample_type, upload_data, container_name, freezer_addr
   eval.location_id <- filter(CheckTable(database = database, "location"), location_name == freezer_address$location, level_I == freezer_address$level_I, level_II == freezer_address$level_II)$id
   sampleDB::AddToTable(database = database, 
                        "bag",
-                       list(created = lubridate::now("UTC") %>% as.character(),
-                            last_updated = lubridate::now("UTC") %>% as.character(),
+                       list(created = lubridate::now() %>% as.character(),
+                            last_updated = lubridate::now() %>% as.character(),
                             location_id = eval.location_id,
                             bag_name = container_name),
                        conn = conn) %>% suppressWarnings() 
