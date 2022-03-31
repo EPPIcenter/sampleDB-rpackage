@@ -32,7 +32,8 @@ SampleDB_Setup()
 ```
 
 # Database Schema
-![here](https://drive.google.com/file/d/1umwodPMPR0kZdsrlxTJQa-O0ylQq4tUS/view?usp=sharing).
+![SampleDB v2](https://user-images.githubusercontent.com/95319271/161106124-afd9ddd6-bdcd-4914-b903-a2d66b454991.jpg)
+
 <!---# The Database-->
 <!---The database file that SampleDB reads and writes from is a SQLite3 file, a template for this database is provided at--> <!---`databases/sampledb_template.sqlite` or can be downloaded from--> <!---![here](https://drive.google.com/file/d/1umwodPMPR0kZdsrlxTJQa-O0ylQq4tUS/view?usp=sharing).-->
 <!---Copy this file to a new location on your filesystem and make it readable and writable for all users.-->
