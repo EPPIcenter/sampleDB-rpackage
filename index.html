@@ -59,85 +59,80 @@
 <div class="row">
   <main id="main" class="col-md-9"><div class="section level1">
 <div class="page-header">
-<img src="logo.png" class="logo" alt=""><h1 id="sampledb-">sampleDB 
-<a class="anchor" aria-label="anchor" href="#sampledb-"></a>
+<img src="logo.png" class="logo" alt=""><h1 id="overview">Overview<a class="anchor" aria-label="anchor" href="#overview"></a>
 </h1>
 </div>
-<!-- badges: start -->
-<!-- [![CRAN status](https://www.r-pkg.org/badges/version/tidyr)](https://cran.r-project.org/package=tidyr) -->
-<!-- [![R-CMD-check](https://github.com/tidyverse/tidyr/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/tidyverse/tidyr/actions/workflows/R-CMD-check.yaml) -->
-<!-- [![Codecov test coverage](https://codecov.io/gh/tidyverse/tidyr/branch/main/graph/badge.svg)](https://app.codecov.io/gh/tidyverse/tidyr?branch=main) -->
-<!-- badges: end -->
-<div class="section level2">
-<h2 id="overview">Overview<a class="anchor" aria-label="anchor" href="#overview"></a>
-</h2>
-<p>sampleDB is an R package that allows users to <em>Upload, Search and Modify</em> a database of EPPIcenter wetlab samples using simple function calls or using a RShiny App.</p>
+<p>SampleDB is a Management System for Wet Lab Samples. It can be used to track a sample’s <code>storage address</code> and <code>metadata</code>. SampleDB is installed as an R package and is accessible via an RShiny web app.</p>
 </div>
-<div class="section level2">
-<h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
-</h2>
-<p>sampleDB comes pre-loaded onto Aragorn’s R Server.</p>
-<p>To interact with the database simply log onto Aragorn and load sampleDB.</p>
-<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://eppicenter.github.io/sampleDB-rpackage/">sampleDB</a></span><span class="op">)</span>
+<div class="section level1">
+<h1 id="running-sampledb">Running SampleDB<a class="anchor" aria-label="anchor" href="#running-sampledb"></a>
+</h1>
+<p>After minimal installation and setup SampleDB can be accessed at the url: <code>http://&lt;ip address&gt;:3838/sampleDB/</code></p>
+</div>
+<div class="section level1">
+<h1 id="requirements">Requirements<a class="anchor" aria-label="anchor" href="#requirements"></a>
+</h1>
+<ol style="list-style-type: decimal">
+<li>A Micronix System for uniquely identifying wet lab samples</li>
+<li>A linux server with:</li>
+</ol>
+<ul>
+<li>R &gt;= 4.0</li>
+<li>
+<a href="https://www.rstudio.com/products/rstudio/download-server/" class="external-link">Rstudio Server</a> or <a href="https://www.rstudio.com/products/workbench/" class="external-link">Rstudio Workbench</a> installed</li>
+<li>
+<a href="https://www.rstudio.com/products/shiny/download-server/" class="external-link">Shiny Server</a> installed</li>
+<li>The R library <code>devtools</code>
+</li>
+</ul>
+</div>
+<div class="section level1">
+<h1 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
+</h1>
+<p>To install SampleDB run the command below in an R instance:</p>
+<pre><code><span class="fu">withr</span><span class="fu">::</span><span class="fu"><a href="https://withr.r-lib.org/reference/with_libpaths.html" class="external-link">with_libpaths</a></span><span class="op">(</span>new <span class="op">=</span> <span class="st">"/usr/lib/R/site-library/"</span>, 
+                     <span class="fu">devtools</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span><span class="st">"https://github.com/EPPIcenter/sampleDB-rpackage"</span>, 
+                                              ref <span class="op">=</span> <span class="st">"master"</span>, 
+                                              auth_token <span class="op">=</span> <span class="st">"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"</span><span class="op">)</span><span class="op">)</span></code></pre>
+</div>
+<div class="section level1">
+<h1 id="set-up">Set Up<a class="anchor" aria-label="anchor" href="#set-up"></a>
+</h1>
+<p>To set up SampleDB run the command below. You will be prompted to carry out the setup.</p>
+<pre><code><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://eppicenter.github.io/sampleDB-rpackage/">sampleDB</a></span><span class="op">)</span>
+<span class="fu"><a href="reference/SampleDB_Setup.html">SampleDB_Setup</a></span><span class="op">(</span><span class="op">)</span></code></pre>
+</div>
+<div class="section level1">
+<h1 id="database-schema">Database Schema<a class="anchor" aria-label="anchor" href="#database-schema"></a>
+</h1>
+<div class="figure">
+<img src="https://user-images.githubusercontent.com/95319271/161106124-afd9ddd6-bdcd-4914-b903-a2d66b454991.jpg" alt=""><p class="caption">SampleDB v2</p>
+</div>
+<!---# The Database-->
+<!---The database file that SampleDB reads and writes from is a SQLite3 file, a template for this database is provided at-->
+<!---`databases/sampledb_template.sqlite` or can be downloaded from-->
+<!---![here](https://drive.google.com/file/d/1umwodPMPR0kZdsrlxTJQa-O0ylQq4tUS/view?usp=sharing).-->
+<!---Copy this file to a new location on your filesystem and make it readable and writable for all users.-->
+<!---Once the file is placed in a new location the path to the file needs to be saved in the `Renviron.site` file as `SDB_PATH`.-->
+<!---For example...-->
+<!---```-->
+<!---SDB_PATH="/path/to/the/database"-->
+<!---```-->
+<!---The default location of `Renviron.site` is 'R_HOME/etc/Renviron.site'-->
+<!---`Renviron.site` is the first file that gets read when an instance of R is spun up and variables in this file can be accessed by all R users.-->
+<!---To check that `SDB_PATH` matches the path to your database file run.-->
+<!---```-->
+<!---Sys.getenv("SDB_PATH")-->
+<!---```-->
+<!---## Database Schema-->
+<!---![SampleDB v2](https://user-images.githubusercontent.com/95319271/159344494-62fb6d59-66b6-4a9a-b4ae-decd74fc9739.svg)-->
+<!---# Backups-->
+<!---- Backups are located at `/databases/sampleDB_backups/`-->
+<!---- Cronjob to create backup is located at `/bin/sampleDB_backup_generator.sh`.-->
+<!---- Backups are whenever someone issues the `Run_SampleDB()` command-->
+<!---- Backups are also generated every day at midnight and noon.-->
+</div>
 
-<span class="fu"><a href="reference/SearchSamples.html">SearchSamples</a></span><span class="op">(</span>sample_type <span class="op">=</span> <span class="st">"all"</span><span class="op">)</span><span class="op">$</span><span class="va">`Study Subject`</span> <span class="op">%&gt;%</span> <span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="op">)</span>
-<span class="co">#&gt; [1] subject_0 subject_1 subject_2 subject_3 subject_4 subject_5</span>
-<span class="co">#&gt; 10 Levels: subject_0 subject_1 subject_2 subject_3 subject_4 ... subject_9</span></code></pre></div>
-</div>
-<div class="section level2">
-<h2 id="the-database">The Database<a class="anchor" aria-label="anchor" href="#the-database"></a>
-</h2>
-<p>The database is broken down into three sections</p>
-<ul>
-<li>
-<p><em>Internal Data</em> a immutable section of the database consisting of:</p>
-<ul>
-<li><p><code>study subjects</code> a list of participants involved in EPPIcenter studies</p></li>
-<li><p><code>specimens</code> the unique combination of specimen type, study subject, and collection date that currently exists at the EPPIcenter</p></li>
-<li><p><code>storage containers</code> the link between the <code>specimen</code>, the <code>sample type</code>, and the <code>sample statuses</code> to a freezer in the EPPIcenter lab</p></li>
-</ul>
-</li>
-<li>
-<p><em>External Data</em> a mutable section of the database consisting of:</p>
-<ul>
-<li><p><code>samples</code> the tangible wetlab sample either in the form of a micronix tube, a cryovial, RDT or paper</p></li>
-<li><p><code>containers</code> the container that samples are stored in, matrix plates, boxes, or bags, and the freezer location describing where these containers are stored</p></li>
-</ul>
-</li>
-</ul>
-<p>Containers hold specific types of samples, the specifics of this relationship is shown below.</p>
-<table class="table">
-<thead><tr class="header">
-<th>micronix</th>
-<th>cryovial</th>
-<th>RDT</th>
-<th>paper</th>
-</tr></thead>
-<tbody><tr class="odd">
-<td>matrix_plate</td>
-<td>box</td>
-<td>bag</td>
-<td>bag</td>
-</tr></tbody>
-</table>
-<ul>
-<li>
-<p><em>Reference Items</em> is a mutable section of the database consisting of:</p>
-<ul>
-<li><p><code>freezers</code> an address specifying the location of a sample, specifies the freezer by name and location within the freezer</p></li>
-<li><p><code>specimen types</code> the type of specimens in the database</p></li>
-<li><p><code>studies</code> the studies in the database</p></li>
-</ul>
-</li>
-</ul>
-</div>
-<div class="section level2">
-<h2 id="getting-help">Getting help<a class="anchor" aria-label="anchor" href="#getting-help"></a>
-</h2>
-<p>If you encounter a bug, please file a minimal reproducible example on <a href="https://github.com/EPPIcenter/sampleDB-rpackage/issues" class="external-link">github</a>. For questions feel free to email <a href="severiano.villarruel@ucsf.edu">Severiano Villarruel</a>.</p>
-</div>
-</div>
   </main><aside class="col-md-3"><div class="license">
 <h2 data-toc-skip>License</h2>
 <ul class="list-unstyled">
