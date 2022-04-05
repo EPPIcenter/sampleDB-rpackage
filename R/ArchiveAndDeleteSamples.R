@@ -56,11 +56,9 @@ ArchiveAndDeleteSamples <- function(operation, sample_id, verification = TRUE){
         # ARCHIVE
         sampleDB::ModifyTable(database = database,
                               "storage_container",
-                              info_list = list(exhausted = 1),
+                              info_list = list(last_updated = as.character(lubridate::now()),
+                                               exhausted = 1),
                               id = eval.id)
-        
-        # DELETE EXTERNAL DATA
-        .DeleteExternalData(eval.id, database.tables, database)
       }
       
       # USER MSG
@@ -138,6 +136,53 @@ ArchiveAndDeleteSamples <- function(operation, sample_id, verification = TRUE){
     }
   } 
 }
+
+.MakeExternalDataNA <- function(eval.id, database.tables, database){
+  
+  # DELETE EXTERNAL DATA -- matrix_tube & matrix_plate if deletion empties plate
+  
+  #if eval.id is not in matrix id, cryovial id, rdt id or paper id, skip over
+  ids <- c(database.tables$table.matrix_tube$id,
+           database.tables$table.tube$id,
+           database.tables$table.rdt$id,
+           database.tables$table.paper$id)
+  
+  if(eval.id %in% ids){
+    
+    # get container id before sample deletion
+    matrix_plate_id <- filter(database.tables$table.matrix_tube, id %in% eval.id)$plate_id
+    
+    sampleDB::ModifyTable(database = database,
+                          table_name = "matrix_tube",
+                          info_list = list(plate_id = NA,
+                                           barcode = NA,
+                                           well_position = NA),
+                          id = as.character(eval.id))
+    
+    # # delete sample
+    # sampleDB::DeleteFromTable(database = database, 
+    #                           table_name = "matrix_tube", 
+    #                           id = as.character(eval.id))
+    
+    # delete container if container id is no longer in micronix table
+    if(!matrix_plate_id %in% sampleDB::CheckTable(database = database, "matrix_tube")$plate_id){
+      sampleDB::ModifyTable(database = database,
+                            table_name = "matrix_plate",
+                            info_list = list(last_updated = as.character(lubridate::now()),
+                                             location_id = NA,
+                                             plate_name = NA,
+                                             plate_barcode = NA),
+                            id = as.character(matrix_plate_id))
+      # sampleDB::DeleteFromTable(database = database, 
+      #                           table_name = "matrix_plate", 
+      #                           id = as.character(matrix_plate_id))
+    }
+    
+  }
+  
+}
+
+
 .DeleteExternalData <- function(eval.id, database.tables, database){
   
   # DELETE EXTERNAL DATA -- matrix_tube & matrix_plate if deletion empties plate

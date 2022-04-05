@@ -4,6 +4,21 @@ DelArchSamples <- function(session, input, database, output, inputs, outputs, De
   
   # SEARCH CHECKS... CHECK THAT SEARCH FILES ARE NOT MALFORMED
   # .SearchChecks(input, database, output)
+
+  dataModal <- function(failed = FALSE, sample_number, operation, data) {
+    modalDialog(
+      # style="color: #ce2029; background-color: #ce2029; border-color: #ce2029",
+      div(tags$b(HTML(paste0("<h3>Are you sure you would like to <b>", toupper(operation), "</b> the following sample?</h3>")), style = "color: #ce2029;")),
+      hr(),
+      DT::renderDataTable(filter(data, `Sample ID` == sample_number), options = list(scrollX = T, ordering=F, paging = F, searching = F, info = FALSE), rownames = F),
+      # HTML(paste("<h1>", sample_number, "</h1>")),
+
+      footer = tagList(
+        actionButton("verify_delarch", "Yes"),
+        modalButton("Cancel")
+      )
+    )
+  }
   
   rowCallback <- c(
     "function(row, data){",
@@ -70,6 +85,8 @@ DelArchSamples <- function(session, input, database, output, inputs, outputs, De
                    downloadData = "DelArchdownloadData")
   }
   
+  val <- reactiveValues(data = NULL)
+  
   observe({
     if(input[[inputs$SearchByLocation]] != ""){
       tmp_table.location <- filter(sampleDB::CheckTable(database = database, "location"), location_name == input[[inputs$SearchByLocation]])
@@ -131,6 +148,8 @@ DelArchSamples <- function(session, input, database, output, inputs, outputs, De
         relocate(`Sample ID`) 
     }
     
+    val$data <- search_results
+    
     # PRINT SEARCH RESULTS
     output[[outputs$SearchResultsTable]] <- DT::renderDataTable({
       if(!is.null(list.search_results)){
@@ -146,7 +165,8 @@ DelArchSamples <- function(session, input, database, output, inputs, outputs, De
       pageLength = 10,
       lengthMenu = c(10, 20, 50, 100),
       language = list(zeroRecords = "There are no EPPIcenter Wetlab Samples that match this search."),
-      rowCallback = JS(rowCallback)))
+      rowCallback = JS(rowCallback)),
+    rownames= FALSE)
     
     # DOWNLOAD SEARCH RESULTS
     output[[outputs$downloadData]] <- downloadHandler(
@@ -157,94 +177,33 @@ DelArchSamples <- function(session, input, database, output, inputs, outputs, De
         write.csv(search_results, con)
       }
     )
-    
-    output$show_delarch_id <- renderPrint(input$delarch_id)
-    
-    observeEvent(input$DeleteAction, {
-      eval_delarch_id <- as.numeric(input$delarch_id)
-      print(eval_delarch_id)
-      sampleDB::ArchiveAndDeleteSamples(operation = "delete",
-                                        sample_id = eval_delarch_id,
-                                        verification = F)
-      })
-    
-    observeEvent(input$ArchiveAction, {
-      eval_delarch_id <- as.numeric(input$delarch_id)
-      print(eval_delarch_id)
-      sampleDB::ArchiveAndDeleteSamples(operation = "archive",
-                                        sample_id = eval_delarch_id,
-                                        verification = F)
-    })
-
-    #   # Display information about selected data
-    #   output$SDBSetup <- renderPrint({
-    #       if(is.null(vals$data)){
-    #           print("Password has not been provided" )
-    #         }
-    #       else{
-    #           #write sampledb file to
-    #             path <- "var/lib/sampleDB/"
-    #             sqlite_file <- system.file("extdata", "sampledb_database.sqlite", package = "sampleDB")
-    #             system(paste("sudo -kS cp", sqlite_file, path), input = "Gr33nhouse")
-    #             # Sys.chmod(paste0(path, "/sampledb_database.sqlite"), mode = "0777") # may need to reformat cmd to include sudo
-    #
-    #               #add variable to .Renviron-site
-    #               #check that "/etc/R/Renviron.site" exists
-    #               system(paste("sudo -kS bash -c \"echo SDB_PATH='\"'\"/databases/sampledb/v0.0.2/sampledb_database.sqlite\"'\"' >> /etc/R/Renviron.site\""), input = "Gr33nhouse")
-    #             # system("sudo -kS bash -c \"echo SDB_PATH='\"/databases/sampledb/v0.0.2/sampledb_database.sqlite\"' >> /etc/R/Renviron.site\"", input = "Gr33nhouse")
-    #
-    #             }
-    #     })
-    # #######
-    
-    # if(DelArch == TRUE){
-    #   updateTextInput(session = session, "delarch_toggle1", value = storage_container_ids) 
-    # }
   })
   
-  # if(DelArch == TRUE){
-  #   observe({
-  #     selected <- input$"DelArchSearchResultsTable_rows_selected"
-  #     if(length(selected) > 0){
-  #       sc_ids <- strsplit(input$"delarch_toggle1", ",")[[1]]
-  #       output$ShowSelectedSamples <- renderPrint({paste(length(sc_ids[selected]),"samples selected")})
-  #       updateTextInput(session = session, "RenameStudyTitle", value = sc_ids[selected])
-  #     }
-  #     observeEvent(
-  #       input$DeleteAction,
-  #       ({
-  #         updateTextInput(session = session, "RenameStudyDescription", value = "xxx")
-  #         observeEvent(
-  #           input$yes1,
-  #           ({
-  #             if(input$"zzz" == "Yes"){
-  #               ArchiveAndDeleteSamples("delete", sample_id = input$"RenameStudyTitle", verification = FALSE)
-  #               output$yesout <- renderPrint({paste("Successfully deleted", length(input$"RenameStudyTitle"), "sample(s)")})
-  #             }
-  #           }))
-  #       }))
-  #     observeEvent(
-  #       input$ArchiveAction,
-  #       ({
-  #         updateTextInput(session = session, "RenameStudyDescription", value = "xxx")
-  #         observeEvent(
-  #           input$yes1,
-  #           ({
-  #             # print("hi")
-  #             if(input$"zzz" == "Yes"){
-  #               ArchiveAndDeleteSamples("archive", sample_id = input$"RenameStudyTitle", verification = FALSE)
-  #               output$yesout <- renderPrint({paste("Successfully archived", length(input$"RenameStudyTitle"), "sample(s)")})
-  #             }
-  #           }))
-  #       }))
-      
-      # # RESET UI VALUE
-      # updateTextInput(session = session, "delarch_toggle1", value = "")
-  #     })
-  # }
+  #archive item
+  observeEvent(input$ArchiveAction, {
+    eval_arch_id <- as.numeric(input$delarch_id)
+    showModal(dataModal(sample_number = eval_arch_id, operation = "archive", data = val$data))
+    observeEvent(input$verify_delarch, {
+      sampleDB::ArchiveAndDeleteSamples(operation = "archive",
+                                        sample_id = eval_arch_id,
+                                        verification = F)
+      removeModal()
+      output$arch_del_completed_usr_msg <- renderPrint("Archive Complete")
+    })
+  })
   
-  # CLEAR FILES
-  # .SearchReset(input)
+  # delete item
+  observeEvent(input$DeleteAction, {
+    eval_del_id <- as.numeric(input$delarch_id)
+    showModal(dataModal(sample_number = eval_del_id, operation = "delete", data = val$data))
+    observeEvent(input$verify_delarch, {
+      sampleDB::ArchiveAndDeleteSamples(operation = "delete",
+                                        sample_id = eval_del_id,
+                                        verification = F)
+      removeModal()
+      output$arch_del_completed_usr_msg <- renderPrint("Deletion Complete")
+    })
+  })
 }
 
 .SearchReset <- function(input){

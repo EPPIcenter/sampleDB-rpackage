@@ -144,7 +144,8 @@ SearchWetlabSamples <- function(session, input, database, output, inputs, output
       pageLength = 10,
       lengthMenu = c(10, 20, 50, 100),
       language = list(zeroRecords = "There are no EPPIcenter Wetlab Samples that match this search."),
-      rowCallback = JS(rowCallback)))
+      rowCallback = JS(rowCallback)),
+    rownames= FALSE)
     
     # DOWNLOAD SEARCH RESULTS
     output[[outputs$downloadData]] <- downloadHandler(

@@ -63,6 +63,8 @@ MatrixUpload <- function(session, output, input, database, ref.clear_action){
         #change first row to header bc plate barcode is the first row
         names(upload_data) <- upload_data[1,]
         upload_data <- upload_data[-1,]
+      }else{
+        upload_data <- upload_data %>% mutate(TubeCode = na_if(TubeCode, "No Tube")) %>% tidyr::drop_na()
       }
       
       sampleDB::UploadSamples(sample_type = "micronix",
