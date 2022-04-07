@@ -65,8 +65,8 @@ UpdateReferences <- function(reference, operation, identifier = NULL, update = N
                   setequal(names(update), c("freezer_name", "freezer_type", "freezer_levelI", "freezer_levelII")))
       sampleDB::AddToTable(database = database, 
                            table_name = "location",
-                           list(created = as.character(lubridate::now("UTC")),
-                                last_updated = as.character(lubridate::now("UTC")),
+                           list(created = as.character(lubridate::now()),
+                                last_updated = as.character(lubridate::now()),
                                 location_name = update$freezer_name,
                                 location_type = update$freezer_type,
                                 level_I = update$freezer_levelI,
@@ -91,7 +91,7 @@ UpdateReferences <- function(reference, operation, identifier = NULL, update = N
       eval.created <- as.character(tmp_table.location$created)
 
       eval.info_list <- list(created = eval.created,
-                             last_updated = as.character(lubridate::now("UTC")),
+                             last_updated = as.character(lubridate::now()),
                              location_name = update$freezer_name,
                              location_type = update$freezer_type,
                              level_I = update$freezer_levelI,
@@ -146,8 +146,8 @@ UpdateReferences <- function(reference, operation, identifier = NULL, update = N
                   names(update) == "specimen_type_name")
       sampleDB::AddToTable(database = database, 
                            table_name = "specimen_type",
-                           list(created = as.character(lubridate::now("UTC")),
-                                last_updated = as.character(lubridate::now("UTC")),
+                           list(created = as.character(lubridate::now()),
+                                last_updated = as.character(lubridate::now()),
                                 label = update$specimen_type_name))
       message(
         paste0("Added New Specimen Type:\n",
@@ -165,7 +165,7 @@ UpdateReferences <- function(reference, operation, identifier = NULL, update = N
       sampleDB::ModifyTable(database = database,
                             table_name = "specimen_type",
                             info_list = list(created = eval.created,
-                                             last_updated = as.character(lubridate::now("UTC")),
+                                             last_updated = as.character(lubridate::now()),
                                              label = update$specimen_type_name),
                             id = id.ref_specimen_type)
       message(
@@ -197,8 +197,8 @@ UpdateReferences <- function(reference, operation, identifier = NULL, update = N
       stopifnot(setequal(names(update), c("study_title", "study_description", "study_short_code", "study_longitudinal", "study_lead_person")))
       sampleDB::AddToTable(database = database, 
                            table_name = "study", 
-                           info_list = list(created = as.character(lubridate::now("UTC")),
-                                            last_updated = as.character(lubridate::now("UTC")),
+                           info_list = list(created = as.character(lubridate::now()),
+                                            last_updated = as.character(lubridate::now()),
                                             title = update$study_title,
                                             description = update$study_description,
                                             short_code = update$study_short_code,
@@ -222,7 +222,7 @@ UpdateReferences <- function(reference, operation, identifier = NULL, update = N
       id.ref_study <- as.character(tmp_table.study$id)
       
       eval.list <- list(created = eval.created,
-                             last_updated = as.character(lubridate::now("UTC")),
+                             last_updated = as.character(lubridate::now()),
                              title = update$study_title,
                              description = update$study_description,
                              short_code = update$study_short_code,

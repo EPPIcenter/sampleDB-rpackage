@@ -1,9 +1,24 @@
 
 
-SearchWetlabSamples <- function(session, input, database, output, inputs, outputs, DelArch = FALSE){
+DelArchSamples <- function(session, input, database, output, inputs, outputs, DelArch = TRUE){
   
   # SEARCH CHECKS... CHECK THAT SEARCH FILES ARE NOT MALFORMED
   # .SearchChecks(input, database, output)
+
+  dataModal <- function(failed = FALSE, sample_number, operation, data) {
+    modalDialog(
+      # style="color: #ce2029; background-color: #ce2029; border-color: #ce2029",
+      div(tags$b(HTML(paste0("<h3>Are you sure you would like to <b>", toupper(operation), "</b> the following sample?</h3>")), style = "color: #ce2029;")),
+      hr(),
+      DT::renderDataTable(filter(data, `Sample ID` == sample_number), options = list(scrollX = T, ordering=F, paging = F, searching = F, info = FALSE), rownames = F),
+      # HTML(paste("<h1>", sample_number, "</h1>")),
+
+      footer = tagList(
+        actionButton("verify_delarch", "Yes"),
+        modalButton("Cancel")
+      )
+    )
+  }
   
   rowCallback <- c(
     "function(row, data){",
@@ -70,6 +85,8 @@ SearchWetlabSamples <- function(session, input, database, output, inputs, output
                    downloadData = "DelArchdownloadData")
   }
   
+  val <- reactiveValues(data = NULL)
+  
   observe({
     if(input[[inputs$SearchByLocation]] != ""){
       tmp_table.location <- filter(sampleDB::CheckTable(database = database, "location"), location_name == input[[inputs$SearchByLocation]])
@@ -125,9 +142,13 @@ SearchWetlabSamples <- function(session, input, database, output, inputs, output
     error=function(e){}
     )
     if(!is.null(list.search_results)){
-      search_results <- list.search_results$results
-      storage_container_ids <- list.search_results$id.wetlab_samples 
+      storage_container_ids <- list.search_results$id.wetlab_samples
+      search_results <- list.search_results$results %>% 
+        mutate(`Sample ID` = storage_container_ids) %>% 
+        relocate(`Sample ID`) 
     }
+    
+    val$data <- search_results
     
     # PRINT SEARCH RESULTS
     output[[outputs$SearchResultsTable]] <- DT::renderDataTable({
@@ -156,55 +177,33 @@ SearchWetlabSamples <- function(session, input, database, output, inputs, output
         write.csv(search_results, con)
       }
     )
-    
-    if(DelArch == TRUE){
-      updateTextInput(session = session, "delarch_toggle1", value = storage_container_ids) 
-    }
   })
   
-  if(DelArch == TRUE){
-    observe({
-      selected <- input$"DelArchSearchResultsTable_rows_selected"
-      if(length(selected) > 0){
-        sc_ids <- strsplit(input$"delarch_toggle1", ",")[[1]]
-        output$ShowSelectedSamples <- renderPrint({paste(length(sc_ids[selected]),"samples selected")})
-        updateTextInput(session = session, "RenameStudyTitle", value = sc_ids[selected])
-      }
-      observeEvent(
-        input$DeleteAction,
-        ({
-          updateTextInput(session = session, "RenameStudyDescription", value = "xxx")
-          observeEvent(
-            input$yes1,
-            ({
-              if(input$"zzz" == "Yes"){
-                ArchiveAndDeleteSamples("delete", sample_id = input$"RenameStudyTitle", verification = FALSE)
-                output$yesout <- renderPrint({paste("Successfully deleted", length(input$"RenameStudyTitle"), "sample(s)")})
-              }
-            }))
-        }))
-      observeEvent(
-        input$ArchiveAction,
-        ({
-          updateTextInput(session = session, "RenameStudyDescription", value = "xxx")
-          observeEvent(
-            input$yes1,
-            ({
-              # print("hi")
-              if(input$"zzz" == "Yes"){
-                ArchiveAndDeleteSamples("archive", sample_id = input$"RenameStudyTitle", verification = FALSE)
-                output$yesout <- renderPrint({paste("Successfully archived", length(input$"RenameStudyTitle"), "sample(s)")})
-              }
-            }))
-        }))
-      
-      # # RESET UI VALUE
-      # updateTextInput(session = session, "delarch_toggle1", value = "")
-      })
-  }
+  #archive item
+  observeEvent(input$ArchiveAction, {
+    eval_arch_id <- as.numeric(input$delarch_id)
+    showModal(dataModal(sample_number = eval_arch_id, operation = "archive", data = val$data))
+    observeEvent(input$verify_delarch, {
+      sampleDB::ArchiveAndDeleteSamples(operation = "archive",
+                                        sample_id = eval_arch_id,
+                                        verification = F)
+      removeModal()
+      output$arch_del_completed_usr_msg <- renderPrint("Archive Complete")
+    })
+  })
   
-  # CLEAR FILES
-  # .SearchReset(input)
+  # delete item
+  observeEvent(input$DeleteAction, {
+    eval_del_id <- as.numeric(input$delarch_id)
+    showModal(dataModal(sample_number = eval_del_id, operation = "delete", data = val$data))
+    observeEvent(input$verify_delarch, {
+      sampleDB::ArchiveAndDeleteSamples(operation = "delete",
+                                        sample_id = eval_del_id,
+                                        verification = F)
+      removeModal()
+      output$arch_del_completed_usr_msg <- renderPrint("Deletion Complete")
+    })
+  })
 }
 
 .SearchReset <- function(input){

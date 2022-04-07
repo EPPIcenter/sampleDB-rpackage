@@ -20,6 +20,7 @@ MatrixUpload <- function(session, output, input, database, ref.clear_action){
                output = output,
                type = "micronix",
                ui.input = list(UploadPlateID = "UploadMicronixPlateID",
+                               UploadPlateBarcode = "UploadMicronixPlateBarcode",
                                UploadDataSet = "UploadMicronixDataSet"),
                ui.output = list(WarningUploadSampleID = "WarningMicronixUploadSampleID",
                                 WarningUploadColnames = "WarningMicronixUploadColnames",
@@ -27,7 +28,8 @@ MatrixUpload <- function(session, output, input, database, ref.clear_action){
                                 WarningUploadDateFormat = "WarningMicronixUploadDateFormat",
                                 WarningUploadStudyShortCodes = "WarningUploadMicronixStudyShortCodes",
                                 WarningSpecimenExists = "WarningMicronixSpecimenExists",
-                                WarningUploadContainer = "WarningMicronixUploadContainer"))
+                                WarningUploadContainerName = "WarningMicronixUploadContainerName",
+                                WarningUploadContainerBarcode = "WarningMicronixUploadContainerBarcode"))
   
   observeEvent(
     input$UploadMicronixAction,
@@ -50,6 +52,7 @@ MatrixUpload <- function(session, output, input, database, ref.clear_action){
       UploadRequirements(input = input,
                          database = database,
                          ui.input = list(UploadPlateID = "UploadMicronixPlateID",
+                                         UploadPlateBarcode = "UploadMicronixPlateBarcode",
                                          UploadDataSet = "UploadMicronixDataSet",
                                          UploadFreezerName = "UploadMicronixLocation",
                                          UploadFreezerNameLevelI = "UploadLocationMicronixLevelI",
@@ -63,11 +66,14 @@ MatrixUpload <- function(session, output, input, database, ref.clear_action){
         #change first row to header bc plate barcode is the first row
         names(upload_data) <- upload_data[1,]
         upload_data <- upload_data[-1,]
+      }else{
+        upload_data <- upload_data %>% mutate(TubeCode = na_if(TubeCode, "No Tube")) %>% tidyr::drop_na()
       }
       
       sampleDB::UploadSamples(sample_type = "micronix",
                               upload_data = upload_data,
                               container_name = input$"UploadMicronixPlateID",
+                              container_barcode = input$"UploadMicronixPlateBarcode",
                               freezer_address = list(location_name = input$"UploadMicronixLocation", 
                                                    level_I = input$"UploadLocationMicronixLevelI", 
                                                    level_II = input$"UploadLocationMicronixLevelII"))
@@ -402,9 +408,13 @@ PaperUpload <- function(session, output, input, database, ref.clear_action){
 
 UploadChecks <- function(database, type, input, output, ui.output, ui.input){
   
-  # CHECK PLATE_ID IS UNIQUE
-  CheckUploadContainerDuplication <- reactive({.CheckUploadContainerDuplication(input, database, ui.input)})
-  output[[ui.output$WarningUploadContainer]] <- renderText(CheckUploadContainerDuplication())
+  # CHECK PLATE_ID ARE UNIQUE
+  CheckUploadContainerNameDuplication <- reactive({.CheckUploadContainerNameDuplication(input, database, ui.input)})
+  output[[ui.output$WarningUploadContainerName]] <- renderText(CheckUploadContainerNameDuplication())
+  
+  # CHECK PLATE_BARCODE ARE UNIQUE
+  CheckUploadContainerBarcodeDuplication <- reactive({.CheckUploadContainerBarcodeDuplication(input, database, ui.input)})
+  output[[ui.output$WarningUploadContainerBarcode]] <- renderText(CheckUploadContainerBarcodeDuplication())
   
   # CHECK THAT USR SPECIMEN TYPES ARE VALID
   CheckUploadSpecimenTypes <- reactive({.CheckUploadSpecimenTypes(input, database, ui.input, type)})
@@ -481,7 +491,7 @@ UploadExamples <- function(input, database, output, ui.output, type){
   output[[ui.output$ExampleUploadCSVDate]] <- renderPrint({.ExampleUploadCSVDate(database, type)}) 
 }
 
-.CheckUploadContainerDuplication <- function(input, database, ui.input){
+.CheckUploadContainerNameDuplication <- function(input, database, ui.input){
   if(input[[ui.input$UploadPlateID]] != ""){
     message("CHECK: UPLOAD CONTAINER NAME UNIQUENESS")
     toggle <- all(!(input[[ui.input$UploadPlateID]] %in% c(sampleDB::CheckTable(database = database, "matrix_plate")$plate_name,
@@ -489,6 +499,25 @@ UploadExamples <- function(input, database, output, ui.output, type){
                                                            sampleDB::CheckTable(database = database, "bag")$bag_name)))
     out <- validate(need(toggle,
                          "Container Names must be unique"))
+  }else{
+    out <- NULL
+  }
+  return(out)
+}
+
+.CheckUploadContainerBarcodeDuplication <- function(input, database, ui.input){
+  if(input[[ui.input$UploadPlateBarcode]] != ""){
+    message("CHECK: UPLOAD CONTAINER BARCODE UNIQUENESS")
+    if(input[[ui.input$UploadPlateBarcode]] != ""){
+      toggle <- all(!(input[[ui.input$UploadPlateBarcode]] %in% c(sampleDB::CheckTable(database = database, "matrix_plate")$plate_barcode)))
+      # toggle <- all(!(input[[ui.input$UploadPlateBarcode]] %in% c(sampleDB::CheckTable(database = database, "matrix_plate")$plate_barcode,
+      #                                                              sampleDB::CheckTable(database = database, "box")$box_barcode,
+      #                                                              sampleDB::CheckTable(database = database, "bag")$bag_barcode))) 
+      out <- validate(need(toggle,
+                           "Container Barcode must be unique"))
+    }else{
+      out <- NULL
+    }
   }else{
     out <- NULL
   }
