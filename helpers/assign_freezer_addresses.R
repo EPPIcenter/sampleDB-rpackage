@@ -64,11 +64,11 @@ for(i in 1:nrow(sdb_containers)){
                                                  freezer_levelI = "TBD",
                                                  freezer_levelII = basket_name))
         freezer_address_id <- filter(CheckTable("location"), level_II == basket_name)$id
-        ModifyTable(database = "/databases/sampledb/v0.0.2/sampledb_database.sqlite", table_name = "matrix_plate", info_list = list(location_id = freezer_address_id), id = sdb_plate_id)
+        ModifyTable(database = "/var/lib/sampleDB/sampledb_database.sqlite", table_name = "matrix_plate", info_list = list(location_id = freezer_address_id), id = sdb_plate_id)
       
       }else{
         freezer_address_id <- filter(CheckTable("location"), level_II == basket_name)$id
-        ModifyTable(database = "/databases/sampledb/v0.0.2/sampledb_database.sqlite", table_name = "matrix_plate", info_list = list(location_id = freezer_address_id), id = sdb_plate_id)
+        ModifyTable(database = "/var/lib/sampleDB/sampledb_database.sqlite", table_name = "matrix_plate", info_list = list(location_id = freezer_address_id), id = sdb_plate_id)
       }
       
     # if container is NOT in an ordinary basket  
@@ -78,14 +78,14 @@ for(i in 1:nrow(sdb_containers)){
       if(basket_info == "NA" | basket_info == "not yet in basket"){
         # container is not in a basket
         freezer_address_id <- filter(CheckTable("location"), level_II == "unlocated")$id
-        ModifyTable(database = "/databases/sampledb/v0.0.2/sampledb_database.sqlite", table_name = "matrix_plate", info_list = list(location_id = freezer_address_id), id = sdb_plate_id)
+        ModifyTable(database = "/var/lib/sampleDB/sampledb_database.sqlite", table_name = "matrix_plate", info_list = list(location_id = freezer_address_id), id = sdb_plate_id)
         
       # if the container is in someone's working basket
       }else{
         # container is in someone's working space
         if(basket_info %in% working_baskets){
           freezer_address_id <- filter(CheckTable("location"), level_II == basket_info)$id
-          ModifyTable(database = "/databases/sampledb/v0.0.2/sampledb_database.sqlite", table_name = "matrix_plate", info_list = list(location_id = freezer_address_id), id = sdb_plate_id)
+          ModifyTable(database = "/var/lib/sampleDB/sampledb_database.sqlite", table_name = "matrix_plate", info_list = list(location_id = freezer_address_id), id = sdb_plate_id)
         }
       }
     }
@@ -94,7 +94,7 @@ for(i in 1:nrow(sdb_containers)){
   }else{
     freezer_address_id <- filter(CheckTable("location"), level_II == "unlocated")$id
     print(paste(basket_info,"put into teresa's locator file, bc this basket is not in there"))
-    ModifyTable(database = "/databases/sampledb/v0.0.2/sampledb_database.sqlite", table_name = "matrix_plate", info_list = list(location_id = freezer_address_id), id = sdb_plate_id)
+    ModifyTable(database = "/var/lib/sampleDB/sampledb_database.sqlite", table_name = "matrix_plate", info_list = list(location_id = freezer_address_id), id = sdb_plate_id)
   }
 }
 

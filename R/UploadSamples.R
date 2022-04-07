@@ -190,8 +190,6 @@ UploadSamples <- function(sample_type, upload_data, container_name, container_ba
                                                             sampleDB::CheckTable(database = database, "bag")$bag_name)))
   
   # CHECK PLATE BARCODE IS UNIQUE
-  print("here")
-  print(container_barcode)
   if(!is.null(container_barcode)){
     if(container_barcode != ""){
       stopifnot("CONTAINER BARCODE IS NOT UNIQUE" = !(container_barcode %in% c(sampleDB::CheckTable(database = database, "matrix_plate")$plate_barcode)))
@@ -454,7 +452,7 @@ UploadSamples <- function(sample_type, upload_data, container_name, container_ba
   else{
     container_barcode <- container_barcode
   }
-  print(container_barcode)
+  # print(container_barcode)
   sampleDB::AddToTable(database = database,
                        "matrix_plate",
                        list(created = lubridate::now() %>% as.character(),
@@ -545,7 +543,7 @@ UploadSamples <- function(sample_type, upload_data, container_name, container_ba
 }
 
 .SaveUploadCSV <- function(upload_data, container_name){
-  path <- "/databases/sampledb/backups/sampleDB_user_uploaded_files/"
+  path <- "/var/lib/sampleDB/upload_files/"
   if(dir.exists(path)){
     write.csv(upload_data, 
               paste0(path, 
