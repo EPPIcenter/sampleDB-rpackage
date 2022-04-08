@@ -476,11 +476,11 @@ UploadReset <- function(input, output, ui.input, ref.clear_action){
   observeEvent(
     input[[ref.clear_action]],
     ({
-      reset(ui.input$UploadPlateID)
-      reset(ui.input$UploadDataSet)
-      reset(ui.input$UploadLocation)
-      reset(ui.input$UploadLocationLevel_I)
-      reset(ui.input$UploadLocationLevel_II)
+      shinyjs::reset(ui.input$UploadPlateID)
+      shinyjs::reset(ui.input$UploadDataSet)
+      shinyjs::reset(ui.input$UploadLocation)
+      shinyjs::reset(ui.input$UploadLocationLevel_I)
+      shinyjs::reset(ui.input$UploadLocationLevel_II)
       output[[ui.input$UploadReturnMessage1]] <- renderText({""})
       output[[ui.input$UploadReturnMessage2]] <- renderText({""})
     }))  

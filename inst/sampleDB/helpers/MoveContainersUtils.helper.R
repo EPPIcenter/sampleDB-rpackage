@@ -42,9 +42,9 @@ MoveWetlabContainers <- function(session, input, database, output){
                                               freezer.levelI = freezer.levelI,
                                               freezer.levelII = freezer.levelII))
       output$MoveContainerMessage <- renderText("Successfully Moved Container")
-      reset("MoveContainerName")
-      reset("MoveContainerLocation")
-      reset("MoveContainerMessage")
+      shinyjs::reset("MoveContainerName")
+      shinyjs::reset("MoveContainerLocation")
+      shinyjs::reset("MoveContainerMessage")
     }))
   
 }
