@@ -62,7 +62,7 @@ MoveWetlabSamples <- function(session, input, database, output){
   observeEvent(
   input$ClearMoveForm,
   ({
-    reset("MoveDataSet")
+    shinyjs::reset("MoveDataSet")
     output$MoveReturnMessage1 <- renderText({""})
     output$MoveReturnMessage2 <- renderText({""})}))
 }
