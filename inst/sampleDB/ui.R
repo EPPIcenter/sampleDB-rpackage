@@ -2,7 +2,6 @@ library(dplyr)
 library(sampleDB)
 library(shinyFeedback)
 library(shiny)
-# library(shinyjs)
 library(markdown)
 library(DT)
 library(shinyWidgets)
@@ -12,82 +11,110 @@ library(shinyWidgets)
 database <- Sys.getenv("SDB_PATH")
 
 navbarPage("EPPIcenter SampleDB",
-           shinyjs::hidden(textOutput("SDBSetup")), #hidden place to run sampledb setup
-           navbarMenu("Upload WetLab Samples",
-           tabPanel("Micronix Form",
+           
+           navbarMenu("Upload Samples",
+           tabPanel("Micronix",
 
-                    #GENERAL APP CSS
+                    #css setup
                     shinyFeedback::useShinyFeedback(),
                     shinyjs::useShinyjs(),
-                    # includeCSS("app.css"),
+                    tags$style(".shiny-file-input-progress {display: none}"),
                     tags$head(
                       tags$style(HTML("
+                        .progress-bar {
+                            color: transparent!important
+                        }
                         h5 {
-                              line-height: 150%;
-                            }
+                            line-height: 150%;
+                        }
+                        ::-webkit-input-placeholder {
+                            font-style: italic;
+                        }
+                        :-moz-placeholder {
+                            font-style: italic;
+                        }
+                        ::-moz-placeholder {
+                            font-style: italic;
+                        }
+                        :-ms-input-placeholder {  
+                          font-style: italic; 
+                        }
                         .shiny-output-error-validation {
-                              color: #FCA211; font-weight: bold;
-                            }"))),
+                              color: #c4244c; font-weight: normal;
+                        }"))),
                     
                     sidebarLayout(
                       sidebarPanel(
-                        width = 3,
-                        HTML("<h4><b>Upload Micronix Samples Form</b></h4>"),
+                        width = 4,
+                        HTML("<h4><b>Upload Micronix Samples</b></h4><p>Please fill out the sections below to upload micronix samples.</p>"),
                         hr(),
-                        fileInput("UploadMicronixDataSet", "UploadMicronixCSV File", multiple = FALSE, accept = c("text/csv", "text/comma-separated-values,text/plain", ".csv")),
+                        #upload data
+                        fileInput("UploadMicronixDataSet", "Micronix Data File", width = '47%', multiple = FALSE, accept = c("text/csv", "text/comma-separated-values,text/plain", ".csv")),
+                        fluidRow(column(width = 5, radioButtons("UploadFileType", label = NULL, choices = c("VisionMate" = "visionmate", "Traxcer" = "traxcer", "NA" = "na"), inline = T)),
+                                 column(width = 3, tags$a(href='more_info.md', target='blank', 'More Info'))),
+                        shinyjs::hidden(textInput("ActionUploadMatrix", label = NULL)),
                         textOutput("WarningMicronixUploadSampleID"),
+                        textOutput("WarningMicronixUploadBarcodeRepeats"),
                         textOutput("WarningMicronixUploadColnames"),
                         textOutput("WarningUploadMicronixSpecimenTypes"),
                         textOutput("WarningMicronixUploadDateFormat"),
                         textOutput("WarningUploadMicronixStudyShortCodes"),
                         textOutput("WarningMicronixSpecimenExists"),
-                        fluidRow(column(width = 6, textInput("UploadMicronixPlateID", label = HTML("Plate Name <i>(Human Readable)</i>")),),column(width = 6, textInput("UploadMicronixPlateBarcode", label = HTML("Plate Name <i>(Barcode)</i>")),)),
+                        #insert plate infor
+                        HTML("<h5><b>Plate Name</b></h5>"),
+                        fluidRow(column(width = 6, HTML("<p>Human Readable Name</p>"), textInput("UploadMicronixPlateID", label = NULL, placeholder = "PRISM-2022-001")),
+                                 column(width = 6,  HTML("<p>Barcode (Optional)</p>"), textInput("UploadMicronixPlateBarcode", label = NULL))),
                         textOutput("WarningMicronixUploadContainerName"), 
                         textOutput("WarningMicronixUploadContainerBarcode"),
-                        selectInput("UploadMicronixLocation", label = "Storage Location", choices = c("", sampleDB::CheckTable(database = database, "location")$location_name)),
-                        fluidRow(column(width = 1), column(width = 11, selectInput("UploadLocationMicronixLevelI", label = HTML("<h5>Storage Location: Level I</h5>"), width = '100%', choices = NULL))),
-                        fluidRow(column(width = 1), column(width = 11, selectInput("UploadLocationMicronixLevelII", label = HTML("<h5>Storage Location: Level II</h5>"), width = '100%', choices = NULL))),
+                        #add freezer infor
+                        HTML("<h5><b>Freezer Address</b></h5>"),
+                        HTML("<p>Freezer Name</p>"), selectInput("UploadMicronixLocation", label = NULL, width = '47%', choices = c("", sampleDB::CheckTable(database = database, "location")$location_name) %>% sort()),
+                        HTML("<p>Shelf Name</p>"), selectInput("UploadLocationMicronixLevelI", label = NULL, width = '47%', choices = NULL),
+                        HTML("<p>Basket Name</p>"), selectInput("UploadLocationMicronixLevelII", label = NULL, width = '47%', choices = NULL),
+                        
                         hr(),
-                        fluidRow(column(width = 12,
-                                        actionButton("UploadMicronixAction", width = '49%', label = "Upload Samples", style="color: #fff; background-color: #337ab7; border-color: #2e6da4"),
-                                        actionButton("ClearMicronixUploadForm", width = '49%', label = "Clear Form"))),
+                        #action buttons
+                        fluidRow(column(width = 6, actionButton("UploadMicronixActionButton", width = '100%', label = "Upload Samples", style="color: #fff; background-color: #337ab7; border-color: #2e6da4")),
+                                 column(width = 6, actionButton("ClearMicronixUploadForm", width = '100%', label = "Clear Form", style="color:#c4244c; background-color: #fff4f4; border-color: #c4244c"))),
+                        
                         br(),
+                        #output messages
                         span(verbatimTextOutput("UploadMicronixReturnMessage1"), style="font-size: 28px"),
                         span(verbatimTextOutput("UploadMicronixReturnMessage2"), style="font-size: 28px")
                       ),
                       mainPanel(
-                        width = 9,
-                        HTML("<h4><center>This is an <b>Example SampleDB UploadMicronixCSV</b> generated using columns from a VisionMateCSV.</center></h4>"),
+                        width = 7,
+                        HTML("<h2>Guide to Uploading Micronix Samples</h2>"),
                         br(),
+                        HTML("<h4><code>1. Create Micronix Data File</code></h4>"),
+                        hr(),
+                        HTML("<p>Combine 2 pieces of information, <i>storage information</i> and <i>metadata information</i>, to form a micronix data file.</p>"),
                         fluidRow(
-                          column(width = 2),
-                          column(width = 8,
-                                 span(verbatimTextOutput("ExampleMicronixUploadCSVNoDate"), style ="max-width: 75px; text-align: center"),
-                          )),
-                        br(),
-                        fluidPage(
-                          column(width = 1),
-                          column(width = 10,
-                        HTML("<h4><b>Creating an UploadMicronixCSV</b></h4>
-                        <h5>To create an UploadMicronixCSV add the <code>study_short_code</code>, <code>study_subject_id</code> and <code>specimen_type</code> information 
-                        associated with each sample to the columns generated by the VisionMate or Traxer micronix instrument.
-                        <h4><b>Longitudinal Data</b></h4>\n
-                        <h5>If samples have longitudinal information, simply append a column named <code>collection_date</code> to your CSV with the date that tha sample was collected.
-                        (Date format is Year Month Day. Any date seperator can be used.)</h5>\n")
+                          column(width = 6,
+                                 HTML("<h4>Sample Storage Information</h4>"),
+                                 HTML("<p>Plate position and barcode.</p>"),
+                                 tableOutput("LogisticsItems")),
+                          column(width = 6,
+                                 HTML("<h4>Sample Meta Data Information</h4>"),
+                                 HTML("<p>Assay specific information.</p>"),
+                                 tableOutput("MetadataItems")),
                         ),
-                        column(width = 1)
-                        ),
+                        # HTML("<p>...in order to form a micronix data file."),
+                        HTML("<h4>Micronix Data File</h4>"),
+                        tableOutput("CombinedItems"),
                         br(),
-                        HTML("<center><h4><b>Example SampleDB UploadMicronixCSV</b> with a <code>collection_date</code> Column</h4></center>"),
+                        HTML("<h4><code>2. Create a Plate Name</code></h4>"),
+                        hr(),
+                        HTML("<p>Input a plate name following the form: <b><i>Study Code-Year-Plate Number</i></b>.</p>"),
+                        HTML("<p>Plate barcodes can also be to name plates.</i></b></p>"),
                         br(),
-                        fluidRow(
-                          column(width = 2),
-                          column(width = 8,
-                                 span(verbatimTextOutput("ExampleMicronixUploadCSVDate"), style ="max-width: 75px; text-align: center"),
-                          )),
+                        HTML("<h4><code>3. Select Freezer Address for Sample Storage</code></h4>"),
+                        hr(),
+                        HTML("<p>Select the freezer address that the samples will be stored in.</p>"),
+                        br(),
                       ))),
            
-           tabPanel("Cryovial Form",
+           tabPanel("Cryovial",
                     sidebarLayout(
                       sidebarPanel(
                         width = 3,
@@ -141,7 +168,7 @@ navbarPage("EPPIcenter SampleDB",
                         # HTML("<h5>The combination of <code>study_subject</code>, <code>specimen_type</code>, <code>study_code</code> and <code>collection_date</code> must be unique</h5>")
                       ))),
            
-           tabPanel("RDT Form",
+           tabPanel("RDT",
                     sidebarLayout(
                       sidebarPanel(
                         width = 3,
@@ -195,7 +222,7 @@ navbarPage("EPPIcenter SampleDB",
                           )),
                         # HTML("<h5>The combination of <code>study_subject</code>, <code>specimen_type</code>, <code>study_code</code> and <code>collection_date</code> must be unique</h5>")
                       ))),
-           tabPanel("Paper Form",
+           tabPanel("Dried Blood Spot",
                     sidebarLayout(
                       sidebarPanel(
                         width = 3,
@@ -251,7 +278,7 @@ navbarPage("EPPIcenter SampleDB",
                         ))),
            ),
 
-           tabPanel("Search WetLab Samples",
+           tabPanel("Search Samples",
                     sidebarLayout(
                       sidebarPanel(
                         width = 2,
@@ -294,8 +321,8 @@ navbarPage("EPPIcenter SampleDB",
                         DT::dataTableOutput("SearchResultsTable"),
                         downloadButton("downloadData", "Download")
                     ))),
-           navbarMenu("Move WetLab Samples",
-             tabPanel("Move WetLab Samples",
+           navbarMenu("Move Samples",
+             tabPanel("Move Samples",
   
                       sidebarLayout(
                         sidebarPanel(
@@ -351,8 +378,8 @@ navbarPage("EPPIcenter SampleDB",
                         ),
                         mainPanel()
            ))),
-           navbarMenu("Delete and Archive Samples",
-             tabPanel("Delete and Archive Samples",
+           navbarMenu("Delete & Archive Samples",
+             tabPanel("Delete & Archive Samples",
                       sidebarLayout(
                         sidebarPanel(
                           width = 2,
@@ -421,7 +448,7 @@ navbarPage("EPPIcenter SampleDB",
                       ),
                       mainPanel()))),
            
-           navbarMenu("Update Lab References",
+           navbarMenu("Update References",
                       tabPanel("Freezers",
                                sidebarLayout(
                                  sidebarPanel(

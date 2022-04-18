@@ -6,32 +6,33 @@ library(readr)
 library(markdown)
 library(lubridate)
 library(emojifont)
-# library(shinyjs)
 library(DT)
 library(purrr)
+
+#load helper files
 for(helper in list.files(path = "helpers", full.names = T, recursive = T)){source(helper, local = TRUE)}
 
 function(input, output, session) {
     
-    # Back up database when app is fired up
+    # Back up database when app is fired up... supplementary files such as the backup generator are stored in /extdata
     system("bash /usr/lib/R/site-library/sampleDB/extdata/sampleDB_backup_generator.sh")
   
-    # SET PATH TO SQLITE DATABASE - WOULD PREFER DATABASE TO BE AT Sys.getenv("SAMPLEDB_DATABASE")
+    # Set path to .sqlite database
     database <- Sys.getenv("SDB_PATH")
 
     # --------- Upload Samples -------------
 
     # Upload Micronix Samples
-    MatrixUpload(session, output, input, database, ref.clear_action = "ClearMicronixUploadForm")
+    MicronixUpload(session, output, input, database)
     
     # Upload Cryo Samples
-    # CryoUpload(session, output, input, database, ref.clear_action = "ClearCryoUploadForm")
+    # CryoUpload(session, output, input, database)
 
     # Upload RDT Samples
-    # RDTUpload(session, output, input, database, ref.clear_action = "ClearRDTUploadForm")
+    # RDTUpload(session, output, input, database)
 
     # Upload Paper Samples
-    # PaperUpload(session, output, input, database, ref.clear_action = "ClearPaperUploadForm")
+    # PaperUpload(session, output, input, database)
     
     # -------- Search Samples -------------
     
@@ -47,7 +48,6 @@ function(input, output, session) {
     
     # -------- Archive and Delete Samples --------
     
-    # does not work at the moment
     DelArchSamples(session, input, database, output, DelArch = TRUE)
 
     # -------- Delete Empty Container --------
