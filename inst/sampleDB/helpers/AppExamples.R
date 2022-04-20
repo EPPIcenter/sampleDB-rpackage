@@ -6,7 +6,7 @@
 
 .ExampleMetadataItems <- function(database, type){
   tibble(`StudyCode` = "CodeXXX",
-         `StudyParticipant` = "ParticipantXXX",
+         `Participant` = "ParticipantXXX",
          `SpecimenType` = "Plasma",
          `CollectionDate` = "2022-04-11") 
 }
@@ -16,8 +16,8 @@
          Column = "1",
          `MicronixBarocde` = "974019283",
          `StudyCode` = "CodeXXX",
-         `StudyParticipant` = "ParticipantXXX",
-         `AssayType` = "Plasma",
+         `Participant` = "ParticipantXXX",
+         `SpecimenType` = "Plasma",
          `CollectionDate` = "2022-04-11")
 }
 

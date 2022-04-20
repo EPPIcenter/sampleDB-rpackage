@@ -12,21 +12,23 @@
   if(input[[ui_elements$ui.input$UploadFileType]] == "visionmate"){
     required_visionmate_colnames <- c(names.base, "LocationRow", "LocationColumn", "TubeCode")
     visionmate_colnames_withdate <- c(required_visionmate_colnames, "CollectionDate")
-    out <- validate(need(all(required_visionmate_colnames %in% names(users_upload_file)) || all(visionmate_colnames_withdate %in% names(users_upload_file)),
-                         paste0("Error: Malformed Colnames\nVisionMate Column Names: LocationRow, LocationColumn, TubeCode\nDetected Column Names: ", names(users_upload_file))))
+    out <- all(required_visionmate_colnames %in% names(users_upload_file)) || all(visionmate_colnames_withdate %in% names(users_upload_file))
+    # out1 <- validate(need(all(required_visionmate_colnames %in% names(users_upload_file)) || all(visionmate_colnames_withdate %in% names(users_upload_file)),
+    #                       paste0("Error: Malformed Colnames\nVisionMate Column Names: LocationRow, LocationColumn, TubeCode\nDetected Column Names: ", names(users_upload_file))))
   }
   else if(input[[ui_elements$ui.input$UploadFileType]] == "traxcer"){
     required_traxcer_colnames <- c(names.base, "Position", "Tube ID")
     traxcer_colnames_withdate <- c(required_traxcer_colnames, "CollectionDate")
-    out <- validate(need(all(required_traxcer_colnames %in% names(users_upload_file)) || all(traxcer_colnames_withdate %in% names(users_upload_file)), 
-                         "Error: Malformed Colnames\n Required Traxcer Column Names are: Position, Tube ID"))
+    out <- all(required_traxcer_colnames %in% names(users_upload_file)) || all(traxcer_colnames_withdate %in% names(users_upload_file))
+    # out1 <- validate(need(all(required_traxcer_colnames %in% names(users_upload_file)) || all(traxcer_colnames_withdate %in% names(users_upload_file)),
+    #                      "Error: Malformed Colnames\nRequired Traxcer Column Names are: Position, Tube ID"))
   }
   else{
     general_colnames <- c(names.base, "MicronixBarocde", "Row", "Column")
-    out <- validate(need(all(general_colnames %in% names(users_upload_file)), 
-                         "Error: Malformed Colnames\n Required Traxcer Column Names are: MicronixBarocde, Row, Column"))
+    out <- all(general_colnames %in% names(users_upload_file))
+    # out1 <- validate(need(all(general_colnames %in% names(users_upload_file)),
+    #                      "Error: Malformed Colnames\nRequired Traxcer Column Names are: MicronixBarocde, Row, Column"))
   }
-  
   return(out)
 }
 

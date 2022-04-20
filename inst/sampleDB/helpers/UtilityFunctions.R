@@ -20,8 +20,20 @@ CheckColnamesOfUserProvidedMicronixFileFormat <- function(input, output, users_u
   #read in user uploaded data file
   message("Checking colnames of user provided file...")
   
-  #check colnames of user provided file format
-  output[[ui_elements$ui.output$WarningUploadColnames]] <- renderText(.CheckColnamesOfUserProvidedMicronixFileFormat(input = input, users_upload_file = users_upload_file, sample_type = sample_type))
+  #validate colnames of user provided file format and print user messages if file is not valid
+  out <- .CheckColnamesOfUserProvidedMicronixFileFormat(input = input, users_upload_file = users_upload_file, sample_type = sample_type)
+  output[[ui_elements$ui.output$WarningUploadColnames]] <- renderText({
+    if(input[[ui_elements$ui.input$UploadFileType]] == "visionmate"){
+      validate(need(out, "ERROR: MALFORMED COLUMN NAMES\nValid VisionMate Column Names are...\nLocationRow, LocationColumn, TubeCode, StudyCode, Participant, SpecimenType, (CollectionDate)"))
+    }
+    else if(input[[ui_elements$ui.input$UploadFileType]] == "traxcer"){
+      validate(need(out, "ERROR: MALFORMED COLUMN NAMES\nValid Traxcer Column Names are...\nPosition, Tube ID, StudyCode, Participant, SpecimenType, (CollectionDate)"))
+    }
+    else{
+      validate(need(out, "ERROR: MALFORMED COLUMN NAMES\nValid Column Names are...\nMicronixBarocde, Row, Column, StudyCode, Participant, SpecimenType, (CollectionDate)"))
+    }
+  })
+  return(out)
 }
 
 FormatMicronixUploadData <- function(input, sample_type, users_upload_file){
@@ -29,13 +41,17 @@ FormatMicronixUploadData <- function(input, sample_type, users_upload_file){
   #get ui elements to know UploadFileType
   ui_elements <- GetUIElements(sample_type)
   
+  #use CheckColnamesOfUserProvidedMicronixFileFormat here in an if statement to say if it "passes" the check continue to formatting
+  
   #read in validated user provided micronix data file
   message("Formatting user provided file...")
   
   if(input[[ui_elements$ui.input$UploadFileType]] == "traxcer"){
     formatted_upload_file <- users_upload_file %>% 
       setNames(.[1,]) %>% .[-1,] %>%
-      rename(`1` = `SpecimenType`) %>%
+      rename(specimen_type = SpecimenType,
+             study_short_code = StudyCode,
+             study_subject_id = Participant) %>%
       mutate(label = na_if(`Tube ID`, ""),
              well_position = paste0(substring(Position, 1, 1), substring(Position, 2))) %>%
       tidyr::drop_na() %>%
