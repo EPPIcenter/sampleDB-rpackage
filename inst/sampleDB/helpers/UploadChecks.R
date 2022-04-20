@@ -17,6 +17,7 @@
     #                       paste0("Error: Malformed Colnames\nVisionMate Column Names: LocationRow, LocationColumn, TubeCode\nDetected Column Names: ", names(users_upload_file))))
   }
   else if(input[[ui_elements$ui.input$UploadFileType]] == "traxcer"){
+    users_upload_file <- users_upload_file %>% setNames(.[1,]) %>% .[-1,]
     required_traxcer_colnames <- c(names.base, "Position", "Tube ID")
     traxcer_colnames_withdate <- c(required_traxcer_colnames, "CollectionDate")
     out <- all(required_traxcer_colnames %in% names(users_upload_file)) || all(traxcer_colnames_withdate %in% names(users_upload_file))
