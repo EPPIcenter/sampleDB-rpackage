@@ -11,7 +11,6 @@ library(purrr)
 
 #load helper files
 for(helper in list.files(path = "helpers", full.names = T, recursive = T)){
-  print(helper)
   source(helper, local = TRUE)
 }
 

@@ -182,9 +182,9 @@ UploadSamples <- function(sample_type, upload_data, container_name, container_ba
   for(i in 1:nrow(upload_data)){
     
     #1. get upload item's metadata
-    eval.specimen_type <- upload_data[i, ]$"specimen_type"
-    eval.study_code <- upload_data[i, ]$"study_short_code"
-    eval.subject <- upload_data[i, ]$"study_subject_id"
+    eval.specimen_type <- upload_data[i, ]$"specimen_type" %>% as.character()
+    eval.study_code <- upload_data[i, ]$"study_short_code" %>% as.character()
+    eval.subject <- upload_data[i, ]$"study_subject_id" %>% as.character()
     eval.barcode <- upload_data[i,]$"label" %>% as.character()
     eval.well_position <- upload_data[i,]$"well_position"
     if(is.na(upload_data[i, ]$"collection_date")){
