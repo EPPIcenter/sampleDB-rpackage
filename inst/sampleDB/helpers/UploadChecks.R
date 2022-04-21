@@ -25,7 +25,7 @@
     #                      "Error: Malformed Colnames\nRequired Traxcer Column Names are: Position, Tube ID"))
   }
   else{
-    general_colnames <- c(names.base, "MicronixBarocde", "Row", "Column")
+    general_colnames <- c(names.base, "MicronixBarcode", "Row", "Column")
     out <- all(general_colnames %in% names(users_upload_file))
     # out1 <- validate(need(all(general_colnames %in% names(users_upload_file)),
     #                      "Error: Malformed Colnames\nRequired Traxcer Column Names are: MicronixBarocde, Row, Column"))

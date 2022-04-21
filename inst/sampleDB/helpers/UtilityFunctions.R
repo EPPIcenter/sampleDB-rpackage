@@ -30,7 +30,7 @@ CheckColnamesOfUserProvidedMicronixFileFormat <- function(input, output, users_u
       validate(need(out, "ERROR: MALFORMED COLUMN NAMES\nValid Traxcer Column Names are...\nPosition, Tube ID, StudyCode, Participant, SpecimenType, (CollectionDate)"))
     }
     else{
-      validate(need(out, "ERROR: MALFORMED COLUMN NAMES\nValid Column Names are...\nMicronixBarocde, Row, Column, StudyCode, Participant, SpecimenType, (CollectionDate)"))
+      validate(need(out, "ERROR: MALFORMED COLUMN NAMES\nValid Column Names are...\nMicronixBarcode, Row, Column, StudyCode, Participant, SpecimenType, (CollectionDate)"))
     }
   })
   return(out)
@@ -71,11 +71,10 @@ FormatMicronixUploadData <- function(input, sample_type, users_upload_file){
     formatted_upload_file <- users_upload_file %>%
       rename(specimen_type = SpecimenType,
              study_short_code = StudyCode,
-             study_subject_id = Particpiant) %>% 
-      mutate(label = na_if(MicronixBarocde, ""),
+             study_subject_id = Participant) %>% 
+      mutate(label = na_if(MicronixBarcode, ""),
              well_position = paste0(Row, Column)) %>%
-      tidyr::drop_na() %>%
-      select(-c("SpecimenType","StudyCode", "Particpiant"))
+      tidyr::drop_na() 
   }
   
   if("CollectionDate" %in% names(formatted_upload_file)){
@@ -160,9 +159,9 @@ UploadReset <- function(input, output, sample_type){
     ({
       shinyjs::reset(ui_elements$ui.input$UploadPlateID)
       shinyjs::reset(ui_elements$ui.input$UploadDataSet)
-      shinyjs::reset(ui_elements$ui.input$UploadLocation)
-      shinyjs::reset(ui_elements$ui.input$UploadLocationLevel_I)
-      shinyjs::reset(ui_elements$ui.input$UploadLocationLevel_II)
+      shinyjs::reset(ui_elements$ui.input$UploadFreezerName)
+      shinyjs::reset(ui_elements$ui.input$UploadFreezerNameLevelI)
+      shinyjs::reset(ui_elements$ui.input$UploadFreezerNameLevelII)
       output[[ui_elements$ui.input$UploadReturnMessage1]] <- renderText({""})
       output[[ui_elements$ui.input$UploadReturnMessage2]] <- renderText({""})
     }))  
@@ -177,7 +176,9 @@ GetUIElements <- function(sample_type, msg = NULL){
                      ClearForm = "ClearMicronixUploadForm",
                      UploadFreezerName = "UploadMicronixLocation",
                      UploadFreezerNameLevelI = "UploadLocationMicronixLevelI",
-                     UploadFreezerNameLevelII = "UploadLocationMicronixLevelII")
+                     UploadFreezerNameLevelII = "UploadLocationMicronixLevelII",
+                     UploadReturnMessage1 = "UploadMicronixReturnMessage1",
+                     UploadReturnMessage2 = "UploadMicronixReturnMessage2")
     ui.output = list(WarningUploadSampleID = "WarningMicronixUploadSampleID",
                      WarningUploadColnames = "WarningMicronixUploadColnames",
                      WarningUploadSpecimenTypes = "WarningUploadMicronixSpecimenTypes",
