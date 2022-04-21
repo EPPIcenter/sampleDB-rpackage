@@ -13,7 +13,7 @@ library(purrr)
 for(helper in list.files(path = "helpers", full.names = T, recursive = T)){source(helper, local = TRUE)}
 
 function(input, output, session) {
-    
+  
     # Back up database when app is fired up... supplementary files such as the backup generator are stored in /extdata
     system("bash /usr/lib/R/site-library/sampleDB/extdata/sampleDB_backup_generator.sh")
   

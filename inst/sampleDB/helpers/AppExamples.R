@@ -1,7 +1,7 @@
 .ExampleLogisticsItems <- function(database, type){
   tibble(Row = "A",
          Column = "1",
-         `MicronixBarocde` = "974019283")
+         `MicronixBarcode` = "974019283")
 }
 
 .ExampleMetadataItems <- function(database, type){
@@ -14,7 +14,7 @@
 .ExampleCombinedItems <- function(database, type){
   tibble(Row = "A",
          Column = "1",
-         `MicronixBarocde` = "974019283",
+         `MicronixBarcode` = "974019283",
          `StudyCode` = "CodeXXX",
          `Participant` = "ParticipantXXX",
          `SpecimenType` = "Plasma",

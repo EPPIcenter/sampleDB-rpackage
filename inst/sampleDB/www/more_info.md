@@ -1,2 +1,0 @@
-
-# Micronix Data File formating

@@ -50,8 +50,8 @@ navbarPage("EPPIcenter SampleDB",
                         hr(),
                         #upload data
                         fileInput("UploadMicronixDataSet", "Micronix Data File", width = '47%', multiple = FALSE, accept = c("text/csv", "text/comma-separated-values,text/plain", ".csv")),
-                        fluidRow(column(width = 5, radioButtons("UploadFileType", label = NULL, choices = c("VisionMate" = "visionmate", "Traxcer" = "traxcer", "NA" = "na"), inline = T)),
-                                 column(width = 3, tags$a(href='more_info.md', target='blank', 'More Info'))),
+                        fluidRow(column(width = 6, radioButtons("UploadFileType", label = NULL, choices = c("VisionMate" = "visionmate", "Traxcer" = "traxcer", "NA" = "na"), inline = T),
+                                                   tags$a(href='micronix_format_info.html', target='blank', 'More Info'))),
                         shinyjs::hidden(textInput("ActionUploadMatrix", label = NULL)),
                         textOutput("WarningMicronixUploadSampleID"),
                         textOutput("WarningMicronixUploadBarcodeRepeats"),
@@ -553,6 +553,6 @@ navbarPage("EPPIcenter SampleDB",
            tabPanel("About",
                     fluidPage(uiOutput("report_issues"),
                               uiOutput("source_code")),
-           )
+           ),
 
 )
