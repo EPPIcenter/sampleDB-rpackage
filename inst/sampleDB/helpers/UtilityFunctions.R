@@ -41,10 +41,10 @@ FormatMicronixUploadData <- function(input, sample_type, users_upload_file){
   #get ui elements to know UploadFileType
   ui_elements <- GetUIElements(sample_type)
   
-  #use CheckColnamesOfUserProvidedMicronixFileFormat here in an if statement to say if it "passes" the check continue to formatting
-  
   #read in validated user provided micronix data file
   message("Formatting user provided file...")
+  
+  #remove row if micronix barcode is not string len 10
   
   if(input[[ui_elements$ui.input$UploadFileType]] == "traxcer"){
     formatted_upload_file <- users_upload_file %>% 
@@ -52,7 +52,7 @@ FormatMicronixUploadData <- function(input, sample_type, users_upload_file){
       rename(specimen_type = SpecimenType,
              study_short_code = StudyCode,
              study_subject_id = Participant) %>%
-      mutate(label = na_if(`Tube ID`, ""),
+      mutate(label = replace(`Tube ID`, nchar(`Tube ID`) != 10, NA),
              well_position = paste0(substring(Position, 1, 1), substring(Position, 2))) %>%
       tidyr::drop_na() %>%
       select(-c("Position","Tube ID"))
@@ -62,7 +62,7 @@ FormatMicronixUploadData <- function(input, sample_type, users_upload_file){
       rename(specimen_type = SpecimenType,
              study_short_code = StudyCode,
              study_subject_id = Participant) %>% 
-      mutate(label = na_if(TubeCode, "No Tube"),
+      mutate(label = replace(TubeCode, nchar(TubeCode) != 10, NA),
              well_position = paste0(LocationRow, LocationColumn)) %>%
       tidyr::drop_na() %>%
       select(-c("TubeCode","LocationRow", "LocationColumn"))
@@ -72,7 +72,7 @@ FormatMicronixUploadData <- function(input, sample_type, users_upload_file){
       rename(specimen_type = SpecimenType,
              study_short_code = StudyCode,
              study_subject_id = Participant) %>% 
-      mutate(label = na_if(MicronixBarcode, ""),
+      mutate(label = replace(MicronixBarcode, nchar(MicronixBarcode) != 10, NA),
              well_position = paste0(Row, Column)) %>%
       tidyr::drop_na() 
   }

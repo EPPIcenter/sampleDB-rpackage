@@ -17,3 +17,7 @@ To cut down on time spent renaming columns, aside from the default format, Sampl
 - The `Column` column is named `LocationColumn`.
 - The `MicronixBarcode` column is named `TubeCode`.
 
+### Blank CSV Rows
+  
+  Rows that do not have 10 digit integer barcodes are skipped
+
