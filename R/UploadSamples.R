@@ -276,7 +276,10 @@ UploadSamples <- function(sample_type, upload_data, container_name, container_ba
                               exhausted = 0),
                          conn = conn) %>% suppressWarnings()
     
-    # 5. Create new sample housing (if it does not alread exist) and upload samples into housing
+    #5. get just item's storage container id and use it as the primary key in the matrix tube table
+    eval.id <- tail(sampleDB::CheckTable(database = database, "storage_container"), 1)$id
+    
+    # 6. Create new sample housing (if it does not alread exist) and upload samples into housing
     if(sample_type == "micronix"){
       # create a new housing (if it does not already exist)
       if(!container_name %in% CheckTable(database = database, "matrix_plate")$plate_name){
@@ -285,10 +288,11 @@ UploadSamples <- function(sample_type, upload_data, container_name, container_ba
         eval.plate_id <- filter(sampleDB::CheckTable("matrix_plate"), plate_name == container_name)$id
       }
       
-      # 6. upload micronix sample
+      # 7. upload micronix sample
       sampleDB::AddToTable(database = database,
                            table_name = "matrix_tube",
-                           info_list = list(plate_id = eval.plate_id, 
+                           info_list = list(id = eval.id,
+                                            plate_id = eval.plate_id, 
                                             well_position = eval.well_position, 
                                             barcode = eval.barcode),
                            conn = conn) %>% suppressWarnings()
