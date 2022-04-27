@@ -327,10 +327,10 @@ navbarPage("EPPIcenter SampleDB",
                       sidebarLayout(
                         sidebarPanel(
                           width = 3,
-                          HTML("<h4><b>Move Samples Form</b></h4>"),
+                          HTML("<h4><b>Move Samples</b></h4>"),
                           hr(),
-                          radioButtons("MoveSampleType","Sample Type", c("Micronix" = "micronix", "Cryovial" = "cryovial", "RDT" = "rdt", "Paper" = "paper"), inline = T),
-                          fileInput("MoveDataSet", "SampleDB MoveSamplesCSV", multiple = TRUE, accept = c("text/csv", "text/comma-separated-values,text/plain", ".csv")),
+                          radioButtons("MoveSampleType","Sample Storage Type", c("Micronix" = "micronix", "Cryovial" = "cryovial", "RDT" = "rdt", "Paper" = "paper"), inline = T),
+                          fileInput("MoveDataSet", "Move Samples File(s)", multiple = TRUE, accept = c("text/csv", "text/comma-separated-values,text/plain", ".csv")),
                           fluidRow(column(width = 12,
                                           actionButton("MoveAction", label = "Move Samples", style="color: #fff; background-color: #337ab7; border-color: #2e6da4"),
                                           actionButton("ClearMoveForm", label = "Clear Form"))),

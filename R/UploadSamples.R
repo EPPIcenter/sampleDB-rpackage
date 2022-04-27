@@ -35,7 +35,17 @@
 #' If the freezer_address type is `minus twenty` then `level_I` and `level_II` items specify the shelf and basket, respecively. 
 #' @examples
 #' \dontrun{
-#' UploadSamples(upload_data = dataframe(), container_name = "dummy_name", location = freezer_address = list(location_name = "Freezer A", level_I = "dummy.levelI", level_II = "dummy.levelII"))
+#' UploadSamples(sample_type = "micronix", 
+#'               upload_data = tibble(well_position = c("A0"),
+#'                                    label = c("XXX 1"),
+#'                                    study_subject_id = c("1"),
+#'                                    specimen_type = c("PLASMA"),
+#'                                    study_short_code = c("KAM06"),
+#'                                    collection_date = c("2021-04-10")),
+#'                container_name = "test_container", 
+#'                freezer_address = list(location_name = "TBD",
+#'                                       level_I = "TBD",
+#'                                       level_II = "seve's working basket"))
 #' }
 #' @import dplyr
 #' @import RSQLite
@@ -57,7 +67,6 @@
 # B. open a connection to the database only at the beginning of the upload and close the connection only at the end on the upload. many sampleDB funs open and close the db so the use of those funs here is
 # very problematic (it is how things i think *need* to be in order for 2+ users to work with the db at the same time)
 # C. Adds to the db tables occur not in a loop but all at once. (this is how things *should* be)
-
 UploadSamples <- function(sample_type, upload_data, container_name, container_barcode = NULL, freezer_address){
   
   # locate the database and connect to it
@@ -96,85 +105,46 @@ UploadSamples <- function(sample_type, upload_data, container_name, container_ba
   message("Performing upload checks...")
   
   # check storage type
-  # stopifnot("Sample type is not valid." = sample_type %in% c("cryo", "micronix", "paper", "rdt"))
-  stopifnot("Error: Storage type is not valid." = sample_type %in% c("micronix")) #for now, only micronix samples are permitted
+  stopifnot("Error: Storage type is not valid." = sampleDB:::.CheckSampleStorageType(sample_type = sample_type))
   
   # check upload data colnames
-  valid_colnames <- c("well_position", "label", "study_subject_id", "specimen_type", "study_short_code", "collection_date")
-  stopifnot("Error: Malformed colnames. Valid colnames are:" = all(valid_colnames %in% names(upload_data)))
+  stopifnot("Error: Malformed colnames. Valid colnames are:" = sampleDB:::.CheckFormattedColnames(formatted_upload_file = upload_data))
 
   # check freezer address exists
-  tmp.location.tbl <- inner_join(tibble(location_name = freezer_address$location_name, level_I = freezer_address$level_I, level_II = freezer_address$level_II), 
-                                 sampleDB::CheckTable(database = database, "location"), 
-                                 by = c("location_name", "level_I", "level_II"))
-  stopifnot("Error: Freezer address does not exist" = nrow(tmp.location.tbl) != 0)
-  
-  # check plate name
-  stopifnot("Error: Container name is not unique" = !(container_name %in% c(sampleDB::CheckTable(database = database, "matrix_plate")$plate_name,
-                                                            sampleDB::CheckTable(database = database, "box")$box_name,
-                                                            sampleDB::CheckTable(database = database, "bag")$bag_name)))
-  
-  # check plate barcode
-  if(!is.null(container_barcode)){
-    if(container_barcode != ""){
-      stopifnot("Error: Container barcode is not unique" = !(container_barcode %in% c(sampleDB::CheckTable(database = database, "matrix_plate")$plate_barcode)))
-      # stopifnot("CONTAINER BARCODE IS NOT UNIQUE" = !(container_barcode %in% c(sampleDB::CheckTable(database = database, "matrix_plate")$plate_barcode,
-      #                                                                    sampleDB::CheckTable(database = database, "box")$box_barcode,
-      #                                                                    sampleDB::CheckTable(database = database, "bag")$bag_barcode)))  
-    }
-  }
+  stopifnot("Error: Freezer address does not exist" = sampleDB:::.CheckFreezerAddress(freezer_address = freezer_address, database = database))
   
   # check that specimen type exists
-  stopifnot("Error: Specimen type(s) does not exist" = all(upload_data$"specimen_type" %in% CheckTable(database = database, table = "specimen_type")$label))
+  stopifnot("Error: Specimen type(s) does not exist" = sampleDB:::.CheckUploadSpecimenTypes(database = database, formatted_upload_file = upload_data))
+  
+  # check that study codes exists
+  stopifnot("Error: Study Short Code(s) does not exist" = sampleDB:::.CheckUploadStudyShortCodes(database = database, formatted_upload_file = upload_data))
   
   # check collection date format is correct
   #create a vector from the collection date column and remove all NAs in the vector the perform this check
   collection_dates <- upload_data$"collection_date"[!is.na(upload_data$"collection_date")]
   if(length(collection_dates) != 0){
-    stopifnot("Error: Collection date is not in Year, Month, Day format" = all(!is.na(parse_date_time(collection_dates, orders = "ymd")) == TRUE))
+    stopifnot("Error: Collection date is not in Year, Month, Day format" = sampleDB:::.CheckUploadDateFormat(database = database, formatted_upload_file = upload_data))
   }
   
   # check that micronix containerbarcodes are unique
-  stopifnot("Error: Barcode Unique Constraint" = all(!upload_data$label %in% c(sampleDB::CheckTable(database = database, "matrix_tube")$barcode,
-                                                                               sampleDB::CheckTable(database = database, "tube")$label,
-                                                                               sampleDB::CheckTable(database = database, "rdt")$label,
-                                                                               sampleDB::CheckTable(database = database, "paper")$label)))
-  
-  NonUniqueLabels <- upload_data$label[which(upload_data$label %in% c(sampleDB::CheckTable(database = database, "matrix_tube")$barcode,
-                                                                    sampleDB::CheckTable(database = database, "tube")$label,
-                                                                    sampleDB::CheckTable(database = database, "rdt")$label,
-                                                                    sampleDB::CheckTable(database = database, "paper")$label))]
-  
-  if(length(NonUniqueLabels) != 0){print(NonUniqueLabels)}
+  out <- sampleDB:::.CheckBarcodeIsntInDB(database = database, formatted_upload_file = upload_data)
+  stopifnot("Error: Barcode Unique Constraint" = out$out1)
+  if(length(out$out2) > 0){
+    print(out$out2)
+  }
   
   # check that micronix container barcodes are not duplicated
-  dups <- upload_data$label[duplicated(upload_data$label)]
-  stopifnot("Barcodes in upload data are duplicated" = length(dups) == 0)
-  if(length(dups) != 0){print(dups)}
+  out <- sampleDB:::.CheckBarcodeArentRepeated(database = database, formatted_upload_file = upload_data)
+  stopifnot("Barcodes in upload data are duplicated" = out$out1)
+  if(length(out$out2) > 0){
+    print(out$out2)
+  }
   
-  #CHECK IF SPECIMEN ALREADY EXISTS
-  # check.study_subject <- inner_join(sampleDB::CheckTable(database = database, "study_subject"),
-  #                                   tibble(subject = upload_data$"study_subject_id",
-  #                                          study_id = filter(sampleDB::CheckTable(database = database, "study"), short_code %in% upload_data$study_short_code)$id,
-  #                                          specimen_type_id = filter(sampleDB::CheckTable(database = database, "specimen_type"), label %in% upload_data$specimen_type)$id),
-  #                                   by = c("subject", "study_id"))
-  # 
-  # if(nrow(check.study_subject) != 0){
-  #   
-  #   if("collection_date" %in% names(upload_data)){
-  #     test_table.specimen <- check.study_subject %>% rename("study_subject_id" = "id")
-  #     test_table.specimen$collection_date <- as.double(as.Date(upload_data$collection_date))
-  #   }else{
-  #     test_table.specimen <- check.study_subject %>% rename("study_subject_id" = "id")
-  #     test_table.specimen$collection_date <- as.double(as.Date(NA))
-  #   } 
-  #   
-  #   check.specimen <- inner_join(sampleDB::CheckTable(database = database, "specimen"), 
-  #                                    test_table.specimen, 
-  #                                    by = c("study_subject_id", "specimen_type_id", "collection_date"))
-  #   
-  #   stopifnot("SPECIMEN ALREADY EXISTS IN THE DATABASE. SPECIMENS UNIQUE CONSTRAINT: SUBJECT + STUDY + SPECIMEN TYPE + COLLECTION DATE" = nrow(check.specimen) == 0)
-  # }
+  # check plate name
+  stopifnot("Error: Container name is not unique" = sampleDB:::.CheckUploadContainerNameDuplication(database = database, plate_name = container_name))
+  
+  # check plate barcode
+  stopifnot("Error: Container barcode is not unique" = sampleDB:::.CheckUploadContainerBarcodeDuplication(plate_barcode = container_barcode, database = database))
 }
 
 .UploadSamples <- function(upload_data, database, sample_type, conn, container_name, container_barcode, freezer_address){
