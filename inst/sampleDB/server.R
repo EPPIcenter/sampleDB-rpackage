@@ -17,7 +17,7 @@ for(helper in list.files(path = "helpers", full.names = T, recursive = T)){
 function(input, output, session) {
   
     # Back up database when app is fired up... supplementary files such as the backup generator are stored in /extdata
-    system("bash /usr/lib/R/site-library/sampleDB/extdata/sampleDB_backup_generator.sh")
+    system("bash /usr/lib/R/site-library/sampleDB/extdata/sampleDB_backup_generator.sh", intern = TRUE) %>% message()
   
     # Set path to .sqlite database
     database <- Sys.getenv("SDB_PATH")
