@@ -23,7 +23,7 @@ MicronixUpload <- function(session, output, input, database){
       if(isTRUE(UploadFileColnameCheck)){
         #reformat upload data file
         reactive_vals$formatted_upload_file <- FormatMicronixUploadData(input = input, sample_type = "micronix", users_upload_file = users_upload_file)
-        
+
         #after formatting takes place, check upload data content
         if(!is.null(reactive_vals$formatted_upload_file)){
           ConductBasicFormattedUploadFileChecks(output = output, database = database, sample_type = "micronix", formatted_upload_file = reactive_vals$formatted_upload_file) 

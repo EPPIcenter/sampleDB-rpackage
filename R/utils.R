@@ -65,6 +65,7 @@
   
   if("collection_date" %in% names(formatted_upload_file)){
     collection_dates <- formatted_upload_file %>% pull(collection_date)
+    collection_dates <- collection_dates[!is.na(collection_dates)]
     out <- all(!is.na(parse_date_time(collection_dates, orders = "ymd")) == TRUE)
   }else{
     out <- TRUE
@@ -143,7 +144,9 @@
   #removing row if micronix barcode is not string len 10
   
   if("CollectionDate" %in% names(formatted_upload_file)){
-    formatted_upload_file <- formatted_upload_file %>% rename(collection_date = CollectionDate)
+    formatted_upload_file <- formatted_upload_file %>% 
+      mutate(CollectionDate = na_if(CollectionDate, "")) %>% 
+      rename(collection_date = CollectionDate)
   }
   
   return(formatted_upload_file)

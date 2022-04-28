@@ -75,7 +75,7 @@ UploadSamples <- function(sample_type, upload_data, container_name, container_ba
   
   # save a copy of the upload data as a csv
   .SaveUploadCSV(upload_data, container_name)
-  
+
   # if there is no collection date, for standardization create a collection date column of NAs
   if(!"collection_date" %in% names(upload_data)){
     upload_data$collection_date <- NA
