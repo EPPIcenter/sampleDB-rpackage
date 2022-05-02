@@ -1,14 +1,25 @@
 
+# Utility Functions that are shared between Pkg Funs and Shiny App Funs
+# Use ::: to access, these functions are not package exports
+
 # Storage Type Check
 .CheckSampleStorageType <- function(sample_type){
   out <- sample_type %in% c("micronix")
   return(out)
 }
 
-# Upload File Colnames Check
-.CheckFormattedColnames <- function(formatted_upload_file){
-  valid_colnames <- c("well_position", "label", "study_subject_id", "specimen_type", "study_short_code", "collection_date")
-  out <- all(valid_colnames %in% names(formatted_upload_file))
+# Logistical Colnames Check
+.CheckFormattedLogisticalColnames <- function(formatted_upload_file){
+  valid_logistical_colnames <- c("well_position", "label")
+  out <- all(valid_logistical_colnames %in% names(formatted_upload_file))
+
+  return(out)
+}
+
+# Metadata Colnames Check
+.CheckFormattedMetaDataColnames <- function(formatted_upload_file){
+  valid_metadata_colnames <- c("study_subject_id", "specimen_type", "study_short_code", "collection_date")
+  out <- all(valid_metadata_colnames %in% names(formatted_upload_file))
   return(out)
 }
 
@@ -19,6 +30,37 @@
                                  sampleDB::CheckTable(database = database, "location"), 
                                  by = c("location_name", "level_I", "level_II"))
   out <- nrow(tmp.location.tbl) != 0
+  return(out)
+}
+
+# App Upload File Colname Check
+.CheckMetadataColnamesOfUserProvidedMicronixFile <- function(users_upload_file){
+  
+  #establish required metadata column names
+  names.base <- c("Participant", "SpecimenType", "StudyCode")
+  out <- all(names.base %in% names(users_upload_file))
+  
+  return(out)
+}
+
+# App Upload File Colname Check
+.CheckLogisticalColnamesOfUserProvidedMicronixFile <- function(upload_file_type, users_upload_file){
+  
+  if(upload_file_type == "visionmate"){
+    required_visionmate_colnames <- c("LocationRow", "LocationColumn", "TubeCode")
+    visionmate_colnames_withdate <- c(required_visionmate_colnames, "CollectionDate")
+    out <- all(required_visionmate_colnames %in% names(users_upload_file)) || all(visionmate_colnames_withdate %in% names(users_upload_file))
+  }
+  else if(upload_file_type == "traxcer"){
+    users_upload_file <- users_upload_file %>% setNames(.[1,]) %>% .[-1,]
+    required_traxcer_colnames <- c("Position", "Tube ID")
+    traxcer_colnames_withdate <- c(required_traxcer_colnames, "CollectionDate")
+    out <- all(required_traxcer_colnames %in% names(users_upload_file)) || all(traxcer_colnames_withdate %in% names(users_upload_file))
+  }
+  else{
+    general_colnames <- c("MicronixBarcode", "Row", "Column")
+    out <- all(general_colnames %in% names(users_upload_file))
+  }
   return(out)
 }
 
@@ -91,6 +133,19 @@
   return(out)
 }
 
+.CheckBarcodesInDatabase <- function(database = database, formatted_move_file_list = formatted_move_file_list){
+  
+  out_vector <- c()
+  for(item in names(formatted_move_file_list)){
+    barcodes <- formatted_move_file_list[[item]] %>% pull(label)
+    out_item <- all(barcodes %in% c(sampleDB::CheckTable(database = database, "matrix_tube")$barcode))
+    out_vector <- c(out_vector, out_item)
+  }
+  out <- all(out_vector)
+  
+  return(out)
+}
+
 # Plate Checks
 .CheckUploadContainerNameDuplication <- function(plate_name, database){
   
@@ -106,48 +161,4 @@
     out <- TRUE
   }
   return(out)
-}
-
-# File Formatting
-.FormatMicronixUploadData <- function(upload_file_type, users_upload_file){
-  
-  if(upload_file_type == "traxcer"){
-    formatted_upload_file <- users_upload_file %>% 
-      setNames(.[1,]) %>% .[-1,] %>%
-      rename(specimen_type = SpecimenType,
-             study_short_code = StudyCode,
-             study_subject_id = Participant) %>%
-      mutate(label = replace(`Tube ID`, nchar(`Tube ID`) != 10, NA),
-             well_position = paste0(substring(Position, 1, 1), substring(Position, 2))) %>%
-      tidyr::drop_na() %>%
-      select(-c("Position","Tube ID"))
-  }
-  else if(upload_file_type == "visionmate"){
-    formatted_upload_file <- users_upload_file %>%
-      rename(specimen_type = SpecimenType,
-             study_short_code = StudyCode,
-             study_subject_id = Participant) %>% 
-      mutate(label = replace(TubeCode, nchar(TubeCode) != 10, NA),
-             well_position = paste0(LocationRow, LocationColumn)) %>%
-      tidyr::drop_na() %>%
-      select(-c("TubeCode","LocationRow", "LocationColumn"))
-  }
-  else{
-    formatted_upload_file <- users_upload_file %>%
-      rename(specimen_type = SpecimenType,
-             study_short_code = StudyCode,
-             study_subject_id = Participant) %>% 
-      mutate(label = replace(MicronixBarcode, nchar(MicronixBarcode) != 10, NA),
-             well_position = paste0(Row, Column)) %>%
-      tidyr::drop_na() 
-  }
-  #removing row if micronix barcode is not string len 10
-  
-  if("CollectionDate" %in% names(formatted_upload_file)){
-    formatted_upload_file <- formatted_upload_file %>% 
-      mutate(CollectionDate = na_if(CollectionDate, "")) %>% 
-      rename(collection_date = CollectionDate)
-  }
-  
-  return(formatted_upload_file)
 }

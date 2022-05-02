@@ -7,17 +7,13 @@
 #' @param sample_type A string specifying the type of samples that are being moved. Options include: `micronix`, `cryovial`, `rdt` and `paper`
 #' @param move_data A list of SampleDB move dataframes, where the name of each dataframe item is the container that the samples are in after the move.
 #' 
-#' The basic structure of a Move CSV file is shown below.
+#' The structure of a move file is shown below.
 #' 
-#' | row | column | label |
-#' | --- |------- | ----- |
-#' | A   | 0      | xxx1  |
-#' | A   | 1      | xxx2  |
+#' | well_position | label |
+#' | ------------- | ----- |
+#' | A0            | xxx1  |
+#' | A1            | xxx2  |
 #' 
-#' Accepted names for the `row` column include: `row`, `Row`, and `LocationRow`. \cr
-#' Accepted names for the `column` column include: `column`, `Column`, and `LocationColumn`. \cr
-#' Also accepted is a single column named `Position` that represents the both the `row` column and the `column` column. 
-#' If the `Position` column is used then the `row` and `column` columns can be ommited.
 #' @examples
 #' \dontrun{
 #' move_data <- list("move_csv1_container_name" = dataframe(), "move_csv2_container_name" = dataframe())
@@ -34,43 +30,36 @@
 #want to be able to move samples and to move containers
 MoveSamples <- function(sample_type, move_data){
   
-  stopifnot("Sample type is not valid" = sample_type %in% c("micronix", "cryovial", "rdt", "paper"))
   database <- Sys.getenv("SDB_PATH")
   conn <-  RSQLite::dbConnect(RSQLite::SQLite(), database)
   
   # Save MoveCSVs
   .SaveMoveCSVs(move_data)
   
-  # Read in move files
-  # Create list -- keys: container name; values: container's samples
-  #For right now, if one of the move files has a column named "LocationRow", remove all of the rows with barcodes == ""
-  # and for all move files that do not have a column named "LocationRow" assume that the file is from a traxcer scanner and remove all rows with barcodes == ""
-  if(sample_type == "micronix"){
-    if("LocationRow" %in% names(move_data[[1]])){
-      move_data_list <- modify(move_data, function(x){x <- x %>% mutate(`TubeCode` = na_if(`TubeCode`,"")) %>% drop_na()})
-    }else{
-      move_data_list <- modify(move_data, function(x){x <- x %>% mutate(`Tube ID` = na_if(`Tube ID`,"")) %>% drop_na()})
-    } 
-  }
+  # Check move data
+  .MoveChecks(sample_type = sample_type, input = input, database = database, move_data = move_data)
   
   # Check if move creates orphans - returns TRUE if pass, FALSE if fail
-  orphan_check_return <- .CheckForOrphans(move_data_list = move_data_list, database, sample_type = sample_type)
+  orphan_check_return <- .CheckForOrphans(move_data_list = move_data, database, sample_type = sample_type)
 
   # Link samples to containers in move
   if(orphan_check_return$orphan_check_toggle){
 
     # Move samples out of containers - place in container id with negative number
-    .ClearSpaceInContainers(sample_type = sample_type, move_data_list = move_data_list, database = database, conn = conn)
+    .ClearSpaceInContainers(sample_type = sample_type, move_data_list = move_data, database = database, conn = conn)
     
     # Link samples to containers in move
-    message.successful <- .MoveSamples(sample_type = sample_type, move_data_list = move_data_list, database = database, conn = conn)
+    message.successful <- .MoveSamples(sample_type = sample_type, move_data_list = move_data, database = database, conn = conn)
     
     #close connection
     tryCatch(
       RSQLite::dbDisconnect(conn),
       warning=function(w){})
     
-    return(message(message.successful))
+    message(message.successful)
+    # print(message.successful)
+    
+    return(message.successful)
     
   }else{
   
@@ -82,7 +71,10 @@ MoveSamples <- function(sample_type, move_data){
       RSQLite::dbDisconnect(conn),
       warning=function(w){})
     
-    return(message(message.fail))
+    message(message.fail)
+    # print(message.fail)
+    
+    return(message.fail)
       
   }
 }
@@ -106,16 +98,8 @@ MoveSamples <- function(sample_type, move_data){
     # Get sample data
     for (i in 1:nrow(samples)){
       if(sample_type == "micronix"){
-        
-        if("LocationRow" %in% names(samples)){
-          eval.barcode <- samples[i,]$"TubeCode"
-          eval.well <- samples[i,]$"LocationRow"
-          eval.pos <- samples[i,]$"LocationColumn"
-        }else{
-          eval.barcode <- samples[i,]$"Tube ID"
-          eval.well <- samples[i,]$"Position" %>% substring(., 1, 1)
-          eval.pos <- samples[i,]$"Position" %>% substring(., 2)
-        }
+        eval.barcode <- samples[i,]$"label"
+        eval.well_pos <- samples[i,]$"well_position"
         
         # Find move data that matches sample data
         m <- which(stacked_orphaned_sample_data$barcode == eval.barcode)
@@ -124,7 +108,7 @@ MoveSamples <- function(sample_type, move_data){
         stacked_orphaned_sample_data[m, "plate_id"] <- filter(sampleDB::CheckTable(database = database, "matrix_plate"), plate_name == container_name)$id 
         
         # Use move data to place sample into proper container position
-        stacked_orphaned_sample_data[m, "well_position"] <- paste0(eval.well, eval.pos)
+        stacked_orphaned_sample_data[m, "well_position"] <- eval.well_pos
       }
       else if(sample_type == "cryovial"){
         
@@ -282,15 +266,8 @@ MoveSamples <- function(sample_type, move_data){
     # Get data for each sample
     for (i in 1:nrow(move_data)){
       if(sample_type == "micronix"){
-        if("LocationRow" %in% names(move_data)){
-          eval.barcode <- move_data[i,]$"TubeCode"
-          eval.well <- move_data[i,]$"LocationRow"
-          eval.pos <- move_data[i,]$"LocationColumn"
-        }else{
-          eval.barcode <- move_data[i,]$"Tube ID"
-          eval.well <- move_data[i,]$"Position" %>% substring(., 1, 1)
-          eval.pos <- move_data[i,]$"Position" %>% substring(., 2)
-        }
+        eval.barcode <- move_data[i,]$"label"
+        eval.well_pos <- move_data[i,]$"well_position"
   
         # get sample id
         id <- filter(sampleDB::CheckTable(database = database, "matrix_tube"), barcode == eval.barcode)$id
@@ -301,7 +278,7 @@ MoveSamples <- function(sample_type, move_data){
         ModifyTable(database = database,
                     "matrix_tube",
                     info_list = list(plate_id = eval.container_id,
-                                     well_position = paste0(eval.well, eval.pos)),
+                                     well_position = eval.well_pos),
                     id = id,
                     conn = conn) %>% suppressWarnings()
       }
@@ -385,9 +362,9 @@ MoveSamples <- function(sample_type, move_data){
   }
   
   message.fail <- paste0("Move Failed:\n",
-                         "\tOrphaned Samples Detected:", label.missing ,"\n",
-                         "\tOf Type:", sample_type, "\n",
-                         "\tFrom Container:", container_name_with_missing_label, "\n")
+                         "\tOrphaned Samples Detected: ", label.missing ,"\n",
+                         "\tType: ", sample_type, "\n",
+                         "\tFrom Container: ", container_name_with_missing_label, "\n")
   return(message.fail)
 }
 
@@ -452,6 +429,22 @@ MoveSamples <- function(sample_type, move_data){
   stacked_orphaned_sample_data <- bind_rows(sample_data)
   
   return(stacked_orphaned_sample_data)
+}
+
+.MoveChecks <- function(sample_type, input, database, move_data){
+  
+  # check storage type
+  stopifnot("Error: Storage type is not valid." = sampleDB:::.CheckSampleStorageType(sample_type = sample_type))
+  
+  # check logistical colnames
+  for(item in names(move_data)){
+    move_item <- move_data[[item]]
+    stopifnot("Error: Malformed colnames. Valid colnames are:" = sampleDB:::.CheckFormattedLogisticalColnames(formatted_upload_file = move_item))
+  }
+  
+  # make sure all barcodes are in the db
+  stopifnot("Error: All barcodes are not in the database" = sampleDB:::.CheckBarcodesInDatabase(database = database, formatted_move_file_list = move_data))
+  
 }
 
 .SaveMoveCSVs <- function(move_data_list){

@@ -11,6 +11,30 @@
          `CollectionDate` = "2022-04-11") 
 }
 
+.ExampleInDatabasePlateOne <- function(database, type){
+  tibble(Row = c("A","A","A"),
+         Column = c("1","2","3"),
+         `MicronixBarcode` = c("ItemA","ItemB","ItemC"))
+}
+
+.ExampleInDatabasePlateTwo <- function(database, type){
+  tibble(Row = c("A","A","A"),
+         Column = c("1","2","3"),
+         `MicronixBarcode` = c("ItemD","ItemE","ItemF"))
+}
+
+.ExamplePlateOneMove <- function(database, type){
+  tibble(Row = c("A","A","A"),
+         Column = c("1","2","3"),
+         `MicronixBarcode` = c("974019283","974019284","974019285"))
+}
+
+.ExamplePlateTwoMove <- function(database, type){
+  tibble(Row = c("A","A","A"),
+         Column = c("1","2","3"),
+         `MicronixBarcode` = c("974019286","974019287","974019288"))
+}
+
 .ExampleCombinedItems <- function(database, type){
   tibble(Row = "A",
          Column = "1",

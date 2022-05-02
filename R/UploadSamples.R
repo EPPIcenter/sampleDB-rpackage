@@ -55,18 +55,6 @@
 #' @import lubridate
 #' @export
 
-# there are two problems
-# 1. is that internal upload (specimen, storage_container, study_subject) occurs before container (plates, boxes, bags) and samples (cryo tubes, rdt, micronix tubes)
-# this means that in order for the ids of samples to match the upload ids no errors can take place during either of these uploads. they work in tandem so must fail together or be successful together
-# this leads to issue 2
-# 2. connections to the database are (to the best of my knowledge) opening and closing all throughout the upload. This is bad, it means that if two usrs try to upload something at the same time
-# the can get their connections to the db (via an upload) can get crossed and ids storage container ids could be useless
-#
-# There are three ways to overcome these problems:
-# A. upload internal data and external data at the same time (is this possible? idk. it is how thing *should* be)
-# B. open a connection to the database only at the beginning of the upload and close the connection only at the end on the upload. many sampleDB funs open and close the db so the use of those funs here is
-# very problematic (it is how things i think *need* to be in order for 2+ users to work with the db at the same time)
-# C. Adds to the db tables occur not in a loop but all at once. (this is how things *should* be)
 UploadSamples <- function(sample_type, upload_data, container_name, container_barcode = NULL, freezer_address){
   
   # locate the database and connect to it
@@ -91,13 +79,15 @@ UploadSamples <- function(sample_type, upload_data, container_name, container_ba
                  conn = conn, container_name = container_name, freezer_address = freezer_address,
                  container_barcode = container_barcode)
 
-  message(paste("UPLOADING CONTAINER", container_name, "CONTAINING", nrow(upload_data), "SAMPLES"))
+  return_message <- paste("Successfully uploaded\n", container_name, "with", nrow(upload_data), "sample", "to", "freezer address:\n", unlist(freezer_address, use.names=F))
   
   #close connection
   tryCatch(
     RSQLite::dbDisconnect(conn),
     warning=function(w){})
 
+  message(return_message)
+  return(return_message)
 }
 
 .UploadChecks <- function(sample_type, input, database, freezer_address, container_name, container_barcode, upload_data){
@@ -107,9 +97,12 @@ UploadSamples <- function(sample_type, upload_data, container_name, container_ba
   # check storage type
   stopifnot("Error: Storage type is not valid." = sampleDB:::.CheckSampleStorageType(sample_type = sample_type))
   
-  # check upload data colnames
-  stopifnot("Error: Malformed colnames. Valid colnames are:" = sampleDB:::.CheckFormattedColnames(formatted_upload_file = upload_data))
+  # check logistical colnames
+  stopifnot("Error: Malformed colnames. Valid colnames are:" = sampleDB:::.CheckFormattedLogisticalColnames(formatted_upload_file = upload_data))
 
+  # check logistical colnames
+  stopifnot("Error: Malformed colnames. Valid colnames are:" = sampleDB:::.CheckFormattedMetaDataColnames(formatted_upload_file = upload_data))
+  
   # check freezer address exists
   stopifnot("Error: Freezer address does not exist" = sampleDB:::.CheckFreezerAddress(freezer_address = freezer_address, database = database))
   

@@ -1,15 +1,16 @@
 
+# App Function for Uploading Samples
+
+# Overview
+# perform various checks of "user provided" file, reformat "user provided" file, and print user messages if file does not pass checks
+# checks in ui can unfortunately be ignored by the user
 
 MicronixUpload <- function(session, output, input, database){
-  
-  # Overview
-  # perform various checks of user provided micronix upload file, reformat user provided micronix upload file, and print user messages if file does not pass a check
-  # checks in ui are not enforced, they are used to create warning messages for user
   
   # 1. create variable for storing formatted_upload_file once it is created
   reactive_vals <- reactiveValues(formatted_upload_file = NULL)
 
-  # 2. get path to user provided micronix upload file, if path exists perform checks and reformat file
+  # 2. get path to user provided file, if path exists perform checks and reformat file
   observe({
     
     users_upload_file_path <- input[["UploadMicronixDataSet"]]$datapath
@@ -17,16 +18,17 @@ MicronixUpload <- function(session, output, input, database){
       
       users_upload_file <- read.csv(users_upload_file_path, check.names = F) %>% suppressWarnings() # will throw a pointless corrupt last line warning if file comes from excel
       
-      #check colnames of user provided micronix upload file
-      UploadFileColnameCheck <- CheckColnamesOfUserProvidedMicronixFileFormat(input = input, output = output, sample_type = "micronix", users_upload_file = users_upload_file)
+      #check colnames of user provided file
+      UploadFileLogisticalColnameCheck <- CheckLogisticalColnamesOfUserProvidedMicronixFile(input = input, output = output, users_upload_file = users_upload_file, ui_elements = GetUIUploadElements("micronix"))
+      UploadFileMetadataColnameCheck <- CheckMetadataColnamesOfUserProvidedMicronixFile(input = input, output = output, users_upload_file = users_upload_file, ui_elements = GetUIUploadElements("micronix"))
       
-      if(isTRUE(UploadFileColnameCheck)){
-        #reformat upload data file
-        reactive_vals$formatted_upload_file <- FormatMicronixUploadData(input = input, sample_type = "micronix", users_upload_file = users_upload_file)
+      if(isTRUE(UploadFileLogisticalColnameCheck) && isTRUE(UploadFileMetadataColnameCheck)){
+        #reformat upload file
+        reactive_vals$formatted_upload_file <- FormatMicronixUploadData(input = input, users_upload_file = users_upload_file, ui_elements = GetUIUploadElements("micronix"))
 
         #after formatting takes place, check upload data content
         if(!is.null(reactive_vals$formatted_upload_file)){
-          ConductBasicFormattedUploadFileChecks(output = output, database = database, sample_type = "micronix", formatted_upload_file = reactive_vals$formatted_upload_file) 
+          CheckFormattedUploadFile(output = output, database = database, formatted_upload_file = reactive_vals$formatted_upload_file, ui_elements = GetUIUploadElements("micronix")) 
         } 
       }
     }
@@ -35,7 +37,7 @@ MicronixUpload <- function(session, output, input, database){
   #3. check plate info
   observe({
     if(input[["UploadMicronixPlateID"]] != ""){
-      ConductUploadPlateChecks(input = input, output = output, database = database, sample_type = "micronix") 
+      CheckPlates(input = input, output = output, database = database, sample_type = "micronix") 
     }
   })
   
@@ -50,25 +52,24 @@ MicronixUpload <- function(session, output, input, database){
       output$UploadMicronixReturnMessage1 <- renderText({"Working..."})
     }))
   
-  # upload samples - the upload fun contains enforced checks
+  # upload samples - the pkg upload fun contains enforced checks
   observe({
     if(input$ActionUploadMatrix == "Go"){
-      sampleDB::UploadSamples(sample_type = "micronix", 
-                              upload_data = reactive_vals$formatted_upload_file, 
-                              container_name = input$"UploadMicronixPlateID", 
-                              container_barcode = input$"UploadMicronixPlateBarcode", 
-                              freezer_address = list(location_name = input$"UploadMicronixLocation", 
-                                                     level_I = input$"UploadLocationMicronixLevelI", 
-                                                     level_II = input$"UploadLocationMicronixLevelII"))
-      # print "Upload Complete" user message
-      output$UploadMicronixReturnMessage2 <- renderText({"Upload Complete"})
+      return_message <- sampleDB::UploadSamples(sample_type = "micronix", 
+                                                upload_data = reactive_vals$formatted_upload_file, 
+                                                container_name = input$"UploadMicronixPlateID", 
+                                                container_barcode = input$"UploadMicronixPlateBarcode", 
+                                                freezer_address = list(location_name = input$"UploadMicronixLocation", 
+                                                                       level_I = input$"UploadLocationMicronixLevelI", 
+                                                                       level_II = input$"UploadLocationMicronixLevelII"))
+      # print user message
+      output$UploadMicronixReturnMessage2 <- renderText({return_message})
       # reset trigger
       updateTextInput(session = session, "ActionUploadMatrix", value = "")
     }
   })
   
   # allow user to reset ui
-  # NOTE: cannot push reset if inputboxes are empty!
   UploadReset(input = input, output = output, sample_type = "micronix")
   
   # auto-filter freezer addresses in dropdown
