@@ -260,33 +260,6 @@ UploadSamples <- function(sample_type, upload_data, container_name, container_ba
                                             barcode = eval.barcode),
                            conn = conn) %>% suppressWarnings()
     }
-    # else if(sample_type == "cryo"){
-    #   # create a new container (if it does not already exist)
-    #   if(!container_name %in% CheckTable(database = database, "box")$box_name){
-    #     eval.box_id <- .UploadCryoBox(database = database, container_name = container_name, freezer_address = freezer_address, conn = conn)
-    #   }
-    #   
-    #   # upload cryovial sample
-    #   .UploadCryoTubes(database = database, upload_data = upload_data, i = i, conn = conn, eval.box_id = eval.box_id)
-    # }
-    # else if(sample_type == "rdt"){
-    #   # create a new container (if it does not already exist)
-    #   if(!container_name %in% CheckTable(database = database, "bag")$bag_name){
-    #     eval.bag_id <- .UploadBag(database = database, container_name = container_name, freezer_address = freezer_address, conn = conn)
-    #   }
-    #   
-    #   # upload rdt sample
-    #   .UploadRDT(database = database, upload_data = upload_data, i = i, conn = conn, eval.bag_id = eval.bag_id)
-    # }
-    # else{
-    #   # create a new container (if it does not already exist)
-    #   if(!container_name %in% CheckTable(database = database, "bag")$bag_name){
-    #     eval.bag_id <- .UploadBag(database = database, container_name = container_name, freezer_address = freezer_address, conn = conn)
-    #   }
-    #   
-    #   # upload paper sample
-    #   .UploadPaper(database = database, upload_data = upload_data, i = i, conn = conn, eval.bag_id = eval.bag_id)
-    # }
   }
 }
 
@@ -316,82 +289,6 @@ UploadSamples <- function(sample_type, upload_data, container_name, container_ba
   
 }
 
-# .UploadMicronixTubes <- function(database, conn, micronix_tube_info){
-# 
-#   sampleDB::AddToTable(database = database,
-#                        table_name = "matrix_tube",
-#                        info_list = micronix_tube_info,
-#                        conn = conn) %>% suppressWarnings()
-#   # sampleDB::AddToTable(database = database,
-#   #                      "matrix_tube",
-#   #                      list(plate_id = eval.plate_id,
-#   #                           barcode = eval.barcode,
-#   #                           well_position = eval.well_position),
-#   #                      conn = conn) %>% suppressWarnings()
-# }
-
-.UploadCryoBox <- function(database, container_name, freezer_address, conn){
-  eval.location_id <- filter(CheckTable(database = database, "location"), location_name == freezer_address$location, level_I == freezer_address$level_I, level_II == freezer_address$level_II)$id
-  sampleDB::AddToTable(database = database,
-                       "box",
-                       list(created = lubridate::now() %>% as.character(),
-                            last_updated = lubridate::now() %>% as.character(),
-                            location_id = eval.location_id,
-                            box_name = container_name),
-                       conn = conn) %>% suppressWarnings()
-  eval.box_id <- tail(sampleDB::CheckTable(database = database, "box"), 1)$id
-  
-  return(eval.box_id)
-}
-
-.UploadCryoTubes <- function(database, upload_data, i, conn, eval.box_id){
-
-  eval.label <- csv[i,]$"label" %>% as.character()
-  eval.box_position <- paste(csv[i,]$"row", csv[i,]$"column", sep = "")
-  
-  sampleDB::AddToTable(database = database,
-                       "tube",
-                       list(box_id = eval.box_id,
-                            label = eval.label,
-                            box_position = eval.box_position),
-                            conn = conn) %>% suppressWarnings()
-}
-
-.UploadBag <- function(database, container_name, freezer_address, conn){
-  eval.location_id <- filter(CheckTable(database = database, "location"), location_name == freezer_address$location, level_I == freezer_address$level_I, level_II == freezer_address$level_II)$id
-  sampleDB::AddToTable(database = database, 
-                       "bag",
-                       list(created = lubridate::now() %>% as.character(),
-                            last_updated = lubridate::now() %>% as.character(),
-                            location_id = eval.location_id,
-                            bag_name = container_name),
-                       conn = conn) %>% suppressWarnings() 
-  
-  eval.bag_id <- tail(sampleDB::CheckTable(database = database, "bag"), 1)$id
-  
-  return(eval.bag_id)
-}
-
-.UploadRDT <- function(database, upload_data, i, conn, eval.bag_id){
-  
-  eval.label <- csv[i,]$"label" %>% as.character()
-  sampleDB::AddToTable(database = database,
-                       "rdt",
-                       list(bag_id = eval.bag_id,
-                            label = eval.label),
-                       conn = conn) %>% suppressWarnings()
-}
-
-.UploadPaper <- function(database, upload_data, i, conn, eval.bag_id){
-
-  eval.label <- csv[i,]$"label" %>% as.character()
-  sampleDB::AddToTable(database = database,
-                       "paper",
-                       list(bag_id = eval.bag_id,
-                            label = eval.label),
-                       conn = conn) %>% suppressWarnings()
-}
-
 .SaveUploadCSV <- function(upload_data, container_name){
   path <- "/var/lib/sampleDB/upload_files/"
   if(dir.exists(path)){
@@ -403,33 +300,3 @@ UploadSamples <- function(sample_type, upload_data, container_name, container_ba
               row.names = FALSE)
   }
 }
-
-# .ReformatUploadMicronixCSV <- function(upload_data){
-#   names.base <- c("study_subject_id", "specimen_type", "study_short_code")
-#   names.traxer.nodate <- c(names.base, "Position", "Tube ID")
-#   names.traxer.date <- c(names.traxer.nodate, "collection_date")
-#   names.visionmate.nodate <- c(names.base, "LocationRow", "LocationColumn", "TubeCode")
-#   names.visionmate.date <- c(names.visionmate.nodate, "collection_date")
-#   
-#   #REFORMAT CSV -- IF LOCATIONROW IS A COLUMN THEN THE DATA CAME OFF VISIONMATE
-#   if("LocationRow" %in% names(upload_data)){
-#     stopifnot("UPLOADCSV COLNAMES ARE MALFORMED" = (all(names.visionmate.nodate %in% names(upload_data)) || all(names.visionmate.date %in% names(upload_data))))    
-#     
-#     csv.reformatted <- upload_data %>%
-#       mutate(label = na_if(TubeCode, ""),
-#              well_position = paste0(LocationRow, LocationColumn)) %>%
-#       tidyr::drop_na()
-#     
-#   }else{
-#   
-#     stopifnot("UPLOADCSV COLNAMES ARE MALFORMED" = (all(names.traxer.nodate %in% names(upload_data)) || all(names.traxer.date %in% names(upload_data))))
-#     
-#     csv.reformatted <- upload_data %>%
-#       mutate(label = na_if(`Tube ID`, ""),
-#              well_position = paste0(substring(Position, 1, 1), substring(Position, 2))) %>%
-#       tidyr::drop_na()
-# 
-#   }
-#   
-#   return(csv.reformatted)
-# }

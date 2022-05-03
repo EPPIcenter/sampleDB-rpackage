@@ -57,7 +57,6 @@ MoveSamples <- function(sample_type, move_data){
       warning=function(w){})
     
     message(message.successful)
-    # print(message.successful)
     
     return(message.successful)
     
@@ -72,7 +71,6 @@ MoveSamples <- function(sample_type, move_data){
       warning=function(w){})
     
     message(message.fail)
-    # print(message.fail)
     
     return(message.fail)
       
@@ -110,25 +108,6 @@ MoveSamples <- function(sample_type, move_data){
         # Use move data to place sample into proper container position
         stacked_orphaned_sample_data[m, "well_position"] <- eval.well_pos
       }
-      else if(sample_type == "cryovial"){
-        
-        # Find move data that matches sample data
-        m <- which(stacked_orphaned_sample_data$label == samples[i,]$"label")
-        
-        # Use move data to place sample into proper container
-        stacked_orphaned_sample_data[m, "box_id"] <- filter(sampleDB::CheckTable(database = database, "box"), box_name == container_name)$id 
-        
-        # Use move data to place sample into proper container position
-        stacked_orphaned_sample_data[m, "box_position"] <- paste0(samples[i,]$"row", samples[i,]$"col")
-      }
-      else{
-        
-        # Find move data that matches sample data
-        m <- which(stacked_orphaned_sample_data$label == samples[i,]$"label")
-        
-        # Use move data to place sample into proper container
-        stacked_orphaned_sample_data[m, "bag_id"] <- filter(sampleDB::CheckTable(database = database, "bag"), bag_name == container_name)$id 
-      }
     }
   }
   
@@ -137,32 +116,6 @@ MoveSamples <- function(sample_type, move_data){
     stopifnot("AT LEAST TWO SAMPLES HAVE THE SAME BARCODE" = sum(duplicated(stacked_orphaned_sample_data$barcode)) == 0)
     
     if(!all(stacked_orphaned_sample_data$plate_id > 0)){
-      # there are orphans left - move would produce orphans
-      out <- list(orphan_check_toggle = FALSE, stacked_orphaned_sample_data = stacked_orphaned_sample_data)
-      
-    }else{
-      # there are no orphans left - move would not produce orphans
-      out <- list(orphan_check_toggle = TRUE, stacked_orphaned_sample_data = stacked_orphaned_sample_data)
-    }
-  }
-  else if(sample_type == "cryovial"){
-    # check if there are any samples with the same label
-    stopifnot("AT LEAST TWO SAMPLES HAVE THE SAME LABEL" = sum(duplicated(stacked_orphaned_sample_data$label)) == 0)
-    
-    if(!all(stacked_orphaned_sample_data$box_id > 0)){
-      # there are orphans left - move would produce orphans
-      out <- list(orphan_check_toggle = FALSE, stacked_orphaned_sample_data = stacked_orphaned_sample_data)
-      
-    }else{
-      # there are no orphans left - move would not produce orphans
-      out <- list(orphan_check_toggle = TRUE, stacked_orphaned_sample_data = stacked_orphaned_sample_data)
-    }
-  }
-  else{
-    # check if there are any samples with the same barcode
-    stopifnot("AT LEAST TWO SAMPLES HAVE THE SAME LABEL" = sum(duplicated(stacked_orphaned_sample_data$label)) == 0)
-    
-    if(!all(stacked_orphaned_sample_data$bag_id > 0)){
       # there are orphans left - move would produce orphans
       out <- list(orphan_check_toggle = FALSE, stacked_orphaned_sample_data = stacked_orphaned_sample_data)
       
@@ -198,54 +151,6 @@ MoveSamples <- function(sample_type, move_data){
                     conn = conn) %>% suppressWarnings()
       }
     }
-    else if(sample_type == "cryovial"){
-      # Get container id
-      existing.container <- filter(sampleDB::CheckTable(database = database, "box"), box_name == container.name)$id
-      
-      # Make a reference df for all samples in container
-      sample_data.existing_container <- filter(sampleDB::CheckTable(database = database, "tube"), box_id == existing.container)
-      
-      # Put samples into container with negative id number
-      for(id in sample_data.existing_container$id){
-        ModifyTable(database = database,
-                    "tube",
-                    info_list = list(box_id = -(i)),
-                    id = id,
-                    conn = conn) %>% suppressWarnings()
-      }
-    }
-    else if(sample_type == "rdt"){
-      # Get container id
-      existing.container <- filter(sampleDB::CheckTable(database = database, "bag"), bag_name == container.name)$id
-      
-      # Make a reference df for all samples in container
-      sample_data.existing_container <- filter(sampleDB::CheckTable(database = database, "rdt"), bag_id == existing.container)
-      
-      # Put samples into container with negative id number
-      for(id in sample_data.existing_container$id){
-        ModifyTable(database = database,
-                    "rdt",
-                    info_list = list(bag_id = -(i)),
-                    id = id,
-                    conn = conn) %>% suppressWarnings()
-      }
-    }
-    else{
-      # Get container id
-      existing.container <- filter(sampleDB::CheckTable(database = database, "bag"), bag_name == container.name)$id
-      
-      # Make a reference df for all samples in container
-      sample_data.existing_container <- filter(sampleDB::CheckTable(database = database, "paper"), bag_id == existing.container)
-      
-      # Put samples into container with negative id number
-      for(id in sample_data.existing_container$id){
-        ModifyTable(database = database,
-                    "paper",
-                    info_list = list(bag_id = -(i)),
-                    id = id,
-                    conn = conn) %>% suppressWarnings()
-      }
-    }
   }
 }
 
@@ -263,70 +168,27 @@ MoveSamples <- function(sample_type, move_data){
     move_data <- move_data_list[[container_name]]
     if(nrow(move_data) != 0){
         
-    # Get data for each sample
-    for (i in 1:nrow(move_data)){
-      if(sample_type == "micronix"){
-        eval.barcode <- move_data[i,]$"label"
-        eval.well_pos <- move_data[i,]$"well_position"
-  
-        # get sample id
-        id <- filter(sampleDB::CheckTable(database = database, "matrix_tube"), barcode == eval.barcode)$id
-        
-        # get container id
-        eval.container_id <- filter(sampleDB::CheckTable(database = database, "matrix_plate"), plate_name == container_name)$id 
-        # link sample with container id, if there is a sample id (which is not the case if an empty csv was intentionally uploaded)
-        ModifyTable(database = database,
-                    "matrix_tube",
-                    info_list = list(plate_id = eval.container_id,
-                                     well_position = eval.well_pos),
-                    id = id,
-                    conn = conn) %>% suppressWarnings()
-      }
-      else if(sample_type == "cryovial"){
-        # get sample id
-        id <- filter(sampleDB::CheckTable(database = database, "tube"), label == move_data[i,]$"label")$id
-        
-        # get container id
-        eval.container_id <- filter(sampleDB::CheckTable(database = database, "box"), box_name == container_name)$id
-        
-        # link sample with container id
-        ModifyTable(database = database,
-                    "tube",
-                    info_list = list(box_id = eval.container_id,
-                                     box_position = paste0(move_data[i,]$"row", move_data[i,]$"column")),
-                    id = id,
-                    conn = conn) %>% suppressWarnings()
-      }
-      else if(sample_type == "rdt"){
-        # get sample id
-        id <- filter(sampleDB::CheckTable(database = database, "rdt"), label == move_data[i,]$"label")$id
-        
-        # get container id
-        eval.container_id <- filter(sampleDB::CheckTable(database = database, "bag"), bag_name == container_name)$id 
-        
-        # link sample with container id
-        ModifyTable(database = database,
-                    "rdt",
-                    info_list = list(bag_id = eval.container_id),
-                    id = id,
-                    conn = conn) %>% suppressWarnings()
-      }
-      else{
-        # get sample id
-        id <- filter(sampleDB::CheckTable(database = database, "paper"), label == move_data[i,]$"label")$id
-        
-        # get container id
-        eval.container_id <- filter(sampleDB::CheckTable(database = database, "bag"), bag_name == container_name)$id 
-        
-        # link sample with container id
-        ModifyTable(database = database,
-                    "paper",
-                    info_list = list(bag_id = eval.container_id),
-                    id = id,
-                    conn = conn) %>% suppressWarnings()
+      # Get data for each sample
+      for (i in 1:nrow(move_data)){
+        if(sample_type == "micronix"){
+          eval.barcode <- move_data[i,]$"label"
+          eval.well_pos <- move_data[i,]$"well_position"
+    
+          # get sample id
+          id <- filter(sampleDB::CheckTable(database = database, "matrix_tube"), barcode == eval.barcode)$id
+          
+          # get container id
+          eval.container_id <- filter(sampleDB::CheckTable(database = database, "matrix_plate"), plate_name == container_name)$id 
+          # link sample with container id, if there is a sample id (which is not the case if an empty csv was intentionally uploaded)
+          ModifyTable(database = database,
+                      "matrix_tube",
+                      info_list = list(plate_id = eval.container_id,
+                                       well_position = eval.well_pos),
+                      id = id,
+                      conn = conn) %>% suppressWarnings()
+        }
       }
     }
-  }
   }
   
   message <- paste0("Sucessfully Moved Samples\n",
@@ -344,21 +206,6 @@ MoveSamples <- function(sample_type, move_data){
     # GET PLATE ID/PLATE NAME WHICH CONTAINED BARCODE STILL IN DUMMY
     container_id_with_missing_label <- filter(CheckTable(database = database, "matrix_tube"), barcode %in% label.missing)$plate_id
     container_name_with_missing_label <- filter(CheckTable(database = database, "matrix_plate"), id %in% container_id_with_missing_label)$plate_name
-  }
-  else if(sample_type == "cryovial"){
-    label.missing <- filter(stacked_orphaned_sample_data, box_id < 0)$label
-    container_id_with_missing_label <- filter(CheckTable(database = database, "tube"), label %in% label.missing)$box_id
-    container_name_with_missing_label <- filter(CheckTable(database = database, "box"), id %in% container_id_with_missing_label)$box_name
-  }
-  else if(sample_type == "rdt"){
-    label.missing <- filter(stacked_orphaned_sample_data, bag_id < 0)$label
-    container_id_with_missing_label <- filter(CheckTable(database = database, "rdt"), label %in% label.missing)$bag_id
-    container_name_with_missing_label <- filter(CheckTable(database = database, "bag"), id %in% container_id_with_missing_label)$bag_name
-  }
-  else{
-    label.missing <- filter(stacked_orphaned_sample_data, bag_id < 0)$label
-    container_id_with_missing_label <- filter(CheckTable(database = database, "paper"), label %in% label.missing)$bag_id
-    container_name_with_missing_label <- filter(CheckTable(database = database, "bag"), id %in% container_id_with_missing_label)$bag_name
   }
   
   message.fail <- paste0("Move Failed:\n",
@@ -379,24 +226,6 @@ MoveSamples <- function(sample_type, move_data){
     colname.container_name <- "plate_name"
     colname.container_id <- "plate_id"
   }
-  else if(sample_type == "cryovial"){
-    container_type <- "box"
-    sample_type <- "tube"
-    colname.container_name <- "box_name"
-    colname.container_id <- "box_id"
-  }
-  else if(sample_type == "rdt"){
-    container_type <- "bag"
-    sample_type <- "rdt"
-    colname.container_name <- "bag_name"
-    colname.container_id <- "bag_id"
-  }
-  else{
-    container_type <- "bag"
-    sample_type <- "paper"
-    colname.container_name <- "bag_name"
-    colname.container_id <- "bag_id"
-  }
   
   sample_data <- list()
   for(container.name in names(move_data_list)){
@@ -416,12 +245,6 @@ MoveSamples <- function(sample_type, move_data){
     
     if(sample_type == "micronix"){
       sample_data[[eval.container_id]]$"plate_id" <- -(i)
-    }
-    else if(sample_type == "cryovial"){
-      sample_data[[eval.container_id]]$"box_id" <- -(i)
-    }
-    else{
-      sample_data[[eval.container_id]]$"bag_id" <- -(i)
     }
   }
   

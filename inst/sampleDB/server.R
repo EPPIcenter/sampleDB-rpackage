@@ -10,8 +10,8 @@ library(DT)
 library(purrr)
 
 #load helper files
-for(helper in list.files(path = "helpers", full.names = T, recursive = T)){
-  source(helper, local = TRUE)
+for(server_helper in list.files(path = "server_helpers", full.names = T, recursive = T)){
+  source(server_helper, local = TRUE)
 }
 
 function(input, output, session) {
@@ -50,7 +50,7 @@ function(input, output, session) {
     
     # -------- Archive and Delete Samples --------
     
-    DelArchSamples(session, input, database, output, DelArch = TRUE)
+    DelArchSamples(session, input, database, output)
 
     # -------- Delete Empty Container --------
     

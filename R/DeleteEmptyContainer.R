@@ -13,9 +13,9 @@ DeleteEmptyContainer <- function(database, type, container_name){
       sampleDB::DeleteFromTable(database = database, 
                                 table_name = "matrix_plate", 
                                 id = as.character(id.container))  
-      message(paste0("Successfully Deleted Container: \n", container_name))
+      return_message <- paste0("Successfully Deleted Container: \n", container_name)
     }else{
-      message("Error Contianer is not empty")
+      return_message <- "Error Contianer is not empty"
     }
   }
   else if(type == "cryovial"){
@@ -24,9 +24,9 @@ DeleteEmptyContainer <- function(database, type, container_name){
       sampleDB::DeleteFromTable(database = database, 
                                 table_name = "box", 
                                 id = as.character(id.container))  
-      message(paste0("Successfully Deleted Container: \n", container_name))
+      return_message <- paste0("Successfully Deleted Container: \n", container_name)
     }else{
-      message("Error Contianer is not empty")
+      return_message <- "Error Contianer is not empty"
     }
   }
   else if(type == "rdt"){
@@ -35,9 +35,9 @@ DeleteEmptyContainer <- function(database, type, container_name){
       sampleDB::DeleteFromTable(database = database, 
                                 table_name = "bag", 
                                 id = as.character(id.container)) 
-      message(paste0("Successfully Deleted Container: \n", container_name))
+      return_message <- paste0("Successfully Deleted Container: \n", container_name)
     }else{
-      message("Error Contianer is not empty")
+      return_message <- "Error Contianer is not empty"
     }
   }
   else{
@@ -46,11 +46,12 @@ DeleteEmptyContainer <- function(database, type, container_name){
       sampleDB::DeleteFromTable(database = database, 
                                 table_name = "bag", 
                                 id = as.character(id.container))
-      message(paste0("Successfully Deleted Container: \n", container_name))
+      return_message <- paste0("Successfully Deleted Container: \n", container_name)
     }else{
-      message("Error Contianer is not empty")
+      return_message <- "Error Contianer is not empty"
     }
   }
   
-  message(paste0("Successfully Deleted Container: \n", container_name))
+  message(return_message)
+  return(return_message)
 }

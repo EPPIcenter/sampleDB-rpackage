@@ -73,7 +73,11 @@ MicronixUpload <- function(session, output, input, database){
   UploadReset(input = input, output = output, sample_type = "micronix")
   
   # auto-filter freezer addresses in dropdown
-  SmartFreezerDropdownFilter(input = input, database = database, session = session)
+  SmartFreezerDropdownFilter(database = database, session = session,
+                             input = input,
+                             location_ui = "UploadMicronixLocation", 
+                             levelI_ui = "UploadLocationMicronixLevelI", 
+                             levelII_ui = "UploadLocationMicronixLevelII")
   
   # present micronix upload examples
   MicronixUploadExamples(input = input, database = database, output = output, sample_type = "micronix")

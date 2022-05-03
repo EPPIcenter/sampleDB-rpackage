@@ -21,7 +21,7 @@ MoveContainers <- function(sample_type, container_name, freezer){
                           table_name = "matrix_plate",
                           info_list = list(location_id = eval.location_id),
                           id = container_id)
-    message(paste0("Successfully Moved Container: \n", container_name))
+    return_message <- paste0("Successfully Moved Container: \n", container_name)
   }
   else if(sample_type == "cryovile"){
     container_id <- filter(sampleDB::CheckTable("box"), box_name == container_name)$id
@@ -29,7 +29,7 @@ MoveContainers <- function(sample_type, container_name, freezer){
                           table_name = "box",
                           info_list = list(location_id = eval.location_id),
                           id = container_id)
-    message(paste0("Successfully Moved Container: \n", container_name))
+    return_message <- paste0("Successfully Moved Container: \n", container_name)
   }
   else{
     container_id <- filter(sampleDB::CheckTable("bag"), bag_name == container_name)$id
@@ -37,6 +37,8 @@ MoveContainers <- function(sample_type, container_name, freezer){
                           table_name = "bag",
                           info_list = list(location_id = eval.location_id),
                           id = container_id)
-    message(paste0("Successfully Moved Container: \n", container_name))
+    return_message <- paste0("Successfully Moved Container: \n", container_name)
   }
+  message(return_message)
+  return(return_message)
 }

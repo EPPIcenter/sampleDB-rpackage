@@ -34,11 +34,7 @@ AddToTable <- function(database, table_name, info_list, conn = NULL){
                                info_list),
 
       error=function(e){
-        # out <- 1
-        # return(out)
         stop(e)
-        # stop("Error: Attempted changes cannot be implemented because they would violate the database's uniqueness")
-        stop()
       }
   )
 

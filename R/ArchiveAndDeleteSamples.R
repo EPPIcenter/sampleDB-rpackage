@@ -62,7 +62,8 @@ ArchiveAndDeleteSamples <- function(operation, sample_id, verification = TRUE){
       }
       
       # USER MSG
-      message(paste("Archived", length(sample_id), "Successfully"))
+      return_message <- paste("Archived", length(sample_id), "Successfully")
+      message(return_message)
     }
   }
   
@@ -88,6 +89,9 @@ ArchiveAndDeleteSamples <- function(operation, sample_id, verification = TRUE){
         
       # DELETE SAMPLES
       for(eval.id in sample_id){
+        
+        print(eval.id)
+        stop("catch")
 
         # DELETE INTERNAL DATA
         .DeleteInternalData(eval.id, database.tables, database)
@@ -97,9 +101,11 @@ ArchiveAndDeleteSamples <- function(operation, sample_id, verification = TRUE){
       }
       
       # USER MSG
-      message(paste("Deleted", length(sample_id), "Successfully"))
+      return_message <- paste("Deleted", length(sample_id), "Successfully")
+      message(return_message)
     }
   }
+  return(return_message)
 }
 
 .GetDatabaseTables <- function(database){
