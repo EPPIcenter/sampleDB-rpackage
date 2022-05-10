@@ -18,7 +18,7 @@ MoveWetlabSamples <- function(session, input, database, output){
       move_data_list <- list()
       for(i in 1:length(users_move_file[,1])){
         plate.name <- users_move_file[[i, 'name']] %>% gsub("\\.csv","",.)
-        move_data <- read.csv(users_move_file[[i, 'datapath']]) %>% suppressWarnings() # will throw a pointless corrupt last line warning if file comes from excel
+        move_data <- read.csv(users_move_file[[i, 'datapath']], header = F) %>% suppressWarnings() # will throw a pointless corrupt last line warning if file comes from excel
         move_data_list[[plate.name]] <- move_data
       }
 

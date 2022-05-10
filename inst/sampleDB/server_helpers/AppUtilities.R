@@ -262,7 +262,8 @@ CheckMetadataColnamesOfUserProvidedMicronixFile <- function(input, output, users
   message("Checking colnames of user provided file...")
   
   #validate colnames of user provided file format and print user messages if file is not valid
-  out <- sampleDB:::.CheckMetadataColnamesOfUserProvidedMicronixFile(users_upload_file = users_upload_file)
+  upload_file_type <- input[[ui_elements$ui.input$MicronixFileType]]
+  out <- sampleDB:::.CheckMetadataColnamesOfUserProvidedMicronixFile(users_upload_file = users_upload_file, upload_file_type = upload_file_type)
   output[[ui_elements$ui.output$WarningMetadataColnames]] <- renderText({
     validate(need(out, "ERROR:\nMalformed Metadata Colnames (Valid Metadata Column Names: StudyCode, Participant, SpecimenType, [CollectionDate])"))
   })
@@ -448,7 +449,7 @@ FormatMicronixMoveData <- function(ui_elements, micronix_move_data, input){
   
   if(upload_file_type == "traxcer"){
     formatted_upload_file <- users_upload_file %>% 
-      setNames(.[1,]) %>% .[-1,] %>%
+      setNames(.[2,]) %>% .[-c(1,2),] %>%
       mutate(label = replace(`Tube ID`, nchar(`Tube ID`) != 10, NA),
              well_position = paste0(substring(Position, 1, 1), substring(Position, 2))) %>%
       tidyr::drop_na() %>%
@@ -456,6 +457,7 @@ FormatMicronixMoveData <- function(ui_elements, micronix_move_data, input){
   }
   else if(upload_file_type == "visionmate"){
     formatted_upload_file <- users_upload_file %>%
+      setNames(.[1,]) %>% .[-1,] %>%
       mutate(label = replace(TubeCode, nchar(TubeCode) != 10, NA),
              well_position = paste0(LocationRow, LocationColumn)) %>%
       tidyr::drop_na() %>%
@@ -463,6 +465,7 @@ FormatMicronixMoveData <- function(ui_elements, micronix_move_data, input){
   }
   else{
     formatted_upload_file <- users_upload_file %>%
+      setNames(.[1,]) %>% .[-1,] %>%
       mutate(label = replace(MicronixBarcode, nchar(MicronixBarcode) != 10, NA),
              well_position = paste0(Row, Column)) %>%
       tidyr::drop_na() 

@@ -12,17 +12,19 @@
 .CheckLogisticalColnamesOfUserProvidedMicronixFile <- function(upload_file_type, users_upload_file){
   
   if(upload_file_type == "visionmate"){
+    users_upload_file <- users_upload_file %>% setNames(.[1,]) %>% .[-c(1),]
     required_visionmate_colnames <- c("LocationRow", "LocationColumn", "TubeCode")
     visionmate_colnames_withdate <- c(required_visionmate_colnames, "CollectionDate")
     out <- all(required_visionmate_colnames %in% names(users_upload_file)) || all(visionmate_colnames_withdate %in% names(users_upload_file))
   }
   else if(upload_file_type == "traxcer"){
-    users_upload_file <- users_upload_file %>% setNames(.[1,]) %>% .[-1,]
+    users_upload_file <- users_upload_file %>% setNames(.[2,]) %>% .[-c(1, 2),]
     required_traxcer_colnames <- c("Position", "Tube ID")
     traxcer_colnames_withdate <- c(required_traxcer_colnames, "CollectionDate")
     out <- all(required_traxcer_colnames %in% names(users_upload_file)) || all(traxcer_colnames_withdate %in% names(users_upload_file))
   }
   else{
+    users_upload_file <- users_upload_file %>% setNames(.[1,]) %>% .[-c(1),]
     general_colnames <- c("MicronixBarcode", "Row", "Column")
     out <- all(general_colnames %in% names(users_upload_file))
   }
@@ -68,12 +70,19 @@
 }
 
 # Metadata Checks
-.CheckMetadataColnamesOfUserProvidedMicronixFile <- function(users_upload_file){
+.CheckMetadataColnamesOfUserProvidedMicronixFile <- function(users_upload_file, upload_file_type){
   
   #establish required metadata column names
   names.base <- c("Participant", "SpecimenType", "StudyCode")
-  out <- all(names.base %in% names(users_upload_file))
   
+  if(upload_file_type == "traxcer"){
+    users_upload_file <- users_upload_file %>% setNames(.[2,]) %>% .[-c(1, 2),]
+    out <- all(names.base %in% names(users_upload_file))
+  }
+  else{
+    users_upload_file <- users_upload_file %>% setNames(.[1,]) %>% .[-c(1),]
+    out <- all(names.base %in% names(users_upload_file))
+  }
   return(out)
 }
 
