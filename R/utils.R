@@ -156,7 +156,7 @@
 .CheckFreezerDeletion <- function(input, database, freezer_address){
   num_items_at_address <- 0
   
-  freezer_address <- filter(sampleDB::CheckTable(database = database, "specimen_type"), 
+  freezer_address <- filter(sampleDB::CheckTable(database = database, "location"), 
                             location_name == freezer_address$freezer_name, 
                             level_I == freezer_address$freezer_levelI,
                             level_II == freezer_address$freezer_levelII)
