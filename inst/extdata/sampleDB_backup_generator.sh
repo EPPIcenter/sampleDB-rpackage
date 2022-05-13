@@ -6,18 +6,26 @@
 DATE=$(date +%H:%M:%S_%d-%m-%Y)
 BACKUP_DIR="/var/lib/sampleDB/backups"
 
-# get md5 sum of database
-CURRENT_MD5=$(md5sum /var/lib/sampleDB/sampledb_database.sqlite | awk '{print $1}')
+# get path to current DB
+CURRENT_DB=/var/lib/sampleDB/sampledb_database.sqlite
 
-#get md5 sum of most recently created backup file
-MOST_RECENT_MD5=$(gunzip<$(ls -Artd /var/lib/sampleDB/backups/* | tail -n 1) | md5sum | awk '{print $1}')
+# save most recent backup to a temp file
+TEMP_FILE_PATH=$(mktemp)
+MOST_RECENT_BACKUP=$(ls -Artd /var/lib/sampleDB/backups/* | tail -n 1 )
+gunzip<$MOST_RECENT_BACKUP> $TEMP_FILE_PATH
 
-MOST_RECENT_FILE=$(basename $(ls -Artd /var/lib/sampleDB/backups/* | tail -n 1 ))
+# show the files being compared
+echo "Active database is at /var/lib/sampleDB/sampledb_database.sqlite"
+echo "Most recent backup is at ${MOST_RECENT_BACKUP}"
 
-#if md5sum of database does not equal the md5sum of the most recent backup then generate a new backup
-printf "Active database (/var/lib/sampleDB/sampledb_database.sqlite) md5sum: $CURRENT_MD5 \nMost recent backup (${BACKUP_DIR}/$MOST_RECENT_FILE) md5sum: $MOST_RECENT_MD5\n"
-if [ "$CURRENT_MD5" != "$MOST_RECENT_MD5" ];then
+# see if differences between the current db and the most recent backup exist
+SQL_DIFF_QUANTITY=$(sqldiff $CURRENT_DB $TEMP_FILE_PATH | wc -l)
+
+# if there are differences then backup the database
+if [ $SQL_DIFF_QUANTITY -ne 0 ];then
 	echo "Backing up the database."
+	sqldiff $CURRENT_DB $TEMP_FILE_PATH
+
 	sqlite3 /var/lib/sampleDB/sampledb_database.sqlite ".backup ${BACKUP_DIR}/sampledb-${DATE}.sqlite"
 	gzip ${BACKUP_DIR}/sampledb-${DATE}.sqlite
 else
