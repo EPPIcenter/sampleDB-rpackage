@@ -111,7 +111,7 @@ UpdateLabFreezers <- function(session, input, output, database){
       ShowFreezers(output, database)
       
       # update dropdowns
-      ResetFreezerDropdowns(database, session)
+      UpdateFreezerDropdowns(database, session)
       
     })
   )

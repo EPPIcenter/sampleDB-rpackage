@@ -570,8 +570,8 @@ SetFreezerAddRequirements <- function(input, database, ui_elements){
 }
 
 SetFreezerChangeRequirements <- function(input, database, ui_elements){
-  req(sum(c(old.freezer_name, old.freezer_levelI, old.freezer_levelII) != "",) > 0,
-      sum(c(new.freezer_name, new.freezer_type, new.freezer_levelI, new.freezer_levelII) != "") > 0,
+  req(sum(c(input[[ui_elements$ui.input$RenameFreezerName1]], input[[ui_elements$ui.input$RenameFreezerLevelI1]], input[[ui_elements$ui.input$RenameFreezerLevelII1]]) != "") > 0,
+      sum(c(input[[ui_elements$ui.input$RenameFreezerName2]], input[[ui_elements$ui.input$RenameFreezerType2]], input[[ui_elements$ui.input$RenameFreezerLevelI2]], input[[ui_elements$ui.input$RenameFreezerLevelI2]]) != "") > 0,
       sampleDB:::.CheckFreezerNameIsUnique(input, database,
                                            freezer_address = list(freezer_name = input[[ui_elements$ui.input$RenameFreezerName2]],
                                                                   freezer_levelI = input[[ui_elements$ui.input$RenameFreezerLevelI2]],
@@ -579,9 +579,9 @@ SetFreezerChangeRequirements <- function(input, database, ui_elements){
 }
 
 SetFreezerDeleteRequirements <- function(input, database, ui_elements){
-  req(input$delete.freezer_name,
-      delete.freezer_levelI,
-      delete.freezer_levelII,
+  req(input[[ui_elements$ui.input$DeleteFreezerName]],
+      input[[ui_elements$ui.input$DeleteFreezerLevelI]],
+      input[[ui_elements$ui.input$DeleteFreezerLevelII]],
       sampleDB:::.CheckFreezerDeletion(input, database,
                                        freezer_address = list(freezer_name = input[[ui_elements$ui.input$DeleteFreezerName]],
                                                               freezer_levelI = input[[ui_elements$ui.input$DeleteFreezerLevelI]],
@@ -660,7 +660,7 @@ MoveReset <- function(input, output){
       output$MoveReturnMessage2 <- renderText({""})}))
 }
 
-ResetFreezerDropdowns <- function(database, session){
+UpdateFreezerDropdowns <- function(database, session){
   shinyjs::reset("AddFreezerName")
   shinyjs::reset("AddFreezerType")
   shinyjs::reset("AddFreezerLevel_I")

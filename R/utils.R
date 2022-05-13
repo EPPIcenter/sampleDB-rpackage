@@ -170,7 +170,8 @@
                             level_I == freezer_address$freezer_levelI,
                             level_II == freezer_address$freezer_levelII)
   if(length(freezer_address$id) > 0){
-    num_items_at_address <- filter(sampleDB::CheckTable(database = database, "matrix_plate"), location_id == freezer_address$id) %>% nrow()
+    items_at_address <- filter(sampleDB::CheckTable(database = database, "matrix_plate"), location_id == freezer_address$id)
+    num_items_at_address <- items_at_address %>% nrow()
   }
   if(num_items_at_address > 0){
     out <- FALSE
