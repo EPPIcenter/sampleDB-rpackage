@@ -51,7 +51,9 @@ GetUISearchElements <- function(){
                    SearchByPlate = "SearchByPlate",
                    SearchByBox = "SearchByBox",
                    SearchByRDTBag = "SearchByRDTBag",
-                   SearchByPaperBag = "SearchByPaperBag")
+                   SearchByPaperBag = "SearchByPaperBag",
+                   SearchBySingleBarcode = "SearchBySingleBarcode",
+                   SearchByBarcodeType = "SearchByBarcodeType")
   ui.output <- list(SearchResultsTable = "SearchResultsTable",
                     downloadData = "downloadData")
   
@@ -169,7 +171,9 @@ GetUIDelArchElements <- function(){
                    SearchByPaperBag = "DelArchSearchByPaperBag",
                    ArchiveAction = "ArchiveAction",
                    DeleteAction = "DeleteAction",
-                   DelArchID = "DelArchID")
+                   DelArchID = "DelArchID",
+                   SearchBySingleBarcode = "DelArchSearchBySingleBarcode",
+                   SearchByBarcodeType = "DelArchSearchByBarcodeType")
   ui.output <- list(SearchResultsTable = "DelArchSearchResultsTable",
                     DelArchMessage = "DelArchMessage")
   
@@ -190,12 +194,22 @@ SearchFunction <- function(input, output, ui_elements){
   }
   
   search.type <- input[[ui_elements$ui.input$SearchBySampleType]]
-  search.label <- list(micronix.labels = input[[ui_elements$ui.input$SearchByBarcode]]$datapath,
-                       cryovial.labels = input[[ui_elements$ui.input$SearchByCryovialLabels]]$datapath,
-                       rdt.labels = input[[ui_elements$ui.input$SearchByRDTLabels]]$datapath,
-                       paper.labels = input[[ui_elements$ui.input$SearchByPaperLabels]]$datapath) %>% 
-    discard(., function(x) is.null(x) | "" %in% x) %>%
-    map(., function(x){if(length(x > 0)){read.csv(x)$Barcode}})
+  barcode.search_method <- input[[ui_elements$ui.input$SearchBySampleType]]
+  if(barcode.search_method == "multiple_barcodes"){
+    search.label <- list(micronix.labels = input[[ui_elements$ui.input$SearchByBarcode]]$datapath, 
+                         cryovial.labels = input[[ui_elements$ui.input$SearchByCryovialLabels]]$datapath,
+                         rdt.labels = input[[ui_elements$ui.input$SearchByRDTLabels]]$datapath,
+                         paper.labels = input[[ui_elements$ui.input$SearchByPaperLabels]]$datapath) %>% 
+      discard(., function(x) is.null(x) | "" %in% x) %>%
+      map(., function(x){if(length(x > 0)){read.csv(x)$Barcode}}) 
+  }else{
+    individual_barcode <- NULL
+    if(ui_elements$ui.input$SearchBySingleBarcode != ""){
+      individual_barcode <- input[[ui_elements$ui.input$SearchBySingleBarcode]] 
+    }
+    search.label <- list(micronix.labels = individual_barcode)
+  }
+  
   search.container <- list(micronix.container_name = input[[ui_elements$ui.input$SearchByPlate]],
                            cryovial.container_name = input[[ui_elements$ui.input$SearchByBox]],
                            rdt.container_name = input[[ui_elements$ui.input$SearchByRDTBag]],
