@@ -327,7 +327,8 @@ CheckFormattedMoveFile <- function(output, database, sample_type, formatted_move
   # check valid specimen type
   output[[ui_elements$ui.output$WarningMoveBarcodesExist]] <- renderText({
     out <- sampleDB:::.CheckBarcodesInDatabase(database = database, formatted_move_file_list = formatted_move_file_list)
-    validate(need(out, "ERROR:\nAll barcodes are not in the database"))
+    validate(need(out$out1, c("ERROR:\nAll barcodes are not in the database\n", paste("Plate name:", names(out$out2), 
+                                                                                      "\nBarcode not in database:", "\n", gsub("\\,", "\n", out$out2) %>% gsub("[\"\\(\\c\\)]","", .), "\n"))))
   })
 }
 

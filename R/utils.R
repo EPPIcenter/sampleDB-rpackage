@@ -59,12 +59,21 @@
 .CheckBarcodesInDatabase <- function(database = database, formatted_move_file_list = formatted_move_file_list){
   
   out_vector <- c()
+  barcodes_missing_from_database_list <- list()
   for(item in names(formatted_move_file_list)){
     barcodes <- formatted_move_file_list[[item]] %>% pull(label)
+    missing_barcodes <- barcodes[!barcodes %in% c(sampleDB::CheckTable(database = database, "matrix_tube")$barcode)]
+    if(length(missing_barcodes) > 0){
+      barcodes_missing_from_database_list[[item]] <- missing_barcodes
+    }else{
+      barcodes_missing_from_database_list[[item]] <- NULL
+    }
+    
     out_item <- all(barcodes %in% c(sampleDB::CheckTable(database = database, "matrix_tube")$barcode))
     out_vector <- c(out_vector, out_item)
   }
-  out <- all(out_vector)
+  
+  out <- list(out1 = all(out_vector), out2 = barcodes_missing_from_database_list)
   
   return(out)
 }
