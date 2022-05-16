@@ -246,7 +246,7 @@ UploadSamples <- function(sample_type, upload_data, container_name, container_ba
     if(sample_type == "micronix"){
       # create a new housing (if it does not already exist)
       if(!container_name %in% CheckTable(database = database, "matrix_plate")$plate_name){
-        eval.plate_id <- .UploadMicronixPlate(database = database, conn = conn, container_name = container_name, container_barcode = container_barcode, freezer_address = freezer_address) 
+        eval.plate_id <- sampleDB:::.UploadMicronixPlate(database = database, conn = conn, container_name = container_name, container_barcode = container_barcode, freezer_address = freezer_address) 
       }else{
         eval.plate_id <- filter(sampleDB::CheckTable("matrix_plate"), plate_name == container_name)$id
       }
@@ -263,31 +263,31 @@ UploadSamples <- function(sample_type, upload_data, container_name, container_ba
   }
 }
 
-.UploadMicronixPlate <- function(database, container_name, container_barcode, freezer_address, conn){
-  eval.location_id <- filter(CheckTable(database = database, "location"), location_name == freezer_address$location, level_I == freezer_address$level_I, level_II == freezer_address$level_II)$id
-  if(is.null(container_barcode)){
-    container_barcode <- NA
-  }
-  else if(container_barcode == ""){
-    container_barcode <- NA
-  }
-  else{
-    container_barcode <- container_barcode
-  }
-  # print(container_barcode)
-  sampleDB::AddToTable(database = database,
-                       "matrix_plate",
-                       list(created = lubridate::now() %>% as.character(),
-                            last_updated = lubridate::now() %>% as.character(),
-                            location_id = eval.location_id,
-                            plate_name = container_name,
-                            plate_barcode = container_barcode),
-                       conn = conn) %>% suppressWarnings()
-  eval.plate_id <- tail(sampleDB::CheckTable(database = database, "matrix_plate"), 1)$id
-  
-  return(eval.plate_id)
-  
-}
+# .UploadMicronixPlate <- function(database, container_name, container_barcode, freezer_address, conn){
+#   eval.location_id <- filter(CheckTable(database = database, "location"), location_name == freezer_address$location, level_I == freezer_address$level_I, level_II == freezer_address$level_II)$id
+#   if(is.null(container_barcode)){
+#     container_barcode <- NA
+#   }
+#   else if(container_barcode == ""){
+#     container_barcode <- NA
+#   }
+#   else{
+#     container_barcode <- container_barcode
+#   }
+#   # print(container_barcode)
+#   sampleDB::AddToTable(database = database,
+#                        "matrix_plate",
+#                        list(created = lubridate::now() %>% as.character(),
+#                             last_updated = lubridate::now() %>% as.character(),
+#                             location_id = eval.location_id,
+#                             plate_name = container_name,
+#                             plate_barcode = container_barcode),
+#                        conn = conn) %>% suppressWarnings()
+#   eval.plate_id <- tail(sampleDB::CheckTable(database = database, "matrix_plate"), 1)$id
+#   
+#   return(eval.plate_id)
+#   
+# }
 
 .SaveUploadCSV <- function(upload_data, container_name){
   path <- "/var/lib/sampleDB/upload_files/"

@@ -65,7 +65,10 @@ GetUIMoveElements <- function(sample_type, msg = NULL){
   
   if(sample_type == "micronix"){
     ui.input <-  list(MicronixFileType = "MoveFileType",
-                      MoveDataSet = "MoveDataSet")
+                      MoveDataSet = "MoveDataSet",
+                      CreateEmptyMicronixPlateLocation = "CreateEmptyMicronixPlateLocation",
+                      CreateEmptyMicronixPlateLevelI = "CreateEmptyMicronixPlateLevelI",
+                      CreateEmptyMicronixPlateLevelII = "CreateEmptyMicronixPlateLevelII")
     ui.output <- list(WarningLogisticalColnames = "WarningMoveLogisticalColnames",
                       WarningMoveBarcodesExist = "WarningMoveBarcodesExist")
   }
@@ -510,7 +513,7 @@ FormatMicronixMoveData <- function(ui_elements, micronix_move_data, input){
 SmartFreezerDropdownFilter <- function(database, session, input = input, location_ui, levelI_ui, levelII_ui){
   
   observe({
-    if(input[[location_ui]] != ""){
+    if(!is.null(input[[location_ui]]) && input[[location_ui]] != ""){
       tmp_table.location <- filter(sampleDB::CheckTable(database = database, "location"), location_name == input[[location_ui]])
       updateSelectInput(session, levelI_ui, label = NULL, choices = c(tmp_table.location$level_I) %>% sort())
       updateSelectInput(session, levelII_ui, label = NULL, choices = c(tmp_table.location$level_II) %>% sort())

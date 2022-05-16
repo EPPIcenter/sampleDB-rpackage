@@ -71,6 +71,16 @@ MoveWetlabSamples <- function(session, input, database, output){
   
   # present move examples
   MoveUploadExamples(database = database, output = output, sample_type = "micronix")
+  
+  # add blank plate to database
+  CreateEmptyMicronixPlate(input = input, output = output, database = database)
+
+  # auto-filter freezer addresses in dropdown
+  SmartFreezerDropdownFilter(database = database, session = session,
+                             input = input,
+                             location_ui = "CreateEmptyMicronixPlateLocation", 
+                             levelI_ui = "CreateEmptyMicronixPlateLevelI", 
+                             levelII_ui = "CreateEmptyMicronixPlateLevelII")
 }
 
 MoveUploadExamples <- function(database, output, sample_type){
@@ -87,4 +97,56 @@ MoveUploadExamples <- function(database, output, sample_type){
   output[[ui.output$PlateTwoMove]] <- renderTable({.ExamplePlateTwoMove()}, striped = T, bordered = T)
   output[[ui.output$InDatabasePlateOne]] <- renderTable({.ExampleInDatabasePlateOne()}, striped = T, bordered = T)
   output[[ui.output$InDatabasePlateTwo]] <- renderTable({.ExampleInDatabasePlateTwo()}, striped = T, bordered = T)
+}
+
+CreateEmptyMicronixPlate <- function(input, output, database){
+
+  vals <- reactiveValues(data = NULL)
+  
+  # Show modal when button is clicked.
+  observeEvent(input$CreateEmptyMicronixPlate, {
+    showModal(dataModal(database = database))
+  })
+  
+  observeEvent(input$CreatEmptyMicronixPlateoOk, {
+    # create empty micronix plate using user input
+    # use a "req" to require "CreateEmptyMicronixPlateID", "CreateEmptyMicronixPlateLocation", etc
+    # throw error if user uses name that is already in the database
+    sampleDB:::.UploadMicronixPlate(database = database,
+                                    container_name = input[["CreateEmptyMicronixPlateID"]],
+                                    container_barcode = input[["CreateEmptyMicronixPlateBarcode"]],
+                                    freezer_address = list(location_name = input[["CreateEmptyMicronixPlateLocation"]],
+                                                           level_I = input[["CreateEmptyMicronixPlateLevelI"]],
+                                                           level_II = input[["CreateEmptyMicronixPlateLevelII"]]))
+    vals$data <- ""
+    removeModal()
+  })
+  
+  output$CreateEmptyMicronixPlateMessage <- renderPrint({
+    if(!is.null(vals$data)){
+      "Created Empty Matrix Plate"
+    }
+  })
+}
+
+dataModal <- function(failed = FALSE, database) {
+  modalDialog(
+    HTML("<h2>create a blank plate</h2>"),
+    HTML("<h4>Fill out the section below</h4>"),
+    br(),
+    fluidRow(column(width = 6, HTML("<p>Human Readable Name</p>"), textInput("CreateEmptyMicronixPlateID", label = NULL, placeholder = "PRISM-2022-001")),
+             column(width = 6,  HTML("<p>Barcode (Optional)</p>"), textInput("CreateEmptyMicronixPlateBarcode", label = NULL))),
+    HTML("<p>Freezer Name</p>"), selectInput("CreateEmptyMicronixPlateLocation", label = NULL, width = '47%', choices = c("", sampleDB::CheckTable(database = database, "location")$location_name) %>% sort()),
+    HTML("<p>Shelf Name</p>"), selectInput("CreateEmptyMicronixPlateLevelI", label = NULL, width = '47%', choices = NULL),
+    HTML("<p>Basket Name</p>"), selectInput("CreateEmptyMicronixPlateLevelII", label = NULL, width = '47%', choices = NULL),
+    if(failed){
+      div(tags$b("ERROR", style = "color: red;")) 
+    },
+    
+    footer = tagList(
+      modalButton("Cancel"),
+      actionButton("CreatEmptyMicronixPlateoOk", "OK")
+    )
+    
+  )
 }
