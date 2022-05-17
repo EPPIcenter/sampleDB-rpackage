@@ -516,7 +516,9 @@ SmartFreezerDropdownFilter <- function(database, session, input = input, locatio
     if(!is.null(input[[location_ui]]) && input[[location_ui]] != ""){
       tmp_table.location <- filter(sampleDB::CheckTable(database = database, "location"), location_name == input[[location_ui]])
       updateSelectInput(session, levelI_ui, label = NULL, choices = c(tmp_table.location$level_I) %>% sort())
-      updateSelectInput(session, levelII_ui, label = NULL, choices = c(tmp_table.location$level_II) %>% sort())
+      levelII_choices <- list(`working baskets` = grep("working", tmp_table.location$level_II, value = T) %>% sort(), 
+                              `non-working baskets` = grep("working", tmp_table.location$level_II, value = T, invert = T) %>% sort())
+      updateSelectInput(session, levelII_ui, label = NULL, choices = c("", levelII_choices))
     }else{
       updateSelectInput(session, levelI_ui, label = NULL, choices = c(""))
       updateSelectInput(session, levelII_ui, label = NULL, choices = c(""))

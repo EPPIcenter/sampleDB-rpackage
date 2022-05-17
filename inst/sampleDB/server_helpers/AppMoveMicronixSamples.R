@@ -131,7 +131,7 @@ CreateEmptyMicronixPlate <- function(input, output, database){
 
 dataModal <- function(failed = FALSE, database) {
   modalDialog(
-    HTML("<h2>create a blank plate</h2>"),
+    HTML("<h2>Create a Blank Micronix Plate</h2>"),
     HTML("<h4>Fill out the section below</h4>"),
     br(),
     fluidRow(column(width = 6, HTML("<p>Human Readable Name</p>"), textInput("CreateEmptyMicronixPlateID", label = NULL, placeholder = "PRISM-2022-001")),
