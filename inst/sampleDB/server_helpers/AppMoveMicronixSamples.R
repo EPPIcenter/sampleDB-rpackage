@@ -25,7 +25,6 @@ MoveWetlabSamples <- function(session, input, database, output){
         move_data <- read.csv(users_move_file[[i, 'datapath']], header = F) %>% suppressWarnings() # will throw a pointless corrupt last line warning if file comes from excel
         move_data_list[[plate.name]] <- move_data
       }
-      print(move_data_list)
 
       #check colnames of user provided file
       MoveLogisticalResults <- c() #store the T or F results of the Logistical File Checks. All must be true in order to reformat

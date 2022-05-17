@@ -266,7 +266,7 @@ MoveSamples <- function(sample_type, move_data){
   }
   
   # make sure all barcodes are in the db
-  stopifnot("Error: All barcodes are not in the database" = sampleDB:::.CheckBarcodesInDatabase(database = database, formatted_move_file_list = move_data))
+  stopifnot("Error: All barcodes are not in the database" = sampleDB:::.CheckBarcodesInDatabase(database = database, formatted_move_file_list = move_data)$out1)
   
 }
 
