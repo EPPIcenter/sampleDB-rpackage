@@ -10,6 +10,9 @@ UIMoveSamples <- function(){
       shinyjs::hidden(textInput("ActionMoveMatrix", label = NULL)),
       fluidRow(column(width = 6, radioButtons("MoveFileType", label = NULL, choices = c("VisionMate" = "visionmate", "Traxcer" = "traxcer", "NA" = "na"), inline = T)),
                column(width = 6, tags$a(href='micronix_format_info.html', target='blank', 'More Info'))),
+      conditionalPanel(condition = "input.MoveFileType == \"traxcer\"",
+                       HTML("Strip Suffix From Filename"),
+                       radioButtons("MoveTraxcerStripFromFilename", label = NULL, choices = c("Yes" = "strip", "No" = "no_strip"), selected = "no_strip", inline = T)),
       hr(),
       #action buttons
       fluidRow(column(width = 6, actionButton("MoveAction", width = '100%', label = "Move Samples", style="color: #fff; background-color: #337ab7; border-color: #2e6da4")),
