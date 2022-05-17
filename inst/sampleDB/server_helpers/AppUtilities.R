@@ -175,6 +175,7 @@ GetUIDelArchElements <- function(){
                    ArchiveAction = "ArchiveAction",
                    DeleteAction = "DeleteAction",
                    DelArchID = "DelArchID",
+                   DelArchVerification = "DelArchVerification",
                    SearchBySingleBarcode = "DelArchSearchBySingleBarcode",
                    SearchByBarcodeType = "DelArchSearchByBarcodeType")
   ui.output <- list(SearchResultsTable = "DelArchSearchResultsTable",
