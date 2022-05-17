@@ -54,7 +54,7 @@ function(input, output, session) {
 
     # -------- Delete Empty Container --------
     
-    DeleteEmptyWetlabContainers(session, input, database, output)
+    # DeleteEmptyWetlabContainers(session, input, database, output)
     
     # -------- Update References ---------------
     

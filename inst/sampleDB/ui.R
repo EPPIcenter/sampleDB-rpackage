@@ -23,13 +23,11 @@ navbarPage("EPPIcenter SampleDB",
   #search
   tabPanel("Search Samples", UISearchSamples()),
   #move
-  navbarMenu("Move Samples",
-   tabPanel("Move Samples", UIMoveSamples()),
-   tabPanel("Move Container of Samples", UIMoveContainerOfSamples())),
+  tabPanel("Move Samples",  UIMoveSamples()),
   #delarch
-  navbarMenu("Delete & Archive Samples",
-   tabPanel("Delete & Archive Samples", UIDelArchSamples()),
-    tabPanel("Delete Empty Container of Samples", UIDelEmptyContainerOfSamples())),
+  tabPanel("Delete & Archive Samples", UIDelArchSamples()),
+  #edit containers
+  tabPanel("Move, Rename & Delete Containers", UIMoveContainerOfSamples()),
   #referrences
   navbarMenu("Update References",
             tabPanel("Freezers", UIFreezerReference()),
