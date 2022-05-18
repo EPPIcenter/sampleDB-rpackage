@@ -11,17 +11,11 @@ MoveSamples(sample_type, move_data)
 
 \item{move_data}{A list of SampleDB move dataframes, where the name of each dataframe item is the container that the samples are in after the move.
 
-The basic structure of a Move CSV file is shown below.\tabular{lll}{
-   row \tab column \tab label \cr
-   A \tab 0 \tab xxx1 \cr
-   A \tab 1 \tab xxx2 \cr
-}
-
-
-Accepted names for the \code{row} column include: \code{row}, \code{Row}, and \code{LocationRow}. \cr
-Accepted names for the \code{column} column include: \code{column}, \code{Column}, and \code{LocationColumn}. \cr
-Also accepted is a single column named \code{Position} that represents the both the \code{row} column and the \code{column} column.
-If the \code{Position} column is used then the \code{row} and \code{column} columns can be ommited.}
+The structure of a move file is shown below.\tabular{ll}{
+   well_position \tab label \cr
+   A0 \tab xxx1 \cr
+   A1 \tab xxx2 \cr
+}}
 }
 \description{
 \code{MoveSamples()} can be used to move existing wetlab samples from:

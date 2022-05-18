@@ -4,83 +4,42 @@
 \alias{UploadSamples}
 \title{Upload EPPIcenter Wetlab Samples to the SampleDB database}
 \usage{
-UploadSamples(sample_type, upload_data, container_name, freezer_address)
+UploadSamples(
+  sample_type,
+  upload_data,
+  container_name,
+  container_barcode = NULL,
+  freezer_address
+)
 }
 \arguments{
 \item{sample_type}{A string specifying the type of samples that are being uploaded Options include: \code{micronix}, \code{cryovial}, \code{rdt} and \code{paper}}
 
-\item{upload_data}{A dataframe of SampleDB Upload data.
+\item{upload_data}{A dataframe of SampleDB Upload data.\cr
+Required \code{upload_data} columns are:\cr
+\code{well_position}: the row and column of the sample in the storage housing
+\code{label}: the sample's label or barcode
+\code{study_subject_id}: the participant id of for the subject in the cohort (ie study)
+\code{study_short_code}: the code of the study
+\code{specimen_type}: the sample type
+\code{collection_date}: (optional) the date the sample was first collected from the cohort participant
 
-\strong{Upload Micronix CSV structure (vision mate + no collection date)}\tabular{llllll}{
-   LocationRow \tab LocationColumn \tab TubeCode \tab study_subject_id \tab specimen_type \tab study_short_code \cr
-   A \tab 0 \tab xxx1 \tab subject_1 \tab PLASMA \tab KAM06 \cr
-   A \tab 1 \tab xxx2 \tab subject_2 \tab PLASMA \tab KAM06 \cr
-}
-
-
-\strong{Upload Micronix CSV structure (vision mate + collection date)}\tabular{lllllll}{
-   LocationRow \tab LocationColumn \tab TubeCode \tab study_subject_id \tab specimen_type \tab study_short_code \tab collection_date \cr
-   A \tab 0 \tab xxx1 \tab subject_1 \tab PLASMA \tab KAM06 \tab 2022-02-11 \cr
-   A \tab 1 \tab xxx2 \tab subject_2 \tab PLASMA \tab KAM06 \tab 2022-02-11 \cr
-}
-
-
-\strong{Upload Micronix CSV structure (traxer + no collection date)}\tabular{lllll}{
-   Position \tab Tube ID \tab study_subject_id \tab specimen_type \tab study_short_code \cr
+#' \strong{upload data example without collection_date}\tabular{lllll}{
+   well_position \tab label \tab study_subject_id \tab specimen_type \tab study_short_code \cr
    A0 \tab xxx1 \tab subject_1 \tab PLASMA \tab KAM06 \cr
    A1 \tab xxx2 \tab subject_2 \tab PLASMA \tab KAM06 \cr
 }
 
 
-\strong{Upload Micronix CSV structure (traxer + collection date)}\tabular{llllll}{
-   Position \tab Tube ID \tab study_subject_id \tab specimen_type \tab study_short_code \tab collection_date \cr
-   A0 \tab xxx1 \tab subject_1 \tab PLASMA \tab KAM06 \tab 2022-02-11 \cr
-   A1 \tab xxx2 \tab subject_2 \tab PLASMA \tab KAM06 \tab 2022-02-11 \cr
-}
-
-
-\strong{Upload Cryovial CSV structure (no collection date)}\tabular{llllll}{
-   row \tab column \tab label \tab study_subject_id \tab specimen_type \tab study_short_code \cr
-   A \tab 0 \tab xxx1 \tab subject_1 \tab PLASMA \tab KAM06 \cr
-   A \tab 1 \tab xxx2 \tab subject_2 \tab PLASMA \tab KAM06 \cr
-}
-
-
-\strong{Upload Cryovial CSV structure (collection date)}\tabular{lllllll}{
-   row \tab column \tab label \tab study_subject_id \tab specimen_type \tab study_short_code \tab collection_date \cr
-   A \tab 0 \tab xxx1 \tab subject_1 \tab PLASMA \tab KAM06 \tab 2022-02-11 \cr
-   A \tab 1 \tab xxx2 \tab subject_2 \tab PLASMA \tab KAM06 \tab 2022-02-11 \cr
-}
-
-
-\strong{Upload RDT CSV structure (no collection date)}\tabular{llll}{
-   label \tab study_subject_id \tab specimen_type \tab study_short_code \cr
-   xxx1 \tab subject_1 \tab PLASMA \tab KAM06 \cr
-   xxx2 \tab subject_2 \tab PLASMA \tab KAM06 \cr
-}
-
-
-\strong{Upload RDT CSV structure (collection date)}\tabular{lllll}{
-   label \tab study_subject_id \tab specimen_type \tab study_short_code \tab collection_date \cr
-   xxx1 \tab subject_1 \tab PLASMA \tab KAM06 \tab 2022-02-11 \cr
-   xxx2 \tab subject_2 \tab PLASMA \tab KAM06 \tab 2022-02-11 \cr
-}
-
-
-\strong{Upload Paper CSV structure}\tabular{llll}{
-   label \tab study_subject_id \tab specimen_type \tab study_short_code \cr
-   xxx1 \tab subject_1 \tab PLASMA \tab KAM06 \cr
-   xxx2 \tab subject_2 \tab PLASMA \tab KAM06 \cr
-}
-
-
-\strong{Upload Paper CSV structure}\tabular{lllll}{
-   label \tab study_subject_id \tab specimen_type \tab study_short_code \tab collection_date \cr
-   xxx1 \tab subject_1 \tab PLASMA \tab KAM06 \tab 2022-02-11 \cr
-   xxx2 \tab subject_2 \tab PLASMA \tab KAM06 \tab 2022-02-11 \cr
+\strong{upload data example with collection_date}\tabular{llllll}{
+   well_position \tab label \tab study_subject_id \tab specimen_type \tab study_short_code \tab collection_data \cr
+   A0 \tab xxx1 \tab subject_1 \tab PLASMA \tab KAM06 \tab 2022-04-11 \cr
+   A1 \tab xxx2 \tab subject_2 \tab PLASMA \tab KAM06 \tab 2022-04-11 \cr
 }}
 
 \item{container_name}{A string specifying the name of the container the samples are in. Names must be unique within each sample type.}
+
+\item{container_barcode}{A string specifying the barcode for the container the samples are in. Container barcodes are optional. Barcodes must be unique within each sample type.}
 
 \item{freezer_address}{A list specifying the freezer address used to store samples. \cr
 Required items in the freezer_address list are \code{location_name}, \code{level_I} and \code{level_II}.
@@ -89,10 +48,20 @@ If the freezer_address type is \verb{minus twenty} then \code{level_I} and \code
 }
 \description{
 \code{UploadSamples()} can be used to upload wetlab samples to the sampleDB database.
-Currently the type of wetlab samples supported is only \code{micronix}. \code{cryovial}, \code{rdt} and \code{paper} sample uploads will appear in the next version.
+Currently the type of wetlab samples supported is only \code{micronix}. <!---cryovial`, `rdt` and `paper` sample uploads will appear in the next version.-->
 }
 \examples{
 \dontrun{
-UploadSamples(upload_data = dataframe(), container_name = "dummy_name", location = freezer_address = list(location_name = "Freezer A", level_I = "dummy.levelI", level_II = "dummy.levelII"))
+UploadSamples(sample_type = "micronix", 
+              upload_data = tibble(well_position = c("A0"),
+                                   label = c("XXX 1"),
+                                   study_subject_id = c("1"),
+                                   specimen_type = c("PLASMA"),
+                                   study_short_code = c("KAM06"),
+                                   collection_date = c("2021-04-10")),
+               container_name = "test_container", 
+               freezer_address = list(location_name = "TBD",
+                                      level_I = "TBD",
+                                      level_II = "seve's working basket"))
 }
 }
