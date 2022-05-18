@@ -13,7 +13,6 @@ MicronixUpload <- function(session, output, input, database){
   # 2. get path to user provided file, if path exists perform checks and reformat file
   observe({
     
-    
     users_upload_file_path <- input[["UploadMicronixDataSet"]]$datapath
     if(!is.null(users_upload_file_path)){
       

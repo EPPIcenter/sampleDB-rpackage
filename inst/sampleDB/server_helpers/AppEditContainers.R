@@ -1,5 +1,5 @@
 
-MoveWetlabContainers <- function(session, input, database, output){
+EditWetlabContainers <- function(session, input, database, output){
   
   observeEvent(
     input$MoveContainerAction,({
@@ -27,7 +27,23 @@ MoveWetlabContainers <- function(session, input, database, output){
   
   observeEvent(
     input$RenameContainerAction,
-    ({}))
+    ({
+      #get user info
+      container.type <- input$EditContainerSampleType
+      current_container.name <- input$EditContainerName
+      new_container.name <- input$RenameContainerPlateName
+      
+      #rename container
+      return_message <- sampleDB::RenameContainers(sample_type = container.type, 
+                                                   new_container_name = new_container.name, 
+                                                   current_container_name = current_container.name)
+      output$RenameContainerMessage <- renderText(return_message)
+      
+      #reset
+      shinyjs::reset("EditContainerName")
+      shinyjs::reset("RenameContainerPlateName")
+      shinyjs::reset("RenameContainerMessage")
+    }))
   
   observeEvent(
     input$DeleteContainerAction,

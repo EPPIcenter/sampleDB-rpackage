@@ -44,9 +44,9 @@ function(input, output, session) {
 
     MoveWetlabSamples(session, input, database, output)
 
-    # -------- Move Container --------
+    # -------- Edit Containers --------
     
-    MoveWetlabContainers(session, input, database, output)
+    EditWetlabContainers(session, input, database, output)
     
     # -------- Archive and Delete Samples --------
     
