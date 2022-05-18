@@ -60,10 +60,7 @@ From one (or more) existing container into one (or more) existing container
 <dd><p>A string specifying the type of samples that are being moved. Options include: <code>micronix</code>, <code>cryovial</code>, <code>rdt</code> and <code>paper</code></p></dd>
 <dt>move_data</dt>
 <dd><p>A list of SampleDB move dataframes, where the name of each dataframe item is the container that the samples are in after the move.</p>
-<p>The basic structure of a Move CSV file is shown below.</p><table class="table table"><tr><td>row</td><td>column</td><td>label</td></tr><tr><td>A</td><td>0</td><td>xxx1</td></tr><tr><td>A</td><td>1</td><td>xxx2</td></tr></table><p>Accepted names for the <code>row</code> column include: <code>row</code>, <code>Row</code>, and <code>LocationRow</code>. <br>
-Accepted names for the <code>column</code> column include: <code>column</code>, <code>Column</code>, and <code>LocationColumn</code>. <br>
-Also accepted is a single column named <code>Position</code> that represents the both the <code>row</code> column and the <code>column</code> column.
-If the <code>Position</code> column is used then the <code>row</code> and <code>column</code> columns can be ommited.</p></dd>
+<p>The structure of a move file is shown below.</p><table class="table table"><tr><td>well_position</td><td>label</td></tr><tr><td>A0</td><td>xxx1</td></tr><tr><td>A1</td><td>xxx2</td></tr></table></dd>
 </dl></div>
 
     <div class="section level2">
