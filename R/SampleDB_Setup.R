@@ -20,7 +20,7 @@ SampleDB_Setup <- function(){
   system(paste("sudo -kS mkdir \"/var/lib/sampleDB\""), input = password)
   
   #2. write sampledb .sqlite file to "var/lib/sampleDB/"
-  path <- "var/lib/sampleDB/"
+  path <- "/var/lib/sampleDB/"
   sqlite_file <- system.file("extdata", "sampledb_database.sqlite", package = "sampleDB")
   system(paste("sudo -kS cp", sqlite_file, path), input = password)
   message("Moved a SampleDB SQLite template file to \"/var/lib/sampleDB/sampledb_database.sqlite\"")
