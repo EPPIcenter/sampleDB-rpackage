@@ -32,7 +32,7 @@
 SearchSamples <- function(sample_type = NULL, sample_label = NULL, container_name = NULL, study_subject = NULL, specimen_type = NULL, 
                           study = NULL, collection_dates = NULL, archived = NULL, freezer = NULL, study_subject.file = FALSE, return_sample_ids = FALSE){
   
-  database <- Sys.getenv("SDB_PATH")
+  database <- sampleDB:::.GetSampleDBPath()
   
   # SET FILTERS
   filters <- list(search.type = sample_type,
