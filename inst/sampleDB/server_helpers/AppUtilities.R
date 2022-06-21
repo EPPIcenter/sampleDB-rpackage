@@ -198,7 +198,7 @@ SearchFunction <- function(input, output, ui_elements){
   }
   
   search.type <- input[[ui_elements$ui.input$SearchBySampleType]]
-  barcode.search_method <- input[[ui_elements$ui.input$SearchBySampleType]]
+  barcode.search_method <- input[[ui_elements$ui.input$SearchByBarcodeType]]
   if(barcode.search_method == "multiple_barcodes"){
     search.label <- list(micronix.labels = input[[ui_elements$ui.input$SearchByBarcode]]$datapath, 
                          cryovial.labels = input[[ui_elements$ui.input$SearchByCryovialLabels]]$datapath,
