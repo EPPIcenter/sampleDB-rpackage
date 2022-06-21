@@ -23,7 +23,13 @@ MoveWetlabSamples <- function(session, input, database, output){
           plate.name <- substr(plate.name, 1, nchar(plate.name)-16)
         }
         move_data <- read.csv(users_move_file[[i, 'datapath']], header = F) %>% suppressWarnings() # will throw a pointless corrupt last line warning if file comes from excel
-        move_data_list[[plate.name]] <- move_data
+        #There have been bugs caused by empty colums
+        #Find and remove columns on upload
+        #Alternatively, could reject files that have empty columns but this
+        #probably is okay on upload
+
+        empty_columns <- colSums(is.na(move_data) | move_data == "") == nrow(move_data)
+        move_data_list[[plate.name]] <- move_data[, !empty_columns]
       }
 
       #check colnames of user provided file

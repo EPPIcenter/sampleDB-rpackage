@@ -42,6 +42,10 @@ MoveSamples <- function(sample_type, move_data){
   # Check if move creates orphans - returns TRUE if pass, FALSE if fail
   orphan_check_return <- .CheckForOrphans(move_data_list = move_data, database, sample_type = sample_type)
 
+  if (orphan_check_return$error == TRUE) {
+    return(paste("Move failed due to error."))
+  }
+
   # Link samples to containers in move
   if(orphan_check_return$orphan_check_toggle){
 
@@ -83,6 +87,9 @@ MoveSamples <- function(sample_type, move_data){
   
   # For containers involved in the move, extract sample level data from sampleDB (barcode, container position, container id)
   sample_data <- .CopyContainersForTests(move_data_list = move_data_list, sample_type = sample_type, database = database)
+  if (length(sample_data) == 0) {
+    return(list(error = TRUE))
+  }
   
   # Change sample's container ids to negative numbers (i.e. remove samples from containers)
   stacked_orphaned_sample_data <- .ClearSpaceForTests(sample_data = sample_data, sample_type = sample_type)
@@ -117,11 +124,11 @@ MoveSamples <- function(sample_type, move_data){
     
     if(!all(stacked_orphaned_sample_data$plate_id > 0)){
       # there are orphans left - move would produce orphans
-      out <- list(orphan_check_toggle = FALSE, stacked_orphaned_sample_data = stacked_orphaned_sample_data)
+      out <- list(error = FALSE, orphan_check_toggle = FALSE, stacked_orphaned_sample_data = stacked_orphaned_sample_data)
       
     }else{
       # there are no orphans left - move would not produce orphans
-      out <- list(orphan_check_toggle = TRUE, stacked_orphaned_sample_data = stacked_orphaned_sample_data)
+      out <- list(error = FALSE, orphan_check_toggle = TRUE, stacked_orphaned_sample_data = stacked_orphaned_sample_data)
     }
   }
   
@@ -227,6 +234,17 @@ MoveSamples <- function(sample_type, move_data){
     colname.container_id <- "plate_id"
   }
   
+  tbl.barcodes <- sampleDB::CheckTable(database = database, container_type) %>%
+    summarise(
+      barcode_matches := names(move_data_list) %in% get(colname.container_name)
+    )
+
+  if (!all(tbl.barcodes$barcode_matches)) {
+    message("ERROR: Missing barcodes in sampledb:")
+    message(cat(names(move_data_list[ ! tbl.barcodes$barcode_matches ]), sep=' '))
+    return(list())
+  }
+
   sample_data <- list()
   for(container.name in names(move_data_list)){
     tmp.container <- filter(sampleDB::CheckTable(database = database, container_type), !!as.name(colname.container_name) == container.name)

@@ -18,6 +18,15 @@ MicronixUpload <- function(session, output, input, database){
       
       users_upload_file <- read.csv(users_upload_file_path, header = F) %>% suppressWarnings() # will throw a pointless corrupt last line warning if file comes from excel
       
+      print(paste0("MicronixUpload: ", users_upload_file))
+      #There have been bugs caused by empty colums
+      #Find and remove columns on upload
+      #Alternatively, could reject files that have empty columns but this 
+      #probably is okay on upload
+
+      empty_columns <- colSums(is.na(users_upload_file) | users_upload_file == "") == nrow(users_upload_file)
+      users_upload_file <- users_upload_file[, !empty_columns]
+
       #check colnames of user provided file
       UploadFileLogisticalColnameCheck <- CheckLogisticalColnamesOfUserProvidedMicronixFile(input = input, output = output, users_upload_file = users_upload_file, ui_elements = GetUIUploadElements("micronix"))
       UploadFileMetadataColnameCheck <- CheckMetadataColnamesOfUserProvidedMicronixFile(input = input, output = output, users_upload_file = users_upload_file, ui_elements = GetUIUploadElements("micronix"))
