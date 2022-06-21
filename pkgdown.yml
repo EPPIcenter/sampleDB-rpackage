@@ -1,8 +1,8 @@
 pandoc: 2.7.3
-pkgdown: 2.0.3
+pkgdown: 2.0.4
 pkgdown_sha: ~
 articles: {}
-last_built: 2022-06-01T02:42Z
+last_built: 2022-06-21T17:59Z
 urls:
   reference: https://eppicenter.github.io/sampleDB-rpackage/reference
   article: https://eppicenter.github.io/sampleDB-rpackage/articles

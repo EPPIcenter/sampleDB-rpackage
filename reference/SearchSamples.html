@@ -67,26 +67,47 @@
     <h2 id="arguments">Arguments<a class="anchor" aria-label="anchor" href="#arguments"></a></h2>
     <dl><dt>sample_type</dt>
 <dd><p>A string specifying the type of EPPIcenter sample. (<code>micronix</code>, <code>cryovile</code>, <code>rdt</code> and/or <code>paper</code>)</p></dd>
+
+
 <dt>sample_label</dt>
 <dd><p>A list of vectors specifying the vector micronix, cryovile, rdt, and paper label names (<code>micronix.label_name</code>, <code>cryovile.label_name</code>, <code>rdt.label_name</code> and/or <code>paper.label_name</code>)</p></dd>
+
+
 <dt>container_name</dt>
 <dd><p>A list of vectors specifying the vector micronix, cryovile, rdt, and paper container names (<code>micronix.container_name</code>, <code>cryovile.container_name</code>, <code>rdt.container_name</code> and/or <code>paper.container_name</code>)</p></dd>
+
+
 <dt>study_subject</dt>
 <dd><p>A study subjects string or a vector of study subject strings. If <code>study_subject.file</code> is TRUE the path to a .csv file containing one column named study_subject can be uploaded and used to search the database for study subjects.</p></dd>
+
+
 <dt>specimen_type</dt>
 <dd><p>A specimen type string or a vector of specimen type strings.</p></dd>
+
+
 <dt>study</dt>
 <dd><p>A study short code string or a vector of study short code strings.</p></dd>
+
+
 <dt>collection_dates</dt>
 <dd><p>A list of date values strings (<code>date.to</code> and <code>date.from</code>) that can be used to filter EPPIcenter samples</p></dd>
+
+
 <dt>archived</dt>
 <dd><p>A logical value. <code>TRUE</code> filters for archived samples and <code>FALSE</code> filters for active samples</p></dd>
+
+
 <dt>freezer</dt>
 <dd><p>A list specifying the vector <code>location_name</code>, <code>level_I</code>, and/or<code>level_II</code></p></dd>
+
+
 <dt>study_subject.file</dt>
 <dd><p>A logical value.  Setting <code>study_subject.file</code> to <code>TRUE</code> allows the user to search for study subjects using a .csv file. Setting <code>study_subject.file</code> to <code>FALSE</code> specifies that the user searches for study subjects using either a string or vector of strings. Default value is <code>FALSE</code>.</p></dd>
+
+
 <dt>return_sample_ids</dt>
 <dd><p>A logical value. Setting <code>return_sample_ids</code> to <code>TRUE</code> means <code>SearchSamples</code> returns sample ids as well as search results. Setting <code>return_sample_ids</code> to <code>FALSE</code> means <code>SearchSamples</code> returns only search results. Default value is <code>FALSE</code>.</p></dd>
+
 </dl></div>
 
     <div class="section level2">
@@ -105,7 +126,7 @@
 </div>
 
 <div class="pkgdown-footer-right">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.3.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.4.</p>
 </div>
 
     </footer></div>
