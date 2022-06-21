@@ -48,4 +48,5 @@ SampleDB_Setup <- function(){
   #a lot of things need to be 777'd (e.g. sampleDB:::.GetSampleDBPath())
 
   #https://stackoverflow.com/questions/1518729/change-sqlite-database-mode-to-read-writep
+
 }
