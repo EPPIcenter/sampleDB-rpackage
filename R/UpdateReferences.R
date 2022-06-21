@@ -48,7 +48,7 @@
 
 UpdateReferences <- function(reference, operation, identifier = NULL, update = NULL){
   
-  database <- Sys.getenv("SDB_PATH")
+  database <- sampleDB:::.GetSampleDBPath()
     
   references <- c("study", "freezer","specimen_type")
   stopifnot("invalid reference\n vaid options are: study, freezer and specimen_type" = 

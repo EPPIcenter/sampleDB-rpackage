@@ -2,6 +2,10 @@
 # Utility Functions that are shared between Pkg Funs and Shiny App Funs
 # Use ::: to access, these functions are not package exports
 
+.GetSampleDBPath <- function() {
+  return(file.path('/srv/sampleDB/sampledb_database.sqlite'))
+}
+
 # Storage Type Check
 .CheckSampleStorageType <- function(sample_type){
   out <- sample_type %in% c("micronix")

@@ -8,7 +8,7 @@
 
 RenameContainers <- function(sample_type, new_container_name, current_container_name){
 
-  database <- Sys.getenv("SDB_PATH")
+  database <- sampleDB:::.GetSampleDBPath()
   stopifnot("ERROR: Sample Type is not valid" = sample_type %in% c("micronix"))
   stopifnot("ERROR: Container Name does not exist" = current_container_name %in% CheckTable(database = database, table = "matrix_plate")$plate_name)
   stopifnot("ERROR: New Container name is not unique" = sampleDB:::.CheckUploadContainerNameDuplication(database = database, plate_name = new_container_name))

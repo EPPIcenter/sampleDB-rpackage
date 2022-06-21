@@ -17,6 +17,5 @@
 
 Run_SampleDB <- function(){
   # make a copy of the database before each run
-  system("if test -f \"/bin/sampleDB_backup_generator.sh\"; then bash /bin/sampleDB_backup_generator.sh; fi")
   shiny::runApp(system.file('sampleDB', package='sampleDB'))
 }

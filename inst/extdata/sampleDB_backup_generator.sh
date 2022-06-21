@@ -4,32 +4,36 @@
 # Run this  script to backup the sampleDB database.
 # Script runs everytime the app is fired up, and every day at midnight
 DATE=$(date +%H:%M:%S_%d-%m-%Y)
-BACKUP_DIR="/var/lib/sampleDB/backups"
+BACKUP_DIR=/srv/sampleDB/backups
 
 # get path to current DB
-CURRENT_DB=/var/lib/sampleDB/sampledb_database.sqlite
+CURRENT_DB=/srv/sampleDB/sampledb_database.sqlite
 
 # save most recent backup to a temp file
-TEMP_FILE_PATH=$(mktemp)
-MOST_RECENT_BACKUP=$(ls -Artd /var/lib/sampleDB/backups/* | tail -n 1 )
-gunzip<$MOST_RECENT_BACKUP> $TEMP_FILE_PATH
+TEMP_RECENT_BACKUP=$(mktemp)
+TEMP_CURRENT_BACKUP=$(mktemp)
 
-# show the files being compared
-echo "Active database is at /var/lib/sampleDB/sampledb_database.sqlite"
-echo "Most recent backup is at ${MOST_RECENT_BACKUP}"
+# backup the current database to a temporary location
+sqlite3 $CURRENT_DB ".backup $TEMP_CURRENT_BACKUP"
 
-# see if differences between the current db and the most recent backup exist
-SQL_DIFF_QUANTITY=$(sqldiff $CURRENT_DB $TEMP_FILE_PATH | wc -l)
-
-# if there are differences then backup the database
-if [ $SQL_DIFF_QUANTITY -ne 0 ];then
-	echo "Backing up the database."
-	sqldiff $CURRENT_DB $TEMP_FILE_PATH
-
-	sqlite3 /var/lib/sampleDB/sampledb_database.sqlite ".backup ${BACKUP_DIR}/sampledb-${DATE}.sqlite"
-	gzip ${BACKUP_DIR}/sampledb-${DATE}.sqlite
+# if we have a backup, compare against the most recent
+if [ 0 -eq $(ls $BACKUP_DIR | wc -l) ]; then
+  echo "Creating the first backup!"
+	cat $TEMP_CURRENT_BACKUP | gzip > ${BACKUP_DIR}/sampledb-${DATE}.sqlite.gz
 else
-	printf "No changes have been made since last backing up the database.\n"
+  MOST_RECENT_BACKUP=$(ls -Artd $BACKUP_DIR/* | tail -n 1 )
+  gunzip<$MOST_RECENT_BACKUP> $TEMP_RECENT_BACKUP
+
+  # show the files being compared
+  echo "Active database is at /srv/sampleDB/sampledb_database.sqlite"
+  echo "Most recent backup is at ${MOST_RECENT_BACKUP}"
+
+  test 2 -eq $(md5sum $TEMP_RECENT_BACKUP $TEMP_CURRENT_BACKUP | cut -f 1 -d ' ' | sort | uniq | wc -l) && {
+    echo "Backing up the database.";
+    cat $TEMP_CURRENT_BACKUP | gzip > ${BACKUP_DIR}/sampledb-${DATE}.sqlite.gz;
+  } || {
+    echo "No changes have been made since last backing up the database.";
+  }
 fi
 
 #delete files older than 10 days
