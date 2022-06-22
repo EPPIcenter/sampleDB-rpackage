@@ -18,8 +18,7 @@ To install SampleDB run the command below in an R instance:
 ```
 withr::with_libpaths(new = "/usr/lib/R/site-library/", 
                      devtools::install_github("https://github.com/EPPIcenter/sampleDB-rpackage", 
-                                              ref = "master", 
-                                              auth_token = "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"))
+                                              ref = "master"))
 ```
 
 # Set Up
