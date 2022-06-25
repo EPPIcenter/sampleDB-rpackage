@@ -49,18 +49,18 @@ DelArchSamples <- function(session, input, database, output, inputs, outputs){
   
   # handle archive and deletions
   # - archive item
-  arch_val <- reactiveValues(data = NULL)
-  del_val <- reactiveValues(data = NULL)
+  delarch_val <- reactiveValues(data = NULL, operation = NULL)
   
   observeEvent(input[[ui_elements$ui.input$ArchiveAction]], {
     output[[ui_elements$ui.output$DelArchMessage]] <- NULL
-    arch_val$data <- as.numeric(input[[ui_elements$ui.input$DelArchID]])
-    showModal(dataModal(sample_number = arch_val$data, operation = "archive", data = val$data))
+    delarch_val$data <- as.numeric(input[[ui_elements$ui.input$DelArchID]])
+    delarch_val$operation = "archive"
+    showModal(dataModal(sample_number = delarch_val$data, operation = delarch_val$operation, data = val$data))
   })
   
   observeEvent(input[[ui_elements$ui.input$DelArchVerification]], {
-    return_message <- sampleDB::ArchiveAndDeleteSamples(operation = "archive",
-                                                        sample_id = arch_val$data,
+    return_message <- sampleDB::ArchiveAndDeleteSamples(operation = delarch_val$operation,
+                                                        sample_id = delarch_val$data,
                                                         verification = F)
     removeModal()
     shinyjs::reset("DelArchID")
@@ -70,17 +70,9 @@ DelArchSamples <- function(session, input, database, output, inputs, outputs){
   # - delete item
   observeEvent(input[[ui_elements$ui.input$DeleteAction]], {
     output[[ui_elements$ui.output$DelArchMessage]] <- NULL
-    del_val$data <- as.numeric(input[[ui_elements$ui.input$DelArchID]])
-    showModal(dataModal(sample_number = del_val$data, operation = "delete", data = val$data))
-  })
-  
-  observeEvent(input[[ui_elements$ui.input$DelArchVerification]], {
-    return_message <- sampleDB::ArchiveAndDeleteSamples(operation = "delete",
-                                                        sample_id = del_val$data,
-                                                        verification = F)
-    removeModal()
-    shinyjs::reset("DelArchID")
-    output[[ui_elements$ui.output$DelArchMessage]] <- renderPrint(return_message)
+    delarch_val$data <- as.numeric(input[[ui_elements$ui.input$DelArchID]])
+    delarch_val$operation = "delete"
+    showModal(dataModal(sample_number = delarch_val$data, operation = delarch_val$operation, data = val$data))
   })
   
   # popup window
