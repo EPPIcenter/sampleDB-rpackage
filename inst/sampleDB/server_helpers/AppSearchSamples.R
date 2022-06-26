@@ -52,6 +52,38 @@ SearchWetlabSamples <- function(session, input, database, output, DelArch = FALS
   
   # clear files
   .SearchReset(input)
+
+  .CheckDatabaseUpdate(session)
+}
+
+.CheckDatabaseUpdate <- function(session, database) {
+  getData <- reactivePoll(1000 * 10, session,
+    function() file.mtime(sampleDB:::.GetSampleDBPath()),
+    function(database) {
+      list.data <- list(
+          plate_name = sampleDB::CheckTable("matrix_plate")$plate_name,
+          box_name = sampleDB::CheckTable("box")$box_name,
+          rdt_bag_name = sampleDB::CheckTable("bag")$bag_name,
+          paper_bag_name = sampleDB::CheckTable("bag")$bag_name,
+          study = sampleDB::CheckTable("study")$short_code,
+          specimen_type = sampleDB::CheckTable("specimen_type")$label,
+          location = sampleDB::CheckTable("location")$location_name
+        )
+
+      return(list.data)
+    }
+  )
+
+  observeEvent(getData(), {
+      updateSelectInput(session, "SearchByPlate", label = "Plate Name", choices = c("", getData()$plate_name))
+      updateSelectInput(session, "SearchByBox", label = "Box Name", choices = c("", getData()$box_name))
+      updateSelectInput(session, "SearchByRDTBag", label = "Bag Name", choices = c("", getData()$rdt_bag_name))
+      updateSelectInput(session, "SearchByPaperBag", label = "Bag Name", choices = c("", getData()$paper_bag_name))
+
+      updateSelectizeInput(session, "SearchByStudy", "Study", choices = c("", getData()$study))
+      updateSelectizeInput(session, "SearchBySpecimenType", "Specimen Type", choices = c("", getData()$specimen_type))
+      updateSelectizeInput(session, "SearchByLocation", "Storage Location", choices = c("", getData()$location))
+    })
 }
 
 .SearchReset <- function(input){
