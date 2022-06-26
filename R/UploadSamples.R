@@ -94,6 +94,8 @@ UploadSamples <- function(sample_type, upload_data, container_name, container_ba
   
   message("Performing upload checks...")
   
+  stopifnot("Error: Empty file detected." = nrow(upload_data) > 0)
+
   # check storage type
   stopifnot("Error: Storage type is not valid." = sampleDB:::.CheckSampleStorageType(sample_type = sample_type))
   
@@ -124,6 +126,12 @@ UploadSamples <- function(sample_type, upload_data, container_name, container_ba
   stopifnot("Error: Barcode Unique Constraint" = out$out1)
   if(length(out$out2) > 0){
     print(out$out2)
+  }
+
+  out <- sampleDB:::.CheckWellPositionIsValid(database = database, formatted_upload_file = upload_data)
+  if (!out$out1) {
+    message(paste0(x <- names(out$out2),":", paste0(out$out2[x], sep='\n')))
+    stopifnot("Error: Well Validation Constraint" = out$out1)
   }
   
   # check that micronix container barcodes are not duplicated
