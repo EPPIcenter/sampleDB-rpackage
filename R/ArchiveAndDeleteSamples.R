@@ -90,9 +90,6 @@ ArchiveAndDeleteSamples <- function(operation, sample_id, verification = TRUE){
       # DELETE SAMPLES
       for(eval.id in sample_id){
         
-        print(eval.id)
-        stop("catch")
-
         # DELETE INTERNAL DATA
         .DeleteInternalData(eval.id, database.tables, database)
           

@@ -51,6 +51,52 @@
   return(out)
 }
 
+.CheckWellPositionIsValid <- function(database, formatted_upload_file) {
+
+  # just accept empty file as okay
+  if (nrow(formatted_upload_file) == 0) {
+    out1 <- TRUE
+    out2 <- list(
+      invalid_row = character(),
+      invalid_col = character(),
+      duplicated = character()
+    )
+    out <- list(out1 = out1, out2 = out2)
+    return(out)
+  }
+
+  well_positions <- formatted_upload_file %>% pull(well_position)
+  
+  # check row letters
+  row_letter_check <- substr(well_positions, 1, 1) %in% LETTERS
+
+  # make sure the columns are numbers and above zero
+  col_numbers <- substr(well_positions, 2, nchar(well_positions))
+  col_number_indices <- which(col_numbers %>%
+    as.numeric() %>%
+    suppressWarnings() > 0)
+
+  # check for duplicates
+  well_dups_check <- !duplicated(well_positions)
+
+  out1 <- all(row_letter_check) && length(col_number_indices) == length(well_positions) && all(well_dups_check)
+  
+  if(length(col_number_indices)) {
+    inval_cols <- well_positions[-col_number_indices]
+  } else {
+    inval_cols <- well_positions
+  }
+
+  out2 <- list(
+      invalid_row = well_positions[!row_letter_check],
+    invalid_col = inval_cols,
+    duplicated = well_positions[!well_dups_check]
+  )
+
+  out <- list(out1 = out1, out2 = out2)
+  return(out)
+}
+
 .CheckBarcodeArentRepeated <- function(database, formatted_upload_file){
   
   upload_barcodes <- formatted_upload_file %>% pull(label)
