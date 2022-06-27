@@ -9,11 +9,19 @@
 #' }
 #'
 #' @import dplyr
+#' @import getPass
 #' @export
 #'
 
 SampleDB_Setup <- function(){
-  password <- rstudioapi::askForPassword("Please Enter Password")
+
+  password <- NULL
+  if (rstudioapi::isAvailable()) {
+    password <- rstudioapi::askForPassword("Please Enter Password")
+  } else {
+    password <- getPass::getPass("Please Enter Password: ")
+  }
+
 
   # Create the path to the database
   sdb_path <- sampleDB:::.GetSampleDBPath()
