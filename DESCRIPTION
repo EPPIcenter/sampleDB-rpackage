@@ -23,7 +23,8 @@ Imports:
     tidyr,
     markdown,
     shinyjs,
-    DT
+    DT,
+    getPass
 License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
