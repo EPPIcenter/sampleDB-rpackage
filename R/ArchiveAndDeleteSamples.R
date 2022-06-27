@@ -31,7 +31,7 @@
 
 ArchiveAndDeleteSamples <- function(operation, sample_id, verification = TRUE){
   
-  database <- sampleDB:::.GetSampleDBPath()
+  database <- Sys.getenv("SDB_PATH")
   
   stopifnot("Operation is not valid" = operation %in% c("archive", "delete", "unarchive"))
   

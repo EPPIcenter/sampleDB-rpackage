@@ -30,7 +30,7 @@
 #want to be able to move samples and to move containers
 MoveSamples <- function(sample_type, move_data){
   
-  database <- sampleDB:::.GetSampleDBPath()
+  database <- Sys.getenv("SDB_PATH")
   conn <-  RSQLite::dbConnect(RSQLite::SQLite(), database)
   
   # Save MoveCSVs
@@ -289,7 +289,7 @@ MoveSamples <- function(sample_type, move_data){
 }
 
 .SaveMoveCSVs <- function(move_data_list){
-  path <- file.path(dirname(sampleDB:::.GetSampleDBPath()), "move_files/")
+  path <- "/var/lib/sampleDB/move_files/"
   for(container_name in names(move_data_list)){
     move_file <- move_data_list[[container_name]]
     if(dir.exists(path)){

@@ -2,7 +2,7 @@
 #' @import RSQLite
 #' @export
 
-DeleteFromTable <- function(table_name, id, database = sampleDB:::.GetSampleDBPath()){
+DeleteFromTable <- function(table_name, id, database = "/var/lib/sampleDB/sampledb_database.sqlite"){
   
   
   conn <- RSQLite::dbConnect(RSQLite::SQLite(), database)

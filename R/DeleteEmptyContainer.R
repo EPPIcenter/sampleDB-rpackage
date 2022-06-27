@@ -5,7 +5,7 @@
 DeleteEmptyContainer <- function(database, type, container_name){
   
   stopifnot("Sample Type is not valid" = type %in% c("micronix", "cryovial", "rdt", "paper"))
-  database <- sampleDB:::.GetSampleDBPath()
+  database <- Sys.getenv("SDB_PATH")
   
   if(type == "micronix"){
     id.container <- filter(sampleDB::CheckTable(database = database, "matrix_plate"), plate_name == container_name)$id

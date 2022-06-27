@@ -1,17 +1,17 @@
 #' Setup SampleDB Database
-#'
+#' 
 #' Save SampleDB's database file to a specified location
-#'
+#' 
 #' @examples
 #' \dontrun{
 #' library(sampleDB)
 #' SampleDB_Setup()
 #' }
-#'
+#' 
 #' @import dplyr
 #' @import getPass
 #' @export
-#'
+#' 
 
 SampleDB_Setup <- function(){
 
@@ -53,8 +53,4 @@ SampleDB_Setup <- function(){
   #check that rstudio server is installed
   #check that shiny server is installed
   #check that "/etc/R/Renviron.site" exists
-  #a lot of things need to be 777'd (e.g. sampleDB:::.GetSampleDBPath())
-
-  #https://stackoverflow.com/questions/1518729/change-sqlite-database-mode-to-read-writep
-
 }

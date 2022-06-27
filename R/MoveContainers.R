@@ -8,7 +8,7 @@
 
 MoveContainers <- function(sample_type, container_name, freezer){
   
-  database <- sampleDB:::.GetSampleDBPath()
+  database <- Sys.getenv("SDB_PATH")
   stopifnot("Sample Type is not valid" = sample_type %in% c("micronix", "cryovile", "rdt", "paper"))
   eval.location <- filter(sampleDB::CheckTable(database = database, table = "location"), 
                           location_name == freezer$freezer.name & level_I == freezer$freezer.levelI & level_II == freezer$freezer.levelII)
