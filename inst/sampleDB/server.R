@@ -78,17 +78,4 @@ function(input, output, session) {
     output$source_code <- renderUI({
       tagList("Source code can be found ", url)
     })
-
-
-    observe({
-      # Re-execute this reactive expression every 24 hrs
-      invalidateLater(1000 * 60 * 60 * 24, session)
-      backup_sh <- file.path("/bin", "sampleDB_backup_generator.sh")
-      if (file.exists(backup_sh)) {
-        system2("bash", backup_sh)
-      } else {
-        showNotification("Error: Backup script is missing. Run SampleDB_Setup() to re-install script.",duration = NULL, type = "error", session = session, closeButton = T)
-        print("ERROR: Backup script is missing. Run SampleDB_Setup() to re-install script.")
-      }
-    })
 }
