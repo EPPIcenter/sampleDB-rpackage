@@ -53,13 +53,13 @@ SearchWetlabSamples <- function(session, input, database, output, DelArch = FALS
   # clear files
   .SearchReset(input)
 
-  .CheckDatabaseUpdate(session)
+  .CheckDatabaseUpdate(session, database)
 }
 
 .CheckDatabaseUpdate <- function(session, database) {
   getData <- reactivePoll(1000 * 10, session,
-    function() file.mtime(sampleDB:::.GetSampleDBPath()),
-    function(database) {
+    function() file.mtime(database),
+    function() {
       list.data <- list(
           plate_name = sampleDB::CheckTable("matrix_plate")$plate_name,
           box_name = sampleDB::CheckTable("box")$box_name,

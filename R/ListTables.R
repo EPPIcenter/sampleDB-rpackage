@@ -2,7 +2,7 @@
 #' @import RSQLite
 #' @export
 
-ListTables <- function(database = "/var/lib/sampleDB/sampledb_database.sqlite"){
+ListTables <- function(database = Sys.getenv("SDB_PATH")){
   conn <- RSQLite::dbConnect(RSQLite::SQLite(),
                              database)
   table_names <- RSQLite::dbListTables(conn)

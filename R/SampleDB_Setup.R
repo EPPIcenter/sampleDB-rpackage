@@ -13,6 +13,7 @@
 #' @export
 #' 
 
+
 SampleDB_Setup <- function(){
 
   password <- NULL
@@ -22,21 +23,30 @@ SampleDB_Setup <- function(){
     password <- getPass::getPass("Please Enter Password: ")
   }
 
+  # ROOT
+  root_path <- ifelse(.is_windows(),
+    file.path(Sys.getenv("programdata"), "sampleDB"),
+    file.path("","var","lib","sampleDB"))
 
-  # Create the path to the database
-  sdb_path <- sampleDB:::.GetSampleDBPath()
+  message(paste("root directory:", root_path))
 
+  # 1) Get Renviron.site file
+  environ_path <-file.path(R.home(), "etc", "Renviron.site")
+
+  # 2) Create the path to the database
+  sdb_path <- file.path(root_path, "sampledb_database.sqlite")
 
   # 1) Script create / appends environ file
   # 2) Creates / grants access to files + folders
   # 3) Copy backup generator file
 
-  setup_sh <- system.file("extdata", "setup.sh", package = "sampleDB")
-  sdb_backup_gen <- system.file("extdata", "sampleDB_backup_generator.sh", package = "sampleDB")
+  setup_script <- system.file("extdata", ifelse(.is_windows(), "setup.bat", "setup.sh"), package = "sampleDB")
   sqlite_file <- system.file("extdata", "sampledb_database.sqlite", package = "sampleDB")
 
   # commands that need write access go in here
-  cmd <- paste("sudo -kS bash", setup_sh, sdb_path, sqlite_file, sdb_backup_gen)
+
+  if (!.is_windows()) {
+    cmd <- paste("sudo -kS bash", setup_script, sdb_path, sqlite_file, environ_path)
   system(cmd, input = password, intern = T)
 
   # retrieve IP address
@@ -44,6 +54,11 @@ SampleDB_Setup <- function(){
   ip <- as.list(
     strsplit(ip_all, " ")[[1]]
     )[[1]]
+
+  } else {
+    cmd <- paste("cmd /c", setup_script, sdb_path, sqlite_file, environ_path)
+    system(cmd)
+  }
 
   url <- paste0("http://", ip, ":3838/sampleDB/")
   message(paste("Your SampleDB app is now available live at", url))
@@ -54,3 +69,6 @@ SampleDB_Setup <- function(){
   #check that shiny server is installed
   #check that "/etc/R/Renviron.site" exists
 }
+
+.is_windows <- function() (tolower(.Platform$OS.type) == "windows")
+

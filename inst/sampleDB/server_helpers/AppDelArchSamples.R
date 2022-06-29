@@ -99,8 +99,8 @@ DelArchSamples <- function(session, input, database, output, inputs, outputs){
 
 .CheckDatabaseUpdate <- function(session, database) {
   getData <- reactivePoll(1000 * 10, session,
-    function() file.mtime(sampleDB:::.GetSampleDBPath()),
-    function(database) {
+    function() file.mtime(Sys.getenv('SDB_PATH')),
+    function() {
       list.data <- list(
           plate_name = sampleDB::CheckTable("matrix_plate")$plate_name,
           box_name = sampleDB::CheckTable("box")$box_name,
