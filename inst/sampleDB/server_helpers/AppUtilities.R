@@ -652,7 +652,6 @@ SetAddStudyRequirements <- function(input, database, ui_elements){
       input[[ui_elements$ui.input$AddStudyDescription]],
       input[[ui_elements$ui.input$AddStudyShortCode]],
       input[[ui_elements$ui.input$AddStudyLeadPerson]],
-      input[[ui_elements$ui.input$AddStudyIsLongitudinal]],
       sampleDB:::.CheckStudyTitleIsUnique(input = input, database = database,
                                           study_title = input[[ui_elements$ui.input$AddStudyTitle]]) == TRUE,
       sampleDB:::.CheckStudyShortCodeIsUnique(input = input, database = database,
