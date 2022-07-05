@@ -439,13 +439,13 @@ StudyChangesChecks <- function(input, database, output, ui_elements){
 }
 
 # Format Files
-FormatMicronixUploadData <- function(input, users_upload_file, ui_elements){
+FormatMicronixUploadData <- function(database, input, users_upload_file, ui_elements){
   
   #read in validated user provided micronix data file
   message("Formatting user provided file...")
   
   upload_file_type <- input[[ui_elements$ui.input$MicronixFileType]]
-  formatted_logistics_upload_file <- .FormatMicronixLogisticalData(upload_file_type, users_upload_file)
+  formatted_logistics_upload_file <- .FormatMicronixLogisticalDataUpload(database, upload_file_type, users_upload_file)
   formatted_logistics_and_metadata_file <- .FormatMicronixMetaData(users_upload_file = formatted_logistics_upload_file)
   return(formatted_logistics_and_metadata_file)
 }
@@ -458,38 +458,76 @@ FormatMicronixMoveData <- function(ui_elements, micronix_move_data, input){
   upload_file_type <- input[[ui_elements$ui.input$MicronixFileType]]
   formatted_move_file_list <- list()
   for(item in names(micronix_move_data)){
-    formatted_move_file <- .FormatMicronixLogisticalData(upload_file_type, micronix_move_data[[item]])
+    formatted_move_file <- .FormatMicronixLogisticalDataMove(upload_file_type, micronix_move_data[[item]])
     formatted_move_file_list[[item]] <- formatted_move_file
   }
   return(formatted_move_file_list)  
 }
 
-.FormatMicronixLogisticalData <- function(upload_file_type, users_upload_file){
-  
+.FormatMicronixLogisticalData_Traxcer <- function(users_upload_file) {
+  formatted_upload_file <- users_upload_file %>% 
+    setNames(.[2,]) %>% .[-c(1,2),] %>%
+    mutate(label = replace(`Tube ID`, nchar(`Tube ID`) != 10, NA),
+           well_position = paste0(substring(Position, 1, 1), substring(Position, 2))) %>%
+    tidyr::drop_na() %>%
+    select(-c("Position","Tube ID"))
+
+  return(formatted_upload_file)
+}
+
+.FormatMicronixLogisticalData_VisionMate <- function(users_upload_file) {
+  formatted_upload_file <- users_upload_file %>%
+    setNames(.[1,]) %>% .[-1,] %>%
+    mutate(label = replace(TubeCode, nchar(TubeCode) != 10, NA),
+           well_position = paste0(LocationRow, LocationColumn)) %>%
+    tidyr::drop_na() %>%
+    select(-c("TubeCode","LocationRow", "LocationColumn"))
+
+  return(formatted_upload_file)
+}
+
+.FormatMicronixLogisticalDataUpload <- function(database, upload_file_type, users_upload_file){
+  formatted_upload_file <- NULL
   if(upload_file_type == "traxcer"){
-    formatted_upload_file <- users_upload_file %>% 
-      setNames(.[2,]) %>% .[-c(1,2),] %>%
-      mutate(label = replace(`Tube ID`, nchar(`Tube ID`) != 10, NA),
-             well_position = paste0(substring(Position, 1, 1), substring(Position, 2))) %>%
-      tidyr::drop_na() %>%
-      select(-c("Position","Tube ID"))
+    formatted_upload_file <- .FormatMicronixLogisticalData_Traxcer(users_upload_file)
   }
   else if(upload_file_type == "visionmate"){
-    formatted_upload_file <- users_upload_file %>%
-      setNames(.[1,]) %>% .[-1,] %>%
-      mutate(label = replace(TubeCode, nchar(TubeCode) != 10, NA),
-             well_position = paste0(LocationRow, LocationColumn)) %>%
-      tidyr::drop_na() %>%
-      select(-c("TubeCode","LocationRow", "LocationColumn"))
+    formatted_upload_file <- .FormatMicronixLogisticalData_VisionMate(users_upload_file)
   }
-  else{
-    formatted_upload_file <- users_upload_file %>%
-      setNames(.[1,]) %>% .[-1,] %>%
-      mutate(label = replace(MicronixBarcode, nchar(MicronixBarcode) != 10, NA),
-             well_position = paste0(Row, Column)) %>%
-      tidyr::drop_na() 
+  else{ # na
+      #removing row if micronix barcode is not string len 10
+      formatted_upload_file <- users_upload_file %>%
+        setNames(.[1,]) %>% .[-1,] %>%
+        mutate(label = replace(MicronixBarcode, nchar(MicronixBarcode) != 10, NA),
+               well_position = paste0(Row, Column))
+        
+        study <- filter(sampleDB::CheckTable(database = database, "study"), formatted_upload_file$StudyCode == short_code)
+        if (0 == study$is_longitudinal) {
+          formatted_upload_file <- tidyr::drop_na(formatted_upload_file, -CollectionDate) 
+        } else {
+          formatted_upload_file <- tidyr::drop_na(formatted_upload_file) 
+        }
+    }
+  
+  return(formatted_upload_file)
+}
+
+.FormatMicronixLogisticalDataMove <- function(upload_file_type, users_upload_file){
+  formatted_upload_file <- NULL
+  if(upload_file_type == "traxcer"){
+    formatted_upload_file <- .FormatMicronixLogisticalData_Traxcer(users_upload_file)
   }
-  #removing row if micronix barcode is not string len 10
+  else if(upload_file_type == "visionmate"){
+    formatted_upload_file <- .FormatMicronixLogisticalData_VisionMate(users_upload_file)
+  }
+  else{ # na
+      #removing row if micronix barcode is not string len 10
+      formatted_upload_file <- users_upload_file %>%
+        setNames(.[1,]) %>% .[-1,] %>%
+        mutate(label = replace(MicronixBarcode, nchar(MicronixBarcode) != 10, NA),
+               well_position = paste0(Row, Column)) %>%
+        tidyr::drop_na()
+    }
   
   return(formatted_upload_file)
 }
