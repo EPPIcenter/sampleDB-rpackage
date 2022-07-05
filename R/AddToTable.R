@@ -4,13 +4,33 @@
 #' @import purrr
 #' @export
 
+.insert_row <- function(database, table_name, column_names, filler, info_list)
+{
+  conn <- NULL
+  # start the transaction
+  tryCatch({
+    conn <- RSQLite::dbConnect(RSQLite::SQLite(), database)
+    RSQLite::dbBegin(conn)
+    rs <- RSQLite::dbSendQuery(conn, paste0('INSERT INTO ', table_name, ' (', column_names, ') VALUES (', filler, ');'), info_list)
+    # message(sprintf("Inserted %d rows.", RSQLite::dbGetRowsAffected(rs)))
+    RSQLite::dbClearResult(rs)
+    RSQLite::dbCommit(conn)
+  },
+  error=function(e) {
+    message(e)
+    RSQLite::dbRollback(conn)
+  })
+
+  #close connection
+  tryCatch(
+    RSQLite::dbDisconnect(conn),
+    warning=function(w){
+      message(w)
+    })
+}
+
 #table options
 AddToTable <- function(database, table_name, info_list, conn = NULL){
-
-  if(is.null(conn)){
-    #OPEN THE DATABASE CONNECTION
-    conn <-  RSQLite::dbConnect(RSQLite::SQLite(), database)
-  }
 
   #PREVENT EMPTY ADDITIONS TO DATABASE -- REMOVE NAs FROM THIS EVALUATION
   for(i in discard(info_list, is.na)){
@@ -26,23 +46,5 @@ AddToTable <- function(database, table_name, info_list, conn = NULL){
   #RENAME info_list (required by dbSendQuery)
   names(info_list) <- NULL
 
-  tryCatch(
-
-      #add to database
-      RSQLite::dbSendStatement(conn,
-                               paste0('INSERT INTO ', table_name, ' (', column_names, ') VALUES (', filler, ');'),
-                               info_list),
-
-      error=function(e){
-        stop(e)
-      }
-  )
-
-  if(is.null(conn)){
-    #close connection
-    tryCatch(
-      RSQLite::dbDisconnect(conn),
-      warning=function(w){})
-  }
-  
+  .insert_row(database, table_name, column_names, filler, info_list)
 }
