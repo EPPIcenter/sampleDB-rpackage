@@ -54,27 +54,17 @@ MoveWetlabSamples <- function(session, input, database, output){
   observeEvent(
     input$MoveAction,
     ({
-      
-      # set move reqs (reqs are enforced ui checks)
-      SetMoveRequirements(input, sample_type = "micronix")
-      # fire move trigger
-      updateTextInput(session = session, "ActionMoveMatrix", value = "Go"); Sys.sleep(.75)
-      # print "Working..." user message
-      output$MoveReturnMessage1 <- renderText({"Working..."})
-    }))
-  
-  # move samples - the pkg move fun contains enforced checks
-  observe({
-    if(input$ActionMoveMatrix == "Go"){
-      return_message <- sampleDB::MoveSamples(sample_type = input$MoveSampleType,
-                            move_data = reactive_vals$formatted_move_file_list)
-      
-      # print user message
-      output$MoveReturnMessage2 <- renderText({return_message})
-      # reset trigger
-      updateTextInput(session = session, "ActionMoveMatrix", value = "")
-    }
-  })
+      output$MoveReturnMessage2 <- renderText({
+
+        # set move reqs (reqs are enforced ui checks)
+        SetMoveRequirements(input, sample_type = "micronix")
+
+        sampleDB::MoveSamples(sample_type = input$MoveSampleType,
+                              move_data = reactive_vals$formatted_move_file_list)
+        
+      })
+    })
+  )
   
   # allow user to reset ui
   MoveReset(input, output)

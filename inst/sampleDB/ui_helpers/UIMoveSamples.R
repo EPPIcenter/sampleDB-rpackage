@@ -24,7 +24,6 @@ UIMoveSamples <- function(){
       textOutput("WarningMoveBarcodesExist"),
       actionButton("CreateEmptyMicronixPlate", "Create Empty Micronix Plate"),
       verbatimTextOutput("CreateEmptyMicronixPlateMessage"),
-      verbatimTextOutput("MoveReturnMessage1"),
       verbatimTextOutput("MoveReturnMessage2"),
     ),
     mainPanel(

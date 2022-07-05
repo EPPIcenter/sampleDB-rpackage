@@ -33,16 +33,25 @@ MicronixUpload <- function(session, output, input, database){
       
       if(isTRUE(UploadFileLogisticalColnameCheck) && isTRUE(UploadFileMetadataColnameCheck)){
         #reformat upload file
-        reactive_vals$formatted_upload_file <- FormatMicronixUploadData(database, input = input, users_upload_file = users_upload_file, ui_elements = GetUIUploadElements("micronix"))
-
+        formatted_file <- FormatMicronixUploadData(database, input = input, users_upload_file = users_upload_file, ui_elements = GetUIUploadElements("micronix"))
         #after formatting takes place, check upload data content
-        if(!is.null(reactive_vals$formatted_upload_file)){
-          CheckFormattedUploadFile(output = output, database = database, formatted_upload_file = reactive_vals$formatted_upload_file, ui_elements = GetUIUploadElements("micronix")) 
+        if(!is.null(formatted_file)){
+          CheckFormattedUploadFile(output = output, database = database, formatted_upload_file = formatted_file, ui_elements = GetUIUploadElements("micronix")) 
+          
+          # finally, remove any missing values (sometimes not collectiondate) 
+          study <- filter(sampleDB::CheckTable(database = database, "study"), short_code %in% formatted_file$study_short_code)
+          if (0 < nrow(study) && 0 == study$is_longitudinal) {
+            formatted_file <- tidyr::drop_na(formatted_file, -collection_date) 
+          } else {
+            formatted_file <- tidyr::drop_na(formatted_file) 
+          }
         } 
       }
+
+      reactive_vals$formatted_upload_file <- formatted_file
     }
   })
-  
+
   #3. check plate info
   observe({
     if(input[["UploadMicronixPlateID"]] != ""){
@@ -53,30 +62,20 @@ MicronixUpload <- function(session, output, input, database){
   observeEvent(
     input$UploadMicronixActionButton,
     ({
-      # set upload reqs (reqs are enforced ui checks)
-      SetUploadRequirements(input = input, database = database, sample_type = "micronix")
-      # fire upload trigger
-      updateTextInput(session = session, "ActionUploadMatrix", value = "Go"); Sys.sleep(.75)
-      # print "Working..." user message
-      output$UploadMicronixReturnMessage1 <- renderText({"Working..."})
-    }))
-  
-  # upload samples - the pkg upload fun contains enforced checks
-  observe({
-    if(input$ActionUploadMatrix == "Go"){
-      return_message <- sampleDB::UploadSamples(sample_type = "micronix", 
+      output$UploadMicronixReturnMessage2 <- renderText({
+        # set upload reqs (reqs are enforced ui checks)
+        SetUploadRequirements(input = input, database = database, sample_type = "micronix")
+        # upload samples - the pkg upload fun contains enforced checks
+        sampleDB::UploadSamples(sample_type = "micronix", 
                                                 upload_data = reactive_vals$formatted_upload_file, 
                                                 container_name = input$"UploadMicronixPlateID", 
                                                 container_barcode = input$"UploadMicronixPlateBarcode", 
                                                 freezer_address = list(location_name = input$"UploadMicronixLocation", 
                                                                        level_I = input$"UploadLocationMicronixLevelI", 
                                                                        level_II = input$"UploadLocationMicronixLevelII"))
-      # print user message
-      output$UploadMicronixReturnMessage2 <- renderText({return_message})
-      # reset trigger
-      updateTextInput(session = session, "ActionUploadMatrix", value = "")
-    }
-  })
+        })
+    })
+  )
   
   # allow user to reset ui
   UploadReset(input = input, output = output, sample_type = "micronix")

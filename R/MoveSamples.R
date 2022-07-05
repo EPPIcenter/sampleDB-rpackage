@@ -234,16 +234,14 @@ MoveSamples <- function(sample_type, move_data){
     colname.container_id <- "plate_id"
   }
   
-  tbl.barcodes <- sampleDB::CheckTable(database = database, container_type) %>%
+  tbl.plate_names <- sampleDB::CheckTable(database = database, container_type) %>%
     summarise(
-      barcode_matches := names(move_data_list) %in% get(colname.container_name)
+      plate_name_matches := names(move_data_list) %in% get(colname.container_name)
     )
 
-  if (!all(tbl.barcodes$barcode_matches)) {
-    message("ERROR: Missing barcodes in sampledb:")
-    message(cat(names(move_data_list[ ! tbl.barcodes$barcode_matches ]), sep=' '))
-    return(list())
-  }
+  validate(need(
+      all(tbl.plate_names$plate_name_matches), 
+      message = paste("*** ERROR: Plate Name not found in database:", names(move_data_list[ ! tbl.plate_names$plate_name_matches ]), sep=' '))) 
 
   sample_data <- list()
   for(container.name in names(move_data_list)){
@@ -275,16 +273,25 @@ MoveSamples <- function(sample_type, move_data){
 .MoveChecks <- function(sample_type, input, database, move_data){
   
   # check storage type
-  stopifnot("Error: Storage type is not valid." = sampleDB:::.CheckSampleStorageType(sample_type = sample_type))
+  validate(need(
+    sampleDB:::.CheckSampleStorageType(sample_type = sample_type), 
+    message = paste("*** ERROR: Storage type", sample_type, "is not valid.")))
   
   # check logistical colnames
   for(item in names(move_data)){
     move_item <- move_data[[item]]
-    stopifnot("Error: Malformed colnames. Valid colnames are:" = sampleDB:::.CheckFormattedLogisticalColnames(formatted_upload_file = move_item))
+    validate(need(
+        sampleDB:::.CheckFormattedLogisticalColnames(formatted_upload_file = move_item),
+        message = paste("*** ERROR: Malformed colnames.")
+      ))
   }
   
   # make sure all barcodes are in the db
-  stopifnot("Error: All barcodes are not in the database" = sampleDB:::.CheckBarcodesInDatabase(database = database, formatted_move_file_list = move_data)$out1)
+
+  check_barcodes = sampleDB:::.CheckBarcodesInDatabase(database = database, formatted_move_file_list = move_data)
+  validate(need(
+    check_barcodes$out1,
+    message = paste("*** ERROR: Barcode not in database:", check_barcodes$out2)))
   
 }
 

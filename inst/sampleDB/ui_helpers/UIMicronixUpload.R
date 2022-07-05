@@ -20,6 +20,7 @@ UIMicronixUpload <- function(){
       textOutput("WarningMicronixUploadMetadataColnames"),
       textOutput("WarningUploadMicronixSpecimenTypes"),
       textOutput("WarningMicronixUploadDateFormat"),
+      textOutput("WarningUploadInvalidData"),
       textOutput("WarningUploadMicronixStudyShortCodes"),
       textOutput("WarningMicronixSpecimenExists"),
       #insert plate infor
