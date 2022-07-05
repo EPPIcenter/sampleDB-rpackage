@@ -198,7 +198,7 @@ UpdateReferences <- function(reference, operation, identifier = NULL, update = N
                                             lead_person = update$study_lead_person))
       
       return_message <- paste0("Added New Study:\n",
-                               "\tTitle: \"", update$NewStudyTitle, "\"\n",
+                               "\tTitle: \"", update$study_title, "\"\n",
                                "\tDescription: \"", update$study_description, "\"\n",
                                "\tShort Code: \"", update$study_short_code, "\"\n",
                                "\tLead Person: \"", update$study_lead_person, "\"\n",
