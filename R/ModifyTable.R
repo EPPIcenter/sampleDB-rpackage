@@ -2,11 +2,32 @@
 #' @import RSQLite
 #' @export
 
+.update_row <- function(database, table_name, update_str, id)
+{
+  conn <- NULL
+  # start the transaction
+  tryCatch({
+    conn <- RSQLite::dbConnect(RSQLite::SQLite(), database)
+    RSQLite::dbBegin(conn)
+    rs <- RSQLite::dbSendQuery(conn, paste0("UPDATE ", table_name," SET ", update_str," WHERE id = ", id, ";"))
+    # message(sprintf("Updated %d rows.", RSQLite::dbGetRowsAffected(rs)))
+    RSQLite::dbClearResult(rs)
+    RSQLite::dbCommit(conn)
+  },
+  error=function(e) { 
+    message(e)
+    RSQLite::dbRollback(conn)
+  })
+
+  #close connection
+  tryCatch(
+    RSQLite::dbDisconnect(conn),
+    warning=function(w){
+      message(w)
+    })
+}
+
 ModifyTable <- function(database, table_name, info_list, id, conn = NULL){
-  if(is.null(conn)){
-    #OPEN THE DATABASE CONNECTION
-    conn <-  RSQLite::dbConnect(RSQLite::SQLite(), database)
-  }
 
   #PREVENT EMPTY ADDITIONS TO DATABASE -- REMOVE NAs FROM THIS EVALUATION
   for(i in discard(info_list, is.na)){
@@ -25,18 +46,6 @@ ModifyTable <- function(database, table_name, info_list, id, conn = NULL){
   }
   update_str <- update_str %>% paste0(., collapse = "")
 
-  tryCatch(
-    RSQLite::dbSendQuery(conn,
-                         paste0("UPDATE ", table_name," SET ", update_str," WHERE id = ", id, ";")),
-    error=function(e){
-      stop(e)
-    }
-  )
+  .update_row(database, table_name, update_str, id)
 
-  if(is.null(conn)){
-    #close connection
-    tryCatch(
-      RSQLite::dbDisconnect(conn),
-      warning=function(w){})
-  }
 }
