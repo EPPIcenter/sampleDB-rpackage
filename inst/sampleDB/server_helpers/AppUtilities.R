@@ -19,6 +19,7 @@ GetUIUploadElements <- function(sample_type, msg = NULL){
                      WarningLogisticalColnames = "WarningMicronixUploadLogisticalColnames",
                      WarningMetadataColnames = "WarningMicronixUploadMetadataColnames",
                      WarningUploadSpecimenTypes = "WarningUploadMicronixSpecimenTypes",
+                     WarningUploadInvalidData = "WarningUploadInvalidData",
                      WarningUploadDateFormat = "WarningMicronixUploadDateFormat",
                      WarningUploadStudyShortCodes = "WarningUploadMicronixStudyShortCodes",
                      WarningSpecimenExists = "WarningMicronixSpecimenExists",
@@ -291,7 +292,7 @@ CheckMetadataColnamesOfUserProvidedMicronixFile <- function(input, output, users
 CheckFormattedUploadFile <- function(output, database, formatted_upload_file, ui_elements){
   
   message("Checking formatted data in file...")
-  
+
   # check valid specimen type
   output[[ui_elements$ui.output$WarningUploadSpecimenTypes]] <- renderText({
     out <- sampleDB:::.CheckUploadSpecimenTypes(database = database, formatted_upload_file = formatted_upload_file) 
@@ -321,6 +322,22 @@ CheckFormattedUploadFile <- function(output, database, formatted_upload_file, ui
     out <- sampleDB:::.CheckBarcodeArentRepeated(database = database, formatted_upload_file = formatted_upload_file)
     validate(need(out$out1, paste("ERROR:\nUnique Barcode Constraint", out$out2)))
   })
+
+  list.validate.barcode.length <- !is.na(formatted_upload_file$label)
+  list.validate.barcode.na <- !is.na(formatted_upload_file$label)
+
+  # study
+  list.validate.study.na <- !is.na(formatted_upload_file$study_short_code)
+  out <- c(formatted_upload_file$MicronixBarcode[ ! list.validate.barcode.length ],
+    formatted_upload_file$MicronixBarcode[ ! list.validate.barcode.na ],
+    formatted_upload_file$study_short_code[ ! list.validate.study.na ])
+
+  output[[ui_elements$ui.output$WarningUploadInvalidData]] <- renderText({
+    validate(need(
+              all(list.validate.barcode.length) && all(list.validate.barcode.na) && all(list.validate.study.na),
+              paste("*** ERROR: Invalid entry in upload:", out)
+            ))
+    })
 }
 
 CheckFormattedMoveFile <- function(output, database, sample_type, formatted_move_file_list){
@@ -443,7 +460,7 @@ FormatMicronixUploadData <- function(database, input, users_upload_file, ui_elem
   
   #read in validated user provided micronix data file
   message("Formatting user provided file...")
-  
+
   upload_file_type <- input[[ui_elements$ui.input$MicronixFileType]]
   formatted_logistics_upload_file <- .FormatMicronixLogisticalDataUpload(database, upload_file_type, users_upload_file)
   formatted_logistics_and_metadata_file <- .FormatMicronixMetaData(users_upload_file = formatted_logistics_upload_file)
@@ -495,18 +512,10 @@ FormatMicronixMoveData <- function(ui_elements, micronix_move_data, input){
     formatted_upload_file <- .FormatMicronixLogisticalData_VisionMate(users_upload_file)
   }
   else{ # na
-      #removing row if micronix barcode is not string len 10
       formatted_upload_file <- users_upload_file %>%
         setNames(.[1,]) %>% .[-1,] %>%
         mutate(label = replace(MicronixBarcode, nchar(MicronixBarcode) != 10, NA),
-               well_position = paste0(Row, Column))
-        
-        study <- filter(sampleDB::CheckTable(database = database, "study"), formatted_upload_file$StudyCode == short_code)
-        if (0 == study$is_longitudinal) {
-          formatted_upload_file <- tidyr::drop_na(formatted_upload_file, -CollectionDate) 
-        } else {
-          formatted_upload_file <- tidyr::drop_na(formatted_upload_file) 
-        }
+          well_position = paste0(Row, Column))
     }
   
   return(formatted_upload_file)
@@ -589,8 +598,7 @@ DataTableRenderOptions <- function(){
 }
 
 #requirements
-SetUploadRequirements <- function(input, database, sample_type){
-  
+SetUploadRequirements <- function(input, database, sample_type){  
   #get ui elements
   ui_elements <- GetUIUploadElements(sample_type)
   
@@ -714,7 +722,6 @@ MoveReset <- function(input, output){
     input$ClearMoveForm,
     ({
       shinyjs::reset("MoveDataSet")
-      output$MoveReturnMessage1 <- renderText({""})
       output$MoveReturnMessage2 <- renderText({""})}))
 }
 
