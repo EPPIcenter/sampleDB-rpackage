@@ -553,11 +553,15 @@ FormatMicronixMoveData <- function(ui_elements, micronix_move_data, input){
     rename(specimen_type = SpecimenType,
            study_short_code = StudyCode,
            study_subject_id = Participant)
-  
+
   if("CollectionDate" %in% names(formatted_upload_file)){
     formatted_upload_file <- formatted_upload_file %>% 
-      mutate(CollectionDate = na_if(CollectionDate, "")) %>% 
       rename(collection_date = CollectionDate)
+  }
+
+  if ("Comment" %in% names(formatted_upload_file)){
+    formatted_upload_file <- formatted_upload_file %>% 
+      rename(comment = Comment)
   }
   
   return(formatted_upload_file)

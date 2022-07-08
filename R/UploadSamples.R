@@ -68,6 +68,16 @@ UploadSamples <- function(sample_type, upload_data, container_name, container_ba
   if(!"collection_date" %in% names(upload_data)){
     upload_data$collection_date <- NA
   }
+  
+  # if there is no comment, for standardization create a collection date column of NAs
+  if(!"comment" %in% names(upload_data)){
+    upload_data$comment <- NA
+  }
+
+
+  # remove empty strings, replace with NA
+  upload_data <- upload_data %>% 
+      mutate_if(is.character, list(~na_if(.,"")))
 
   # perform upload checks
   .UploadChecks(sample_type = sample_type, input = input, database = database,
@@ -266,7 +276,8 @@ UploadSamples <- function(sample_type, upload_data, container_name, container_ba
                               type = sample_type,
                               specimen_id = eval.specimen_id,
                               status_id = eval.status_id, # In Use
-                              state_id = eval.state_id),
+                              state_id = eval.state_id,
+                              comment = eval.comment),
                          conn = conn) %>% suppressWarnings()
 
     #5. get just item's storage container id and use it as the primary key in the matrix tube table
