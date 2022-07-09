@@ -1,6 +1,7 @@
 
 message('Loading global environment...')
 
+# Session independent declarations go here
 Backup_SampleDB <- function() {
     observe({
       # Re-execute this reactive expression every 24 hrs
@@ -14,4 +15,25 @@ Backup_SampleDB <- function() {
     })
 }
 
+dbUpdateEvent <- reactivePoll(1000 * 10, NULL,
+    function() file.mtime(sampleDB:::.GetSampleDBPath()),
+    function(database) {
+      list.data <- list(
+          plate_name = sampleDB::CheckTable("matrix_plate")$plate_name,
+          box_name = sampleDB::CheckTable("box")$box_name,
+          rdt_bag_name = sampleDB::CheckTable("bag")$bag_name,
+          paper_bag_name = sampleDB::CheckTable("bag")$bag_name,
+          study = sampleDB::CheckTable("study")$short_code,
+          specimen_type = sampleDB::CheckTable("specimen_type")$label,
+          location = sampleDB::CheckTable("location")$location_name
+        )
+
+      return(list.data)
+    }
+  )
+
+# Call on application launch without being
+# tied to a session
 Backup_SampleDB()
+
+

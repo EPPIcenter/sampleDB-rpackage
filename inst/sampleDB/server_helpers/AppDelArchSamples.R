@@ -74,9 +74,18 @@ DelArchSamples <- function(session, input, database, output, inputs, outputs){
     delarch_val$operation = "delete"
     showModal(dataModal(sample_number = delarch_val$data, operation = delarch_val$operation, data = val$data))
   })
-  
-  .CheckDatabaseUpdate(session, database)
-  
+
+  observeEvent(dbUpdateEvent(), {
+    updateSelectInput(session, "DelArchSearchByPlate", label = "Plate Name", choices = c("", dbUpdateEvent()$plate_name))
+    updateSelectInput(session, "DelArchSearchByBox", label = "Box Name", choices = c("", dbUpdateEvent()$box_name))
+    updateSelectInput(session, "DelArchSearchByRDTBag", label = "Bag Name", choices = c("", dbUpdateEvent()$rdt_bag_name))
+    updateSelectInput(session, "DelArchSearchByPaperBag", label = "Bag Name", choices = c("", dbUpdateEvent()$paper_bag_name))
+
+    updateSelectizeInput(session, "DelArchSearchByStudy", "Study", choices = c("", dbUpdateEvent()$study))
+    updateSelectizeInput(session, "DelArchSearchBySpecimenType", "Specimen Type", choices = c("", dbUpdateEvent()$specimen_type))
+    updateSelectizeInput(session, "DelArchSearchByLocation", "Storage Location", choices = c("", dbUpdateEvent()$location))
+  })
+    
   # popup window
   dataModal <- function(failed = FALSE, sample_number, operation, data) {
     modalDialog(
@@ -95,34 +104,4 @@ DelArchSamples <- function(session, input, database, output, inputs, outputs){
 .SearchReset <- function(input){
   observeEvent(input$ClearSearchBarcodes, ({shinyjs::reset("SearchByBarcode")}))
   observeEvent(input$ClearSearchUIDFile, ({shinyjs::reset("SearchBySubjectUIDFile")})) 
-}
-
-.CheckDatabaseUpdate <- function(session, database) {
-  getData <- reactivePoll(1000 * 10, session,
-    function() file.mtime(sampleDB:::.GetSampleDBPath()),
-    function(database) {
-      list.data <- list(
-          plate_name = sampleDB::CheckTable("matrix_plate")$plate_name,
-          box_name = sampleDB::CheckTable("box")$box_name,
-          rdt_bag_name = sampleDB::CheckTable("bag")$bag_name,
-          paper_bag_name = sampleDB::CheckTable("bag")$bag_name,
-          study = sampleDB::CheckTable("study")$short_code,
-          specimen_type = sampleDB::CheckTable("specimen_type")$label,
-          location = sampleDB::CheckTable("location")$location_name
-        )
-
-      return(list.data)
-    }
-  )
-
-  observeEvent(getData(), {
-      updateSelectInput(session, "DelArchSearchByPlate", label = "Plate Name", choices = c("", getData()$plate_name))
-      updateSelectInput(session, "DelArchSearchByBox", label = "Box Name", choices = c("", getData()$box_name))
-      updateSelectInput(session, "DelArchSearchByRDTBag", label = "Bag Name", choices = c("", getData()$rdt_bag_name))
-      updateSelectInput(session, "DelArchSearchByPaperBag", label = "Bag Name", choices = c("", getData()$paper_bag_name))
-
-      updateSelectizeInput(session, "DelArchSearchByStudy", "Study", choices = c("", getData()$study))
-      updateSelectizeInput(session, "DelArchSearchBySpecimenType", "Specimen Type", choices = c("", getData()$specimen_type))
-      updateSelectizeInput(session, "DelArchSearchByLocation", "Storage Location", choices = c("", getData()$location))
-    })
 }
