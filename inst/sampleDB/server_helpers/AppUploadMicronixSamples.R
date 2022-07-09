@@ -12,44 +12,46 @@ MicronixUpload <- function(session, output, input, database){
 
   # 2. get path to user provided file, if path exists perform checks and reformat file
   observe({
-    
-    users_upload_file_path <- input[["UploadMicronixDataSet"]]$datapath
-    if(!is.null(users_upload_file_path)){
-      
-      users_upload_file <- read.csv(users_upload_file_path, header = F) %>% suppressWarnings() # will throw a pointless corrupt last line warning if file comes from excel
-      
-      print(paste0("MicronixUpload: ", users_upload_file))
-      #There have been bugs caused by empty colums
-      #Find and remove columns on upload
-      #Alternatively, could reject files that have empty columns but this 
-      #probably is okay on upload
 
-      empty_columns <- colSums(is.na(users_upload_file) | users_upload_file == "") == nrow(users_upload_file)
-      users_upload_file <- users_upload_file[, !empty_columns]
+      users_upload_file_path <- input[["UploadMicronixDataSet"]]$datapath
+      if(!is.null(users_upload_file_path)){
+        
+        users_upload_file <- read.csv(users_upload_file_path, header = F) %>% suppressWarnings() # will throw a pointless corrupt last line warning if file comes from excel
+        
+        print(paste0("MicronixUpload: ", users_upload_file))
+        #There have been bugs caused by empty colums
+        #Find and remove columns on upload
+        #Alternatively, could reject files that have empty columns but this 
+        #probably is okay on upload
 
-      #check colnames of user provided file
-      UploadFileLogisticalColnameCheck <- CheckLogisticalColnamesOfUserProvidedMicronixFile(input = input, output = output, users_upload_file = users_upload_file, ui_elements = GetUIUploadElements("micronix"))
-      UploadFileMetadataColnameCheck <- CheckMetadataColnamesOfUserProvidedMicronixFile(input = input, output = output, users_upload_file = users_upload_file, ui_elements = GetUIUploadElements("micronix"))
-      
-      if(isTRUE(UploadFileLogisticalColnameCheck) && isTRUE(UploadFileMetadataColnameCheck)){
+        empty_columns <- colSums(is.na(users_upload_file) | users_upload_file == "") == nrow(users_upload_file)
+        users_upload_file <- users_upload_file[, !empty_columns]
+        users_upload_file <- users_upload_file[!apply(users_upload_file, 1, function(row) all(row == "")),] 
+
+        #check colnames of user provided file
+        UploadFileLogisticalColnameCheck <- CheckLogisticalColnamesOfUserProvidedMicronixFile(input = input, output = output, users_upload_file = users_upload_file, ui_elements = GetUIUploadElements("micronix"))
+        UploadFileMetadataColnameCheck <- CheckMetadataColnamesOfUserProvidedMicronixFile(input = input, output = output, users_upload_file = users_upload_file, ui_elements = GetUIUploadElements("micronix"))
+        
+        validate(need(isTRUE(UploadFileLogisticalColnameCheck), "*** ERROR: Logistical column name check failed."))
+        validate(need(isTRUE(UploadFileMetadataColnameCheck), "*** ERROR: Metadata column name check failed."))
+
         #reformat upload file
         formatted_file <- FormatMicronixUploadData(database, input = input, users_upload_file = users_upload_file, ui_elements = GetUIUploadElements("micronix"))
         #after formatting takes place, check upload data content
-        if(!is.null(formatted_file)){
-          CheckFormattedUploadFile(output = output, database = database, formatted_upload_file = formatted_file, ui_elements = GetUIUploadElements("micronix")) 
-          
-          # finally, remove any missing values (sometimes not collectiondate) 
-          study <- filter(sampleDB::CheckTable(database = database, "study"), short_code %in% formatted_file$study_short_code)
-          if (0 < nrow(study) && 0 == study$is_longitudinal) {
-            formatted_file <- tidyr::drop_na(formatted_file, -collection_date) 
-          } else {
-            formatted_file <- tidyr::drop_na(formatted_file) 
-          }
-        } 
-      }
+        validate(need(!is.null(formatted_file), "*** ERROR: Formatting micronix upload data."))
 
-      reactive_vals$formatted_upload_file <- formatted_file
-    }
+        CheckFormattedUploadFile(output = output, database = database, formatted_upload_file = formatted_file, ui_elements = GetUIUploadElements("micronix")) 
+        
+        # finally, remove any missing values (sometimes not collectiondate) 
+        study <- filter(sampleDB::CheckTable(database = database, "study"), short_code %in% formatted_file$study_short_code)
+        if (0 < nrow(study) && 0 == study$is_longitudinal) {
+          formatted_file <- tidyr::drop_na(formatted_file, -collection_date) 
+        } else {
+          formatted_file <- tidyr::drop_na(formatted_file) 
+        }
+
+        reactive_vals$formatted_upload_file <- formatted_file
+      }
   })
 
   #3. check plate info
