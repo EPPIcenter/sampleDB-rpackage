@@ -712,6 +712,7 @@ UploadReset <- function(input, output, sample_type){
       shinyjs::reset(ui_elements$ui.input$UploadFreezerName)
       shinyjs::reset(ui_elements$ui.input$UploadFreezerNameLevelI)
       shinyjs::reset(ui_elements$ui.input$UploadFreezerNameLevelII)
+      output[[ui_elements$ui.output$WarningUploadSampleID]] <- renderText({""})
       output[[ui_elements$ui.input$UploadReturnMessage1]] <- renderText({""})
       output[[ui_elements$ui.input$UploadReturnMessage2]] <- renderText({""})
     }))  
