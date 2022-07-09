@@ -9,31 +9,29 @@ DelArchSamples <- function(session, input, database, output, inputs, outputs){
   list.search_results <- NULL
   
   #create empty value to store data for delarch
-  val <- reactiveValues(data = NULL)
+  values <- reactiveValues(data = NULL, selected = NULL, operation = NULL)
   
   observe({
-    
     #search
     list.search_results <- SearchFunction(input, output, ui_elements)
-    
-    if(!is.null(list.search_results)){
-      storage_container_ids <- list.search_results$id.wetlab_samples
-      search_results <- list.search_results$results %>% 
-        mutate(`Sample ID` = storage_container_ids) %>% 
-        relocate(`Sample ID`) 
-      val$data <- search_results
+    if (!is.null(list.search_results)) {
+      search_results <- list.search_results$results
+      storage_container_ids <- list.search_results$id.wetlab_samples 
+      values$data <- search_results %>%
+        mutate(`Sample ID` = storage_container_ids) %>%
+        relocate(`Sample ID`)
+    } else {
+      values$data <- tibble(a = c(1)) %>% filter(a == 2)
     }
-    
-    # print search results
-    output[[ui_elements$ui.output$SearchResultsTable]] <- DT::renderDataTable({
-        if(!is.null(list.search_results)){
-          search_results
-        }else{
-          tibble(a = c(1)) %>% filter(a == 2)
-        }
-        }, options = DataTableRenderOptions(), rownames = FALSE)
   })
-  
+
+  # print search results
+  output[[ui_elements$ui.output$SearchResultsTable]] <- DT::renderDataTable({
+    values$data
+  }, options = DataTableRenderOptions(), rownames = FALSE)
+
+  values$selected <- reactive({ values$data[ input$DelArchSearchResultsTable_rows_selected, ] })
+
   # smart dropdown
   SmartFreezerDropdownFilter(database = database, session = session,
                              input = input,
@@ -49,30 +47,26 @@ DelArchSamples <- function(session, input, database, output, inputs, outputs){
   
   # handle archive and deletions
   # - archive item
-  delarch_val <- reactiveValues(data = NULL, operation = NULL)
   
   observeEvent(input[[ui_elements$ui.input$ArchiveAction]], {
     output[[ui_elements$ui.output$DelArchMessage]] <- NULL
-    delarch_val$data <- as.numeric(input[[ui_elements$ui.input$DelArchID]])
-    delarch_val$operation = "archive"
-    showModal(dataModal(sample_number = delarch_val$data, operation = delarch_val$operation, data = val$data))
+    values$operation <- "archive"
+    showModal(dataModal(operation = values$operation, data = values$selected()))
   })
   
   observeEvent(input[[ui_elements$ui.input$DelArchVerification]], {
-    return_message <- sampleDB::ArchiveAndDeleteSamples(operation = delarch_val$operation,
-                                                        sample_id = delarch_val$data,
+    return_message <- sampleDB::ArchiveAndDeleteSamples(operation = values$operation,
+                                                        data = values$selected(),
                                                         verification = F)
     removeModal()
-    shinyjs::reset("DelArchID")
     output[[ui_elements$ui.output$DelArchMessage]] <- renderPrint(return_message)
   })
   
   # - delete item
   observeEvent(input[[ui_elements$ui.input$DeleteAction]], {
     output[[ui_elements$ui.output$DelArchMessage]] <- NULL
-    delarch_val$data <- as.numeric(input[[ui_elements$ui.input$DelArchID]])
-    delarch_val$operation = "delete"
-    showModal(dataModal(sample_number = delarch_val$data, operation = delarch_val$operation, data = val$data))
+    values$operation <- "delete"
+    showModal(dataModal(operation = values$operation, data = values$selected()))
   })
 
   observeEvent(dbUpdateEvent(), {
@@ -87,11 +81,11 @@ DelArchSamples <- function(session, input, database, output, inputs, outputs){
   })
     
   # popup window
-  dataModal <- function(failed = FALSE, sample_number, operation, data) {
+  dataModal <- function(failed = FALSE, operation, data) {
     modalDialog(
       div(tags$b(HTML(paste0("<h3>Are you sure you would like to <b>", toupper(operation), "</b> the following sample?</h3>")), style = "color: #ce2029;")),
       hr(),
-      DT::renderDataTable(filter(data, `Sample ID` == sample_number), 
+      DT::renderDataTable(data, 
                           options = list(scrollX = T, ordering=F, paging = F, searching = F, info = FALSE), rownames = F),
       footer = tagList(
         actionButton("DelArchVerification", "Yes"),

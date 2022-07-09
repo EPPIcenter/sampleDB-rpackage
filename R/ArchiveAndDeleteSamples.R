@@ -29,8 +29,8 @@
 #'
 
 
-ArchiveAndDeleteSamples <- function(operation, sample_id, verification = TRUE){
-
+ArchiveAndDeleteSamples <- function(operation, data, verification = TRUE){
+  
   database <- sampleDB:::.GetSampleDBPath()
   conn <-  RSQLite::dbConnect(RSQLite::SQLite(), database)
   RSQLite::dbBegin(conn)
@@ -39,9 +39,9 @@ ArchiveAndDeleteSamples <- function(operation, sample_id, verification = TRUE){
 
   # GET DATABASE TABLES
   database.tables <- .GetDatabaseTables(database)
-
-  stopifnot("Not all Sample ID(s) are not present in the database" = all(sample_id %in% database.tables$table.storage_container$id))
-
+  
+  stopifnot("Not all Sample ID(s) are not present in the database" = all(data$`Sample ID` %in% database.tables$table.storage_container$id))
+  
   if(operation == "archive"){
 
     # VERIFY ARCHIVE
@@ -53,8 +53,8 @@ ArchiveAndDeleteSamples <- function(operation, sample_id, verification = TRUE){
     if(as.character(response) == "Yes" || as.character(response) == "1"){
 
       # ARCHIVE SAMPLES
-      for(eval.id in sample_id){
-
+      for(eval.id in data$`Sample ID`){
+        
         # ARCHIVE
         ModifyTable(conn = conn,
                               "storage_container",
@@ -64,7 +64,7 @@ ArchiveAndDeleteSamples <- function(operation, sample_id, verification = TRUE){
       }
 
       # USER MSG
-      return_message <- paste("Archived", length(sample_id), "Successfully")
+      return_message <- paste("Archived", length(data$`Sample ID`), "Successfully")
       message(return_message)
     }
   }
@@ -90,8 +90,8 @@ ArchiveAndDeleteSamples <- function(operation, sample_id, verification = TRUE){
     if(as.character(response) == "Yes" || as.character(response) == "1"){
 
       # DELETE SAMPLES
-      for(eval.id in sample_id){
-
+      for(eval.id in data$`Sample ID`){
+        
         # DELETE INTERNAL DATA
         .DeleteInternalData(eval.id, database.tables, conn)
 
@@ -100,7 +100,7 @@ ArchiveAndDeleteSamples <- function(operation, sample_id, verification = TRUE){
       }
 
       # USER MSG
-      return_message <- paste("Deleted", length(sample_id), "Successfully")
+      return_message <- paste("Deleted", length(data$`Sample ID`), "Successfully")
       message(return_message)
     }
   }

@@ -180,6 +180,7 @@ GetUIDelArchElements <- function(){
                    SearchBySingleBarcode = "DelArchSearchBySingleBarcode",
                    SearchByBarcodeType = "DelArchSearchByBarcodeType")
   ui.output <- list(SearchResultsTable = "DelArchSearchResultsTable",
+                    SelectedRowsTable = "DelArchSearchResultsTable",
                     DelArchMessage = "DelArchMessage")
   
   ui_elements <- list(ui.input = ui.input, ui.output = ui.output)
@@ -247,6 +248,7 @@ SearchFunction <- function(input, output, ui_elements){
     },
     error=function(e){}
   )
+
   return(list.search_results)
 }
 
