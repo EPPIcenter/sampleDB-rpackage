@@ -19,10 +19,13 @@ CREATE TABLE IF NOT EXISTS "storage_container" (
 	"id"	INTEGER NOT NULL,
 	"specimen_id"	INTEGER NOT NULL,
 	"type"	VARCHAR(255),
-	"exhausted"	BOOLEAN NOT NULL, comment TEXT,
+	"comment" TEXT,
+	"state_id"	INTEGER NOT NULL,
+	"status_id"	INTEGER NOT NULL,
 
+	FOREIGN KEY("state_id") REFERENCES "state"("id"),
+	FOREIGN KEY("status_id") REFERENCES "status"("id"),
 	FOREIGN KEY("specimen_id") REFERENCES "specimen"("id"),
-	CHECK("exhausted" IN (0, 1)),
 	PRIMARY KEY("id")
 );
 CREATE TABLE IF NOT EXISTS "study_subject" (
@@ -159,101 +162,22 @@ CREATE TABLE IF NOT EXISTS "study" (
 
 	PRIMARY KEY("id")
 );
-CREATE TABLE IF NOT EXISTS "sequencing_metadata" (
-	"created"	DATETIME NOT NULL,
-	"last_updated"	DATETIME NOT NULL,
 
-	"id"	INTEGER NOT NULL,
-	"metadata"	VARCHAR NOT NULL,
-
-	PRIMARY KEY("id")
+CREATE TABLE IF NOT EXISTS "version" (
+	"name"	VARCHAR NOT NULL
 );
-CREATE TABLE IF NOT EXISTS "deleted_matrix_tube" (
-"id"    INTEGER NOT NULL,
-"plate_id"      INTEGER NOT NULL,
-"barcode"       VARCHAR NOT NULL,
-"well_position" VARCHAR NOT NULL,
-"deleted_datetime" TEXT NOT NULL);
-CREATE TRIGGER matrix_tube_insert AFTER DELETE ON matrix_tube
-BEGIN
-INSERT INTO deleted_matrix_tube(id, plate_id, barcode, well_position, deleted_datetime)
-VALUES(OLD.id, OLD.plate_id, OLD.barcode, OLD.well_position, datetime('now', 'localtime'));
-END;
-CREATE TABLE IF NOT EXISTS "deleted_matrix_plate" (
-"id"    INTEGER NOT NULL,
-"location_id"    INTEGER NOT NULL,
-"plate_name"    VARCHAR NOT NULL UNIQUE,
-"plate_barcode" TEXT,
-"deleted_datetime" TEXT NOT NULL);
-CREATE TRIGGER matrix_plate_insert AFTER DELETE ON matrix_plate
-BEGIN
-INSERT INTO deleted_matrix_plate(id, location_id, plate_name, plate_barcode, deleted_datetime)
-VALUES(OLD.id, OLD.location_id, OLD.plate_name, OLD.plate_barcode, datetime('now', 'localtime'));
-END;
-CREATE TABLE IF NOT EXISTS "deleted_storage_container" (
-"id"    INTEGER NOT NULL,
-"specimen_id"    INTEGER NOT NULL,
-"type"    VARCHAR(255),
-"exhausted"    BOOLEAN NOT NULL,
-"deleted_datetime" TEXT NOT NULL);
-CREATE TRIGGER storage_container_insert AFTER DELETE ON storage_container
-BEGIN
-INSERT INTO deleted_storage_container(id, specimen_id, type, exhausted, deleted_datetime)
-VALUES(OLD.id, OLD.specimen_id, OLD.type, OLD.exhausted, datetime('now', 'localtime'));
-END;
-CREATE TABLE IF NOT EXISTS "deleted_specimen" (
-"id"    INTEGER NOT NULL,
-"study_subject_id"    INTEGER NOT NULL,
-"specimen_type_id"    INTEGER NOT NULL,
-"collection_date"    DATE,
-"deleted_datetime"    TEXT NOT NULL);
-CREATE TRIGGER specimen_insert AFTER DELETE ON specimen
-BEGIN
-INSERT INTO deleted_specimen(id, study_subject_id, specimen_type_id, collection_date, deleted_datetime)
-VALUES(OLD.id, OLD.study_subject_id, OLD.specimen_type_id, OLD.collection_date, datetime('now', 'localtime'));
-END;
-CREATE TABLE IF NOT EXISTS "deleted_study_subject" (
-"id"    INTEGER NOT NULL,
-"study_id"    INTEGER NOT NULL,
-"subject"    VARCHAR NOT NULL,
-"deleted_datetime"    TEXT NOT NULL);
-CREATE TRIGGER study_subject_insert AFTER DELETE ON study_subject
-BEGIN
-INSERT INTO deleted_study_subject(id, study_id, subject, deleted_datetime)
-VALUES(OLD.id, OLD.study_id, OLD.subject, datetime('now', 'localtime'));
-END;
-CREATE TABLE IF NOT EXISTS "deleted_study" (
-"id"    INTEGER NOT NULL,
-"title"    VARCHAR NOT NULL UNIQUE,
-"description"    VARCHAR,
-"short_code"    VARCHAR NOT NULL UNIQUE,
-"is_longitudinal"    BOOLEAN NOT NULL,
-"lead_person"    VARCHAR NOT NULL,
-"deleted_datetime" TEXT NOT NULL);
-CREATE TRIGGER study_insert AFTER DELETE ON study
-BEGIN
-INSERT INTO deleted_study(id, title, description, short_code, is_longitudinal, lead_person, deleted_datetime)
-VALUES(OLD.id, OLD.title, OLD.description, OLD.short_code, OLD.is_longitudinal, OLD.lead_person, datetime('now', 'localtime'));
-END;
-CREATE TABLE IF NOT EXISTS "deleted_specimen_type" (
-"id"    INTEGER NOT NULL,
-"label"    VARCHAR NOT NULL UNIQUE,
-"deleted_datetime" TEXT NOT NULL);
-CREATE TRIGGER specimen_type_insert AFTER DELETE ON specimen_type
-BEGIN
-INSERT INTO deleted_specimen_type(id, label, deleted_datetime)
-VALUES(OLD.id, OLD.label, datetime('now', 'localtime'));
-END;
-CREATE TABLE IF NOT EXISTS "deleted_location" (
-"id"    INTEGER NOT NULL,
-    "location_name"    VARCHAR NOT NULL,
-    "location_type"    VARCHAR NOT NULL,
-    "level_I"    VARCHAR NOT NULL,
-    "level_II"    VARCHAR NOT NULL,
-    "level_III"    VARCHAR,
-"deleted_datetime" TEXT NOT NULL);
-CREATE TRIGGER location_insert AFTER DELETE ON location
-BEGIN
-INSERT INTO deleted_location(id, location_name, location_type, level_I, level_II, level_III, deleted_datetime)
-VALUES(OLD.id, OLD.location_name, OLD.location_type, OLD.level_I, OLD.level_II, OLD.level_III, datetime('now', 'localtime'));
-END;
+
+CREATE TABLE IF NOT EXISTS "status" (
+	"id"	INTEGER PRIMARY KEY AUTOINCREMENT,
+	"name"	VARCHAR NOT NULL UNIQUE
+);
+
+CREATE TABLE IF NOT EXISTS "state" (
+	"id"	INTEGER PRIMARY KEY AUTOINCREMENT,
+	"name"	VARCHAR NOT NULL UNIQUE
+);
+
+INSERT OR IGNORE INTO "status" ("name") VALUES ("In Use"), ("Exhausted"), ("Separated"), ("Missing");
+INSERT OR IGNORE INTO "state" ("name") VALUES ("Active"), ("Archived");
+INSERT OR IGNORE INTO "version" ("name") VALUES ("1.0.0");
+
