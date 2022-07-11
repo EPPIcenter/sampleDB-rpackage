@@ -263,8 +263,10 @@ MoveSamples <- function(sample_type, move_data){
   # change the container id for each sample
   for(i in 1:length(names(sample_data))){
     eval.container_id <- names(sample_data)[i]
-    
-    if(sample_type == "micronix"){
+
+    #if the well position is NA, then the sample has been archived.
+    #keeping plate information for the time being.
+    if(sample_type == "micronix" && sample_data[[eval.container_id]]$"well_position" != "NA") {
       sample_data[[eval.container_id]]$"plate_id" <- -(i)
     }
   }

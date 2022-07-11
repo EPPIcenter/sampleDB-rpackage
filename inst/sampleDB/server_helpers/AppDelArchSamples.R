@@ -57,6 +57,8 @@ DelArchSamples <- function(session, input, database, output, inputs, outputs){
   observeEvent(input[[ui_elements$ui.input$DelArchVerification]], {
     return_message <- sampleDB::ArchiveAndDeleteSamples(operation = values$operation,
                                                         data = values$selected(),
+                                                        comment = input$DelArchComment,
+                                                        status = input$DelArchStatus,
                                                         verification = F)
     removeModal()
     output[[ui_elements$ui.output$DelArchMessage]] <- renderPrint(return_message)

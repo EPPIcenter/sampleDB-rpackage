@@ -29,12 +29,15 @@
 #'
 
 
-ArchiveAndDeleteSamples <- function(operation, data, verification = TRUE){
+ArchiveAndDeleteSamples <- function(operation, data, comment, status, verification = TRUE){
   
   database <- sampleDB:::.GetSampleDBPath()
   conn <-  RSQLite::dbConnect(RSQLite::SQLite(), database)
   RSQLite::dbBegin(conn)
 
+  status_id <- filter(sampleDB::CheckTable("status"), name %in% status)$id
+  state_id <- filter(sampleDB::CheckTable("state"), name %in% "Archived")$id
+  
   stopifnot("Operation is not valid" = operation %in% c("archive", "delete", "unarchive"))
 
   # GET DATABASE TABLES
@@ -59,8 +62,12 @@ ArchiveAndDeleteSamples <- function(operation, data, verification = TRUE){
         ModifyTable(conn = conn,
                               "storage_container",
                               info_list = list(last_updated = as.character(lubridate::now()),
-                                               exhausted = 1),
+                                               state_id = state_id,
+                                               status_id = status_id,
+                                               comment = comment), #Exhausted
                               id = eval.id)
+
+        .MakeExternalDataNA(eval.id, database.tables, database)
       }
 
       # USER MSG
@@ -161,9 +168,7 @@ ArchiveAndDeleteSamples <- function(operation, data, verification = TRUE){
 
     ModifyTable(conn = conn,
                           table_name = "matrix_tube",
-                          info_list = list(plate_id = NA,
-                                           barcode = NA,
-                                           well_position = NA),
+                          info_list = list(well_position = NA),
                           id = as.character(eval.id))
 
     # # delete sample

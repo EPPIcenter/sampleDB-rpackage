@@ -38,7 +38,8 @@ GetUISearchElements <- function(){
                    SearchByLevelI = "SearchByLevelI",
                    SearchByLevelII = "SearchByLevelII",
                    dateRange = "dateRange",
-                   SearchByExhausted = "SearchByExhausted",
+                   SearchByStatus = "SearchByStatus",
+                   SearchByState = "SearchByState",
                    SearchBySpecimenType = "SearchBySpecimenType",
                    SearchByStudy = "SearchByStudy",
                    SearchBySampleType = "SearchBySampleType",
@@ -158,7 +159,8 @@ GetUIDelArchElements <- function(){
                    SearchByLevelI = "DelArchSearchByLevelI",
                    SearchByLevelII = "DelArchSearchByLevelII",
                    dateRange = "DelArchdateRange",
-                   SearchByExhausted = "DelArchSearchByExhausted",
+                   SearchByStatus = "DelArchSearchByStatus",
+                   SearchByState = "DelArchSearchByState",
                    SearchBySpecimenType = "DelArchSearchBySpecimenType",
                    SearchByStudy = "DelArchSearchByStudy",
                    SearchBySampleType = "DelArchSearchBySampleType",
@@ -175,7 +177,8 @@ GetUIDelArchElements <- function(){
                    SearchByPaperBag = "DelArchSearchByPaperBag",
                    ArchiveAction = "ArchiveAction",
                    DeleteAction = "DeleteAction",
-                   DelArchID = "DelArchID",
+                   DelArchComment = "DelArchComment",
+                   DelArchStatus = "DelArchStatus",
                    DelArchVerification = "DelArchVerification",
                    SearchBySingleBarcode = "DelArchSearchBySingleBarcode",
                    SearchByBarcodeType = "DelArchSearchByBarcodeType")
@@ -222,7 +225,8 @@ SearchFunction <- function(input, output, ui_elements){
                            paper.container_name = input[[ui_elements$ui.input$SearchByPaperBag]]) %>% 
     discard(., function(x) is.null(x) | "" %in% x)
   search.date <- eval.search.date
-  search.exhausted <- input[[ui_elements$ui.input$SearchByExhausted]]
+  search.status <- input[[ui_elements$ui.input$SearchByStatus]]
+  search.state <- input[[ui_elements$ui.input$SearchByState]]
   search.location <- list(location_name = input[[ui_elements$ui.input$SearchByLocation]],
                           level_I = input[[ui_elements$ui.input$SearchByLevelI]],
                           level_II = input[[ui_elements$ui.input$SearchByLevelII]])
@@ -235,15 +239,15 @@ SearchFunction <- function(input, output, ui_elements){
     if(input[[ui_elements$ui.input$SubjectUIDSearchType]] == "individual"){
       search.study_subject <- input[[ui_elements$ui.input$SearchBySubjectUID]]
       list.search_results <- sampleDB::SearchSamples(sample_type = search.type, sample_label = search.label, container_name = search.container, study_subject = search.study_subject,
-                                                     specimen_type = search.specimen_type, study = search.study, collection_dates = search.date, archived = search.exhausted,
-                                                     freezer = search.location, study_subject.file = F, return_sample_ids = T) %>% suppressWarnings()
+                                                     specimen_type = search.specimen_type, study = search.study, collection_dates = search.date, status = search.status,
+                                                     state = search.state, freezer = search.location, study_subject.file = F, return_sample_ids = T) %>% suppressWarnings()
     }else{
       
       # search (if a file of participants is searched for)
       search.study_subject <- input[[ui_elements$ui.input$SearchBySubjectUIDFile]]$datapath
       list.search_results <- sampleDB::SearchSamples(sample_type = search.type, sample_label = search.label, container_name = search.container, study_subject = search.study_subject,
-                                                     specimen_type = search.specimen_type, study = search.study, collection_dates = search.date, archived = search.exhausted,
-                                                     freezer = search.location, study_subject.file = T, return_sample_ids = T) %>% suppressWarnings()
+                                                     specimen_type = search.specimen_type, study = search.study, collection_dates = search.date, status = search.status,
+                                                     state = search.state, freezer = search.location, study_subject.file = T, return_sample_ids = T) %>% suppressWarnings()
       
     },
     error=function(e){}
@@ -674,22 +678,6 @@ SetChangeStudyRequirements <- function(input, database, ui_elements){
       input[[ui_elements$ui.input$RenameStudyDescription]],
       input[[ui_elements$ui.input$RenameStudyShortCode]],
       input[[ui_elements$ui.input$RenameStudyLeadPerson]],
-      input[[ui_elements$ui.input$RenameStudyIsLongitudinal]],
-      sampleDB:::.CheckStudyTitleIsUnique(input = input, database = database,
-                                          study_title = input[[ui_elements$ui.input$RenameStudyTitle]]) == TRUE,
-      sampleDB:::.CheckStudyTitleIsUnique(input = input, database = database,
-                                          study_title = input[[ui_elements$ui.input$RenameStudyTitle]]) == TRUE)
-}
-
-SetChangeStudyRequirements <- function(input, database, ui_elements){
-  req(input[[ui_elements$ui.input$ChangeStudyShortCode]],
-      input[[ui_elements$ui.input$RenameStudyTitle]],
-      input[[ui_elements$ui.input$RenameStudyDescription]],
-      input[[ui_elements$ui.input$RenameStudyShortCode]],
-      input[[ui_elements$ui.input$RenameStudyLeadPerson]],
-      input[[ui_elements$ui.input$RenameStudyIsLongitudinal]],
-      sampleDB:::.CheckStudyTitleIsUnique(input = input, database = database,
-                                          study_title = input[[ui_elements$ui.input$RenameStudyTitle]]) == TRUE,
       sampleDB:::.CheckStudyTitleIsUnique(input = input, database = database,
                                           study_title = input[[ui_elements$ui.input$RenameStudyTitle]]) == TRUE)
 }
@@ -756,7 +744,9 @@ UpdateStudyDropdowns <- function(database, session){
   shinyjs::reset("RenameStudyDescription")
   shinyjs::reset("RenameStudyLeadPerson")
   shinyjs::reset("RenameStudyShortCode")
+  shinyjs::reset("DeleteStudyShortCode")
   updateSelectInput(session = session, "ChangeStudyShortCode", choices = c("", sampleDB::CheckTable(database = database, "study")$short_code))
   updateCheckboxInput(session = session, "RenameStudyIsLongitudinal", value = FALSE)
   updateCheckboxInput(session = session, "RenameStudyIsHidden", value = FALSE)
+  updateSelectInput(session = session, "DeleteStudyShortCode", choices = c("", sampleDB::CheckTable(database = database, "study")$short_code))
 }

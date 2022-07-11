@@ -35,7 +35,8 @@ UISearchSamples <- function(){
       selectizeInput("SearchByLocation", "Storage Location", choices = c("", sampleDB::CheckTable("location")$location_name)),
       selectizeInput("SearchByLevelI", "Storage Location: Level I", choices = c("")),
       selectizeInput("SearchByLevelII", "Storage Location: Level II", choices = c("")),
-      selectizeInput("SearchByExhausted", "Archived", choices = c("", TRUE, FALSE)),
+      selectizeInput("SearchByState", "State", choices = c(Global$DefaultStateSearchTerm, sampleDB::CheckTable("state")$name)),
+      selectizeInput("SearchByStatus", "Status", choices = c(Global$DefaultStatusSearchTerm, sampleDB::CheckTable("status")$name)),
       textOutput("WarnSubjectUIDFileColnames"),
       textOutput("WarnSubjectUIDFileColnames2")
     ),

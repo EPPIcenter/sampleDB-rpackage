@@ -1,6 +1,13 @@
 
 message('Loading global environment...')
 
+# Global Variables
+Global <- list(
+  DefaultStateSearchTerm = "Active",
+  DefaultStatusSearchTerm = "In Use"
+)
+
+
 # Session independent declarations go here
 Backup_SampleDB <- function() {
     observe({
