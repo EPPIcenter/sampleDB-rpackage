@@ -5,12 +5,13 @@
 DeleteEmptyContainer <- function(database, type, container_name){
   
   stopifnot("Sample Type is not valid" = type %in% c("micronix", "cryovial", "rdt", "paper"))
-  database <- sampleDB:::.GetSampleDBPath()
-  
+  conn <- RSQLite::dbConnect(RSQLite::SQLite(), database)
+  RSQLite::dbBegin(conn)
+
   if(type == "micronix"){
-    id.container <- filter(sampleDB::CheckTable(database = database, "matrix_plate"), plate_name == container_name)$id
-    if(filter(sampleDB::CheckTable("matrix_tube"), plate_id %in% id.container) %>% nrow() == 0){
-      sampleDB::DeleteFromTable(database = database, 
+    id.container <- filter(sampleDB::CheckTableTx(conn = conn, "matrix_plate"), plate_name == container_name)$id
+    if(filter(sampleDB::CheckTableTx(conn = conn, "matrix_tube"), plate_id %in% id.container) %>% nrow() == 0){
+      sampleDB::DeleteFromTable(conn = conn, 
                                 table_name = "matrix_plate", 
                                 id = as.character(id.container))  
       return_message <- paste0("Successfully Deleted Container: \n", container_name)
@@ -19,9 +20,9 @@ DeleteEmptyContainer <- function(database, type, container_name){
     }
   }
   else if(type == "cryovial"){
-    id.container <- filter(sampleDB::CheckTable(database = database, "box"), box_name == container_name)$id
-    if(filter(sampleDB::CheckTable("tube"), plate_id %in% id.container) %>% nrow() == 0){
-      sampleDB::DeleteFromTable(database = database, 
+    id.container <- filter(sampleDB::CheckTableTx(conn = conn, "box"), box_name == container_name)$id
+    if(filter(sampleDB::CheckTableTx(conn = conn, "tube"), plate_id %in% id.container) %>% nrow() == 0){
+      sampleDB::DeleteFromTable(conn = conn, 
                                 table_name = "box", 
                                 id = as.character(id.container))  
       return_message <- paste0("Successfully Deleted Container: \n", container_name)
@@ -30,9 +31,9 @@ DeleteEmptyContainer <- function(database, type, container_name){
     }
   }
   else if(type == "rdt"){
-    id.container <- filter(sampleDB::CheckTable(database = database, "bag"), bag_name == container_name)$id
-    if(filter(sampleDB::CheckTable("rdt"), bag_id %in% id.container) %>% nrow() == 0){
-      sampleDB::DeleteFromTable(database = database, 
+    id.container <- filter(sampleDB::CheckTableTx(conn = conn, "bag"), bag_name == container_name)$id
+    if(filter(sampleDB::CheckTableTx("rdt"), bag_id %in% id.container) %>% nrow() == 0){
+      sampleDB::DeleteFromTable(conn = conn, 
                                 table_name = "bag", 
                                 id = as.character(id.container)) 
       return_message <- paste0("Successfully Deleted Container: \n", container_name)
@@ -41,9 +42,9 @@ DeleteEmptyContainer <- function(database, type, container_name){
     }
   }
   else{
-    id.container <- filter(sampleDB::CheckTable(database = database, "bag"), bag_name == container_name)$id
-    if(filter(sampleDB::CheckTable("paper"), bag_id %in% id.container) %>% nrow() == 0){
-      sampleDB::DeleteFromTable(database = database, 
+    id.container <- filter(sampleDB::CheckTableTx(conn = conn, "bag"), bag_name == container_name)$id
+    if(filter(sampleDB::CheckTableTx("paper"), bag_id %in% id.container) %>% nrow() == 0){
+      sampleDB::DeleteFromTable(conn = conn, 
                                 table_name = "bag", 
                                 id = as.character(id.container))
       return_message <- paste0("Successfully Deleted Container: \n", container_name)
@@ -51,7 +52,10 @@ DeleteEmptyContainer <- function(database, type, container_name){
       return_message <- "Error Contianer is not empty"
     }
   }
-  
+
+  dbCommit(conn)
+  dbDisconnect(conn)  
+
   message(return_message)
   return(return_message)
 }

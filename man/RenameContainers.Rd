@@ -4,14 +4,14 @@
 \alias{RenameContainers}
 \title{Rename Wetlab Containers in the EPPIcenter SampleDB database}
 \usage{
-RenameContainers(sample_type, container_name, freezer)
+RenameContainers(sample_type, new_container_name, current_container_name)
 }
 \arguments{
 \item{sample_type}{A string specifying the type of samples that are being moved. Options include: \code{micronix}, \code{cryovial}, \code{rdt} and \code{paper}}
 
-\item{current_container_name}{A vector specifying the name of the container being moved}
-
 \item{new_container_name}{A vector specifying the name of the container being moved}
+
+\item{current_container_name}{A vector specifying the name of the container being moved}
 }
 \description{
 Rename Wetlab Containers in the EPPIcenter SampleDB database

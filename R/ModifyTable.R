@@ -2,11 +2,7 @@
 #' @import RSQLite
 #' @export
 
-ModifyTable <- function(database, table_name, info_list, id, conn = NULL){
-  if(is.null(conn)){
-    #OPEN THE DATABASE CONNECTION
-    conn <-  RSQLite::dbConnect(RSQLite::SQLite(), database)
-  }
+ModifyTable <- function(table_name, info_list, id, conn){
 
   #PREVENT EMPTY ADDITIONS TO DATABASE -- REMOVE NAs FROM THIS EVALUATION
   for(i in discard(info_list, is.na)){
@@ -25,18 +21,30 @@ ModifyTable <- function(database, table_name, info_list, id, conn = NULL){
   }
   update_str <- update_str %>% paste0(., collapse = "")
 
-  tryCatch(
-    RSQLite::dbSendQuery(conn,
-                         paste0("UPDATE ", table_name," SET ", update_str," WHERE id = ", id, ";")),
-    error=function(e){
-      stop(e)
-    }
-  )
+  .update_row(table_name, update_str, id, conn)
 
-  if(is.null(conn)){
+}
+
+
+.update_row <- function(table_name, update_str, id, conn)
+{
+  # start the transaction
+  tryCatch({
+    rs <- RSQLite::dbSendQuery(conn, paste0("UPDATE ", table_name," SET ", update_str," WHERE id = ", id, ";"))
+    # message(sprintf("Updated %d rows.", RSQLite::dbGetRowsAffected(rs)))
+    RSQLite::dbClearResult(rs)
+  },
+  error=function(e) { 
+    message(e)
+    RSQLite::dbRollback(conn)
+    
     #close connection
     tryCatch(
       RSQLite::dbDisconnect(conn),
-      warning=function(w){})
-  }
+      warning=function(w){
+        message(w)
+    })  
+
+    validate(need(FALSE, paste("*** ERROR: database rollback triggered due to:", e)))
+  })
 }

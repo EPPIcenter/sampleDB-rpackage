@@ -112,12 +112,17 @@ CreateEmptyMicronixPlate <- function(input, output, database){
     # create empty micronix plate using user input
     # use a "req" to require "CreateEmptyMicronixPlateID", "CreateEmptyMicronixPlateLocation", etc
     # throw error if user uses name that is already in the database
-    sampleDB:::.UploadMicronixPlate(database = database,
+    conn <-  RSQLite::dbConnect(RSQLite::SQLite(), database)
+    RSQLite::dbBegin(conn)
+    sampleDB:::.UploadMicronixPlate(conn = conn,
                                     container_name = input[["CreateEmptyMicronixPlateID"]],
                                     container_barcode = input[["CreateEmptyMicronixPlateBarcode"]],
                                     freezer_address = list(location_name = input[["CreateEmptyMicronixPlateLocation"]],
                                                            level_I = input[["CreateEmptyMicronixPlateLevelI"]],
                                                            level_II = input[["CreateEmptyMicronixPlateLevelII"]]))
+    
+    RSQLite::dbCommit(conn)
+    RSQLite::dbDisconnect(conn)
     vals$data <- ""
     removeModal()
   })

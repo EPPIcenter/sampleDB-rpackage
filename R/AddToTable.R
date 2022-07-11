@@ -5,12 +5,7 @@
 #' @export
 
 #table options
-AddToTable <- function(database, table_name, info_list, conn = NULL){
-
-  if(is.null(conn)){
-    #OPEN THE DATABASE CONNECTION
-    conn <-  RSQLite::dbConnect(RSQLite::SQLite(), database)
-  }
+AddToTable <- function(table_name, info_list, conn){
 
   #PREVENT EMPTY ADDITIONS TO DATABASE -- REMOVE NAs FROM THIS EVALUATION
   for(i in discard(info_list, is.na)){
@@ -26,23 +21,22 @@ AddToTable <- function(database, table_name, info_list, conn = NULL){
   #RENAME info_list (required by dbSendQuery)
   names(info_list) <- NULL
 
-  tryCatch(
+  .insert_row(table_name, column_names, filler, info_list, conn)
+}
 
-      #add to database
-      RSQLite::dbSendStatement(conn,
-                               paste0('INSERT INTO ', table_name, ' (', column_names, ') VALUES (', filler, ');'),
-                               info_list),
-
-      error=function(e){
-        stop(e)
-      }
-  )
-
-  if(is.null(conn)){
-    #close connection
-    tryCatch(
-      RSQLite::dbDisconnect(conn),
-      warning=function(w){})
-  }
-  
+.insert_row <- function(table_name, column_names, filler, info_list, conn)
+{
+  # start the transaction
+  tryCatch({
+    rs <- RSQLite::dbSendQuery(conn, paste0('INSERT INTO ', table_name, ' (', column_names, ') VALUES (', filler, ');'), info_list)
+    # message(sprintf("Inserted %d rows.", RSQLite::dbGetRowsAffected(rs)))
+    RSQLite::dbClearResult(rs)
+  },
+  error=function(e) {
+    RSQLite::dbRollback(conn)
+    RSQLite::dbDisconnect(conn)
+    err_values <- paste("ERROR: Database insert failed on:", table_name, paste(info_list, sep = " "))
+    validate(need(FALSE,
+                  paste("*** ERROR: database rollback triggered due to:", e, "\n", paste(err_values))))
+  })
 }
