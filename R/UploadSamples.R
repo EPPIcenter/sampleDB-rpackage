@@ -75,7 +75,7 @@ UploadSamples <- function(sample_type, upload_data, container_name, container_ba
                 container_barcode = container_barcode, upload_data = upload_data)
   
   # upload data
-  .UploadSamples(upload_data = upload_data, database = database, sample_type = sample_type, 
+  .UploadSamples(upload_data = upload_data, sample_type = sample_type, 
                  conn = conn, container_name = container_name, freezer_address = freezer_address,
                  container_barcode = container_barcode)
 
@@ -148,8 +148,10 @@ UploadSamples <- function(sample_type, upload_data, container_name, container_ba
   stopifnot("Error: Container barcode is not unique" = sampleDB:::.CheckUploadContainerBarcodeDuplication(plate_barcode = container_barcode, database = database))
 }
 
-.UploadSamples <- function(upload_data, database, sample_type, conn, container_name, container_barcode, freezer_address){
+.UploadSamples <- function(upload_data, sample_type, conn, container_name, container_barcode, freezer_address){
   
+  RSQLite::dbBegin(conn)
+
   for(i in 1:nrow(upload_data)){
     
     #1. get upload item's metadata
@@ -166,20 +168,20 @@ UploadSamples <- function(sample_type, upload_data, container_name, container_ba
     }
     
     #get a database id for a upload item's specimen_type and study
-    eval.specimen_type_id <- filter(sampleDB::CheckTable(database = database, "specimen_type"), label == eval.specimen_type)$id
-    eval.study_id <- filter(sampleDB::CheckTable(database = database, "study"), short_code == eval.study_code)$id
+    eval.specimen_type_id <- filter(CheckTableTx(conn = conn, "specimen_type"), label == eval.specimen_type)$id
+    eval.study_id <- filter(CheckTableTx(conn = conn, "study"), short_code == eval.study_code)$id
     
     #2a. check if this upload item's participant (subject+study combination) exists in the database
-    tmp_table.study_subject <- inner_join(sampleDB::CheckTable(database = database, "study_subject")[, c("subject", "study_id")],
+    tmp_table.study_subject <- inner_join(CheckTableTx(conn = conn, "study_subject")[, c("subject", "study_id")],
                                           tibble(subject = eval.subject, study_id = eval.study_id),
                                           by = c("subject", "study_id"))
     
     #if this upload item's participant exists in the database, then get the necessary "study_subject" id
     if(nrow(tmp_table.study_subject) > 0){
-      eval.study_subject_id <- filter(sampleDB::CheckTable(database = database, "study_subject"), subject == eval.subject, study_id == eval.study_id)$id
+      eval.study_subject_id <- filter(CheckTableTx(conn = conn, "study_subject"), subject == eval.subject, study_id == eval.study_id)$id
       
       #3a. check if this sample exists (subject+study+specimen_type) in the database
-      tmp_table.specimen <- inner_join(sampleDB::CheckTable(database = database, "specimen")[,c("study_subject_id", "specimen_type_id", "collection_date")],
+      tmp_table.specimen <- inner_join(CheckTableTx(conn = conn, "specimen")[,c("study_subject_id", "specimen_type_id", "collection_date")],
                                        tibble(study_subject_id = eval.study_subject_id, specimen_type_id = eval.specimen_type_id, collection_date = eval.collection_date),
                                        by = c("study_subject_id", "specimen_type_id", "collection_date"))
       
@@ -188,13 +190,13 @@ UploadSamples <- function(sample_type, upload_data, container_name, container_ba
         
         #how specimen id is retrieved depends on whether the collection date is NA or !is NA
         if(is.na(eval.collection_date)){
-          eval.specimen_id <- filter(sampleDB::CheckTable(database = database, "specimen"),
+          eval.specimen_id <- filter(CheckTableTx(conn = conn, "specimen"),
                                      study_subject_id == eval.study_subject_id,
                                      specimen_type_id == eval.specimen_type_id,
                                      is.na(eval.collection_date))$id
           
         }else{
-          eval.specimen_id <- filter(sampleDB::CheckTable(database = database, "specimen"),
+          eval.specimen_id <- filter(CheckTableTx(conn = conn, "specimen"),
                                      study_subject_id == eval.study_subject_id,
                                      specimen_type_id == eval.specimen_type_id,
                                      collection_date == eval.collection_date)$id
@@ -202,7 +204,7 @@ UploadSamples <- function(sample_type, upload_data, container_name, container_ba
       }else{
         
         #3b. if this participant (study_subject) exists in the database but sample (specimen) does not, then create a new "specimen"
-        sampleDB::AddToTable(database = database, "specimen",
+        AddToTable("specimen",
                              list(created = lubridate::now() %>% as.character(),
                                   last_updated = lubridate::now() %>% as.character(),
                                   study_subject_id = eval.study_subject_id,
@@ -211,11 +213,11 @@ UploadSamples <- function(sample_type, upload_data, container_name, container_ba
                              conn = conn) %>% suppressWarnings()
         
         #retrieve newly made specimen id
-        eval.specimen_id <- tail(sampleDB::CheckTable(database = database, "specimen"), 1)$id
+        eval.specimen_id <- tail(CheckTableTx(conn = conn, "specimen"), 1)$id
       }
     }else{
       #2b. if this upload item's participant (combination of subject+study) does not exist in the database then create a new study_subject entry in the database
-      sampleDB::AddToTable(database = database, "study_subject",
+      AddToTable("study_subject",
                            list(created = lubridate::now() %>% as.character(),
                                 last_updated = lubridate::now() %>% as.character(),
                                 subject = eval.subject,
@@ -223,10 +225,10 @@ UploadSamples <- function(sample_type, upload_data, container_name, container_ba
                            conn = conn) %>% suppressWarnings()
       
       # get the newly created study_subject id
-      eval.study_subject_id <- tail(sampleDB::CheckTable(database = database, "study_subject"), 1)$id
+      eval.study_subject_id <- tail(CheckTableTx(conn = conn, "study_subject"), 1)$id
       
       #3b. create a new sample (study+subject+specimen_type) (ie specimen) in the database
-      sampleDB::AddToTable(database = database, "specimen",
+      AddToTable("specimen",
                            list(created = lubridate::now() %>% as.character(),
                                 last_updated = lubridate::now() %>% as.character(),
                                 study_subject_id = eval.study_subject_id,
@@ -235,11 +237,12 @@ UploadSamples <- function(sample_type, upload_data, container_name, container_ba
                            conn = conn) %>% suppressWarnings()
       
       # get the newly created specimen id
-      eval.specimen_id <- tail(sampleDB::CheckTable(database = database, "specimen"), 1)$id
+      eval.specimen_id <- tail(CheckTableTx(conn = conn, "specimen"), 1)$id
     }
       
     #4. create the new item's storage container to the database using the item's sample id
-    sampleDB::AddToTable(database = database, "storage_container",
+
+    AddToTable("storage_container",
                          list(created = lubridate::now() %>% as.character(),
                               last_updated = lubridate::now() %>% as.character(),
                               type = sample_type,
@@ -248,20 +251,19 @@ UploadSamples <- function(sample_type, upload_data, container_name, container_ba
                          conn = conn) %>% suppressWarnings()
     
     #5. get just item's storage container id and use it as the primary key in the matrix tube table
-    eval.id <- tail(sampleDB::CheckTable(database = database, "storage_container"), 1)$id
+    eval.id <- tail(CheckTableTx(conn = conn, "storage_container"), 1)$id
     
     # 6. Create new sample housing (if it does not alread exist) and upload samples into housing
     if(sample_type == "micronix"){
       # create a new housing (if it does not already exist)
-      if(!container_name %in% CheckTable(database = database, "matrix_plate")$plate_name){
-        eval.plate_id <- sampleDB:::.UploadMicronixPlate(database = database, conn = conn, container_name = container_name, container_barcode = container_barcode, freezer_address = freezer_address) 
+      if(!container_name %in% CheckTableTx(conn = conn, "matrix_plate")$plate_name){
+        eval.plate_id <- sampleDB:::.UploadMicronixPlate(conn = conn, container_name = container_name, container_barcode = container_barcode, freezer_address = freezer_address) 
       }else{
-        eval.plate_id <- filter(sampleDB::CheckTable("matrix_plate"), plate_name == container_name)$id
+        eval.plate_id <- filter(CheckTableTx(conn = conn, "matrix_plate"), plate_name == container_name)$id
       }
       
       # 7. upload micronix sample
-      sampleDB::AddToTable(database = database,
-                           table_name = "matrix_tube",
+      AddToTable(table_name = "matrix_tube",
                            info_list = list(id = eval.id,
                                             plate_id = eval.plate_id, 
                                             well_position = eval.well_position, 
@@ -269,6 +271,16 @@ UploadSamples <- function(sample_type, upload_data, container_name, container_ba
                            conn = conn) %>% suppressWarnings()
     }
   }
+
+  RSQLite::dbCommit(conn)
+
+  #close connection
+  tryCatch(
+    RSQLite::dbDisconnect(conn),
+    warning=function(w){
+      message(w)
+    })
+
 }
 
 # .UploadMicronixPlate <- function(database, container_name, container_barcode, freezer_address, conn){
@@ -283,7 +295,7 @@ UploadSamples <- function(sample_type, upload_data, container_name, container_ba
 #     container_barcode <- container_barcode
 #   }
 #   # print(container_barcode)
-#   sampleDB::AddToTable(database = database,
+#   AddToTable(database = database,
 #                        "matrix_plate",
 #                        list(created = lubridate::now() %>% as.character(),
 #                             last_updated = lubridate::now() %>% as.character(),

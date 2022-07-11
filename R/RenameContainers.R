@@ -9,16 +9,22 @@
 RenameContainers <- function(sample_type, new_container_name, current_container_name){
 
   database <- sampleDB:::.GetSampleDBPath()
+  conn <-  RSQLite::dbConnect(RSQLite::SQLite(), database)
+  RSQLite::dbBegin(conn)
+
   stopifnot("ERROR: Sample Type is not valid" = sample_type %in% c("micronix"))
   stopifnot("ERROR: Container Name does not exist" = current_container_name %in% CheckTable(database = database, table = "matrix_plate")$plate_name)
   stopifnot("ERROR: New Container name is not unique" = sampleDB:::.CheckUploadContainerNameDuplication(database = database, plate_name = new_container_name))
   
   container_id <- filter(sampleDB::CheckTable("matrix_plate"), plate_name == current_container_name)$id
-  sampleDB::ModifyTable(database = database,
+  ModifyTable(conn = conn,
                         table_name = "matrix_plate",
                         info_list = list(plate_name = new_container_name),
                         id = container_id)
   return_message <- paste0("Successfully Renamed Container\nWas: ", current_container_name, "\nNow: ", new_container_name)
+
+  RSQLite::dbCommit(conn)
+  RSQLite::dbDisconnect(conn)
 
   message(return_message)
   return(return_message)

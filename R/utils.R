@@ -303,8 +303,8 @@
 }
 
 #upload a new micronix plate
-.UploadMicronixPlate <- function(database, container_name, container_barcode, freezer_address, conn = NULL){
-  eval.location_id <- filter(CheckTable(database = database, "location"), location_name == freezer_address$location, level_I == freezer_address$level_I, level_II == freezer_address$level_II)$id
+.UploadMicronixPlate <- function(conn, container_name, container_barcode, freezer_address){
+  eval.location_id <- filter(CheckTableTx(conn = conn, "location"), location_name == freezer_address$location, level_I == freezer_address$level_I, level_II == freezer_address$level_II)$id
   if(is.null(container_barcode)){
     container_barcode <- NA
   }
@@ -314,16 +314,16 @@
   else{
     container_barcode <- container_barcode
   }
-  
-  sampleDB::AddToTable(database = database,
-                       "matrix_plate",
+
+  AddToTable("matrix_plate",
                        list(created = lubridate::now() %>% as.character(),
                             last_updated = lubridate::now() %>% as.character(),
                             location_id = eval.location_id,
                             plate_name = container_name,
                             plate_barcode = container_barcode),
                        conn = conn) %>% suppressWarnings()
-  eval.plate_id <- tail(sampleDB::CheckTable(database = database, "matrix_plate"), 1)$id
+
+  eval.plate_id <- tail(sampleDB::CheckTableTx(conn = conn, "matrix_plate"), 1)$id
   
   return(eval.plate_id)
   

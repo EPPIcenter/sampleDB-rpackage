@@ -17,7 +17,7 @@ Backup_SampleDB <- function() {
 
 dbUpdateEvent <- reactivePoll(1000 * 10, NULL,
     function() file.mtime(sampleDB:::.GetSampleDBPath()),
-    function(database) {
+    function() {
       list.data <- list(
           plate_name = sampleDB::CheckTable("matrix_plate")$plate_name,
           box_name = sampleDB::CheckTable("box")$box_name,

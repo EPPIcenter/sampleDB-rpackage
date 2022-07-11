@@ -32,6 +32,7 @@ MoveSamples <- function(sample_type, move_data){
   
   database <- sampleDB:::.GetSampleDBPath()
   conn <-  RSQLite::dbConnect(RSQLite::SQLite(), database)
+  RSQLite::dbBegin(conn)
   
   # Save MoveCSVs
   .SaveMoveCSVs(move_data)
@@ -61,7 +62,13 @@ MoveSamples <- function(sample_type, move_data){
       warning=function(w){})
     
     message(message.successful)
-    
+
+    tryCatch({
+      RSQLite::dbCommit(conn)
+      RSQLite::dbDisconnect(conn)
+      },
+      warning=function(w){})
+
     return(message.successful)
     
   }else{
@@ -76,8 +83,7 @@ MoveSamples <- function(sample_type, move_data){
     
     message(message.fail)
     
-    return(message.fail)
-      
+    return(message.fail)     
   }
 }
 
@@ -144,18 +150,17 @@ MoveSamples <- function(sample_type, move_data){
     if(sample_type == "micronix"){
       
       # Get sample's container id
-      existing.container <- filter(sampleDB::CheckTable(database = database, "matrix_plate"), plate_name == container.name)$id
+      existing.container <- filter(sampleDB::CheckTableTx(conn = conn, "matrix_plate"), plate_name == container.name)$id
       
       # Make a reference df with all samples in container
-      sample_data.existing_container <- filter(sampleDB::CheckTable(database = database, "matrix_tube"), plate_id == existing.container)
+      sample_data.existing_container <- filter(sampleDB::CheckTableTx(conn = conn, "matrix_tube"), plate_id == existing.container)
       
       # Put samples into container with negative id number
       for(id in sample_data.existing_container$id){
-        ModifyTable(database = database,
+        ModifyTable(conn = conn,
                     "matrix_tube",
                     info_list = list(plate_id = -(i)),
-                    id = id,
-                    conn = conn) %>% suppressWarnings()
+                    id = id) %>% suppressWarnings()
       }
     }
   }
@@ -187,7 +192,7 @@ MoveSamples <- function(sample_type, move_data){
           # get container id
           eval.container_id <- filter(sampleDB::CheckTable(database = database, "matrix_plate"), plate_name == container_name)$id 
           # link sample with container id, if there is a sample id (which is not the case if an empty csv was intentionally uploaded)
-          ModifyTable(database = database,
+          ModifyTable(conn = conn,
                       "matrix_tube",
                       info_list = list(plate_id = eval.container_id,
                                        well_position = eval.well_pos),
