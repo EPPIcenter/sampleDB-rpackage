@@ -368,7 +368,7 @@ CheckPlates <- function(database, sample_type, input, output){
   # check unique plate names
   output[[ui_elements$ui.output$WarningUploadContainerName]] <- renderText({
     plate_name <- input[[ui_elements$ui.input$UploadPlateID]]
-    out <- sampleDB:::.CheckUploadContainerNameDuplication(database = database,plate_name = plate_name)
+    out <- sampleDB:::.CheckUploadContainerNameDuplication(database = database,plate_name = plate_name, only_active = T)
     validate(need(out, "ERROR:\nPlate name is not unique"))
   })
   

@@ -88,6 +88,7 @@ SearchSamples <- function(sample_type = NULL, sample_label = NULL, container_nam
   # BEAUTIFY RESULTS TABLE
   results.cleaned_and_filtered <- .BeautifyResultsTable(results.filter_and_search = results.filtered)
 
+
   # OUTPUT MESSAGE IF NO RESULTS ARE FOUND
   stopifnot("THERE ARE NO EPPICENTER WETLAB SAMPLES THAT MATCH THIS SEARCH" = nrow(results.cleaned_and_filtered) != 0)
   id.wetlab_samples <- results.cleaned_and_filtered$"storage_container_id"
@@ -197,6 +198,7 @@ SearchSamples <- function(sample_type = NULL, sample_label = NULL, container_nam
   # comments <- filter(tables.database$table.storage_container, id %in% storage_container_id)$comments
   specimen_ids <- filter(tables.database$table.storage_container, id %in% storage_container_id)
   table.ref1 <- inner_join(specimen_ids, tables.database$table.specimen, by = c("specimen_id" = "id"))
+  comment <- table.ref1$comment
   study_subject_id <- table.ref1$study_subject_id
   specimen_type_ids <- table.ref1$specimen_type_id
   collection_date <- table.ref1$collection_date
@@ -206,15 +208,16 @@ SearchSamples <- function(sample_type = NULL, sample_label = NULL, container_nam
   study_short_code <- inner_join(table.ref2, tables.database$table.study, by = c("study_id" = "id"))$short_code
   status_info <- inner_join(table.ref2, tables.database$table.status, by = c("status_id" = "id"))$name
   state_info <- inner_join(table.ref2, tables.database$table.state, by = c("state_id" = "id"))$name
-
   specimen_type_labels <- inner_join(table.ref1, tables.database$table.specimen_type, by = c("specimen_type_id" = "id"))$label
+
   internal_data <- list(storage_container_id = storage_container_id,
                         status_info = status_info,
                         state_info = state_info,
                         collection_date = collection_date,
                         study_short_code = study_short_code,
                         subject_uids = subject_uids,
-                        specimen_type_labels = specimen_type_labels)
+                        specimen_type_labels = specimen_type_labels,
+                        comment = comment)
 
   return(internal_data)
 }
@@ -282,7 +285,8 @@ SearchSamples <- function(sample_type = NULL, sample_label = NULL, container_nam
                            freezer_l1 = external_data$level_I %>% as.factor(),
                            freezer_l2 = external_data$level_II %>% as.factor(),
                            status = internal_data$status_info %>% as.factor(),
-                           state = internal_data$state_info %>% as.factor())
+                           state = internal_data$state_info %>% as.factor(),
+                           comment = internal_data$comment %>% as.character())
   return(search_results)
 }
 
@@ -359,7 +363,9 @@ SearchSamples <- function(sample_type = NULL, sample_label = NULL, container_nam
            `Storage Location.Level I` = freezer_l1,
            `Storage Location.Level II` = freezer_l2,
            `Collected Date` = collection_date,
-           `Status` = status)
+           `State` = state,
+           `Status` = status,
+           `Comment` = comment)
 
   return(usr_results)
 }

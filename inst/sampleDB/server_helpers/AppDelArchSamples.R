@@ -18,16 +18,17 @@ DelArchSamples <- function(session, input, database, output, inputs, outputs){
       search_results <- list.search_results$results
       storage_container_ids <- list.search_results$id.wetlab_samples 
       values$data <- search_results %>%
-        mutate(`Sample ID` = storage_container_ids) %>%
-        relocate(`Sample ID`)
-    } else {
-      values$data <- tibble(a = c(1)) %>% filter(a == 2)
-    }
+        mutate(`Sample ID` = storage_container_ids)    
+      }
   })
 
   # print search results
   output[[ui_elements$ui.output$SearchResultsTable]] <- DT::renderDataTable({
-    values$data
+    if (!is.null(values$data)) { 
+      values$data %>% select(-`Sample ID`)
+    } else {
+      tibble(a = c(1)) %>% filter(a == 2)
+    }
   }, options = DataTableRenderOptions(), rownames = FALSE)
 
   values$selected <- reactive({ values$data[ input$DelArchSearchResultsTable_rows_selected, ] })

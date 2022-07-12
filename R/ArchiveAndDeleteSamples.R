@@ -62,12 +62,12 @@ ArchiveAndDeleteSamples <- function(operation, data, comment, status, verificati
         ModifyTable(conn = conn,
                               "storage_container",
                               info_list = list(last_updated = as.character(lubridate::now()),
-                                               state_id = state_id,
+                                               state_id = state_id, # Archived
                                                status_id = status_id,
-                                               comment = comment), #Exhausted
+                                               comment = comment),
                               id = eval.id)
 
-        .MakeExternalDataNA(eval.id, database.tables, database)
+        .MakeExternalDataNA(eval.id, database.tables, conn)
       }
 
       # USER MSG

@@ -14,7 +14,7 @@
 
 # Logistical Checks
 .CheckLogisticalColnamesOfUserProvidedMicronixFile <- function(upload_file_type, users_upload_file){
-  
+
   if(upload_file_type == "visionmate"){
     users_upload_file <- users_upload_file %>% setNames(.[1,]) %>% .[-c(1),]
     required_visionmate_colnames <- c("LocationRow", "LocationColumn", "TubeCode")
@@ -38,12 +38,12 @@
 .CheckFormattedLogisticalColnames <- function(formatted_upload_file){
   valid_logistical_colnames <- c("well_position", "label")
   out <- all(valid_logistical_colnames %in% names(formatted_upload_file))
-  
+
   return(out)
 }
 
 .CheckBarcodeIsntInDB <- function(database, formatted_upload_file){
-  
+
   upload_barcodes <- formatted_upload_file %>% pull(label)
   barcodes.existing <- upload_barcodes[which(upload_barcodes %in% c(sampleDB::CheckTable(database = database, "matrix_tube")$barcode))]
   out1 <- all(!(upload_barcodes %in% c(sampleDB::CheckTable(database = database, "matrix_tube")$barcode)))
@@ -66,7 +66,7 @@
   }
 
   well_positions <- formatted_upload_file %>% pull(well_position)
-  
+
   # check row letters
   row_letter_check <- substr(well_positions, 1, 1) %in% LETTERS
 
@@ -80,7 +80,7 @@
   well_dups_check <- !duplicated(well_positions)
 
   out1 <- all(row_letter_check) && length(col_number_indices) == length(well_positions) && all(well_dups_check)
-  
+
   if(length(col_number_indices)) {
     inval_cols <- well_positions[-col_number_indices]
   } else {
@@ -88,7 +88,7 @@
   }
 
   out2 <- list(
-      invalid_row = well_positions[!row_letter_check],
+    invalid_row = well_positions[!row_letter_check],
     invalid_col = inval_cols,
     duplicated = well_positions[!well_dups_check]
   )
@@ -98,7 +98,7 @@
 }
 
 .CheckBarcodeArentRepeated <- function(database, formatted_upload_file){
-  
+
   upload_barcodes <- formatted_upload_file %>% pull(label)
   dups <- upload_barcodes[duplicated(upload_barcodes)]
   out1 <- length(dups) == 0
@@ -106,8 +106,24 @@
   return(out)
 }
 
+.CheckAllSamplesAreActive <- function(database, tokens, type) {
+
+  switch(type,
+  micronix={
+    return(all(
+        sampleDB::CheckTable(database = database, "matrix_tube") %>% 
+        inner_join(sampleDB::CheckTable(database = database, "storage_container"), by = c("id" = "id")) %>%
+        filter(state_id == 1 & barcode %in% tokens) %>% nrow() == length(tokens)
+      )
+    )
+  },
+  {
+    stopifnot("*** ERROR: .CheckAllSamplesAreActive() type unimplemented!!!" = FALSE)
+  })
+}
+
 .CheckBarcodesInDatabase <- function(database = database, formatted_move_file_list = formatted_move_file_list){
-  
+
   out_vector <- c()
   barcodes_missing_from_database_list <- list()
   for(item in names(formatted_move_file_list)){
@@ -118,22 +134,22 @@
     }else{
       barcodes_missing_from_database_list[[item]] <- NULL
     }
-    
+
     out_item <- all(barcodes %in% c(sampleDB::CheckTable(database = database, "matrix_tube")$barcode))
     out_vector <- c(out_vector, out_item)
   }
-  
+
   out <- list(out1 = all(out_vector), out2 = barcodes_missing_from_database_list)
-  
+
   return(out)
 }
 
 # Metadata Checks
 .CheckMetadataColnamesOfUserProvidedMicronixFile <- function(users_upload_file, upload_file_type){
-  
+
   #establish required metadata column names
   names.base <- c("Participant", "SpecimenType", "StudyCode")
-  
+
   if(upload_file_type == "traxcer"){
     users_upload_file <- users_upload_file %>% setNames(.[2,]) %>% .[-c(1, 2),]
     out <- all(names.base %in% names(users_upload_file))
@@ -160,14 +176,14 @@
 }
 
 .CheckUploadStudyShortCodes <- function( database, formatted_upload_file){
-  
+
   study_short_codes <- formatted_upload_file %>% pull(study_short_code)
   out <- all(study_short_codes %in% sampleDB::CheckTable(database = database, table = "study")$short_code)
   return(out)
 }
 
 .CheckUploadDateFormat <- function(database, formatted_upload_file){
-  
+
   if("collection_date" %in% names(formatted_upload_file)){
     collection_dates <- formatted_upload_file %>% pull(collection_date)
     collection_dates <- collection_dates[!is.na(collection_dates)]
@@ -179,14 +195,27 @@
 }
 
 # Plate Checks
-.CheckUploadContainerNameDuplication <- function(plate_name, database){
-  
-  out <- all(!(plate_name %in% c(sampleDB::CheckTable(database = database, "matrix_plate")$plate_name)))
+.CheckUploadContainerNameDuplication <- function(plate_name, database, only_active = FALSE){
+
+  out <- FALSE
+  if (isTRUE(only_active)) {
+    joined_tube_container_tables <- inner_join(sampleDB::CheckTable(database = database, "matrix_tube"),
+      sampleDB::CheckTable(database = database, "storage_container"), by = c("id" = "id"))
+
+    out <- all(!(plate_name %in% c(
+      filter(joined_tube_container_tables, state_id == 1) %>% #Active
+        inner_join(sampleDB::CheckTable(database = database, "matrix_plate"), by = c("plate_id" = "id")) %>%
+        filter(plate_name == plate_name))$plate_name))
+
+    return(out)
+  } else {
+    out <- all(!(plate_name %in% c(sampleDB::CheckTable(database = database, "matrix_plate")$plate_name)))
+  }
   return(out)
 }
 
 .CheckUploadContainerBarcodeDuplication <- function(plate_barcode, database){
-  
+
   if(plate_barcode != "" && !is.null(plate_barcode)){
     out <- all(!(plate_barcode %in% c(sampleDB::CheckTable(database = database, "matrix_plate")$plate_barcode)))
   }else{
@@ -198,8 +227,8 @@
 # Freezer Address Check
 .CheckFreezerAddress <- function(freezer_address, database){
   # check freezer address exists
-  tmp.location.tbl <- inner_join(tibble(location_name = freezer_address$location_name, level_I = freezer_address$level_I, level_II = freezer_address$level_II), 
-                                 sampleDB::CheckTable(database = database, "location"), 
+  tmp.location.tbl <- inner_join(tibble(location_name = freezer_address$location_name, level_I = freezer_address$level_I, level_II = freezer_address$level_II),
+                                 sampleDB::CheckTable(database = database, "location"),
                                  by = c("location_name", "level_I", "level_II"))
   out <- nrow(tmp.location.tbl) != 0
   return(out)
@@ -207,14 +236,14 @@
 
 #Freezer Checks
 .CheckFreezerNameIsUnique <- function(input, database, freezer_address){
-  
-  freezer_address_dup_test <- filter(sampleDB::CheckTable("location"), 
-                                     location_name == freezer_address$freezer_name, 
+
+  freezer_address_dup_test <- filter(sampleDB::CheckTable("location"),
+                                     location_name == freezer_address$freezer_name,
                                      level_I == freezer_address$freezer_levelI,
                                      level_II == freezer_address$freezer_levelII) %>% nrow()
-  
+
   if(freezer_address_dup_test > 0){
-    out <- FALSE  
+    out <- FALSE
   }else{
     out <- TRUE
   }
@@ -223,9 +252,9 @@
 
 .CheckFreezerDeletion <- function(input, database, freezer_address){
   num_items_at_address <- 0
-  
-  freezer_address <- filter(sampleDB::CheckTable(database = database, "location"), 
-                            location_name == freezer_address$freezer_name, 
+
+  freezer_address <- filter(sampleDB::CheckTable(database = database, "location"),
+                            location_name == freezer_address$freezer_name,
                             level_I == freezer_address$freezer_levelI,
                             level_II == freezer_address$freezer_levelII)
   if(length(freezer_address$id) > 0){
@@ -244,7 +273,7 @@
 .CheckSpecimenTypeUnique <- function(input, database, specimen_type){
   specimen_type_dup_test <- filter(sampleDB::CheckTable(database = database, "specimen_type"), label == specimen_type) %>% nrow()
   if(specimen_type_dup_test > 0){
-    out <- FALSE  
+    out <- FALSE
   }else{
     out <- TRUE
   }
@@ -253,7 +282,7 @@
 
 
 .CheckSpecimenTypeDeletion <- function(input, database, specimen_type){
-  
+
   num_items_of_specimen_type <- 0
   specimen_type <- filter(sampleDB::CheckTable(database = database, "specimen_type"), label == specimen_type)
   if(length(specimen_type$id) > 0){
@@ -324,7 +353,7 @@
                        conn = conn) %>% suppressWarnings()
 
   eval.plate_id <- tail(sampleDB::CheckTableTx(conn = conn, "matrix_plate"), 1)$id
-  
+
   return(eval.plate_id)
-  
+
 }

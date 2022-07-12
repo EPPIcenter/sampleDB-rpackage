@@ -59,8 +59,7 @@ CREATE TABLE IF NOT EXISTS "matrix_tube" (
 
 	FOREIGN KEY("id") REFERENCES "storage_container"("id"),
 	FOREIGN KEY("plate_id") REFERENCES "matrix_plate"("id"),
-	PRIMARY KEY("id"),
-	CONSTRAINT "well_position_plate_uc" UNIQUE("well_position","plate_id")
+	PRIMARY KEY("id")
 );
 CREATE TABLE IF NOT EXISTS "box" (
 	"created"	DATETIME NOT NULL,
@@ -177,7 +176,24 @@ CREATE TABLE IF NOT EXISTS "state" (
 	"name"	VARCHAR NOT NULL UNIQUE
 );
 
-INSERT OR IGNORE INTO "status" ("name") VALUES ("In Use"), ("Exhausted"), ("Separated"), ("Missing");
+CREATE TABLE IF NOT EXISTS "state_status_relationship" (
+	"id"	INTEGER PRIMARY KEY AUTOINCREMENT,
+	"status_id"	INTEGER NOT NULL,
+	"state_id" INTEGER NOT NULL,
+	"default"  INTEGER NOT NULL,
+
+	FOREIGN KEY("status_id") REFERENCES "status"("id"),
+	FOREIGN KEY("state_id") REFERENCES "state"("id")
+);
+
+INSERT OR IGNORE INTO "status" ("name") VALUES ("In Use"), ("Exhausted"), ("Bad"), ("Missing");
 INSERT OR IGNORE INTO "state" ("name") VALUES ("Active"), ("Archived");
+INSERT OR IGNORE INTO "state_status_relationship" ("status_id", "state_id", "default") 
+VALUES 
+	(1, 1, TRUE), 
+	(2, 2, FALSE),
+	(3, 2, FALSE), 
+	(4, 2, FALSE); 	
+
 INSERT OR IGNORE INTO "version" ("name") VALUES ("1.0.0");
 
