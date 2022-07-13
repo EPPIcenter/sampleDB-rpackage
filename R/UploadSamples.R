@@ -142,7 +142,7 @@ UploadSamples <- function(sample_type, upload_data, container_name, container_ba
   }
 
   # check plate name
-  stopifnot("Error: Container name is not unique" = sampleDB:::.CheckUploadContainerNameDuplication(database = database, plate_name = container_name, only_active = TRUE))
+  # stopifnot("Error: Container name is not unique" = sampleDB:::.CheckUploadContainerNameDuplication(database = database, plate_name = container_name, only_active = TRUE))
 
   # check plate barcode
   stopifnot("Error: Container barcode is not unique" = sampleDB:::.CheckUploadContainerBarcodeDuplication(plate_barcode = container_barcode, database = database))
@@ -151,14 +151,17 @@ UploadSamples <- function(sample_type, upload_data, container_name, container_ba
   if (sample_type == "micronix") {
     tmp <- sampleDB::CheckTable(database = database, "storage_container") %>%
       select(status_id, id) %>%
-      inner_join(sampleDB::CheckTable(database = database, "matrix_tube"), by = c("id" = "id"))
+      filter(status_id == 1) %>%
+      inner_join(sampleDB::CheckTable(database = database, "matrix_tube"), by = c("id" = "id")) %>%
+      inner_join(sampleDB::CheckTable(database = database, "matrix_plate"), by = c("plate_id" = "id")) %>%
+      filter(plate_name %in% container_name) %>%
+      select(plate_id, well_position, status_id) %>%
+      inner_join(upload_data, by = c("well_position" = "well_position"))
 
-    if (nrow(tmp) > 0) {
-      tmp <- tmp %>% select(plate_id, well_position, status_id) %>% filter(status_id == 1)
-      stopifnot("Uploading sample to well location that already has an active sample" = (0 == nrow(tmp) | (0 < nrow(tmp) & any(duplicated(tmp)))))
-    }
+    stopifnot("Uploading sample to well location that already has an active sample" = (nrow(tmp) == 0))
   }
 }
+
 
 .UploadSamples <- function(upload_data, sample_type, conn, container_name, container_barcode, freezer_address){
   RSQLite::dbBegin(conn)

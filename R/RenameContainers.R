@@ -14,7 +14,7 @@ RenameContainers <- function(sample_type, new_container_name, current_container_
 
   stopifnot("ERROR: Sample Type is not valid" = sample_type %in% c("micronix"))
   stopifnot("ERROR: Container Name does not exist" = current_container_name %in% CheckTable(database = database, table = "matrix_plate")$plate_name)
-  stopifnot("ERROR: New Container name is not unique" = sampleDB:::.CheckUploadContainerNameDuplication(database = database, plate_name = new_container_name, only_active = F))
+  # stopifnot("ERROR: New Container name is not unique" = sampleDB:::.CheckUploadContainerNameDuplication(database = database, plate_name = new_container_name, only_active = T))
   
   container_id <- filter(sampleDB::CheckTable("matrix_plate"), plate_name == current_container_name)$id
   ModifyTable(conn = conn,
