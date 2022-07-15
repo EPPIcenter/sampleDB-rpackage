@@ -82,6 +82,9 @@ DelArchSamples <- function(session, input, database, output, inputs, outputs){
     updateSelectizeInput(session, "DelArchSearchBySpecimenType", "Specimen Type", choices = c("", dbUpdateEvent()$specimen_type))
     updateSelectizeInput(session, "DelArchSearchByLocation", "Storage Location", choices = c("", dbUpdateEvent()$location))
   })
+
+  updateSelectizeInput(session, "DelArchSearchByState", "State", choices = c(Global$DefaultStateSearchTerm, sampleDB::CheckTable("state")$name))
+  updateSelectizeInput(session, "DelArchSearchByStatus", "Status", choices = c(Global$DefaultStatusSearchTerm, sampleDB::CheckTable("status")$name))
     
   # popup window
   dataModal <- function(failed = FALSE, operation, data) {
