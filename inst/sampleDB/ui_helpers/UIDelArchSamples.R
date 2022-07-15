@@ -37,16 +37,17 @@ UIDelArchSamples <- function(){
       selectizeInput("DelArchSearchByLocation", "Storage Location", choices = c("", sampleDB::CheckTable("location")$location_name)),
       selectizeInput("DelArchSearchByLevelI", "Storage Location: Level I", choices = c("")),
       selectizeInput("DelArchSearchByLevelII", "Storage Location: Level II", choices = c("")),
-      selectizeInput("DelArchSearchByExhausted", "Archived", choices = c("", TRUE, FALSE)),
-      # textOutput("WarnSubjectUIDFileColnames"),
-      # textOutput("WarnSubjectUIDFileColnames2")
+      selectizeInput("DelArchSearchByState", "State", choices = c(Global$DefaultStateSearchTerm, sampleDB::CheckTable("state")$name)),
+      selectizeInput("DelArchSearchByStatus", "Status", choices = c(Global$DefaultStatusSearchTerm, sampleDB::CheckTable("status")$name))
     ),
     mainPanel(
       width = 10,
       DT::dataTableOutput("DelArchSearchResultsTable"),
       hr(),
+      selectizeInput("DelArchStatus", "Status", choices = c("", sampleDB::CheckTable(database = database, "status")$name)),
+      textInput(label = "Comment", inputId = "DelArchComment"),
+      hr(),
       # verbatimTextOutput("ShowSelectedSamples"),
-      textInput(label = "Sample ID", inputId = "DelArchID"),
       # verbatimTextOutput("show_delarch_id"),
       fluidRow(column(width = 12,
                       actionButton("ArchiveAction", width = '10.75%', label = "Archive Samples", style="color: #fff; background-color: #337ab7; border-color: #2e6da4"),
