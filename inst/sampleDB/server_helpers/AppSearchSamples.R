@@ -6,7 +6,6 @@ SearchWetlabSamples <- function(session, input, database, output, DelArch = FALS
   ui_elements <- GetUISearchElements()
   
   # create a null value to store the search results
-  values <- reactiveValues(data = NULL)
   list.search_results <- NULL
   observe({
     
@@ -14,17 +13,17 @@ SearchWetlabSamples <- function(session, input, database, output, DelArch = FALS
     list.search_results <- SearchFunction(input, output, ui_elements)
     
     if(!is.null(list.search_results)){
-      values$data <- list.search_results$results
+      search_results <- list.search_results$results
       storage_container_ids <- list.search_results$id.wetlab_samples 
     } else {
-      values$data <- NULL
+      search_results <- NULL
       storage_container_ids <- NULL
     }
     
     # print search results
     output[[ui_elements$ui.output$SearchResultsTable]] <- DT::renderDataTable({
       if(!is.null(list.search_results)){
-        values$data
+        search_results
       }else{
         tibble(a = c(1)) %>% filter(a == 2)
       }
