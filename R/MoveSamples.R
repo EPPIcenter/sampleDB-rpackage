@@ -306,7 +306,8 @@ MoveSamples <- function(sample_type, move_data){
 
   for(item in names(move_data)){
       out <- sampleDB:::.CheckAllSamplesAreActive(database = database, tokens = move_data[[item]]$label, type = "micronix")
-      validate(need(out, "*** ERROR: Move file contains samples that have been inactivated."))
+      errmsg <- paste("*** ERROR: Move file", item, "contains samples that have been inactivated.")
+      validate(need(out, errmsg))
     }
 
 }

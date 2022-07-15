@@ -111,7 +111,7 @@
   switch(type,
   micronix={
     return(all(
-        sampleDB::CheckTable(database = database, "matrix_tube") %>% 
+        sampleDB::CheckTable(database = database, "matrix_tube") %>%
         inner_join(sampleDB::CheckTable(database = database, "storage_container"), by = c("id" = "id")) %>%
         filter(state_id == 1 & barcode %in% tokens) %>% nrow() == length(tokens)
       )

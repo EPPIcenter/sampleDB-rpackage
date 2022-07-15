@@ -53,10 +53,6 @@ SearchWetlabSamples <- function(session, input, database, output, DelArch = FALS
                        choices = c("", sampleDB::CheckTable(database = database, "study_subject")$subject %>% 
                                      unique()), 
                        server = TRUE)
-
-  updateSelectizeInput(session, "SearchByState", "State", choices = c(Global$DefaultStateSearchTerm, sampleDB::CheckTable("state")$name))
-  updateSelectizeInput(session, "SearchByStatus", "Status", choices = c(Global$DefaultStatusSearchTerm, sampleDB::CheckTable("status")$name))
-
   
   # clear files
   .SearchReset(input)
