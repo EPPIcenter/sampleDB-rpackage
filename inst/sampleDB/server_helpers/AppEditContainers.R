@@ -84,5 +84,19 @@ EditWetlabContainers <- function(session, input, database, output){
       updateSelectizeInput(session, "EditContainerName", label = NULL, choices = c("", sampleDB::CheckTable("bag")$bag_name))
     }
   })
+
+  observeEvent(dbUpdateEvent(), {
+    if(input$EditContainerSampleType == "micronix"){
+      updateSelectizeInput(session, "EditContainerName", label = NULL, choices = c("", sampleDB::CheckTable("matrix_plate")$plate_name))
+    }
+    else if(input$EditContainerSampleType == "cryovile"){
+      updateSelectizeInput(session, "EditContainerName", label = NULL, choices = c("", sampleDB::CheckTable("box")$box_name))
+    }
+    else if(input$EditContainerSampleType == "rdt"){
+      updateSelectizeInput(session, "EditContainerName", label = NULL, choices = c("", sampleDB::CheckTable("bag")$bag_name))
+    }else{
+      updateSelectizeInput(session, "EditContainerName", label = NULL, choices = c("", sampleDB::CheckTable("bag")$bag_name))
+    }
+  })
   
 }

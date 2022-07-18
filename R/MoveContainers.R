@@ -16,11 +16,12 @@ MoveContainers <- function(sample_type, container_name, freezer){
   stopifnot("Sample Type is not valid" = sample_type %in% c("micronix", "cryovile", "rdt", "paper"))
   eval.location <- filter(sampleDB::CheckTableTx(conn = conn, table = "location"), 
                           location_name == freezer$freezer.name & level_I == freezer$freezer.levelI & level_II == freezer$freezer.levelII)
-  stopifnot("Location does not exist" = nrow(eval.location) > 0)
+  validate(need(nrow(eval.location) > 0, "Location does not exist"))
   eval.location_id <- eval.location$id
   
   if(sample_type == "micronix"){
     container_id <- filter(sampleDB::CheckTableTx(conn = conn, "matrix_plate"), plate_name == container_name)$id
+    validate(need(!is_empty(container_id), "*** ERROR: Attempt to move plate that does not exist (was it deleted after deleting all of it's samples?)"))
     ModifyTable(conn = conn,
                           table_name = "matrix_plate",
                           info_list = list(location_id = eval.location_id),
@@ -29,6 +30,7 @@ MoveContainers <- function(sample_type, container_name, freezer){
   }
   else if(sample_type == "cryovile"){
     container_id <- filter(sampleDB::CheckTableTx(conn = conn, "box"), box_name == container_name)$id
+    validate(need(!is_empty(container_id), "*** ERROR: Attempt to move box that does not exist (was it deleted after deleting all of it's samples?)"))
     ModifyTable(conn = conn,
                           table_name = "box",
                           info_list = list(location_id = eval.location_id),
@@ -37,6 +39,7 @@ MoveContainers <- function(sample_type, container_name, freezer){
   }
   else{
     container_id <- filter(sampleDB::CheckTableTx(conn = conn, "bag"), bag_name == container_name)$id
+    validate(need(!is_empty(container_id), "*** ERROR: Attempt to move bag that does not exist (was it deleted after deleting all of it's samples?)"))
     ModifyTable(conn = conn,
                           table_name = "bag",
                           info_list = list(location_id = eval.location_id),

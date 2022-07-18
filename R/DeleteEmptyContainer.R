@@ -2,18 +2,21 @@
 #' @import dplyr
 #' @export
 
-DeleteEmptyContainer <- function(database, type, container_name){
-  
+DeleteEmptyContainer <- function(type, container_name){
+
+  database <- sampleDB:::.GetSampleDBPath()
+
   stopifnot("Sample Type is not valid" = type %in% c("micronix", "cryovial", "rdt", "paper"))
   conn <- RSQLite::dbConnect(RSQLite::SQLite(), database)
   RSQLite::dbBegin(conn)
 
   if(type == "micronix"){
     id.container <- filter(sampleDB::CheckTableTx(conn = conn, "matrix_plate"), plate_name == container_name)$id
+    validate(need(!is_empty(id.container), "*** ERROR: Attempt to delete matrix plate that does not exist (was it deleted after deleting all of it's samples?)"))
     if(filter(sampleDB::CheckTableTx(conn = conn, "matrix_tube"), plate_id %in% id.container) %>% nrow() == 0){
-      sampleDB::DeleteFromTable(conn = conn, 
-                                table_name = "matrix_plate", 
-                                id = as.character(id.container))  
+      sampleDB::DeleteFromTable(conn = conn,
+                                table_name = "matrix_plate",
+                                id = as.character(id.container))
       return_message <- paste0("Successfully Deleted Container: \n", container_name)
     }else{
       return_message <- "Error Contianer is not empty"
@@ -21,10 +24,11 @@ DeleteEmptyContainer <- function(database, type, container_name){
   }
   else if(type == "cryovial"){
     id.container <- filter(sampleDB::CheckTableTx(conn = conn, "box"), box_name == container_name)$id
+    validate(need(!is_empty(id.container), "*** ERROR: Attempt to delete box that does not exist (was it deleted after deleting all of it's samples?)"))
     if(filter(sampleDB::CheckTableTx(conn = conn, "tube"), plate_id %in% id.container) %>% nrow() == 0){
-      sampleDB::DeleteFromTable(conn = conn, 
-                                table_name = "box", 
-                                id = as.character(id.container))  
+      sampleDB::DeleteFromTable(conn = conn,
+                                table_name = "box",
+                                id = as.character(id.container))
       return_message <- paste0("Successfully Deleted Container: \n", container_name)
     }else{
       return_message <- "Error Contianer is not empty"
@@ -32,10 +36,11 @@ DeleteEmptyContainer <- function(database, type, container_name){
   }
   else if(type == "rdt"){
     id.container <- filter(sampleDB::CheckTableTx(conn = conn, "bag"), bag_name == container_name)$id
+    validate(need(!is_empty(id.container), "*** ERROR: Attempt to delete bag that does not exist (was it deleted after deleting all of it's samples?)"))
     if(filter(sampleDB::CheckTableTx("rdt"), bag_id %in% id.container) %>% nrow() == 0){
-      sampleDB::DeleteFromTable(conn = conn, 
-                                table_name = "bag", 
-                                id = as.character(id.container)) 
+      sampleDB::DeleteFromTable(conn = conn,
+                                table_name = "bag",
+                                id = as.character(id.container))
       return_message <- paste0("Successfully Deleted Container: \n", container_name)
     }else{
       return_message <- "Error Contianer is not empty"
@@ -43,9 +48,10 @@ DeleteEmptyContainer <- function(database, type, container_name){
   }
   else{
     id.container <- filter(sampleDB::CheckTableTx(conn = conn, "bag"), bag_name == container_name)$id
+    validate(need(!is_empty(id.container), "*** ERROR: Attempt to delete bag that does not exist (was it deleted after deleting all of it's samples?)"))
     if(filter(sampleDB::CheckTableTx("paper"), bag_id %in% id.container) %>% nrow() == 0){
-      sampleDB::DeleteFromTable(conn = conn, 
-                                table_name = "bag", 
+      sampleDB::DeleteFromTable(conn = conn,
+                                table_name = "bag",
                                 id = as.character(id.container))
       return_message <- paste0("Successfully Deleted Container: \n", container_name)
     }else{
@@ -54,7 +60,7 @@ DeleteEmptyContainer <- function(database, type, container_name){
   }
 
   dbCommit(conn)
-  dbDisconnect(conn)  
+  dbDisconnect(conn)
 
   message(return_message)
   return(return_message)
