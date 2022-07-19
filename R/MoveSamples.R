@@ -120,7 +120,7 @@ MoveSamples <- function(sample_type, move_data){
     # check if there are any samples with the same barcode
     stopifnot("AT LEAST TWO SAMPLES HAVE THE SAME BARCODE" = sum(duplicated(stacked_orphaned_sample_data$barcode)) == 0)
 
-    if(!all(stacked_orphaned_sample_data$plate_id > 0)){
+    if(any(startsWith(stacked_orphaned_sample_data$well_position, '-'))) {
       # there are orphans left - move would produce orphans
       out <- list(error = FALSE, orphan_check_toggle = FALSE, stacked_orphaned_sample_data = stacked_orphaned_sample_data)
 
@@ -155,7 +155,7 @@ MoveSamples <- function(sample_type, move_data){
           id <- sample_data.existing_container[i,]$id
           ModifyTable(conn = conn,
                       table_name = "matrix_tube",
-                      info_list = list(plate_id = -(i)),
+                      info_list = list(well_position = paste0('-', (sample_data.existing_container[i,]$well_position))),
                       id = id) %>% suppressWarnings()
           }
       }
@@ -268,7 +268,7 @@ MoveSamples <- function(sample_type, move_data){
     if(0 < nrow(sample_data[[eval.container_id]])) {
       sample_data[[eval.container_id]] <- sample_data[[eval.container_id]] %>%
         filter(sample_type %in% "micronix" & !(sample_data[[eval.container_id]]$well_position %in% "NA")) %>%
-        mutate(plate_id = -(i))
+        mutate(well_position = paste0('-', (sample_data[[eval.container_id]]$well_position)))
     }
   }
 
