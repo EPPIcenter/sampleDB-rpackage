@@ -30,7 +30,7 @@ ModifyTable <- function(table_name, info_list, id, conn){
   # start the transaction
   tryCatch({
     rs <- RSQLite::dbSendQuery(conn, paste0("UPDATE ", table_name," SET ", update_str," WHERE id = ", id, ";"))
-    message(sprintf("Updated %d rows.", RSQLite::dbGetRowsAffected(rs)))
+    # message(sprintf("Updated %d rows.", RSQLite::dbGetRowsAffected(rs)))
     RSQLite::dbClearResult(rs)
   },
   error=function(e) {
