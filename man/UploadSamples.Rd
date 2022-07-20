@@ -52,14 +52,14 @@ Currently the type of wetlab samples supported is only \code{micronix}. <!---cry
 }
 \examples{
 \dontrun{
-UploadSamples(sample_type = "micronix", 
+UploadSamples(sample_type = "micronix",
               upload_data = tibble(well_position = c("A0"),
                                    label = c("XXX 1"),
                                    study_subject_id = c("1"),
                                    specimen_type = c("PLASMA"),
                                    study_short_code = c("KAM06"),
                                    collection_date = c("2021-04-10")),
-               container_name = "test_container", 
+               container_name = "test_container",
                freezer_address = list(location_name = "TBD",
                                       level_I = "TBD",
                                       level_II = "seve's working basket"))

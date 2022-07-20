@@ -4,7 +4,7 @@
 \alias{ArchiveAndDeleteSamples}
 \title{Archive and Delete Wetlab EPPIcenter Samples}
 \usage{
-ArchiveAndDeleteSamples(operation, sample_id, verification = TRUE)
+ArchiveAndDeleteSamples(operation, data, comment, status, verification = TRUE)
 }
 \arguments{
 \item{operation}{A string specifying the type of operation to perform. Valid operations are \code{archive} and \code{delete}.
@@ -15,9 +15,9 @@ This operation can be used for example when a micronix tube is emptied or rancid
 \code{delete} should be used to remove all traces of the sample (internal and external data).
 Deletions are recursive in the sense that they if sample ids associated with samples from an entire box are deleted then the box is automatically deleted.}
 
-\item{sample_id}{A numeric vector of a one or more sample IDs (also referred to as storage container IDs). Can be accessed using sampleDB::SearchSamples().}
-
 \item{verification}{A logical value. If set to TRUE user verification of the operation is required. If set to false user verification is bypassed. Default is set to TRUE.}
+
+\item{sample_id}{A numeric vector of a one or more sample IDs (also referred to as storage container IDs). Can be accessed using sampleDB::SearchSamples().}
 }
 \description{
 
