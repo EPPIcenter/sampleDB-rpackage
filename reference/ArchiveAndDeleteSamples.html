@@ -48,7 +48,7 @@
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">ArchiveAndDeleteSamples</span><span class="op">(</span><span class="va">operation</span>, <span class="va">sample_id</span>, verification <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">ArchiveAndDeleteSamples</span><span class="op">(</span><span class="va">operation</span>, <span class="va">data</span>, <span class="va">comment</span>, <span class="va">status</span>, verification <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -61,12 +61,12 @@ This operation can be used for example when a micronix tube is emptied or rancid
 Deletions are recursive in the sense that they if sample ids associated with samples from an entire box are deleted then the box is automatically deleted.</p></dd>
 
 
-<dt>sample_id</dt>
-<dd><p>A numeric vector of a one or more sample IDs (also referred to as storage container IDs). Can be accessed using sampleDB::SearchSamples().</p></dd>
-
-
 <dt>verification</dt>
 <dd><p>A logical value. If set to TRUE user verification of the operation is required. If set to false user verification is bypassed. Default is set to TRUE.</p></dd>
+
+
+<dt>sample_id</dt>
+<dd><p>A numeric vector of a one or more sample IDs (also referred to as storage container IDs). Can be accessed using sampleDB::SearchSamples().</p></dd>
 
 </dl></div>
 

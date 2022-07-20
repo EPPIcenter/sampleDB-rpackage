@@ -56,7 +56,8 @@
 <span>  specimen_type <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  study <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  collection_dates <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  archived <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  status <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  state <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  freezer <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  study_subject.file <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  return_sample_ids <span class="op">=</span> <span class="cn">FALSE</span></span>
@@ -93,10 +94,6 @@
 <dd><p>A list of date values strings (<code>date.to</code> and <code>date.from</code>) that can be used to filter EPPIcenter samples</p></dd>
 
 
-<dt>archived</dt>
-<dd><p>A logical value. <code>TRUE</code> filters for archived samples and <code>FALSE</code> filters for active samples</p></dd>
-
-
 <dt>freezer</dt>
 <dd><p>A list specifying the vector <code>location_name</code>, <code>level_I</code>, and/or<code>level_II</code></p></dd>
 
@@ -107,6 +104,10 @@
 
 <dt>return_sample_ids</dt>
 <dd><p>A logical value. Setting <code>return_sample_ids</code> to <code>TRUE</code> means <code>SearchSamples</code> returns sample ids as well as search results. Setting <code>return_sample_ids</code> to <code>FALSE</code> means <code>SearchSamples</code> returns only search results. Default value is <code>FALSE</code>.</p></dd>
+
+
+<dt>archived</dt>
+<dd><p>A logical value. <code>TRUE</code> filters for archived samples and <code>FALSE</code> filters for active samples</p></dd>
 
 </dl></div>
 
