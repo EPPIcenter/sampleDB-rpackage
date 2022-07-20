@@ -36,7 +36,7 @@ SearchWetlabSamples <- function(session, input, database, output, DelArch = FALS
         paste('data-', Sys.Date(), '.csv', sep='')
       },
       content = function(con) {
-        write.csv(search_results, con)
+        write.csv(values$data, con)
       }
     )
   })
