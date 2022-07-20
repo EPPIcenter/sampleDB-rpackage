@@ -2,6 +2,7 @@
 
 export(AddToTable)
 export(ArchiveAndDeleteSamples)
+export(Backup_SampleDB)
 export(CheckTable)
 export(CheckTableTx)
 export(DeleteEmptyContainer)
@@ -28,4 +29,5 @@ import(shiny)
 import(shinyFeedback)
 import(shinyWidgets)
 import(tidyr)
+import(tools)
 importFrom(shinyjs,hidden)

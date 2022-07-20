@@ -7,20 +7,15 @@ Global <- list(
   DefaultStatusSearchTerm = "In Use"
 )
 
+database <- sampleDB:::.GetSampleDBPath()
 
 # Session independent declarations go here
-Backup_SampleDB <- function() {
-    observe({
-      # Re-execute this reactive expression every 24 hrs
-      invalidateLater(1000 * 60 * 60 * 24, session = NULL)
-      backup_sh <- file.path("/bin", "sampleDB_backup_generator.sh")
-      if (file.exists(backup_sh)) {
-        system2("bash", backup_sh)
-      } else {
-        message("ERROR: Backup script is missing. Run SampleDB_Setup() to re-install script.")
-      }
-    })
-}
+  observe({
+    # Re-execute this reactive expression every 24 hrs
+    message("firing!")
+    invalidateLater(1000 * 60 * 60 * 24, NULL)
+    Backup_SampleDB(database, file.path(dirname(database), 'backups'))
+  })
 
 dbUpdateEvent <- reactivePoll(1000 * 10, NULL,
     function() file.mtime(sampleDB:::.GetSampleDBPath()),
@@ -39,8 +34,6 @@ dbUpdateEvent <- reactivePoll(1000 * 10, NULL,
     }
   )
 
-# Call on application launch without being
-# tied to a session
-Backup_SampleDB()
+
 
 
