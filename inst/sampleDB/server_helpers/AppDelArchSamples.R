@@ -40,12 +40,6 @@ DelArchSamples <- function(session, input, database, output, inputs, outputs){
                              levelI_ui = ui_elements$ui.input$SearchByLevelI,
                              levelII_ui = ui_elements$ui.input$SearchByLevelII)
   
-  # load dropdown using the server -- saves time
-  updateSelectizeInput(session, 'DelArchSearchBySubjectUID', 
-                       choices = c("", sampleDB::CheckTable(database = database, "study_subject")$subject %>% 
-                                     unique()), 
-                       server = TRUE)
-  
   # handle archive and deletions
   # - archive item
   
@@ -73,14 +67,18 @@ DelArchSamples <- function(session, input, database, output, inputs, outputs){
   })
 
   observeEvent(dbUpdateEvent(), {
-    updateSelectInput(session, "DelArchSearchByPlate", label = "Plate Name", choices = c("", dbUpdateEvent()$plate_name))
-    updateSelectInput(session, "DelArchSearchByBox", label = "Box Name", choices = c("", dbUpdateEvent()$box_name))
-    updateSelectInput(session, "DelArchSearchByRDTBag", label = "Bag Name", choices = c("", dbUpdateEvent()$rdt_bag_name))
-    updateSelectInput(session, "DelArchSearchByPaperBag", label = "Bag Name", choices = c("", dbUpdateEvent()$paper_bag_name))
+    updateSelectInput(session, selected = input$DelArchSearchByPlate, "DelArchSearchByPlate", label = "Plate Name", choices = c("", dbUpdateEvent()$plate_name))
+    updateSelectInput(session, selected = input$DelArchSearchByBox, "DelArchSearchByBox", label = "Box Name", choices = c("", dbUpdateEvent()$box_name))
+    updateSelectInput(session, selected = input$DelArchSearchByRDTBag, "DelArchSearchByRDTBag", label = "Bag Name", choices = c("", dbUpdateEvent()$rdt_bag_name))
+    updateSelectInput(session, selected = input$DelArchSearchByPaperBag, "DelArchSearchByPaperBag", label = "Bag Name", choices = c("", dbUpdateEvent()$paper_bag_name))
 
-    updateSelectizeInput(session, "DelArchSearchByStudy", "Study", choices = c("", dbUpdateEvent()$study))
-    updateSelectizeInput(session, "DelArchSearchBySpecimenType", "Specimen Type", choices = c("", dbUpdateEvent()$specimen_type))
-    updateSelectizeInput(session, "DelArchSearchByLocation", "Storage Location", choices = c("", dbUpdateEvent()$location))
+    updateSelectizeInput(session, selected = input$DelArchSearchByStudy, "DelArchSearchByStudy", "Study", choices = c("", dbUpdateEvent()$study))
+    updateSelectizeInput(session, selected = input$DelArchSearchBySpecimenType, "DelArchSearchBySpecimenType", "Specimen Type", choices = c("", dbUpdateEvent()$specimen_type))
+    updateSelectizeInput(session, selected = input$DelArchSearchByLocation, "DelArchSearchByLocation", "Storage Location", choices = c("", dbUpdateEvent()$location))
+
+    # load dropdown using the server -- saves time
+    updateSelectizeInput(session, selected = input$DelArchSearchBySubjectUID, 'DelArchSearchBySubjectUID', "Study Subject", choices = c("", dbUpdateEvent()$subject) %>% 
+                                     unique())
   })
     
   # popup window

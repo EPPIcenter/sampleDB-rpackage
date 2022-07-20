@@ -58,14 +58,18 @@ SearchWetlabSamples <- function(session, input, database, output, DelArch = FALS
   .SearchReset(input)
 
   observeEvent(dbUpdateEvent(), {
-      updateSelectInput(session, "SearchByPlate", label = "Plate Name", choices = c("", dbUpdateEvent()$plate_name))
-      updateSelectInput(session, "SearchByBox", label = "Box Name", choices = c("", dbUpdateEvent()$box_name))
-      updateSelectInput(session, "SearchByRDTBag", label = "Bag Name", choices = c("", dbUpdateEvent()$rdt_bag_name))
-      updateSelectInput(session, "SearchByPaperBag", label = "Bag Name", choices = c("", dbUpdateEvent()$paper_bag_name))
+      updateSelectInput(session, selected = input$SearchByPlate, "SearchByPlate", label = "Plate Name", choices = c("", dbUpdateEvent()$plate_name))
+      updateSelectInput(session, selected = input$SearchByBox, "SearchByBox", label = "Box Name", choices = c("", dbUpdateEvent()$box_name))
+      updateSelectInput(session, selected = input$SearchByRDTBag, "SearchByRDTBag", label = "Bag Name", choices = c("", dbUpdateEvent()$rdt_bag_name))
+      updateSelectInput(session, selected = input$SearchByPaperBag, "SearchByPaperBag", label = "Bag Name", choices = c("", dbUpdateEvent()$paper_bag_name))
 
-      updateSelectizeInput(session, "SearchByStudy", "Study", choices = c("", dbUpdateEvent()$study))
-      updateSelectizeInput(session, "SearchBySpecimenType", "Specimen Type", choices = c("", dbUpdateEvent()$specimen_type))
-      updateSelectizeInput(session, "SearchByLocation", "Storage Location", choices = c("", dbUpdateEvent()$location))
+      updateSelectizeInput(session, selected = input$SearchByStudy, "SearchByStudy", "Study", choices = c("", dbUpdateEvent()$study))
+      updateSelectizeInput(session, selected = input$SearchBySpecimenType, "SearchBySpecimenType", "Specimen Type", choices = c("", dbUpdateEvent()$specimen_type))
+      updateSelectizeInput(session, selected = input$SearchByLocation, "SearchByLocation", "Storage Location", choices = c("", dbUpdateEvent()$location))
+
+      # load dropdown using the server -- saves time
+      updateSelectizeInput(session, selected = input$SearchBySubjectUID, 'SearchBySubjectUID', "Study Subject", choices = c("", dbUpdateEvent()$subject) %>% 
+                                       unique())
     })
 }
 
