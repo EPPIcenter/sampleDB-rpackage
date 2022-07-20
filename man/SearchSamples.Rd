@@ -12,7 +12,8 @@ SearchSamples(
   specimen_type = NULL,
   study = NULL,
   collection_dates = NULL,
-  archived = NULL,
+  status = NULL,
+  state = NULL,
   freezer = NULL,
   study_subject.file = FALSE,
   return_sample_ids = FALSE
@@ -33,13 +34,13 @@ SearchSamples(
 
 \item{collection_dates}{A list of date values strings (\code{date.to} and \code{date.from}) that can be used to filter EPPIcenter samples}
 
-\item{archived}{A logical value. \code{TRUE} filters for archived samples and \code{FALSE} filters for active samples}
-
 \item{freezer}{A list specifying the vector \code{location_name}, \code{level_I}, and/or\code{level_II}}
 
 \item{study_subject.file}{A logical value.  Setting \code{study_subject.file} to \code{TRUE} allows the user to search for study subjects using a .csv file. Setting \code{study_subject.file} to \code{FALSE} specifies that the user searches for study subjects using either a string or vector of strings. Default value is \code{FALSE}.}
 
 \item{return_sample_ids}{A logical value. Setting \code{return_sample_ids} to \code{TRUE} means \code{SearchSamples} returns sample ids as well as search results. Setting \code{return_sample_ids} to \code{FALSE} means \code{SearchSamples} returns only search results. Default value is \code{FALSE}.}
+
+\item{archived}{A logical value. \code{TRUE} filters for archived samples and \code{FALSE} filters for active samples}
 }
 \description{
 
