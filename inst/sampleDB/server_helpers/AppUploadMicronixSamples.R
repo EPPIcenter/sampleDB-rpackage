@@ -54,6 +54,11 @@ MicronixUpload <- function(session, output, input, database){
       }
   })
 
+  observeEvent(dbUpdateEvent(), {
+    updateSelectInput(session, selected = input$UploadMicronixLocation, "UploadMicronixLocation", choices = dbUpdateEvent()$location %>% sort())
+  })
+
+
   #3. check plate info
   observe({
     if(input[["UploadMicronixPlateID"]] != ""){

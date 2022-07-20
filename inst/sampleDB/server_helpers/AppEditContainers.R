@@ -63,6 +63,10 @@ EditWetlabContainers <- function(session, input, database, output){
       shinyjs::reset("EditContainerName")
     }))
   
+  observeEvent(dbUpdateEvent(), {
+    updateSelectInput(session, selected = input$MoveContainerLocation, "MoveContainerLocation", choices = dbUpdateEvent()$location %>% sort())
+  })
+  
   # smart dropdown
   SmartFreezerDropdownFilter(database = database, session = session,
                              input = input,
