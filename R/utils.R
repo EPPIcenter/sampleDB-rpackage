@@ -357,3 +357,11 @@
   return(eval.plate_id)
 
 }
+
+
+.ViewArchiveStatuses <- function(database) {
+  conn <- RSQLite::dbConnect(RSQLite::SQLite(), database)
+  out_table <- RSQLite::dbGetQuery(conn, "SELECT * FROM view_archive_statuses") %>% tibble()
+  RSQLite::dbDisconnect(conn)
+  return(out_table)
+}

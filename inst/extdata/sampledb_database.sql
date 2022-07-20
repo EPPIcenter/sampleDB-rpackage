@@ -197,3 +197,10 @@ VALUES
 
 INSERT OR IGNORE INTO "version" ("name") VALUES ("1.0.0");
 
+CREATE VIEW IF NOT EXISTS view_archive_statuses
+AS 
+SELECT status.id, status.name FROM state_status_relationship AS ssr
+INNER JOIN state ON state.id = ssr.state_id
+INNER JOIN status ON status.id = ssr.status_id
+WHERE state.name = "Archived";
+
