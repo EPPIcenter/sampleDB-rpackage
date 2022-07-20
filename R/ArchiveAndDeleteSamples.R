@@ -56,15 +56,19 @@ ArchiveAndDeleteSamples <- function(operation, data, comment, status, verificati
     if(as.character(response) == "Yes" || as.character(response) == "1"){
 
       # ARCHIVE SAMPLES
+      info_list <- list(last_updated = as.character(lubridate::now()),
+                                               state_id = state_id, # Archived
+                                               status_id = status_id)
+      if (nchar(comment) > 0) {
+        info_list <- append(info_list, list(comment = comment))
+      }
+
       for(eval.id in data$`Sample ID`){
         
         # ARCHIVE
         ModifyTable(conn = conn,
                               "storage_container",
-                              info_list = list(last_updated = as.character(lubridate::now()),
-                                               state_id = state_id, # Archived
-                                               status_id = status_id,
-                                               comment = comment),
+                              info_list = info_list,
                               id = eval.id)
 
         .MakeExternalDataNA(eval.id, database.tables, conn)

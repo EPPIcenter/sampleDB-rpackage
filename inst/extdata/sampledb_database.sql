@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS "storage_container" (
 	"id"	INTEGER NOT NULL,
 	"specimen_id"	INTEGER NOT NULL,
 	"type"	VARCHAR(255),
-	"comment" TEXT,
+	"comment" TEXT DEFAULT NULL,
 	"state_id"	INTEGER NOT NULL,
 	"status_id"	INTEGER NOT NULL,
 
