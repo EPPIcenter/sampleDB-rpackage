@@ -41,6 +41,10 @@ SearchWetlabSamples <- function(session, input, database, output, DelArch = FALS
     )
   })
   
+  observeEvent(input$SearchBySubjectUIDFile, {
+        SearchFunction()
+    })
+
   # smart dropdown
   SmartFreezerDropdownFilter(database = database, session = session,
                              input = input,
@@ -69,7 +73,7 @@ SearchWetlabSamples <- function(session, input, database, output, DelArch = FALS
 
       # load dropdown using the server -- saves time
       updateSelectizeInput(session, selected = input$SearchBySubjectUID, 'SearchBySubjectUID', "Study Subject", choices = c("", dbUpdateEvent()$subject) %>% 
-                                       unique())
+                                       unique(), server = TRUE)
     })
 }
 
