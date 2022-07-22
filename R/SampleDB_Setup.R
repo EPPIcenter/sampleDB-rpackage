@@ -33,10 +33,10 @@ SampleDB_Setup <- function(){
 
   setup_sh <- system.file("extdata", "setup.sh", package = "sampleDB")
   sdb_backup_gen <- system.file("extdata", "sampleDB_backup_generator.sh", package = "sampleDB")
-  sqlite_file <- system.file("extdata", "sampledb_database.sqlite", package = "sampleDB")
+  sqlite_file <- system.file("extdata", "sampledb_database.sql", package = "sampleDB")
 
   # commands that need write access go in here
-  cmd <- paste("sudo -kS bash", setup_sh, sdb_path, sqlite_file, sdb_backup_gen)
+  cmd <- paste("sudo -kS bash", setup_sh, sdb_path, sqlite_file, sdb_backup_gen, file.path(Sys.getenv('R_HOME'), "library", "sampleDB"))
   system(cmd, input = password, intern = T)
 
   # retrieve IP address
