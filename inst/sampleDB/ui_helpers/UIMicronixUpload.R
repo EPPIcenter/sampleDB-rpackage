@@ -25,7 +25,7 @@ UIMicronixUpload <- function(){
       textOutput("WarningMicronixSpecimenExists"),
       #insert plate infor
       HTML("<h5><b>3. Plate Name</b></h5>"),
-      fluidRow(column(width = 6, HTML("<p>Human Readable Name</p>"), textInput("UploadMicronixPlateID", label = NULL, placeholder = "PRISM-2022-001")),
+      fluidRow(column(width = 6, HTML("<p>Human Readable Name</p>"), selectizeInput("UploadMicronixPlateID", label = NULL, choices = c("", sampleDB::CheckTable(database = database, "matrix_plate")$plate_name))),
                column(width = 6,  HTML("<p>Barcode (Optional)</p>"), textInput("UploadMicronixPlateBarcode", label = NULL))),
       textOutput("WarningMicronixUploadContainerName"), 
       textOutput("WarningMicronixUploadContainerBarcode"),
