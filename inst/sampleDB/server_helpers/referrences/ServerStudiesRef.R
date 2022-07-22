@@ -91,9 +91,10 @@ UpdateLabStudies <- function(session, input, output, database){
 ShowStudies <- function(output, database){
   output$TableStudy <- DT::renderDataTable({
     sampleDB::CheckTable(database = database, "study") %>%
-      dplyr::select(-c(id, created, last_updated)) %>%
+      dplyr::select(-c(id, last_updated)) %>%
       mutate(is_longitudinal = as.logical(is_longitudinal)) %>%
       rename(Title = title,
+            Created = created,
              Description = description,
              `Study Code` = short_code,
              `Longitudinal` = is_longitudinal,
