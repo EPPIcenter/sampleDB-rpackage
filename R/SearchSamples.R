@@ -11,7 +11,6 @@
 #' @param collection_dates A list of date values strings (`date.to` and `date.from`) that can be used to filter EPPIcenter samples
 #' @param archived A logical value. `TRUE` filters for archived samples and `FALSE` filters for active samples
 #' @param freezer A list specifying the vector `location_name`, `level_I`, and/or`level_II`
-#' @param study_subject.file A logical value.  Setting `study_subject.file` to `TRUE` allows the user to search for study subjects using a .csv file. Setting `study_subject.file` to `FALSE` specifies that the user searches for study subjects using either a string or vector of strings. Default value is `FALSE`.
 #' @param return_sample_ids A logical value. Setting `return_sample_ids` to `TRUE` means `SearchSamples` returns sample ids as well as search results. Setting `return_sample_ids` to `FALSE` means `SearchSamples` returns only search results. Default value is `FALSE`.
 #' @examples
 #' \dontrun{
@@ -30,7 +29,7 @@
 #Im sure there is a faster sql way to do this
 
 SearchSamples <- function(sample_type = NULL, sample_label = NULL, container_name = NULL, study_subject = NULL, specimen_type = NULL,
-                          study = NULL, collection_dates = NULL, status = NULL, state = NULL, freezer = NULL, study_subject.file = FALSE, return_sample_ids = FALSE){
+                          study = NULL, collection_dates = NULL, status = NULL, state = NULL, freezer = NULL, return_sample_ids = FALSE){
 
   database <- sampleDB:::.GetSampleDBPath()
 
@@ -45,11 +44,6 @@ SearchSamples <- function(sample_type = NULL, sample_label = NULL, container_nam
                   search.status = status,
                   search.state = state,
                   search.location = freezer) %>% discard(., function(x) is.null(x) | "" %in% x | length(x) == 0)
-
-  # FLEXIBLY USE STUDY SUBJECT ITEM OR FILE
-  if(study_subject.file == TRUE & !is.null(filters$search.study_subject)){
-    eval.search.study_subject  <- read.csv(filters$search.study_subject)$subject_uid
-    filters$search.study_subject <- eval.search.study_subject[eval.search.study_subject != ""]} # remove any blank entries that may be in vector
 
   # GET ALL THE TABLES FROM THE DATABASE
   tables.database <- .GetDatabaseTables(database = database)
@@ -80,9 +74,24 @@ SearchSamples <- function(sample_type = NULL, sample_label = NULL, container_nam
   aggregated.results <- .UseInternalAndExternalDataToGetResults(internal_data = aggregated.internal_data,
                                                                  external_data = aggregated.external_data)
 
+  # TODO: this is temporary until we get a better
+  # search system down. The previous search terms were
+  # already there, renaming for ease of use and because
+  # short on time.
+  filters <- list(type = sample_type,
+                  label = sample_label,
+                  container_name = container_name,
+                  subject_uid = study_subject,
+                  specimen_type = specimen_type,
+                  study = study,
+                  collection_date = collection_dates,
+                  status = status,
+                  state = state,
+                  freezer = freezer) %>% discard(., function(x) is.null(x) | "" %in% x | length(x) == 0)
+
+
   # FILTER THE AGGREGATED TABLE BY FILTER TERMS
   results.filtered <- .FilterSearchResults(filters = filters,
-                                           terms.filter = terms.filter,
                                            results.search_term = aggregated.results)
 
   # BEAUTIFY RESULTS TABLE
@@ -290,64 +299,24 @@ SearchSamples <- function(sample_type = NULL, sample_label = NULL, container_nam
   return(search_results)
 }
 
-.FilterSearchResults <- function(filters, terms.filter, results.search_term){
-  if(length(terms.filter) > 0){
-    #FILTER BY FILTER TERMS
-    for(filter_term in terms.filter){
-      if(filter_term == "search.type"){
-        results.search_term <- filter(results.search_term, type %in% filters[["search.type"]])
-      }
-      if(!is.null(filters$search.label) &!is.null(filters$search.type)){
-        tmp_results.micronix_label <- filter(results.search_term, type == "Micronix" & label %in% filters$search.label$micronix.labels)
-        tmp_results.cryovial_label <- filter(results.search_term, type == "Cryovial" & label %in% filters$search.label$cryovial.labels)
-        tmp_results.rdt_label <- filter(results.search_term, type == "RDT" & label %in% filters$search.label$rdt.labels)
-        tmp_results.paper_label <- filter(results.search_term, type == "Paper" & label %in% filters$search.label$paper.labels)
-        results.search_term <- rbind(tmp_results.micronix_label, tmp_results.cryovial_label, tmp_results.rdt_label, tmp_results.paper_label)
-      }
-      if(!is.null(filters$search.container) &!is.null(filters$search.type)){
-        tmp_results.micronix_container_name <- filter(results.search_term, type == "Micronix" & container_name %in% filters$search.container$micronix.container_name)
-        tmp_results.cryovial_container_name <- filter(results.search_term, type == "Cryovial" & container_name %in% filters$search.container$cryovial.container_name)
-        tmp_results.rdt_container_name <- filter(results.search_term, type == "RDT" & container_name %in% filters$search.container$rdt.container_name)
-        tmp_results.paper_container_name <- filter(results.search_term, type == "Paper" & container_name %in% filters$search.container$paper.container_name)
-        results.search_term <- rbind(tmp_results.micronix_container_name, tmp_results.cryovial_container_name, tmp_results.rdt_container_name, tmp_results.paper_container_name)
-      }
-      if(filter_term == "search.study"){
-        results.search_term <- filter(results.search_term, study %in% filters[["search.study"]])
-      }
-      if(filter_term == "search.specimen_type"){
-        results.search_term <- filter(results.search_term, specimen_type %in% filters[["search.specimen_type"]])
-      }
-      if(filter_term == "search.study_subject"){
-        results.search_term <- filter(results.search_term, subject_uid %in% filters[["search.study_subject"]])
-      }
-      if(filter_term == "search.location"){
-        results.search_term <- filter(results.search_term, freezer %in% filters[["search.location"]][["location_name"]])
-        if(!is.null(filters[["search.location"]][["level_I"]])){
-          results.search_term <- filter(results.search_term, freezer_l1 %in% filters[["search.location"]][["level_I"]])
-        }
-        if(!is.null(filters[["search.location"]][["level_II"]])){
-          results.search_term <- filter(results.search_term, freezer_l2 %in% filters[["search.location"]][["level_II"]])
-        }
-      }
-      if(filter_term == "search.status"){
-        results.search_term <- filter(results.search_term, status %in% filters[["search.status"]])
-      }
+.FilterSearchResults <- function(filters, results.search_term) {
 
-      if (filter_term == "search.state"){
-        results.search_term <- filter(results.search_term, state %in% filters[["search.state"]])
-      }
-      if(filter_term == "search.date"){
-        stopifnot("date.from and data.to must be in YMD format." = all(!is.na(parse_date_time(c(filters$search.date$date.from, filters$search.date$date.to), orders = "ymd")) == TRUE))
-        date.from <- lubridate::as_date(filters[["search.date"]][["date.from"]])
-        date.to <- lubridate::as_date(filters[["search.date"]][["date.to"]])
-        results.search_term <- filter(results.search_term, lubridate::as_date(collection_date) %within% interval(date.from, date.to))
-      }
-      results.filter_and_search <- results.search_term
-    }
-  }else{
-    results.filter_and_search <- results.search_term
+  # passed in my reference; don't want to
+  # return capitalized values. Capitalizing to normalize.
+  tmp.search_term <- results.search_term %>%
+    mutate(across(where(is.factor), as.character)) %>%
+    mutate(across(where(is.character), toupper))
+
+  filters <- lapply(filters, toupper)
+
+  search_mat <- matrix(data = FALSE, nrow = nrow(tmp.search_term), ncol = length(filters))
+  filter_terms <- names(filters)
+  for (filter_index in seq_along(filter_terms)) {
+    search_term <- filter_terms[filter_index]
+    search_mat[,filter_index] <- (tmp.search_term %>% pull(search_term)) %in% filters[[search_term]]
   }
-  return(results.filter_and_search)
+
+  return(results.search_term[rowSums(search_mat) == ncol(search_mat),])
 }
 
 .BeautifyResultsTable <- function(results.filter_and_search){

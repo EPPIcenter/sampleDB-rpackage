@@ -219,11 +219,16 @@ SearchFunction <- function(input, output, ui_elements){
     search.label <- list(micronix.labels = individual_barcode)
   }
   
-  search.container <- list(micronix.container_name = input[[ui_elements$ui.input$SearchByPlate]],
-                           cryovial.container_name = input[[ui_elements$ui.input$SearchByBox]],
-                           rdt.container_name = input[[ui_elements$ui.input$SearchByRDTBag]],
-                           paper.container_name = input[[ui_elements$ui.input$SearchByPaperBag]]) %>% 
-    discard(., function(x) is.null(x) | "" %in% x)
+  # search.container <- list(micronix.container_name = input[[ui_elements$ui.input$SearchByPlate]],
+  #                          cryovial.container_name = input[[ui_elements$ui.input$SearchByBox]],
+  #                          rdt.container_name = input[[ui_elements$ui.input$SearchByRDTBag]],
+  #                          paper.container_name = input[[ui_elements$ui.input$SearchByPaperBag]]) %>% 
+  #   discard(., function(x) is.null(x) | "" %in% x)
+
+
+  # TODO
+  search.container <- input[[ui_elements$ui.input$SearchByPlate]]
+
   search.date <- eval.search.date
   search.status <- input[[ui_elements$ui.input$SearchByStatus]]
   search.state <- input[[ui_elements$ui.input$SearchByState]]
@@ -240,14 +245,26 @@ SearchFunction <- function(input, output, ui_elements){
       search.study_subject <- input[[ui_elements$ui.input$SearchBySubjectUID]]
       list.search_results <- sampleDB::SearchSamples(sample_type = search.type, sample_label = search.label, container_name = search.container, study_subject = search.study_subject,
                                                      specimen_type = search.specimen_type, study = search.study, collection_dates = search.date, status = search.status,
-                                                     state = search.state, freezer = search.location, study_subject.file = F, return_sample_ids = T) %>% suppressWarnings()
+                                                     state = search.state, freezer = search.location, return_sample_ids = T) %>% suppressWarnings()
     }else{
       
       # search (if a file of participants is searched for)
-      search.study_subject <- input[[ui_elements$ui.input$SearchBySubjectUIDFile]]$datapath
+      search_multiple_file <- read.csv(input[[ui_elements$ui.input$SearchBySubjectUIDFile]]$datapath)
+
+      # remove empty columns
+      empty_columns <- colSums(is.na(search_multiple_file) | search_multiple_file == "") == nrow(search_multiple_file)
+      search_multiple_file <- search_multiple_file[, !empty_columns]
+      search_multiple_file <- search_multiple_file[!apply(search_multiple_file, 1, function(row) all(row == "")),] 
+
+      search.study_subject <- search_multiple_file$StudySubject
+      search.study <- search_multiple_file$StudyCode
+      search.study_subject <- search_multiple_file$Participant
+      search.specimen_type <- search_multiple_file$SpecimenType
+      search.date <- search_multiple_file$CollectionDate
+
       list.search_results <- sampleDB::SearchSamples(sample_type = search.type, sample_label = search.label, container_name = search.container, study_subject = search.study_subject,
                                                      specimen_type = search.specimen_type, study = search.study, collection_dates = search.date, status = search.status,
-                                                     state = search.state, freezer = search.location, study_subject.file = T, return_sample_ids = T) %>% suppressWarnings()
+                                                     state = search.state, freezer = search.location, return_sample_ids = T) %>% suppressWarnings()
       
     },
     error=function(e){}
