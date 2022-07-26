@@ -40,10 +40,6 @@ SearchWetlabSamples <- function(session, input, database, output, DelArch = FALS
       }
     )
   })
-  
-  observeEvent(input$SearchBySubjectUIDFile, {
-        SearchFunction()
-    })
 
   # smart dropdown
   SmartFreezerDropdownFilter(database = database, session = session,
