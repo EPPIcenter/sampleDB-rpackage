@@ -305,15 +305,30 @@ SearchSamples <- function(sample_type = NULL, sample_label = NULL, container_nam
   # return capitalized values. Capitalizing to normalize.
   tmp.search_term <- results.search_term %>%
     mutate(across(where(is.factor), as.character)) %>%
-    mutate(across(where(is.character), toupper))
+    mutate(across(!collection_date, toupper))
 
-  filters <- lapply(filters, toupper)
+
+  for (name in names(filters)) {
+    if (!name %in% "collection_date")
+      filters[[name]] <- toupper(filters[[name]])
+    else
+      filters[[name]] <- filters[[name]]
+  }
 
   search_mat <- matrix(data = FALSE, nrow = nrow(tmp.search_term), ncol = length(filters))
   filter_terms <- names(filters)
   for (filter_index in seq_along(filter_terms)) {
     search_term <- filter_terms[filter_index]
-    search_mat[,filter_index] <- (tmp.search_term %>% pull(search_term)) %in% filters[[search_term]]
+    if (!search_term %in% "collection_date") {
+      search_mat[,filter_index] <- (tmp.search_term %>% pull(search_term)) %in% filters[[search_term]]
+    } else {
+      collection_dates <- (tmp.search_term %>% pull(search_term))
+      search_mat[,filter_index] <- lubridate::as_date(collection_dates) %within%
+        interval(filters$collection_date$date.from,
+                 filters$collection_date$date.to)
+
+      search_mat[is.na(search_mat[,filter_index]),filter_index] <- FALSE
+    }
   }
 
   return(results.search_term[rowSums(search_mat) == ncol(search_mat),])
