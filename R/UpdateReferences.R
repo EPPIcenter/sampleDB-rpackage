@@ -48,7 +48,7 @@
 
 UpdateReferences <- function(reference, operation, identifier = NULL, update = NULL){
   
-  database <- sampleDB:::.GetSampleDBPath()
+  database <- .sampleDB$database
   conn <- RSQLite::dbConnect(RSQLite::SQLite(), database)
   RSQLite::dbBegin(conn)
     

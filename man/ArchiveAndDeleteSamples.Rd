@@ -20,7 +20,7 @@ Deletions are recursive in the sense that they if sample ids associated with sam
 \item{sample_id}{A numeric vector of a one or more sample IDs (also referred to as storage container IDs). Can be accessed using sampleDB::SearchSamples().}
 }
 \description{
-
+Archive and Delete Wetlab EPPIcenter Samples
 }
 \examples{
 \dontrun{

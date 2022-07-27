@@ -12,7 +12,7 @@ for(ui_helper in list.files(path = "ui_helpers", full.names = T, recursive = T))
 }
 
 #SET PATH TO SQLITE DATABASE
-database <- sampleDB:::.GetSampleDBPath()
+database <- .sampleDB$database
 
 navbarPage("EPPIcenter SampleDB",
            

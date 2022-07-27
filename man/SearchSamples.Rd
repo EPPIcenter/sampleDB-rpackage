@@ -43,7 +43,7 @@ SearchSamples(
 \item{archived}{A logical value. \code{TRUE} filters for archived samples and \code{FALSE} filters for active samples}
 }
 \description{
-
+Search for Wetlab Samples in the EPPIcenter SampleDB database
 }
 \examples{
 \dontrun{

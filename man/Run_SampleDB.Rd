@@ -7,7 +7,7 @@
 Run_SampleDB()
 }
 \description{
-
+Run sampleDB as a R Shiny App
 }
 \examples{
 \dontrun{
