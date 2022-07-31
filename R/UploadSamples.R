@@ -58,7 +58,7 @@
 UploadSamples <- function(sample_type, upload_data, container_name, container_barcode = NULL, freezer_address){
 
   # locate the database and connect to it
-  database <- sampleDB:::.GetSampleDBPath()
+  database <- Sys.getenv("SDB_PATH")
   conn <-  RSQLite::dbConnect(RSQLite::SQLite(), database)
 
   # save a copy of the upload data as a csv
@@ -341,7 +341,7 @@ UploadSamples <- function(sample_type, upload_data, container_name, container_ba
 # }
 
 .SaveUploadCSV <- function(upload_data, container_name){
-  path <- file.path(dirname(sampleDB:::.GetSampleDBPath()), "upload_files/")
+  path <- file.path(dirname(Sys.getenv("SDB_PATH")), "upload_files/")
   if(dir.exists(path)){
     write.csv(upload_data,
               paste0(path,

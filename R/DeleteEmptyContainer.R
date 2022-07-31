@@ -4,7 +4,7 @@
 
 DeleteEmptyContainer <- function(type, container_name){
 
-  database <- sampleDB:::.GetSampleDBPath()
+  database <- Sys.getenv("SDB_PATH")
 
   stopifnot("Sample Type is not valid" = type %in% c("micronix", "cryovial", "rdt", "paper"))
   conn <- RSQLite::dbConnect(RSQLite::SQLite(), database)

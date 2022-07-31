@@ -30,21 +30,21 @@
 
 
 ArchiveAndDeleteSamples <- function(operation, data, comment, status, verification = TRUE){
-  
-  database <- sampleDB:::.GetSampleDBPath()
+
+  database <- Sys.getenv("SDB_PATH")
   conn <-  RSQLite::dbConnect(RSQLite::SQLite(), database)
   RSQLite::dbBegin(conn)
 
   status_id <- filter(sampleDB::CheckTable("status"), name %in% status)$id
   state_id <- filter(sampleDB::CheckTable("state"), name %in% "Archived")$id
-  
+
   stopifnot("Operation is not valid" = operation %in% c("archive", "delete", "unarchive"))
 
   # GET DATABASE TABLES
   database.tables <- .GetDatabaseTables(database)
-  
+
   stopifnot("Not all Sample ID(s) are not present in the database" = all(data$`Sample ID` %in% database.tables$table.storage_container$id))
-  
+
   if(operation == "archive"){
 
     # VERIFY ARCHIVE
@@ -57,7 +57,7 @@ ArchiveAndDeleteSamples <- function(operation, data, comment, status, verificati
 
       # ARCHIVE SAMPLES
       for(eval.id in data$`Sample ID`){
-        
+
         # ARCHIVE
         ModifyTable(conn = conn,
                               "storage_container",
@@ -98,7 +98,7 @@ ArchiveAndDeleteSamples <- function(operation, data, comment, status, verificati
 
       # DELETE SAMPLES
       for(eval.id in data$`Sample ID`){
-        
+
         # DELETE INTERNAL DATA
         .DeleteInternalData(eval.id, database.tables, conn)
 
