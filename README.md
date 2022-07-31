@@ -49,7 +49,7 @@ SampleDB is backed up every Sunday to the Mines using `/opt/sample_db/sample_db_
 
 <!---To check that `SDB_PATH` matches the path to your database file run.-->
 <!---```-->
-<!---sampleDB:::.GetSampleDBPath()-->
+<!---Sys.getenv("SDB_PATH")-->
 <!---```-->
 
 <!---## Database Schema-->

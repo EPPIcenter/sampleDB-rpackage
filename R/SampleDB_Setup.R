@@ -1,4 +1,4 @@
-#' Setup SampleDB Database
+# Setup SampleDB Database
 #'
 #' Save SampleDB's database file to a specified location
 #'
@@ -9,52 +9,148 @@
 #' }
 #'
 #' @import dplyr
-#' @import getPass
+#' @import rappdirs
 #' @export
 #'
 
-SampleDB_Setup <- function(){
+SampleDB_Setup <- function() {
+  libname <- .sampleDB$libname
+  pkgname <- .sampleDB$pkgname
+  message(paste(cli::rule(left = crayon::bold(paste("Deploying", pkgname, "Environment")))))
 
-  password <- NULL
-  if (rstudioapi::isAvailable()) {
-    password <- rstudioapi::askForPassword("Please Enter Password")
-  } else {
-    password <- getPass::getPass("Please Enter Password: ")
-  }
+  tryCatch(
+    expr = {
+      database <- Sys.getenv("SDB_PATH")
+
+      if(0 == nchar(database)) {
+
+        environ_file_path <- suppressWarnings(
+          normalizePath(
+            file.path(
+              Sys.getenv("R_HOME"), "etc", "Renviron.site")))
+
+        if (!file.exists(environ_file_path))
+            file.create(environ_file_path)
+
+        database <- suppressWarnings(
+          normalizePath(
+            file.path(
+              rappdirs::site_data_dir(),
+              "sampleDB",
+              "sampledb_database.sqlite"
+              )
+            )
+          )
 
 
-  # Create the path to the database
-  sdb_path <- sampleDB:::.GetSampleDBPath()
+        write.table(
+          x = matrix(data = c("SDB_PATH", paste0("\"", database, "\"")),
+                              nrow = 1, ncol = 2),
+          file = environ_file_path,
+          append = TRUE, 
+          col.names = FALSE,
+          sep = "=",
+          quote = FALSE,
+          row.names = FALSE)
+
+        Sys.setenv("SDB_PATH" = database)
+        message(paste(crayon::green(cli::symbol$tick),
+          paste0("Database location set [", database, "]")))
+
+      } else {
+        message(paste(crayon::white(cli::symbol$info),
+          paste0("Database location already set [", database, "]")))
+      }
+
+      datadir <- dirname(database)
+      if (!dir.exists(datadir))
+        dir.create(datadir)
+
+      # install database file
+      if (!file.exists(database)) {
+          file.copy(system.file("extdata",
+              "sampledb_database.sqlite", package = pkgname), database)
+          Sys.chmod(database, mode = "0777", use_umask = FALSE)
+          message(paste(crayon::green(cli::symbol$tick), paste0("Database installed [", database, "]")))
+      } else {
+          message(paste(crayon::white(cli::symbol$info), paste0("Database exists [", database, "]")))
+      }
+
+      # create subdirectories
+
+      subdirs <- suppressWarnings(
+        normalizePath(
+            file.path(
+              datadir, c(
+                "backups",
+                "upload_files",
+                "move_files"
+              )
+            )
+          )
+        )
 
 
-  # 1) Script create / appends environ file
-  # 2) Creates / grants access to files + folders
-  # 3) Copy backup generator file
+      # subdirs <- file.path(datadir, c("backups", "upload_files", "move_files"))
+      for (subdir in subdirs) {
+          if (!dir.exists(subdir)) {
+              dir.create(subdir)
+              Sys.chmod(subdir, mode = "0777", use_umask = FALSE)
+              message(paste(crayon::green(cli::symbol$tick), paste0("Subdirectory installed [", subdir, "]")))
+          } else {
+              message(paste(crayon::white(cli::symbol$info), paste0("Subdirectory exists [", subdir, "]")))
+          }
+      }
 
-  setup_sh <- system.file("extdata", "setup.sh", package = "sampleDB")
-  sdb_backup_gen <- system.file("extdata", "sampleDB_backup_generator.sh", package = "sampleDB")
-  sqlite_file <- system.file("extdata", "sampledb_database.sqlite", package = "sampleDB")
+      Sys.chmod(datadir, mode = "0777", use_umask = FALSE)
 
-  # commands that need write access go in here
-  cmd <- paste("sudo -kS bash", setup_sh, sdb_path, sqlite_file, sdb_backup_gen)
-  system(cmd, input = password, intern = T)
+      # shiny application deployment
+      message(paste(cli::rule(left = crayon::bold("Deploying", pkgname, "Shiny Application"))))
 
-  # retrieve IP address
-  ip_all <- system2("hostname", "-I", stdout = T)
-  ip <- as.list(
-    strsplit(ip_all, " ")[[1]]
-    )[[1]]
+      if (Sys.info()[["sysname"]] %in% c("Linux")) {
+        shiny_server <- file.path("", "srv", "shiny-server")
+        if (!dir.exists(shiny_server)) {
+          stop(paste(
+            crayon::red(cli::symbol$cross), "Shiny server is not installed."
+          ))
+        } else {
+          message(paste(
+            crayon::green(cli::symbol$tick), "Shiny server is installed."
+          ))
+          if (!file.exists(file.path(shiny_server, pkgname))) {
+            file.symlink(file.path(.sampleDB$libname, pkgname),
+              file.path(shiny_server, pkgname))
+            message(paste(
+              crayon::green(cli::symbol$tick), "Shiny application deployed."
+            ))
+          } else {
+            message(paste(
+              crayon::white(cli::symbol$info), "Shiny application already deployed."
+            ))
+          }
+          # retrieve IP address
+          ip_all <- system2("hostname", "-I", stdout = TRUE)
+          ip <- as.list(
+            strsplit(ip_all, " ")[[1]]
+            )[[1]]
 
-  url <- paste0("http://", ip, ":3838/sampleDB/")
-  message(paste("Your SampleDB app is now available live at", url))
-
-  #user message if this password does not have sudo privileges
-  #check that this program is being installed on a linux (inc. ubuntu) machine
-  #check that rstudio server is installed
-  #check that shiny server is installed
-  #check that "/etc/R/Renviron.site" exists
-  #a lot of things need to be 777'd (e.g. sampleDB:::.GetSampleDBPath())
-
-  #https://stackoverflow.com/questions/1518729/change-sqlite-database-mode-to-read-writep
-
+          # TODO: pull in port from config
+          url <- paste0("http://", ip, ":3838/sampleDB/")
+          message(paste(
+            crayon::bold("Application is available here:", url)))
+        }
+      } else {
+        message(paste(
+          crayon::red(cli::symbol$cross),
+            "Shiny server is not supported on this platform."
+        ))
+      }
+    },
+    warning = function(w) {
+      message(w)
+    },
+    error = function(e) {
+      message(e)
+    }
+  )
 }

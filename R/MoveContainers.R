@@ -8,7 +8,7 @@
 
 MoveContainers <- function(sample_type, container_name, freezer){
   
-  database <- sampleDB:::.GetSampleDBPath()
+  database <- Sys.getenv("SDB_PATH")
   conn <-  RSQLite::dbConnect(RSQLite::SQLite(), database)
 
   RSQLite::dbBegin(conn)

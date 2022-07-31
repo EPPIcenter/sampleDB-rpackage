@@ -8,7 +8,7 @@
 
 RenameContainers <- function(sample_type, new_container_name, current_container_name){
 
-  database <- sampleDB:::.GetSampleDBPath()
+  database <- Sys.getenv("SDB_PATH")
   conn <-  RSQLite::dbConnect(RSQLite::SQLite(), database)
   RSQLite::dbBegin(conn)
 

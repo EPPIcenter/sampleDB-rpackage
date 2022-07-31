@@ -2,7 +2,7 @@
 % Please edit documentation in R/SampleDB_Setup.R
 \name{SampleDB_Setup}
 \alias{SampleDB_Setup}
-\title{Setup SampleDB Database}
+\title{Save SampleDB's database file to a specified location}
 \usage{
 SampleDB_Setup()
 }
