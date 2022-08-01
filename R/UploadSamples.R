@@ -266,8 +266,8 @@ UploadSamples <- function(sample_type, upload_data, container_name, container_ba
     }
 
     # sample automatically in use
-    eval.status_id <- filter(sampleDB::CheckTableTx(conn = conn, "status"), name %in% Global$DefaultStatusSearchTerm)$id
-    eval.state_id <- filter(sampleDB::CheckTableTx(conn = conn, "state"), name %in% Global$DefaultStateSearchTerm)$id
+    eval.status_id <- filter(sampleDB::CheckTableTx(conn = conn, "status"), name %in% "In Use")$id
+    eval.state_id <- filter(sampleDB::CheckTableTx(conn = conn, "state"), name %in% "Active")$id
 
     #4. create the new item's storage container to the database using the item's sample id
 

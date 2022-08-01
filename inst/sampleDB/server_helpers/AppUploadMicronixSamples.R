@@ -54,7 +54,7 @@ MicronixUpload <- function(session, output, input, database){
       }
   })
 
-  observeEvent(dbUpdateEvent(), {
+  observe({
     updateSelectInput(session, selected = input$UploadMicronixLocation, "UploadMicronixLocation", choices = dbUpdateEvent()$location %>% sort())
     updateSelectizeInput(session, selected = input$UploadMicronixPlateID, "UploadMicronixPlateID", choices = dbUpdateEvent()$plate_name %>% sort(), option = list(create = TRUE))
   })
