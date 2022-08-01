@@ -23,7 +23,9 @@ dbUpdateEvent <- reactivePoll(1000 * 10, NULL,
           study = sampleDB::CheckTable("study")$short_code,
           specimen_type = sampleDB::CheckTable("specimen_type")$label,
           location = sampleDB::CheckTable("location")$location_name,
-          subject = sampleDB::CheckTable(database = database, "study_subject")$subject 
+          subject = sampleDB::CheckTable(database = database, "study_subject")$subject,
+          status = sampleDB::CheckTable(database = database, "status")$name,
+          state = sampleDB::CheckTable(database = database, "state")$name
         )
 
       return(list.data)

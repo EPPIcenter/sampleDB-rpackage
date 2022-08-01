@@ -63,7 +63,7 @@ EditWetlabContainers <- function(session, input, database, output){
       shinyjs::reset("EditContainerName")
     }))
   
-  observeEvent(dbUpdateEvent(), {
+  observe({
     updateSelectInput(session, selected = input$MoveContainerLocation, "MoveContainerLocation", choices = dbUpdateEvent()$location %>% sort())
   })
   
@@ -89,7 +89,7 @@ EditWetlabContainers <- function(session, input, database, output){
     }
   })
 
-  observeEvent(dbUpdateEvent(), {
+  observe({
     if(input$EditContainerSampleType == "micronix"){
       updateSelectizeInput(session, "EditContainerName", label = NULL, choices = c("", sampleDB::CheckTable("matrix_plate")$plate_name))
     }

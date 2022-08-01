@@ -57,7 +57,7 @@ SearchWetlabSamples <- function(session, input, database, output, DelArch = FALS
   # clear files
   .SearchReset(input)
 
-  observeEvent(dbUpdateEvent(), {
+  observe({
       updateSelectInput(session, selected = input$SearchByPlate, "SearchByPlate", label = "Plate Name", choices = c("", dbUpdateEvent()$plate_name))
       updateSelectInput(session, selected = input$SearchByBox, "SearchByBox", label = "Box Name", choices = c("", dbUpdateEvent()$box_name))
       updateSelectInput(session, selected = input$SearchByRDTBag, "SearchByRDTBag", label = "Bag Name", choices = c("", dbUpdateEvent()$rdt_bag_name))
@@ -70,6 +70,9 @@ SearchWetlabSamples <- function(session, input, database, output, DelArch = FALS
       # load dropdown using the server -- saves time
       updateSelectizeInput(session, selected = input$SearchBySubjectUID, 'SearchBySubjectUID', "Study Subject", choices = c("", dbUpdateEvent()$subject) %>% 
                                        unique(), server = TRUE)
+
+      updateSelectizeInput(session, "SearchByState", "State", choices = c(dbUpdateEvent()$state))
+      updateSelectizeInput(session, "SearchByStatus", "Status", choices = c(dbUpdateEvent()$status))
     })
 }
 

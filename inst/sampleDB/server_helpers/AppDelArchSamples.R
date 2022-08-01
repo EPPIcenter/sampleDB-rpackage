@@ -66,7 +66,7 @@ DelArchSamples <- function(session, input, database, output, inputs, outputs){
     showModal(dataModal(operation = values$operation, data = values$selected()))
   })
 
-  observeEvent(dbUpdateEvent(), {
+  observe({
     updateSelectInput(session, selected = input$DelArchSearchByPlate, "DelArchSearchByPlate", label = "Plate Name", choices = c("", dbUpdateEvent()$plate_name))
     updateSelectInput(session, selected = input$DelArchSearchByBox, "DelArchSearchByBox", label = "Box Name", choices = c("", dbUpdateEvent()$box_name))
     updateSelectInput(session, selected = input$DelArchSearchByRDTBag, "DelArchSearchByRDTBag", label = "Bag Name", choices = c("", dbUpdateEvent()$rdt_bag_name))
@@ -79,6 +79,8 @@ DelArchSamples <- function(session, input, database, output, inputs, outputs){
     # load dropdown using the server -- saves time
     updateSelectizeInput(session, selected = input$DelArchSearchBySubjectUID, 'DelArchSearchBySubjectUID', "Study Subject", choices = c("", dbUpdateEvent()$subject) %>% 
                                      unique(), server = TRUE)
+    updateSelectizeInput(session, "DelArchSearchByState", "State", choices = c(dbUpdateEvent()$state))
+    updateSelectizeInput(session, "DelArchSearchByStatus", "Status", choices = c(dbUpdateEvent()$status))
   })
     
   # popup window
