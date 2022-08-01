@@ -23,6 +23,8 @@ function(input, output, session) {
     database <- Sys.getenv("SDB_PATH")
     backups <- list.files(file.path(dirname(database), "backups"))
     if (length(backups) > 10) {
+      oldest_backup <- file.path(dirname(database), "backups", head(backups, 1))
+      message(paste0("Removing oldest backup: ", oldest_backup))
       file.remove(file.path(dirname(database), "backups", head(backups, 1)))
     }
     
