@@ -29,7 +29,7 @@ SampleDB_Setup <- function() {
           normalizePath(
               ifelse(site_install,
                 file.path(Sys.getenv("R_HOME"), "etc", "Renviron.site"),
-                file.path(Sys.getenv("R_USER"), ".Renviron")
+                file.path(Sys.getenv("HOME"), ".Renviron")
               )))
 
         if (!file.exists(environ_file_path))
