@@ -36,7 +36,7 @@ Backup_SampleDB <- function(
     df.checksums <- data.frame(checksum = md5sum(list.files))
 
     if (0 == anyDuplicated(df.checksums)) {
-      sampleDB:::.Compress(temp_eval_backup, backup_dest)
+      sampleDB:::.Compress(temp_current_db, backup_dest)
     } else {
       message(paste0("No changes since last backup [",
         most_recent_backup, "]"))
