@@ -66,12 +66,24 @@ SearchWetlabSamples <- function(session, input, database, output, DelArch = FALS
       updateSelectizeInput(session, selected = input$SearchByLocation, "SearchByLocation", "Storage Location", choices = c("", dbUpdateEvent()$location))
 
       # load dropdown using the server -- saves time
-      updateSelectizeInput(session, selected = input$SearchBySubjectUID, 'SearchBySubjectUID', "Study Subject", choices = c("", dbUpdateEvent()$subject) %>% 
-                                       unique(), server = TRUE)
+      # updateSelectizeInput(session, selected = input$SearchBySubjectUID, 'SearchBySubjectUID', "Study Subject", choices = c("", dbUpdateEvent()$subject) %>% 
+      #                                  unique(), server = TRUE)
 
       updateSelectizeInput(session, "SearchByState", "State", choices = c(dbUpdateEvent()$state))
       updateSelectizeInput(session, "SearchByStatus", "Status", choices = c(dbUpdateEvent()$status))
     })
+
+  observeEvent(input$SearchByStudy, {
+    study_id <- match(input$SearchByStudy, dbUpdateEvent()$study)
+    req(study_id)
+    subject_indexes <- which(unname(dbUpdateEvent()$subject) == study_id)
+
+    updateSelectizeInput(session,
+      "SearchBySubjectUID",
+      "Study Subject",
+      choices = names(dbUpdateEvent()$subject[subject_indexes]),
+      server = TRUE)
+  })
 }
 
 .SearchReset <- function(input){

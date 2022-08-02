@@ -81,10 +81,22 @@ DelArchSamples <- function(session, input, database, output, inputs, outputs){
     updateSelectizeInput(session, selected = input$DelArchSearchByLocation, "DelArchSearchByLocation", "Storage Location", choices = c("", dbUpdateEvent()$location))
 
     # load dropdown using the server -- saves time
-    updateSelectizeInput(session, selected = input$DelArchSearchBySubjectUID, 'DelArchSearchBySubjectUID', "Study Subject", choices = c("", dbUpdateEvent()$subject) %>% 
-                                     unique(), server = TRUE)
+    # updateSelectizeInput(session, selected = input$DelArchSearchBySubjectUID, 'DelArchSearchBySubjectUID', "Study Subject", choices = c("", dbUpdateEvent()$subject) %>% 
+    #                                  unique(), server = TRUE)
     updateSelectizeInput(session, "DelArchSearchByState", "State", choices = c(dbUpdateEvent()$state))
     updateSelectizeInput(session, "DelArchSearchByStatus", "Status", choices = c(dbUpdateEvent()$status))
+  })
+
+  observeEvent(input$DelArchSearchByStudy, {
+    study_id <- match(input$DelArchSearchByStudy, dbUpdateEvent()$study)
+    req(study_id)
+    subject_indexes <- which(unname(dbUpdateEvent()$subject) == study_id)
+
+    updateSelectizeInput(session,
+      "DelArchSearchBySubjectUID",
+      "Study Subject",
+      choices = names(dbUpdateEvent()$subject[subject_indexes]),
+      server = TRUE)
   })
     
   # popup window
