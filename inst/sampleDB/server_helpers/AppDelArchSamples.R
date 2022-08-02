@@ -19,7 +19,9 @@ DelArchSamples <- function(session, input, database, output, inputs, outputs){
       storage_container_ids <- list.search_results$id.wetlab_samples 
       values$data <- search_results %>%
         mutate(`Sample ID` = storage_container_ids)    
-      }
+    } else {
+      values$data <- NULL
+    }
   })
 
   # print search results
@@ -46,6 +48,8 @@ DelArchSamples <- function(session, input, database, output, inputs, outputs){
   observeEvent(input[[ui_elements$ui.input$ArchiveAction]], {
     output[[ui_elements$ui.output$DelArchMessage]] <- NULL
     values$operation <- "archive"
+    req(input$DelArchStatus)
+
     showModal(dataModal(operation = values$operation, data = values$selected()))
   })
   

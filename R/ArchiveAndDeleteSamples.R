@@ -35,6 +35,8 @@ ArchiveAndDeleteSamples <- function(operation, data, comment, status, verificati
   conn <-  RSQLite::dbConnect(RSQLite::SQLite(), database)
   RSQLite::dbBegin(conn)
 
+  stopifnot("Status is not valid" = status %in% CheckTable("status")$name)
+
   status_id <- filter(sampleDB::CheckTable("status"), name %in% status)$id
   state_id <- filter(sampleDB::CheckTable("state"), name %in% "Archived")$id
 

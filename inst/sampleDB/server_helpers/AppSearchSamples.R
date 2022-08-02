@@ -15,15 +15,13 @@ SearchWetlabSamples <- function(session, input, database, output, DelArch = FALS
     
     if(!is.null(list.search_results)){
       values$data <- list.search_results$results
-      storage_container_ids <- list.search_results$id.wetlab_samples 
     } else {
       values$data <- NULL
-      storage_container_ids <- NULL
     }
     
     # print search results
     output[[ui_elements$ui.output$SearchResultsTable]] <- DT::renderDataTable({
-      if(!is.null(list.search_results)){
+      if(!is.null(values$data)){
         values$data
       }else{
         tibble(a = c(1)) %>% filter(a == 2)
