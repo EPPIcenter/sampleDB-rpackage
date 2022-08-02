@@ -20,10 +20,12 @@ dbUpdateEvent <- reactivePoll(1000 * 10, NULL,
           box_name = sampleDB::CheckTable("box")$box_name,
           rdt_bag_name = sampleDB::CheckTable("bag")$bag_name,
           paper_bag_name = sampleDB::CheckTable("bag")$bag_name,
-          study = sampleDB::CheckTable("study")$short_code,
+          study = sampleDB::CheckTable("study") %>%
+            pull(var = id, name = short_code),
           specimen_type = sampleDB::CheckTable("specimen_type")$label,
           location = sampleDB::CheckTable("location")$location_name,
-          subject = sampleDB::CheckTable(database = database, "study_subject")$subject,
+          subject = sampleDB::CheckTable(database = database, "study_subject") %>%
+            pull(var = study_id, name = subject),
           status = sampleDB::CheckTable(database = database, "status")$name,
           state = sampleDB::CheckTable(database = database, "state")$name
         )
