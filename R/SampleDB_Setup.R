@@ -16,6 +16,7 @@
 SampleDB_Setup <- function() {
   libname <- .sampleDB$libname
   pkgname <- .sampleDB$pkgname
+  site_install <- .sampleDB$site_install
   message(paste(cli::rule(left = crayon::bold(paste("Deploying", pkgname, "Environment")))))
 
   tryCatch(
@@ -26,8 +27,10 @@ SampleDB_Setup <- function() {
 
         environ_file_path <- suppressWarnings(
           normalizePath(
-            file.path(
-              Sys.getenv("R_HOME"), "etc", "Renviron.site")))
+              ifelse(site_install,
+                file.path(Sys.getenv("R_HOME"), "etc", "Renviron.site"),
+                file.path(Sys.getenv("R_USER"), ".Renviron")
+              )))
 
         if (!file.exists(environ_file_path))
             file.create(environ_file_path)
@@ -35,7 +38,10 @@ SampleDB_Setup <- function() {
         database <- suppressWarnings(
           normalizePath(
             file.path(
-              rappdirs::site_data_dir(),
+              ifelse(site_install,
+                rappdirs::site_data_dir(),
+                rappdirs::user_data_dir()
+              ),
               "sampleDB",
               "sampledb_database.sqlite"
               )
@@ -107,7 +113,17 @@ SampleDB_Setup <- function() {
       # shiny application deployment
       message(paste(cli::rule(left = crayon::bold("Deploying", pkgname, "Shiny Application"))))
 
-      if (Sys.info()[["sysname"]] %in% c("Linux")) {
+      if (!Sys.info()[["sysname"]] %in% c("Linux")) {
+        message(paste(
+          crayon::red(cli::symbol$cross),
+            "Shiny server is not supported on this platform."
+        ))
+      } else if (isFALSE(site_install)) {
+        message(paste(
+          crayon::red(cli::symbol$cross),
+            "Must be a site install in order to link the application to shiny server."
+        ))
+      } else {
         shiny_server <- file.path("", "srv", "shiny-server")
         if (!dir.exists(shiny_server)) {
           stop(paste(
@@ -139,11 +155,6 @@ SampleDB_Setup <- function() {
           message(paste(
             crayon::bold("Application is available here:", url)))
         }
-      } else {
-        message(paste(
-          crayon::red(cli::symbol$cross),
-            "Shiny server is not supported on this platform."
-        ))
       }
     },
     warning = function(w) {

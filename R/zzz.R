@@ -6,6 +6,7 @@ library(rappdirs)
         libname = suppressWarnings(
           normalizePath(
             file.path(libname))),
-        pkgname = pkgname
+        pkgname = pkgname,
+        site_install = libname %in% c(.Library, .Library.site) 
     ), as.environment(paste0("package:", pkgname)))
 }
