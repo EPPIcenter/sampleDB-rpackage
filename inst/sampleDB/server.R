@@ -28,7 +28,7 @@ function(input, output, session) {
       file.remove(file.path(dirname(database), "backups", head(backups, 1)))
     }
     
-    Backup_SampleDB() 
+    Backup_SampleDB(checksum = TRUE) 
 
     # --------- Upload Samples -------------
 
