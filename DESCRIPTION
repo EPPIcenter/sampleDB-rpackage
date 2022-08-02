@@ -24,7 +24,7 @@ Imports:
     markdown,
     shinyjs,
     DT,
-    getPass
+    rappdirs
 License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
