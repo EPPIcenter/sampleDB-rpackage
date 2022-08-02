@@ -53,6 +53,11 @@ SearchSamples <- function(sample_type = NULL, sample_label = NULL, container_nam
   term.search <- clean_filters[1] %>% names()
   terms.filter <- clean_filters[-1] %>% names()
 
+  if (!is.null(filters$search.date)) {
+    filters$search.date$date.to <- lubridate::as_date(collection_dates$date.to)
+    filters$search.date$date.from <- lubridate::as_date(collection_dates$date.from)
+  }
+
   # ERR IF SAMPLE LABEL AND CONTAINER IS SEARCHED FOR WITH OUT PROVIDING SEARCH TYPE
   stopifnot("SEARCH TYPE MUST BE PROVIDED IN ORDER TO SEARCH BY SAMPLES LABELS OR CONTAINER NAMES" = term.search != "search.label" || term.search != "search.container")
 
@@ -307,13 +312,27 @@ SearchSamples <- function(sample_type = NULL, sample_label = NULL, container_nam
     mutate(across(where(is.factor), as.character)) %>%
     mutate(across(where(is.character), toupper))
 
-  filters <- lapply(filters, toupper)
+  filters <- lapply(filters, function(x) {
+    if (is.character(x)) {
+      toupper(x)
+    } else {
+      x
+    }
+  })
 
   search_mat <- matrix(data = FALSE, nrow = nrow(tmp.search_term), ncol = length(filters))
   filter_terms <- names(filters)
   for (filter_index in seq_along(filter_terms)) {
     search_term <- filter_terms[filter_index]
-    search_mat[,filter_index] <- (tmp.search_term %>% pull(search_term)) %in% filters[[search_term]]
+    if (!search_term %in% "collection_date") {
+      search_mat[,filter_index] <- (tmp.search_term %>% pull(search_term)) %in% filters[[search_term]]
+    } else {
+      date.from <- lubridate::as_date(filters$collection_date$date.from)
+      date.to <- lubridate::as_date(filters$collection_date$date.to)
+
+      search_mat[, filter_index] <- results.search_term %>% pull(collection_date) %within% interval(date.from,date.to)
+      search_mat[, filter_index] <- replace(search_mat[, filter_index], is.na(search_mat[, filter_index]), FALSE)
+    }
   }
 
   return(results.search_term[rowSums(search_mat) == ncol(search_mat),])
