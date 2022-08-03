@@ -6,52 +6,63 @@
 # checks in ui can unfortunately be ignored by the user
 
 MicronixUpload <- function(session, output, input, database){
-  
-  # 1. create variable for storing formatted_upload_file once it is created
-  reactive_vals <- reactiveValues(formatted_upload_file = NULL)
 
-  # 2. get path to user provided file, if path exists perform checks and reformat file
-  observe({
+  # 1. get path to user provided file, if path exists perform checks and reformat file
+  file_to_upload <- reactiveVal(NULL)
 
-      users_upload_file_path <- input[["UploadMicronixDataSet"]]$datapath
-      if(!is.null(users_upload_file_path)){
-        
-        users_upload_file <- read.csv(users_upload_file_path, header = F) %>% suppressWarnings() # will throw a pointless corrupt last line warning if file comes from excel
-        
-        print(paste0("MicronixUpload: ", users_upload_file))
-        #There have been bugs caused by empty colums
-        #Find and remove columns on upload
-        #Alternatively, could reject files that have empty columns but this 
-        #probably is okay on upload
+  observeEvent(input$UploadMicronixActionButton, {
+    message("formatting!")
+    unformatted_file <- input$UploadMicronixDataSet$datapath
+    formatted_file <- NULL
+    if(!is.null(unformatted_file)) {
+      tryCatch(
+        expr = {
+          users_upload_file <- read.csv(unformatted_file, header = F) %>% suppressWarnings() # will throw a pointless corrupt last line warning if file comes from excel
+          
+          print(paste0("MicronixUpload: ", users_upload_file))
 
-        empty_columns <- colSums(is.na(users_upload_file) | users_upload_file == "") == nrow(users_upload_file)
-        users_upload_file <- users_upload_file[, !empty_columns]
-        users_upload_file <- users_upload_file[!apply(users_upload_file, 1, function(row) all(row == "")),] 
+          #check colnames of user provided file
+          UploadFileLogisticalColnameCheck <- CheckLogisticalColnamesOfUserProvidedMicronixFile(input = input, output = output, users_upload_file = users_upload_file, ui_elements = GetUIUploadElements("micronix"))
+          UploadFileMetadataColnameCheck <- CheckMetadataColnamesOfUserProvidedMicronixFile(input = input, output = output, users_upload_file = users_upload_file, ui_elements = GetUIUploadElements("micronix"))
+           
+          validate(need(isTRUE(UploadFileLogisticalColnameCheck), "*** ERROR: Logistical column name check failed."))
+          validate(need(isTRUE(UploadFileMetadataColnameCheck), "*** ERROR: Metadata column name check failed."))
 
-        #check colnames of user provided file
-        UploadFileLogisticalColnameCheck <- CheckLogisticalColnamesOfUserProvidedMicronixFile(input = input, output = output, users_upload_file = users_upload_file, ui_elements = GetUIUploadElements("micronix"))
-        UploadFileMetadataColnameCheck <- CheckMetadataColnamesOfUserProvidedMicronixFile(input = input, output = output, users_upload_file = users_upload_file, ui_elements = GetUIUploadElements("micronix"))
-        
-        validate(need(isTRUE(UploadFileLogisticalColnameCheck), "*** ERROR: Logistical column name check failed."))
-        validate(need(isTRUE(UploadFileMetadataColnameCheck), "*** ERROR: Metadata column name check failed."))
+          #There have been bugs caused by empty colums
+          #Find and remove columns on upload
+          #Alternatively, could reject files that have empty columns but this 
+          #probably is okay on upload
 
-        #reformat upload file
-        formatted_file <- FormatMicronixUploadData(database, input = input, users_upload_file = users_upload_file, ui_elements = GetUIUploadElements("micronix"))
-        #after formatting takes place, check upload data content
-        validate(need(!is.null(formatted_file), "*** ERROR: Formatting micronix upload data."))
+          empty_columns <- colSums(is.na(users_upload_file) | users_upload_file == "") == nrow(users_upload_file)
+          users_upload_file <- users_upload_file[, !empty_columns]
+          users_upload_file <- users_upload_file[!apply(users_upload_file, 1, function(row) all(row == "")),] 
 
-        CheckFormattedUploadFile(output = output, database = database, formatted_upload_file = formatted_file, ui_elements = GetUIUploadElements("micronix")) 
-        
-        # finally, remove any missing values (sometimes not collectiondate) 
-        study <- filter(sampleDB::CheckTable(database = database, "study"), short_code %in% formatted_file$study_short_code)
-        if (0 < nrow(study) && 0 == study$is_longitudinal) {
-          formatted_file <- tidyr::drop_na(formatted_file, -collection_date) 
-        } else {
-          formatted_file <- tidyr::drop_na(formatted_file) 
+          #reformat upload file
+          formatted_file <- FormatMicronixUploadData(database, input = input, users_upload_file = users_upload_file, ui_elements = GetUIUploadElements("micronix"))
+          #after formatting takes place, check upload data content
+          validate(need(!is.null(formatted_file), "*** ERROR: Formatting micronix upload data."))
+
+          CheckFormattedUploadFile(output = output, database = database, formatted_upload_file = formatted_file, ui_elements = GetUIUploadElements("micronix")) 
+          
+          # finally, remove any missing values (sometimes not collectiondate) 
+          study <- filter(sampleDB::CheckTable(database = database, "study"), short_code %in% formatted_file$study_short_code)
+          if (0 < nrow(study) && 0 == study$is_longitudinal) {
+            formatted_file <- tidyr::drop_na(formatted_file, -collection_date) 
+          } else {
+            formatted_file <- tidyr::drop_na(formatted_file) 
+          }
+        },
+        warning = function(w) {
+          # output$UploadMicronixReturnMessage2 <- renderText({ w })
+          message(w)
+        },
+        error = function(e) {
+          # output$UploadMicronixReturnMessage2 <- renderText({ e })
+          message(e)
         }
-
-        reactive_vals$formatted_upload_file <- formatted_file
-      }
+      )
+    }
+    file_to_upload(formatted_file)
   })
 
   observeEvent(dbUpdateEvent(), {
@@ -66,24 +77,25 @@ MicronixUpload <- function(session, output, input, database){
       CheckPlates(input = input, output = output, database = database, sample_type = "micronix") 
     }
   })
-  
-  observeEvent(
-    input$UploadMicronixActionButton,
-    ({
-      output$UploadMicronixReturnMessage2 <- renderText({
-        # set upload reqs (reqs are enforced ui checks)
-        SetUploadRequirements(input = input, database = database, sample_type = "micronix")
-        # upload samples - the pkg upload fun contains enforced checks
-        sampleDB::UploadSamples(sample_type = "micronix", 
-                                                upload_data = reactive_vals$formatted_upload_file, 
-                                                container_name = input$"UploadMicronixPlateID", 
-                                                container_barcode = input$"UploadMicronixPlateBarcode", 
-                                                freezer_address = list(location_name = input$"UploadMicronixLocation", 
-                                                                       level_I = input$"UploadLocationMicronixLevelI", 
-                                                                       level_II = input$"UploadLocationMicronixLevelII"))
-        })
-    })
-  )
+
+  output$UploadMicronixReturnMessage2 <- renderText({
+
+    req(
+      file_to_upload(),
+      isolate({ input$UploadMicronixPlateID }),
+      isolate({ input$UploadMicronixLocation }),
+      isolate({ input$UploadLocationMicronixLevelI }),
+      isolate({ input$UploadLocationMicronixLevelII })
+    )
+
+    sampleDB::UploadSamples(sample_type = input$UploadSampleType, 
+                                            upload_data = isolate({ file_to_upload() }), 
+                                            container_name = isolate({ input$UploadMicronixPlateID }), 
+                                            container_barcode = isolate({ input$UploadMicronixPlateBarcode }), 
+                                            freezer_address = list(location_name = isolate({ input$UploadMicronixLocation }), 
+                                                                   level_I = isolate({ input$UploadLocationMicronixLevelI }), 
+                                                                   level_II = isolate({ input$UploadLocationMicronixLevelII })))    
+  })
   
   # allow user to reset ui
   UploadReset(input = input, output = output, sample_type = "micronix")

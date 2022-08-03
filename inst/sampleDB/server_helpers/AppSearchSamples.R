@@ -12,6 +12,7 @@ SearchWetlabSamples <- function(session, input, database, output, DelArch = FALS
     
     #search
     list.search_results <- SearchFunction(input, output, ui_elements)
+    message(list.search_results)
     
     if(!is.null(list.search_results)){
       values$data <- list.search_results$results
