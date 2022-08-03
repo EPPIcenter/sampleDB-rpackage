@@ -12,3 +12,5 @@ shiny_server
 shiny_server_logs
 site_library
 the_database
+
+.lintr
