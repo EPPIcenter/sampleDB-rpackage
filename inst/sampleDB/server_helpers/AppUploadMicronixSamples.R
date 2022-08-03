@@ -83,9 +83,9 @@ MicronixUpload <- function(session, output, input, database){
     req(
       file_to_upload(),
       isolate({ input$UploadMicronixPlateID }),
-      isolate({ input$UploadMicronixLocation }),
-      isolate({ input$UploadLocationMicronixLevelI }),
-      isolate({ input$UploadLocationMicronixLevelII })
+      input$UploadMicronixLocation,
+      input$UploadLocationMicronixLevelI,
+      input$UploadLocationMicronixLevelII
     )
 
     sampleDB::UploadSamples(sample_type = input$UploadSampleType, 
