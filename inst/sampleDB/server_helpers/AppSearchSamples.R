@@ -62,7 +62,7 @@ SearchWetlabSamples <- function(session, input, database, output, DelArch = FALS
       updateSelectInput(session, selected = input$SearchByRDTBag, "SearchByRDTBag", label = "Bag Name", choices = c("", dbUpdateEvent()$rdt_bag_name))
       updateSelectInput(session, selected = input$SearchByPaperBag, "SearchByPaperBag", label = "Bag Name", choices = c("", dbUpdateEvent()$paper_bag_name))
 
-      updateSelectizeInput(session, selected = input$SearchByStudy, "SearchByStudy", "Study", choices = c("", dbUpdateEvent()$study))
+      updateSelectizeInput(session, selected = input$SearchByStudy, "SearchByStudy", "Study", choices = c("", names(dbUpdateEvent()$study)))
       updateSelectizeInput(session, selected = input$SearchBySpecimenType, "SearchBySpecimenType", "Specimen Type", choices = c("", dbUpdateEvent()$specimen_type))
       updateSelectizeInput(session, selected = input$SearchByLocation, "SearchByLocation", "Storage Location", choices = c("", dbUpdateEvent()$location))
 
