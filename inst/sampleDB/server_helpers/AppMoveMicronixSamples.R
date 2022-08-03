@@ -8,15 +8,19 @@
 MoveWetlabSamples <- function(session, input, database, output){
   
   # 1. create variable for storing formatted_move_file_list once it is created
-  reactive_vals <- reactiveValues(formatted_move_file_list = NULL) #list with one or multiple move files
   
   # 2. get path to user provided file(s), if path exists perform checks and reformat items in list
-  observe({
+  
+  observeEvent(input$MoveAction, {
+    req(input[["MoveDataSet"]])
+
     users_move_file <- input[["MoveDataSet"]]
-    if(!is.null(users_move_file)){
-      
+    if(!is.null(users_move_file)) {
+
+      showNotification("Working...", id = "MoveNotification", type = "message", action = NULL, duration = NULL, closeButton = FALSE)
+
       move_data_list <- list()
-      for(i in 1:length(users_move_file[,1])){
+      for(i in 1:length(users_move_file[,1])) {
         plate.name <- users_move_file[[i, 'name']] %>% gsub("\\.csv","",.)
         #if strip traxcer header toggle is on then strip the last 16 characters
         if(input$"MoveTraxcerStripFromFilename" == "strip"){
@@ -41,30 +45,22 @@ MoveWetlabSamples <- function(session, input, database, output){
       
       if(all(MoveLogisticalResults)){
         #reformat move file(s)
-        reactive_vals$formatted_move_file_list <- FormatMicronixMoveData(ui_elements = GetUIMoveElements("micronix"), micronix_move_data = move_data_list, input = input)
+        formatted_move_file_list <- FormatMicronixMoveData(ui_elements = GetUIMoveElements("micronix"), micronix_move_data = move_data_list, input = input)
         
         #after formatting takes place, check move content
-        if(!is.null(reactive_vals$formatted_move_file_list)){
-          CheckFormattedMoveFile(output = output, database = database, sample_type = "micronix", formatted_move_file_list = reactive_vals$formatted_move_file_list) 
+        if(!is.null(formatted_move_file_list)){
+          CheckFormattedMoveFile(output = output, database = database, sample_type = "micronix", formatted_move_file_list = formatted_move_file_list) 
         } 
       }
+
+      output$MoveReturnMessage2 <- renderText({
+        sampleDB::MoveSamples(sample_type = input$MoveSampleType,
+                            move_data = formatted_move_file_list)
+      })
+    
+      removeNotification(id = "MoveNotification")
     }
   })
-  
-  observeEvent(
-    input$MoveAction,
-    ({
-      output$MoveReturnMessage2 <- renderText({
-
-        # set move reqs (reqs are enforced ui checks)
-        SetMoveRequirements(input, sample_type = "micronix")
-
-        sampleDB::MoveSamples(sample_type = input$MoveSampleType,
-                              move_data = reactive_vals$formatted_move_file_list)
-        
-      })
-    })
-  )
   
   # allow user to reset ui
   MoveReset(input, output)
