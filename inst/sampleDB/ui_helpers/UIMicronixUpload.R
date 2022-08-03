@@ -46,6 +46,17 @@ UIMicronixUpload <- function(){
       span(verbatimTextOutput("UploadMicronixReturnMessage2"), style="font-size: 28px")
     ),
     mainPanel(
+      tags$head(
+        tags$style(
+          HTML(".shiny-notification {
+               position:fixed;
+               top: calc(50%);
+               left: calc(50%);
+               }
+               "
+              )
+          )
+      ),
       width = 7,
       HTML("<h2>Guide to Uploading Micronix Samples</h2>"),
       br(),

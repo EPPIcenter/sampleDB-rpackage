@@ -267,8 +267,11 @@ MoveSamples <- function(sample_type, move_data){
     #keeping plate information for the time being.
     if(0 < nrow(sample_data[[eval.container_id]])) {
       sample_data[[eval.container_id]] <- sample_data[[eval.container_id]] %>%
-        filter(sample_type %in% "micronix" & !(sample_data[[eval.container_id]]$well_position %in% "NA")) %>%
-        mutate(well_position = paste0('-', (sample_data[[eval.container_id]]$well_position)))
+        filter(sample_type %in% "micronix" & !(sample_data[[eval.container_id]]$well_position %in% "NA"))
+
+      if (nrow(sample_data[[eval.container_id]]) > 0)
+        sample_data[[eval.container_id]] <- sample_data[[eval.container_id]] %>%
+                 mutate(well_position = paste0('-', (sample_data[[eval.container_id]]$well_position)))
     }
   }
 

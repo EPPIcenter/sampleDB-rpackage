@@ -11,12 +11,23 @@ MicronixUpload <- function(session, output, input, database){
   file_to_upload <- reactiveVal(NULL)
 
   observeEvent(input$UploadMicronixActionButton, {
-    message("formatting!")
+
+    req(
+      input$UploadMicronixDataSet$datapath,
+      input$UploadMicronixPlateID,
+      input$UploadMicronixLocation,
+      input$UploadLocationMicronixLevelI,
+      input$UploadLocationMicronixLevelII
+    )
+
+    showNotification("Working...", id = "UploadNotification", type = "message", action = NULL, duration = NULL, closeButton = FALSE)
+
     unformatted_file <- input$UploadMicronixDataSet$datapath
     formatted_file <- NULL
     if(!is.null(unformatted_file)) {
       tryCatch(
         expr = {
+
           users_upload_file <- read.csv(unformatted_file, header = F) %>% suppressWarnings() # will throw a pointless corrupt last line warning if file comes from excel
           
           print(paste0("MicronixUpload: ", users_upload_file))
@@ -51,6 +62,16 @@ MicronixUpload <- function(session, output, input, database){
           } else {
             formatted_file <- tidyr::drop_na(formatted_file) 
           }
+
+          output$UploadMicronixReturnMessage2 <- renderText({
+            sampleDB::UploadSamples(sample_type = input$UploadSampleType, 
+                                                  upload_data = formatted_file, 
+                                                  container_name = isolate({ input$UploadMicronixPlateID }), 
+                                                  container_barcode = input$UploadMicronixPlateBarcode, 
+                                                  freezer_address = list(location_name = input$UploadMicronixLocation, 
+                                                                         level_I = input$UploadLocationMicronixLevelI, 
+                                                                         level_II = input$UploadLocationMicronixLevelII))
+          })
         },
         warning = function(w) {
           # output$UploadMicronixReturnMessage2 <- renderText({ w })
@@ -62,7 +83,8 @@ MicronixUpload <- function(session, output, input, database){
         }
       )
     }
-    file_to_upload(formatted_file)
+
+    removeNotification(id = "UploadNotification")
   })
 
   observeEvent(dbUpdateEvent(), {
@@ -78,25 +100,6 @@ MicronixUpload <- function(session, output, input, database){
     }
   })
 
-  output$UploadMicronixReturnMessage2 <- renderText({
-
-    req(
-      file_to_upload(),
-      isolate({ input$UploadMicronixPlateID }),
-      input$UploadMicronixLocation,
-      input$UploadLocationMicronixLevelI,
-      input$UploadLocationMicronixLevelII
-    )
-
-    sampleDB::UploadSamples(sample_type = input$UploadSampleType, 
-                                            upload_data = isolate({ file_to_upload() }), 
-                                            container_name = isolate({ input$UploadMicronixPlateID }), 
-                                            container_barcode = isolate({ input$UploadMicronixPlateBarcode }), 
-                                            freezer_address = list(location_name = isolate({ input$UploadMicronixLocation }), 
-                                                                   level_I = isolate({ input$UploadLocationMicronixLevelI }), 
-                                                                   level_II = isolate({ input$UploadLocationMicronixLevelII })))    
-  })
-  
   # allow user to reset ui
   UploadReset(input = input, output = output, sample_type = "micronix")
   
