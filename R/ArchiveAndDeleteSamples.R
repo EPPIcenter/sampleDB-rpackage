@@ -47,7 +47,12 @@ ArchiveAndDeleteSamples <- function(operation, data, comment, status, verificati
   # GET DATABASE TABLES
   database.tables <- .GetDatabaseTables(database)
 
-  stopifnot("Not all Sample ID(s) are not present in the database" = all(data$`Sample ID` %in% database.tables$table.storage_container$id))
+  v <- (data$`Sample ID` %in% database.tables$table.storage_container$id)
+
+  if (!all(v)) {
+    return(paste("Error: sample could not be found in the database (table is stale): ", data$Label[isFALSE(v)]))
+  }
+
 
   if(operation == "archive"){
 
