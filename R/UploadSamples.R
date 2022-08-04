@@ -346,10 +346,12 @@ UploadSamples <- function(sample_type, upload_data, container_name, container_ba
   
   if(dir.exists(path)) {
     write.csv(upload_data,
-              file.path(path,
-                     gsub(" ", "-", date()),
-                     "_", container_name, "_",
-                     "UPLOAD.csv"),
-              row.names = FALSE)
+      suppressWarnings(
+        normalizePath(
+          file.path(path,
+                 paste0(gsub(" ", "-", date()),
+                 "_", container_name, "_",
+                 "UPLOAD.csv")))),
+          row.names = FALSE)
   }
 }
