@@ -316,15 +316,14 @@ MoveSamples <- function(sample_type, move_data){
 }
 
 .SaveMoveCSVs <- function(move_data_list){
-  path <- suppressWarnings(
-    normalizePath(
-      file.path(dirname(Sys.getenv("SDB_PATH")), "move_files/")))
-  
+  path <- normalizePath(
+      file.path(dirname(Sys.getenv("SDB_PATH")), "move_files"))
+
   for(container_name in names(move_data_list)){
     move_file <- move_data_list[[container_name]]
     if(dir.exists(path)){
       write.csv(move_file,
-                paste0(path,
+                file.path(path,
                        gsub(" ", "-", date()),
                        "_", container_name, "_",
                        "MOVE.csv"),
