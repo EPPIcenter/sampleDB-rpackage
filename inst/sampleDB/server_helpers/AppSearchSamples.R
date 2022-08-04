@@ -68,7 +68,7 @@ SearchWetlabSamples <- function(session, input, database, output, DelArch = FALS
     updateSelectizeInput(session, selected = input$SearchByState, "SearchByState", "State", choices = c(dbUpdateEvent()$state))
     
     # subject uid should be updated when db updates + when studies are selected
-    .updateSubjectUID(session, input)
+    .SearchSubjectUID(session, input)
   })
 
 
@@ -84,19 +84,25 @@ SearchWetlabSamples <- function(session, input, database, output, DelArch = FALS
     updateSelectizeInput(session, selected = selected, "SearchByStatus", "Status", choices = choices) 
   })
 
-  observeEvent(input$SearchByStudy, { .updateSubjectUID(session, input) })
+  observeEvent(input$SearchByStudy, { .SearchSubjectUID(session, input) })
 }
 
-.updateSubjectUID <- function(session, input) {
-  study_id <- match(input$SearchByStudy, names(dbUpdateEvent()$study))
-  req(study_id)
-  subject_indexes <- which(unname(dbUpdateEvent()$subject) == study_id)
+.SearchSubjectUID <- function(session, input) {
+  choices <- NULL
+  if (nchar(input$SearchByStudy) == 0) {
+    choices <- names(dbUpdateEvent()$subject)
+  } else {
+    study_id <- match(input$SearchByStudy, names(dbUpdateEvent()$study))
+    req(study_id)
+    subject_indexes <- which(unname(dbUpdateEvent()$subject) == study_id)
+    choices <- names(dbUpdateEvent()$subject[subject_indexes])
+  }
 
   updateSelectizeInput(session,
     "SearchBySubjectUID",
     "Study Subject",
     selected = "",
-    choices = names(dbUpdateEvent()$subject[subject_indexes]),
+    choices = choices,
     server = TRUE)
 }
 

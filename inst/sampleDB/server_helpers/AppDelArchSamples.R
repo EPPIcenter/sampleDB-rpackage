@@ -113,7 +113,7 @@ DelArchSamples <- function(session, input, database, output, inputs, outputs){
     updateSelectizeInput(session, selected = input$DelArchSearchByState, "DelArchSearchByState", "State", choices = c(dbUpdateEvent()$state))
   
     # subject uid should be updated when db updates + when studies are selected
-    .updateSubjectUID(session, input)
+    .UpdateDelArchSubjectUID(session, input)
   })
 
   observeEvent(input$DelArchSearchByState, {
@@ -128,7 +128,7 @@ DelArchSamples <- function(session, input, database, output, inputs, outputs){
     updateSelectizeInput(session, selected = selected, "DelArchSearchByStatus", "Status", choices = choices) 
   })
 
-  observeEvent(input$DelArchSearchByStudy, { .updateSubjectUID(session, input) })
+  observeEvent(input$DelArchSearchByStudy, { .UpdateDelArchSubjectUID(session, input) })
     
   # popup window
   dataModal <- function(failed = FALSE, operation, data) {
@@ -145,16 +145,22 @@ DelArchSamples <- function(session, input, database, output, inputs, outputs){
   }
 }
 
-.updateSubjectUID <- function(session, input) {
-  study_id <- match(input$DelArchSearchByStudy, names(dbUpdateEvent()$study))
-  req(study_id)
-  subject_indexes <- which(unname(dbUpdateEvent()$subject) == study_id)
+.UpdateDelArchSubjectUID <- function(session, input) {
+  choices <- NULL
+  if (nchar(input$DelArchSearchByStudy) == 0) {
+    choices <- names(dbUpdateEvent()$subject)
+  } else {
+    study_id <- match(input$DelArchSearchByStudy, names(dbUpdateEvent()$study))
+    req(study_id)
+    subject_indexes <- which(unname(dbUpdateEvent()$subject) == study_id)
+    choices <- names(dbUpdateEvent()$subject[subject_indexes])
+  }
 
   updateSelectizeInput(session,
     "DelArchSearchBySubjectUID",
     "Study Subject",
     selected = "",
-    choices = names(dbUpdateEvent()$subject[subject_indexes]),
+    choices = choices,
     server = TRUE)
 }
 
