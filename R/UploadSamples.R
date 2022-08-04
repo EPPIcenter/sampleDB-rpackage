@@ -349,7 +349,8 @@ UploadSamples <- function(sample_type, upload_data, container_name, container_ba
       suppressWarnings(
         normalizePath(
           file.path(path,
-                 paste0(gsub(" ", "-", date()),
+                 paste0(gsub("[T:]", "_",
+                    lubridate::format_ISO8601(lubridate::now())),
                  "_", container_name, "_",
                  "UPLOAD.csv")))),
           row.names = FALSE)

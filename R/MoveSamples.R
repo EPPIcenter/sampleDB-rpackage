@@ -326,7 +326,8 @@ MoveSamples <- function(sample_type, move_data){
         suppressWarnings(
           normalizePath(
             file.path(path,
-                   paste0(gsub(" ", "-", date()),
+                   paste0(gsub("[T:]", "_",
+                      lubridate::format_ISO8601(lubridate::now())),
                    "_", container_name, "_",
                    "MOVE.csv")))),
             row.names = FALSE)
