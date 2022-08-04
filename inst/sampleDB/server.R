@@ -18,6 +18,7 @@ function(input, output, session) {
   
     # Back up database when app is fired up... supplementary files such as the backup generator are stored in /extdata
     # for (i in system("bash /sampleDB_backup_generator.sh", intern = TRUE)) message(i)
+    Backup_SampleDB(checksum = TRUE) 
 
     # Set path to .sqlite database
     database <- Sys.getenv("SDB_PATH")
@@ -27,8 +28,6 @@ function(input, output, session) {
       message(paste0("Removing oldest backup: ", oldest_backup))
       file.remove(file.path(dirname(database), "backups", head(backups, 1)))
     }
-    
-    Backup_SampleDB(checksum = TRUE) 
 
     # --------- Upload Samples -------------
 
