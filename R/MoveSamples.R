@@ -316,7 +316,10 @@ MoveSamples <- function(sample_type, move_data){
 }
 
 .SaveMoveCSVs <- function(move_data_list){
-  path <- file.path(dirname(Sys.getenv("SDB_PATH")), "move_files/")
+  path <- suppressWarnings(
+    normalizePath(
+      file.path(dirname(Sys.getenv("SDB_PATH")), "move_files/")))
+  
   for(container_name in names(move_data_list)){
     move_file <- move_data_list[[container_name]]
     if(dir.exists(path)){
