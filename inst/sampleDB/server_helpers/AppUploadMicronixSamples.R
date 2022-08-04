@@ -20,8 +20,6 @@ MicronixUpload <- function(session, output, input, database){
       input$UploadLocationMicronixLevelII
     )
 
-    showNotification("Working...", id = "UploadNotification", type = "message", action = NULL, duration = NULL, closeButton = FALSE)
-
     unformatted_file <- input$UploadMicronixDataSet$datapath
     formatted_file <- NULL
     if(!is.null(unformatted_file)) {
@@ -63,6 +61,7 @@ MicronixUpload <- function(session, output, input, database){
             formatted_file <- tidyr::drop_na(formatted_file) 
           }
 
+          showNotification("Working...", id = "UploadNotification", type = "message", action = NULL, duration = 3, closeButton = FALSE)
           output$UploadMicronixReturnMessage2 <- renderText({
             sampleDB::UploadSamples(sample_type = input$UploadSampleType, 
                                                   upload_data = formatted_file, 
@@ -72,6 +71,7 @@ MicronixUpload <- function(session, output, input, database){
                                                                          level_I = input$UploadLocationMicronixLevelI, 
                                                                          level_II = input$UploadLocationMicronixLevelII))
           })
+          removeNotification(id = "UploadNotification")
         },
         warning = function(w) {
           # output$UploadMicronixReturnMessage2 <- renderText({ w })
@@ -84,7 +84,6 @@ MicronixUpload <- function(session, output, input, database){
       )
     }
 
-    removeNotification(id = "UploadNotification")
   })
 
   observeEvent(dbUpdateEvent(), {

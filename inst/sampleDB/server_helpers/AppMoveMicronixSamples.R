@@ -16,9 +16,6 @@ MoveWetlabSamples <- function(session, input, database, output){
 
     users_move_file <- input[["MoveDataSet"]]
     if(!is.null(users_move_file)) {
-
-      showNotification("Working...", id = "MoveNotification", type = "message", action = NULL, duration = NULL, closeButton = FALSE)
-
       move_data_list <- list()
       for(i in 1:length(users_move_file[,1])) {
         plate.name <- users_move_file[[i, 'name']] %>% gsub("\\.csv","",.)
@@ -53,6 +50,7 @@ MoveWetlabSamples <- function(session, input, database, output){
         } 
       }
 
+      showNotification("Working...", id = "MoveNotification", type = "message", action = NULL, duration = 3, closeButton = FALSE)
       output$MoveReturnMessage2 <- renderText({
         sampleDB::MoveSamples(sample_type = input$MoveSampleType,
                             move_data = formatted_move_file_list)
