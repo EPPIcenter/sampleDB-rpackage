@@ -341,13 +341,12 @@ UploadSamples <- function(sample_type, upload_data, container_name, container_ba
 # }
 
 .SaveUploadCSV <- function(upload_data, container_name){
-  path <- suppressWarnings(
-    normalizePath(
-      file.path(dirname(Sys.getenv("SDB_PATH")), "upload_files/")))
+  path <- normalizePath(
+      file.path(dirname(Sys.getenv("SDB_PATH")), "upload_files"))
   
-  if(dir.exists(path)){
+  if(dir.exists(path)) {
     write.csv(upload_data,
-              paste0(path,
+              file.path(path,
                      gsub(" ", "-", date()),
                      "_", container_name, "_",
                      "UPLOAD.csv"),
