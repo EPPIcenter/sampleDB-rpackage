@@ -70,9 +70,21 @@ SearchWetlabSamples <- function(session, input, database, output, DelArch = FALS
       # updateSelectizeInput(session, selected = input$SearchBySubjectUID, 'SearchBySubjectUID', "Study Subject", choices = c("", dbUpdateEvent()$subject) %>% 
       #                                  unique(), server = TRUE)
 
-      updateSelectizeInput(session, "SearchByState", "State", choices = c(dbUpdateEvent()$state))
-      updateSelectizeInput(session, "SearchByStatus", "Status", choices = c(dbUpdateEvent()$status))
-    })
+    updateSelectizeInput(session, selected = input$SearchByState, "SearchByState", "State", choices = c(dbUpdateEvent()$state))
+  })
+
+
+  observeEvent(input$SearchByState, {
+    choices <- NULL
+    if (input$SearchByState %in% "Archived") {
+      choices <- sampleDB:::.ViewArchiveStatuses(database = database)$name
+    } else {
+      choices <- "In Use"
+    }
+    selected <- choices[1]
+
+    updateSelectizeInput(session, selected = selected, "SearchByStatus", "Status", choices = choices) 
+  })
 
   observeEvent(input$SearchByStudy, {
     study_id <- match(input$SearchByStudy, dbUpdateEvent()$study)

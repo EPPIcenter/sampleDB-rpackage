@@ -54,11 +54,40 @@ DelArchSamples <- function(session, input, database, output, inputs, outputs){
   })
   
   observeEvent(input[[ui_elements$ui.input$DelArchVerification]], {
+    shinyjs::disable("DelArchVerification")
     return_message <- sampleDB::ArchiveAndDeleteSamples(operation = values$operation,
                                                         data = values$selected(),
                                                         comment = input$DelArchComment,
                                                         status = input$DelArchStatus,
                                                         verification = F)
+
+    database <- file.path(Sys.getenv("SDB_PATH"))
+    if (values$operation %in% "archive") {
+      updated_values <- values$data %>%
+        select(`Sample ID`) %>%
+        filter(`Sample ID` %in% values$selected()$`Sample ID`) %>%
+        inner_join(CheckTable(database = database, table = "storage_container"), by = c("Sample ID" = "id")) %>%
+        inner_join(CheckTable(database = database, table = "state"), by = c("state_id" = "id")) %>%
+        inner_join(CheckTable(database = database, table = "status"), by = c("status_id" = "id")) %>%
+        rename(
+          State = name.x,
+          Status = name.y,
+          Comment = comment
+        )
+
+      values$data <- values$data %>%
+        mutate(
+          State = as.factor(replace(as.character(State), `Sample ID` %in% updated_values$`Sample ID`, updated_values$State)),
+          Status = as.factor(replace(as.character(Status), `Sample ID` %in% updated_values$`Sample ID`, updated_values$Status)),
+          Comment = as.factor(replace(as.character(Comment), `Sample ID` %in% updated_values$`Sample ID`, updated_values$Comment))
+        )
+    } else if (values$operation %in% "delete") {
+      values$data <- values$data[!values$data$`Sample ID` %in% values$selected()$`Sample ID`, ]
+      if (nrow(values$data) == 0) {
+        values$data <- NULL
+      }
+    }
+
     removeModal()
     output[[ui_elements$ui.output$DelArchMessage]] <- renderPrint(return_message)
   })
@@ -83,8 +112,19 @@ DelArchSamples <- function(session, input, database, output, inputs, outputs){
     # load dropdown using the server -- saves time
     # updateSelectizeInput(session, selected = input$DelArchSearchBySubjectUID, 'DelArchSearchBySubjectUID', "Study Subject", choices = c("", dbUpdateEvent()$subject) %>% 
     #                                  unique(), server = TRUE)
-    updateSelectizeInput(session, "DelArchSearchByState", "State", choices = c(dbUpdateEvent()$state))
-    updateSelectizeInput(session, "DelArchSearchByStatus", "Status", choices = c(dbUpdateEvent()$status))
+    updateSelectizeInput(session, selected = input$DelArchSearchByState, "DelArchSearchByState", "State", choices = c(dbUpdateEvent()$state))
+  })
+
+  observeEvent(input$DelArchSearchByState, {
+    choices <- NULL
+    if (input$DelArchSearchByState %in% "Archived") {
+      choices <- sampleDB:::.ViewArchiveStatuses(database = database)$name
+    } else {
+      choices <- "In Use"
+    }
+    selected <- choices[1]
+
+    updateSelectizeInput(session, selected = selected, "DelArchSearchByStatus", "Status", choices = choices) 
   })
 
   observeEvent(input$DelArchSearchByStudy, {
