@@ -323,11 +323,13 @@ MoveSamples <- function(sample_type, move_data){
     move_file <- move_data_list[[container_name]]
     if(dir.exists(path)){
       write.csv(move_file,
-                file.path(path,
-                       gsub(" ", "-", date()),
-                       "_", container_name, "_",
-                       "MOVE.csv"),
-                row.names = FALSE)
+        suppressWarnings(
+          normalizePath(
+            file.path(path,
+                   paste0(gsub(" ", "-", date()),
+                   "_", container_name, "_",
+                   "MOVE.csv")))),
+            row.names = FALSE)
     }
   }
 }
