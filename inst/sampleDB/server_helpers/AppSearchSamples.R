@@ -12,7 +12,6 @@ SearchWetlabSamples <- function(session, input, database, output, DelArch = FALS
     
     #search
     list.search_results <- SearchFunction(input, output, ui_elements)
-    message(list.search_results)
     
     if(!is.null(list.search_results)){
       values$data <- list.search_results$results
@@ -57,20 +56,19 @@ SearchWetlabSamples <- function(session, input, database, output, DelArch = FALS
   .SearchReset(input)
 
   observe({
-      updateSelectInput(session, selected = input$SearchByPlate, "SearchByPlate", label = "Plate Name", choices = c("", dbUpdateEvent()$plate_name))
-      updateSelectInput(session, selected = input$SearchByBox, "SearchByBox", label = "Box Name", choices = c("", dbUpdateEvent()$box_name))
-      updateSelectInput(session, selected = input$SearchByRDTBag, "SearchByRDTBag", label = "Bag Name", choices = c("", dbUpdateEvent()$rdt_bag_name))
-      updateSelectInput(session, selected = input$SearchByPaperBag, "SearchByPaperBag", label = "Bag Name", choices = c("", dbUpdateEvent()$paper_bag_name))
+    updateSelectInput(session, selected = input$SearchByPlate, "SearchByPlate", label = "Plate Name", choices = c("", dbUpdateEvent()$plate_name))
+    updateSelectInput(session, selected = input$SearchByBox, "SearchByBox", label = "Box Name", choices = c("", dbUpdateEvent()$box_name))
+    updateSelectInput(session, selected = input$SearchByRDTBag, "SearchByRDTBag", label = "Bag Name", choices = c("", dbUpdateEvent()$rdt_bag_name))
+    updateSelectInput(session, selected = input$SearchByPaperBag, "SearchByPaperBag", label = "Bag Name", choices = c("", dbUpdateEvent()$paper_bag_name))
 
-      updateSelectizeInput(session, selected = input$SearchByStudy, "SearchByStudy", "Study", choices = c("", names(dbUpdateEvent()$study)))
-      updateSelectizeInput(session, selected = input$SearchBySpecimenType, "SearchBySpecimenType", "Specimen Type", choices = c("", dbUpdateEvent()$specimen_type))
-      updateSelectizeInput(session, selected = input$SearchByLocation, "SearchByLocation", "Storage Location", choices = c("", dbUpdateEvent()$location))
-
-      # load dropdown using the server -- saves time
-      # updateSelectizeInput(session, selected = input$SearchBySubjectUID, 'SearchBySubjectUID', "Study Subject", choices = c("", dbUpdateEvent()$subject) %>% 
-      #                                  unique(), server = TRUE)
+    updateSelectizeInput(session, selected = input$SearchByStudy, "SearchByStudy", "Study", choices = c("", names(dbUpdateEvent()$study)))
+    updateSelectizeInput(session, selected = input$SearchBySpecimenType, "SearchBySpecimenType", "Specimen Type", choices = c("", dbUpdateEvent()$specimen_type))
+    updateSelectizeInput(session, selected = input$SearchByLocation, "SearchByLocation", "Storage Location", choices = c("", dbUpdateEvent()$location))
 
     updateSelectizeInput(session, selected = input$SearchByState, "SearchByState", "State", choices = c(dbUpdateEvent()$state))
+    
+    # subject uid should be updated when db updates + when studies are selected
+    .updateSubjectUID(session, input)
   })
 
 
@@ -86,18 +84,22 @@ SearchWetlabSamples <- function(session, input, database, output, DelArch = FALS
     updateSelectizeInput(session, selected = selected, "SearchByStatus", "Status", choices = choices) 
   })
 
-  observeEvent(input$SearchByStudy, {
-    study_id <- match(input$SearchByStudy, dbUpdateEvent()$study)
-    req(study_id)
-    subject_indexes <- which(unname(dbUpdateEvent()$subject) == study_id)
-
-    updateSelectizeInput(session,
-      "SearchBySubjectUID",
-      "Study Subject",
-      choices = names(dbUpdateEvent()$subject[subject_indexes]),
-      server = TRUE)
-  })
+  observeEvent(input$SearchByStudy, { .updateSubjectUID(session, input) })
 }
+
+.updateSubjectUID <- function(session, input) {
+  study_id <- match(input$SearchByStudy, names(dbUpdateEvent()$study))
+  req(study_id)
+  subject_indexes <- which(unname(dbUpdateEvent()$subject) == study_id)
+
+  updateSelectizeInput(session,
+    "SearchBySubjectUID",
+    "Study Subject",
+    selected = "",
+    choices = names(dbUpdateEvent()$subject[subject_indexes]),
+    server = TRUE)
+}
+
 
 .SearchReset <- function(input){
   observeEvent(input$ClearSearchBarcodes, ({shinyjs::reset("SearchByBarcode")}))
