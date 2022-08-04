@@ -12,7 +12,7 @@ database <- Sys.getenv("SDB_PATH")
 
 # Session independent declarations go here
 
-dbUpdateEvent <- reactivePoll(1000 * 10, NULL,
+dbUpdateEvent <- reactivePoll(1000 * 5, NULL,
     function() file.mtime(Sys.getenv("SDB_PATH")),
     function() {
       list.data <- list(

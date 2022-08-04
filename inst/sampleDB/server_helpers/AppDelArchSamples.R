@@ -55,6 +55,7 @@ DelArchSamples <- function(session, input, database, output, inputs, outputs){
   
   observeEvent(input[[ui_elements$ui.input$DelArchVerification]], {
     shinyjs::disable("DelArchVerification")
+    showNotification("Working...", id = "ArchDelNotification", type = "message", action = NULL, duration = 5, closeButton = FALSE)
     return_message <- sampleDB::ArchiveAndDeleteSamples(operation = values$operation,
                                                         data = values$selected(),
                                                         comment = input$DelArchComment,
@@ -87,7 +88,7 @@ DelArchSamples <- function(session, input, database, output, inputs, outputs){
         values$data <- NULL
       }
     }
-
+    removeNotification(id = "ArchDelNotification")
     removeModal()
     output[[ui_elements$ui.output$DelArchMessage]] <- renderPrint(return_message)
   })
@@ -109,10 +110,10 @@ DelArchSamples <- function(session, input, database, output, inputs, outputs){
     updateSelectizeInput(session, selected = input$DelArchSearchBySpecimenType, "DelArchSearchBySpecimenType", "Specimen Type", choices = c("", dbUpdateEvent()$specimen_type))
     updateSelectizeInput(session, selected = input$DelArchSearchByLocation, "DelArchSearchByLocation", "Storage Location", choices = c("", dbUpdateEvent()$location))
 
-    # load dropdown using the server -- saves time
-    # updateSelectizeInput(session, selected = input$DelArchSearchBySubjectUID, 'DelArchSearchBySubjectUID', "Study Subject", choices = c("", dbUpdateEvent()$subject) %>% 
-    #                                  unique(), server = TRUE)
     updateSelectizeInput(session, selected = input$DelArchSearchByState, "DelArchSearchByState", "State", choices = c(dbUpdateEvent()$state))
+  
+    # subject uid should be updated when db updates + when studies are selected
+    .updateSubjectUID(session, input)
   })
 
   observeEvent(input$DelArchSearchByState, {
@@ -127,17 +128,7 @@ DelArchSamples <- function(session, input, database, output, inputs, outputs){
     updateSelectizeInput(session, selected = selected, "DelArchSearchByStatus", "Status", choices = choices) 
   })
 
-  observeEvent(input$DelArchSearchByStudy, {
-    study_id <- match(input$DelArchSearchByStudy, dbUpdateEvent()$study)
-    req(study_id)
-    subject_indexes <- which(unname(dbUpdateEvent()$subject) == study_id)
-
-    updateSelectizeInput(session,
-      "DelArchSearchBySubjectUID",
-      "Study Subject",
-      choices = names(dbUpdateEvent()$subject[subject_indexes]),
-      server = TRUE)
-  })
+  observeEvent(input$DelArchSearchByStudy, { .updateSubjectUID(session, input) })
     
   # popup window
   dataModal <- function(failed = FALSE, operation, data) {
@@ -153,6 +144,20 @@ DelArchSamples <- function(session, input, database, output, inputs, outputs){
     )
   }
 }
+
+.updateSubjectUID <- function(session, input) {
+  study_id <- match(input$DelArchSearchByStudy, names(dbUpdateEvent()$study))
+  req(study_id)
+  subject_indexes <- which(unname(dbUpdateEvent()$subject) == study_id)
+
+  updateSelectizeInput(session,
+    "DelArchSearchBySubjectUID",
+    "Study Subject",
+    selected = "",
+    choices = names(dbUpdateEvent()$subject[subject_indexes]),
+    server = TRUE)
+}
+
 
 .SearchReset <- function(input){
   observeEvent(input$ClearSearchBarcodes, ({shinyjs::reset("SearchByBarcode")}))
