@@ -4,7 +4,7 @@
 
 .Backup <- function(database, backup_dest) {
 
-  args <- paste("-readonly", database, paste0("\".backup ", paste0("\'", backup_dest, "\'"), "\""))
+  args <- paste(database, paste0("\".backup ", paste0("\'", backup_dest, "\'"), "\""))
   system2("sqlite3", args)
 
   return(file.exists(backup_dest))
