@@ -7,6 +7,8 @@ library(rappdirs)
           normalizePath(
             file.path(libname))),
         pkgname = pkgname,
-        site_install = libname %in% c(.Library, .Library.site) 
+        site_install = libname %in% gsub(
+          "/$", "", normalizePath(
+            c(.Library.site, .Library), winslash = "/"))
     ), as.environment(paste0("package:", pkgname)))
 }
