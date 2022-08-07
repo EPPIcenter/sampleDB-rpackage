@@ -59,14 +59,17 @@
 <div class="row">
   <main id="main" class="col-md-9"><div class="section level1">
 <div class="page-header">
-<img src="logo.png" class="logo" alt=""><h1 id="overview">Overview<a class="anchor" aria-label="anchor" href="#overview"></a>
+<img src="logo.png" class="logo" alt=""><h1 id="sampledb">sampleDB<a class="anchor" aria-label="anchor" href="#sampledb"></a>
 </h1>
 </div>
+<div class="section level2">
+<h2 id="overview">Overview<a class="anchor" aria-label="anchor" href="#overview"></a>
+</h2>
 <p>SampleDB is a Management System for Wet Lab Samples. It can be used to track a sample’s <code>storage address</code> and <code>metadata</code>. SampleDB is installed as an R package and is accessible via an RShiny web app.</p>
 </div>
-<div class="section level1">
-<h1 id="running-sampledb">Running SampleDB<a class="anchor" aria-label="anchor" href="#running-sampledb"></a>
-</h1>
+<div class="section level2">
+<h2 id="running-sampledb">Running SampleDB<a class="anchor" aria-label="anchor" href="#running-sampledb"></a>
+</h2>
 <p>After minimal installation and setup SampleDB can be accessed at the url: <code>http://&lt;ip address&gt;:3838/sampleDB/</code></p>
 <ol style="list-style-type: decimal">
 <li>Uniquely Barcoded Samples</li>
@@ -76,37 +79,43 @@
 <img src="https://www.rstudio.com/products/rstudio/download-server/" alt="Rstudio Server"> or <img src="https://www.rstudio.com/products/workbench/" alt="Rstudio Workbench">
 </li>
 <li><img src="https://www.rstudio.com/products/shiny/download-server/" title="fig:" alt="Shiny Server"></li>
+<li><img src="" title="fig:" alt="sqlite3"></li>
 </ol>
 </div>
-<div class="section level1">
-<h1 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
-</h1>
-<p>To install SampleDB run the command below in an R instance:</p>
-<pre><code><span><span class="fu">withr</span><span class="fu">::</span><span class="fu"><a href="https://withr.r-lib.org/reference/with_libpaths.html" class="external-link">with_libpaths</a></span><span class="op">(</span>new <span class="op">=</span> <span class="st">"/usr/lib/R/site-library/"</span>, </span>
-<span>                     <span class="fu">devtools</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span><span class="st">"https://github.com/EPPIcenter/sampleDB-rpackage"</span>, </span>
-<span>                                              ref <span class="op">=</span> <span class="st">"master"</span><span class="op">)</span><span class="op">)</span></span></code></pre>
+<div class="section level2">
+<h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
+</h2>
+<p>The sampleDB shiny application can be hosted by shiny server or can be run locally. If you would like to link the application to the server, you must install the application into any of the site library pathways. Otherwise, it is okay to install the package locally and run the application using <code><a href="reference/Run_SampleDB.html">sampleDB::Run_SampleDB()</a></code>.</p>
+<p>Data access is another important consideration, and should affect your installation choice. If you would like all users to access the same database, you must install using a site library pathway. Local installs will install data files to your operating system’s default location for user data, and therefore will prevent other users from accessing that data. System installs will place the database into the default location for shared application data and will be accessble to anyone who uses the application.</p>
+<p>To install sampleDB at the site level, you can run the command below using an R process with elevated privileges:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>devtools<span class="sc">::</span><span class="fu">install_github</span>(</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    <span class="st">"https://github.com/EPPIcenter/sampleDB-rpackage"</span>, </span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    <span class="at">ref =</span> <span class="st">"v1.1.0"</span>,</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="at">lib =</span> .Library[<span class="dv">1</span>])</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="er">)</span></span></code></pre></div>
 </div>
-<div class="section level1">
-<h1 id="set-up">Set Up<a class="anchor" aria-label="anchor" href="#set-up"></a>
-</h1>
+<div class="section level2">
+<h2 id="set-up">Set Up<a class="anchor" aria-label="anchor" href="#set-up"></a>
+</h2>
 <p>To set up SampleDB run the command below. You will be prompted to carry out the setup.</p>
-<pre><code><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://eppicenter.github.io/sampleDB-rpackage/">sampleDB</a></span><span class="op">)</span></span>
-<span><span class="fu"><a href="reference/SampleDB_Setup.html">SampleDB_Setup</a></span><span class="op">(</span><span class="op">)</span></span></code></pre>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://eppicenter.github.io/sampleDB-rpackage/">sampleDB</a></span><span class="op">)</span></span>
+<span><span class="fu"><a href="reference/SampleDB_Setup.html">SampleDB_Setup</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 </div>
-<div class="section level1">
-<h1 id="database-schema">Database Schema<a class="anchor" aria-label="anchor" href="#database-schema"></a>
-</h1>
+<div class="section level2">
+<h2 id="database-schema">Database Schema<a class="anchor" aria-label="anchor" href="#database-schema"></a>
+</h2>
 <div class="figure">
 <img src="https://user-images.githubusercontent.com/95319271/161106124-afd9ddd6-bdcd-4914-b903-a2d66b454991.jpg" alt=""><p class="caption">SampleDB v2</p>
 </div>
 </div>
-<div class="section level1">
-<h1 id="backups">Backups<a class="anchor" aria-label="anchor" href="#backups"></a>
-</h1>
-<p>SampleDB is backed up every Sunday to the Mines using <code>/opt/sample_db/sample_db_backup.sh</code> and a crontab.</p>
-<!---# The Database--><!---The database file that SampleDB reads and writes from is a SQLite3 file, a template for this database is provided at--><!---`databases/sampledb_template.sqlite` or can be downloaded from--><!---![here](https://drive.google.com/file/d/1umwodPMPR0kZdsrlxTJQa-O0ylQq4tUS/view?usp=sharing).--><!---Copy this file to a new location on your filesystem and make it readable and writable for all users.--><!---Once the file is placed in a new location the path to the file needs to be saved in the `Renviron.site` file as `SDB_PATH`.--><!---For example...--><!---```--><!---SDB_PATH="/path/to/the/database"--><!---```--><!---The default location of `Renviron.site` is 'R_HOME/etc/Renviron.site'--><!---`Renviron.site` is the first file that gets read when an instance of R is spun up and variables in this file can be accessed by all R users.--><!---To check that `SDB_PATH` matches the path to your database file run.--><!---```--><!---Sys.getenv("SDB_PATH")--><!---```--><!---## Database Schema--><!---![SampleDB v2](https://user-images.githubusercontent.com/95319271/159344494-62fb6d59-66b6-4a9a-b4ae-decd74fc9739.svg)--><!---# Backups--><!---- Backups are located at `/databases/sampleDB_backups/`--><!---- Cronjob to create backup is located at `/bin/sampleDB_backup_generator.sh`.--><!---- Backups are whenever someone issues the `Run_SampleDB()` command--><!---- Backups are also generated every day at midnight and noon.-->
+<div class="section level2">
+<h2 id="backups">Backups<a class="anchor" aria-label="anchor" href="#backups"></a>
+</h2>
+<p>The database will be backed up each time a session begins, unless the database has not changed since the last backup. Only the most recent 10 backups will be kept. The location of the backup folder can be found running <code><a href="reference/SampleDB_Setup.html">SampleDB_Setup()</a></code> again (this function does not overwrite). It is recommended that you keep additional copies of your backups.</p>
+<p>There are a number of way to backup the database manually or on a schedule. One of the easiest ways is to use the <code>Backup_SampleDB()</code> function provided in the package. This function by default will backup the database to the default backup folder. If you would like to back the database up somewhere else, you can pass a filepath to <code>backup_dest</code> (e.g. /path/to/file.backup).</p>
 </div>
-
+</div>
   </main><aside class="col-md-3"><div class="license">
 <h2 data-toc-skip>License</h2>
 <ul class="list-unstyled">
