@@ -1,62 +1,59 @@
+# sampleDB
 
-# Overview
+## Overview
+
 SampleDB is a Management System for Wet Lab Samples. It can be used to track a sample's `storage address` and `metadata`.
 SampleDB is installed as an R package and is accessible via an RShiny web app.
 
-# Running SampleDB
+## Running SampleDB
+
 After minimal installation and setup SampleDB can be accessed at the url:
 `http://<ip address>:3838/sampleDB/`
+
 
 1. Uniquely Barcoded Samples
 2. Linux Server
 3. R >= 4.0
 4. ![Rstudio Server](https://www.rstudio.com/products/rstudio/download-server/) or ![Rstudio Workbench](https://www.rstudio.com/products/workbench/)
 5. ![Shiny Server](https://www.rstudio.com/products/shiny/download-server/)
+6. ![sqlite3]()
 
-# Installation
-To install SampleDB run the command below in an R instance:
-```
-withr::with_libpaths(new = "/usr/lib/R/site-library/", 
-                     devtools::install_github("https://github.com/EPPIcenter/sampleDB-rpackage", 
-                                              ref = "master"))
+## Installation
+
+The sampleDB shiny application can be hosted by shiny server or can be run locally. If you would like to link the
+application to the server, you must install the application into any of the site library pathways. Otherwise, it is okay
+to install the package locally and run the application using `sampleDB::Run_SampleDB()`.
+
+Data access is another important consideration, and should affect your installation choice. If you would like all users to access the same database, you must install using a site library pathway. Local installs will install data files to your operating system's default location for user data, and therefore will prevent other users from accessing that data. System
+installs will place the database into the default location for shared application data and will be accessble to anyone who
+uses the application.
+
+To install sampleDB at the site level, you can run the command below using an R process with elevated privileges:
+
+```R
+devtools::install_github(
+    "https://github.com/EPPIcenter/sampleDB-rpackage", 
+    ref = "v1.1.0",
+    lib = .Library[1])
+)
 ```
 
-# Set Up
+## Set Up
+
 To set up SampleDB run the command below. You will be prompted to carry out the setup.
-```
+
+```R
 library(sampleDB)
 SampleDB_Setup()
 ```
 
-# Database Schema
+## Database Schema
 ![SampleDB v2](https://user-images.githubusercontent.com/95319271/161106124-afd9ddd6-bdcd-4914-b903-a2d66b454991.jpg)
 
-# Backups
+## Backups
 
-SampleDB is backed up every Sunday to the Mines using `/opt/sample_db/sample_db_backup.sh` and a crontab.
+The database will be backed up each time a session begins, unless the database has not changed since the last backup. Only the 
+most recent 10 backups will be kept. The location of the backup folder can be found running `SampleDB_Setup()` again (this function does not overwrite). It is recommended that you keep additional copies of your backups. 
 
-<!---# The Database-->
-<!---The database file that SampleDB reads and writes from is a SQLite3 file, a template for this database is provided at--> <!---`databases/sampledb_template.sqlite` or can be downloaded from--> <!---![here](https://drive.google.com/file/d/1umwodPMPR0kZdsrlxTJQa-O0ylQq4tUS/view?usp=sharing).-->
-<!---Copy this file to a new location on your filesystem and make it readable and writable for all users.-->
-<!---Once the file is placed in a new location the path to the file needs to be saved in the `Renviron.site` file as `SDB_PATH`.-->
-<!---For example...-->
-<!---```-->
-<!---SDB_PATH="/path/to/the/database"-->
-<!---```-->
+There are a number of way to backup the database manually or on a schedule. One of the easiest ways is to use the `Backup_SampleDB()` function provided in the package. This function by default will backup the database to the default backup folder. If you would like to back the database up somewhere else, you can pass a filepath to `backup_dest` (e.g. /path/to/file.backup).
 
-<!---The default location of `Renviron.site` is 'R_HOME/etc/Renviron.site'-->
-<!---`Renviron.site` is the first file that gets read when an instance of R is spun up and variables in this file can be accessed by all R users.-->
-
-<!---To check that `SDB_PATH` matches the path to your database file run.-->
-<!---```-->
-<!---Sys.getenv("SDB_PATH")-->
-<!---```-->
-
-<!---## Database Schema-->
-<!---![SampleDB v2](https://user-images.githubusercontent.com/95319271/159344494-62fb6d59-66b6-4a9a-b4ae-decd74fc9739.svg)-->
-
-<!---# Backups-->
-<!---- Backups are located at `/databases/sampleDB_backups/`-->
-<!---- Cronjob to create backup is located at `/bin/sampleDB_backup_generator.sh`.-->
-<!---- Backups are whenever someone issues the `Run_SampleDB()` command-->
-<!---- Backups are also generated every day at midnight and noon.-->
