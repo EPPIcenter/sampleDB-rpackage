@@ -316,6 +316,18 @@ CheckFormattedUploadFile <- function(output, database, formatted_upload_file, ui
   
   message("Checking formatted data in file...")
 
+  # Check that there are no empty cells, except for collection_date in cross sectional studies
+  study <- filter(sampleDB::CheckTable(database = database, "study"), short_code %in% formatted_upload_file$study_short_code)
+  row_with_empty_cell <- NULL
+  if (0 < nrow(study) && 0 == study$is_longitudinal) {
+    row_with_empty_cell <- (subset(formatted_upload_file, select = c(-collection_date)) == "")
+  } else {
+    row_with_empty_cell <- (formatted_upload_file == "")
+  }
+
+  # make sure all columns checked have content  
+  validate(need(all(rowSums(row_with_empty_cell) == 0), "ERROR: empty cell detected in upload file..."))
+
   # check valid specimen type
   output[[ui_elements$ui.output$WarningUploadSpecimenTypes]] <- renderText({
     out <- sampleDB:::.CheckUploadSpecimenTypes(database = database, formatted_upload_file = formatted_upload_file) 
