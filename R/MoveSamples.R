@@ -208,8 +208,9 @@ MoveSamples <- function(sample_type, move_data){
 
 .GetOrphanedSamples <- function(sample_type, stacked_orphaned_sample_data, database){
   # GET LABEL STILL IN DUMMY PLATE
-  if(sample_type == "micronix"){
-    label.missing <- filter(stacked_orphaned_sample_data, plate_id < 0)$barcode
+  if(sample_type == "micronix") {
+    remaining_well_positions <- grepl("-", stacked_orphaned_sample_data %>% pull(well_position), fixed = TRUE)
+    label.missing <- stacked_orphaned_sample_data[remaining_well_positions, ] %>% pull(barcode)
 
     # GET PLATE ID/PLATE NAME WHICH CONTAINED BARCODE STILL IN DUMMY
     container_id_with_missing_label <- filter(CheckTable(database = database, "matrix_tube"), barcode %in% label.missing)$plate_id
