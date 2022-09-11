@@ -317,62 +317,55 @@ CheckFormattedUploadFile <- function(output, database, formatted_upload_file, ui
   message("Checking formatted data in file...")
 
   # Check that there are no empty cells, except for collection_date in cross sectional studies
+  ignored_columns <- c("comment") # always ignore the comment column if it exists
   study <- filter(sampleDB::CheckTable(database = database, "study"), short_code %in% formatted_upload_file$study_short_code)
-  row_with_empty_cell <- NULL
   if (0 < nrow(study) && 0 == study$is_longitudinal) {
-    row_with_empty_cell <- (subset(formatted_upload_file, select = c(-collection_date)) == "")
-  } else {
-    row_with_empty_cell <- (formatted_upload_file == "")
+    ignored_columns <- c(ignored_columns, "collection_date")
   }
 
-  # make sure all columns checked have content  
-  validate(need(all(rowSums(row_with_empty_cell) == 0), "ERROR: empty cell detected in upload file..."))
+  row_with_empty_cell <- rowSums(is.na(
+    formatted_upload_file[, !colnames(formatted_upload_file) %in% ignored_columns]))
+
+  out <- row_with_empty_cell[row_with_empty_cell != 0]
+
+  if (length(out) > 0) {
+    errmsg <- paste("Empty cell detected in rows:", paste(names(out), collapse = " "))
+    warning(errmsg)
+  }
 
   # check valid specimen type
-  output[[ui_elements$ui.output$WarningUploadSpecimenTypes]] <- renderText({
-    out <- sampleDB:::.CheckUploadSpecimenTypes(database = database, formatted_upload_file = formatted_upload_file) 
-    validate(need(out, "ERROR:\nSpecimen Type Not found... Consider creating a new specimen type"))
-  })
+
+  out <- sampleDB:::.CheckUploadSpecimenTypes(database = database, formatted_upload_file = formatted_upload_file)
+  if (!out) {
+    warning("Specimen Type Not found... Consider creating a new specimen type")
+  }
   
   # check study short codes
-  output[[ui_elements$ui.output$WarningUploadStudyShortCodes]] <- renderText({
-    out <- sampleDB:::.CheckUploadStudyShortCodes(database = database, formatted_upload_file = formatted_upload_file)
-    validate(need(out, "ERROR:\nStudy Short Code Not found... Consider creating a new study"))
-  })
+  out <- sampleDB:::.CheckUploadStudyShortCodes(database = database, formatted_upload_file = formatted_upload_file)
+  if (!out) {
+    warning("Study Short Code Not found... Consider creating a new study")
+  }
   
   # check date format
-  output[[ui_elements$ui.output$WarningUploadDateFormat]] <- renderText({
-    out <- sampleDB:::.CheckUploadDateFormat(database = database, formatted_upload_file = formatted_upload_file)
-    validate(need(out, "ERROR:\nAll Collection Dates are Not in YMD format"))
-  })
+  out <- sampleDB:::.CheckUploadDateFormat(database = database, formatted_upload_file = formatted_upload_file)
+  if (!out) {
+    warning("All Collection Dates are Not in YMD format")
+  }
   
   # check unique barcodes
-  output[[ui_elements$ui.output$WarningUploadSampleID]] <- renderText({
-    out <- sampleDB:::.CheckBarcodeIsntInDB(database = database, formatted_upload_file = formatted_upload_file)
-    validate(need(out$out1, paste("ERROR:\nUnique Barcode Constraint", out$out2)))
-  })
-  
+  out <- sampleDB:::.CheckBarcodeIsntInDB(database = database, formatted_upload_file = formatted_upload_file)
+  if (!out$out1) {
+    errmsg <- paste("Unique Barcode Constraint Failed:", paste(out$out2, collapse = " "))
+    warning(errmsg)
+  }    
+
   # check unique barcodes
-  output[[ui_elements$ui.output$WarningUploadBarcodeRepeats]] <- renderText({
-    out <- sampleDB:::.CheckBarcodeArentRepeated(database = database, formatted_upload_file = formatted_upload_file)
-    validate(need(out$out1, paste("ERROR:\nUnique Barcode Constraint", out$out2)))
-  })
 
-  list.validate.barcode.length <- !is.na(formatted_upload_file$label)
-  list.validate.barcode.na <- !is.na(formatted_upload_file$label)
-
-  # study
-  list.validate.study.na <- !is.na(formatted_upload_file$study_short_code)
-  out <- c(formatted_upload_file$MicronixBarcode[ ! list.validate.barcode.length ],
-    formatted_upload_file$MicronixBarcode[ ! list.validate.barcode.na ],
-    formatted_upload_file$study_short_code[ ! list.validate.study.na ])
-
-  output[[ui_elements$ui.output$WarningUploadInvalidData]] <- renderText({
-    validate(need(
-              all(list.validate.barcode.length) && all(list.validate.barcode.na) && all(list.validate.study.na),
-              paste("*** ERROR: Invalid entry in upload:", out)
-            ))
-    })
+  out <- sampleDB:::.CheckBarcodeArentRepeated(database = database, formatted_upload_file = formatted_upload_file)
+  if (!out$out1) {
+    errmsg <- paste("Unique Barcode Constraint Failed:", paste(out$out2, collapse = " "))
+    warning(errmsg)
+  }
 }
 
 CheckFormattedMoveFile <- function(output, database, sample_type, formatted_move_file_list){
@@ -498,6 +491,11 @@ FormatMicronixUploadData <- function(database, input, users_upload_file, ui_elem
 
   upload_file_type <- input[[ui_elements$ui.input$MicronixFileType]]
   formatted_logistics_upload_file <- .FormatMicronixLogisticalDataUpload(database, upload_file_type, users_upload_file)
+
+  # note: depending on the csv tool, there may be empty strings or other special characters here
+  formatted_logistics_upload_file[formatted_logistics_upload_file == ""] <- NA
+  formatted_logistics_upload_file[] <- lapply(formatted_logistics_upload_file, function(x) as.character(gsub("[\n\t,]", "", x)))
+
   formatted_logistics_and_metadata_file <- .FormatMicronixMetaData(users_upload_file = formatted_logistics_upload_file)
   return(formatted_logistics_and_metadata_file)
 }

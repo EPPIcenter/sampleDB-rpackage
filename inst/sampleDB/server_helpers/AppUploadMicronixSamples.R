@@ -66,13 +66,14 @@ MicronixUpload <- function(session, output, input, database){
           removeNotification(id = "UploadNotification")
         },
         warning = function(w) {
-          # output$UploadMicronixReturnMessage2 <- renderText({ w })
+          output$UploadMicronixReturnMessage2 <- renderText({ paste("ERROR:", w$message) })
           message(w)
         },
         error = function(e) {
-          # output$UploadMicronixReturnMessage2 <- renderText({ e })
+          output$UploadMicronixReturnMessage2 <- renderText({ paste("*** ABORT:", e$message) })
           message(e)
-        }
+        },
+        finally = {}
       )
     }
 
