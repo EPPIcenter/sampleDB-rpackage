@@ -89,7 +89,7 @@ UploadSamples <- function(sample_type, upload_data, container_name, container_ba
                  conn = conn, container_name = container_name, freezer_address = freezer_address,
                  container_barcode = container_barcode)
 
-  return_message <- paste("Successfully uploaded\n", container_name, "with", nrow(upload_data), "sample", "to", "freezer address:\n", unlist(freezer_address, use.names=F))
+  return_message <- paste("Upload Successful!\nPlate", container_name, "with", nrow(upload_data), "sample(s) were added to freezer address:", paste(unlist(freezer_address, use.names=F), collapse = ", "), "\n")
 
   #close connection
   tryCatch(

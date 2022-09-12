@@ -283,17 +283,15 @@ CheckLogisticalColnamesOfUserProvidedMicronixFile <- function(input, output, use
   upload_file_type <- input[[ui_elements$ui.input$MicronixFileType]]
   out <- sampleDB:::.CheckLogisticalColnamesOfUserProvidedMicronixFile(upload_file_type = upload_file_type, users_upload_file = users_upload_file)
   
-  output[[ui_elements$ui.output$WarningLogisticalColnames]] <- renderText({
-    if(upload_file_type == "visionmate"){
-      validate(need(out, "ERROR:\nMalformed Logictical Colnames (Valid VisionMate Column Names: LocationRow, LocationColumn, TubeCode)"))
-    }
-    else if(upload_file_type == "traxcer"){
-      validate(need(out, "ERROR:\nMalformed Logictical Colnames (Valid Traxcer Column Names: Position, Tube ID)"))
-    }
-    else{
-      validate(need(out, "ERROR:\nMalformed Logictical Colnames (Valid Column Names: MicronixBarcode, Row, Column)"))
-    }
-  })
+  if(upload_file_type == "visionmate"){
+    validate(need(out, "Malformed Logistical Colnames in Uploaded File (Valid VisionMate Column Names: LocationRow, LocationColumn, TubeCode)"))
+  }
+  else if(upload_file_type == "traxcer"){
+    validate(need(out, "Malformed Logistical Colnames in Uploaded File (Valid Traxcer Column Names: Position, Tube ID)"))
+  }
+  else{
+    validate(need(out, "Malformed Logistical Colnames in Uploaded File (Valid Column Names: MicronixBarcode, Row, Column)"))
+  }
 
   return(out)
 }
@@ -306,34 +304,23 @@ CheckMetadataColnamesOfUserProvidedMicronixFile <- function(input, output, users
   #validate colnames of user provided file format and print user messages if file is not valid
   upload_file_type <- input[[ui_elements$ui.input$MicronixFileType]]
   out <- sampleDB:::.CheckMetadataColnamesOfUserProvidedMicronixFile(users_upload_file = users_upload_file, upload_file_type = upload_file_type)
-  output[[ui_elements$ui.output$WarningMetadataColnames]] <- renderText({
-    validate(need(out, "ERROR:\nMalformed Metadata Colnames (Valid Metadata Column Names: StudyCode, Participant, SpecimenType, [CollectionDate])"))
-  })
+ 
+  validate(need(out, "ERROR:\nMalformed Metadata Colnames (Valid Metadata Column Names: StudyCode, Participant, SpecimenType, [CollectionDate])"))
   return(out)
 }
 
 CheckFormattedUploadFile <- function(output, database, formatted_upload_file, ui_elements){
   
   message("Checking formatted data in file...")
+  # check valid specimen type
 
-  # Check that there are no empty cells, except for collection_date in cross sectional studies
-  ignored_columns <- c("comment") # always ignore the comment column if it exists
-  study <- filter(sampleDB::CheckTable(database = database, "study"), short_code %in% formatted_upload_file$study_short_code)
-  if (0 < nrow(study) && 0 == study$is_longitudinal) {
-    ignored_columns <- c(ignored_columns, "collection_date")
-  }
+  # check that there are no empty cells besides collection_date (checked later) and comment (may or may not exist)
+  df_invalid <- formatted_upload_file[rowSums(is.na(formatted_upload_file[!colnames(formatted_upload_file) %in% c("collection_date", "comment")])) > 0, ]
 
-  row_with_empty_cell <- rowSums(is.na(
-    formatted_upload_file[, !colnames(formatted_upload_file) %in% ignored_columns]))
-
-  out <- row_with_empty_cell[row_with_empty_cell != 0]
-
-  if (length(out) > 0) {
-    errmsg <- paste("Empty cell detected in rows:", paste(names(out), collapse = " "))
+  if (nrow(df_invalid) > 0) {
+    errmsg <- paste("Missing data for following sample barcode(s):", paste(df_invalid$MicronixBarcode, collapse = " "))
     warning(errmsg)
   }
-
-  # check valid specimen type
 
   out <- sampleDB:::.CheckUploadSpecimenTypes(database = database, formatted_upload_file = formatted_upload_file)
   if (!out) {
@@ -364,6 +351,16 @@ CheckFormattedUploadFile <- function(output, database, formatted_upload_file, ui
   out <- sampleDB:::.CheckBarcodeArentRepeated(database = database, formatted_upload_file = formatted_upload_file)
   if (!out$out1) {
     errmsg <- paste("Unique Barcode Constraint Failed:", paste(out$out2, collapse = " "))
+    warning(errmsg)
+  }
+
+  study <- filter(sampleDB::CheckTable(database = database, "study"), short_code %in% formatted_upload_file$study_short_code)
+  df_invalid <- formatted_upload_file %>%
+    inner_join(study, by = c("study_short_code" = "short_code")) %>%
+    filter(is_longitudinal == 1 & is.na(collection_date))
+
+  if (nrow(df_invalid) > 0) {
+    errmsg <- paste("Missing collection date for following sample barcode(s):", paste(df_invalid$MicronixBarcode, collapse = " "))
     warning(errmsg)
   }
 }

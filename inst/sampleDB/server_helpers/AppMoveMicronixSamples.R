@@ -106,19 +106,33 @@ CreateEmptyMicronixPlate <- function(input, output, database){
     # create empty micronix plate using user input
     # use a "req" to require "CreateEmptyMicronixPlateID", "CreateEmptyMicronixPlateLocation", etc
     # throw error if user uses name that is already in the database
-    conn <-  RSQLite::dbConnect(RSQLite::SQLite(), database)
-    RSQLite::dbBegin(conn)
-    sampleDB:::.UploadMicronixPlate(conn = conn,
-                                    container_name = input[["CreateEmptyMicronixPlateID"]],
-                                    container_barcode = input[["CreateEmptyMicronixPlateBarcode"]],
-                                    freezer_address = list(location_name = input[["CreateEmptyMicronixPlateLocation"]],
-                                                           level_I = input[["CreateEmptyMicronixPlateLevelI"]],
-                                                           level_II = input[["CreateEmptyMicronixPlateLevelII"]]))
+    req(
+      input$CreateEmptyMicronixPlateID,
+      input$CreateEmptyMicronixPlateLocation,
+      input$CreateEmptyMicronixPlateLevelI,
+      input$CreateEmptyMicronixPlateLevelII
+    )
+      
+    if (CheckTable(database = database, table = "matrix_plate") %>%
+      filter(input$CreateEmptyMicronixPlateID == plate_name) %>%
+      nrow(.) > 0) {
+      showNotification("Plate name exists!", id = "MoveNotification", type = "error", action = NULL, duration = 3, closeButton = TRUE)
+    } else {
+      conn <- RSQLite::dbConnect(RSQLite::SQLite(), database)
+      RSQLite::dbBegin(conn)
+      sampleDB:::.UploadMicronixPlate(conn = conn,
+                                      container_name = input[["CreateEmptyMicronixPlateID"]],
+                                      container_barcode = input[["CreateEmptyMicronixPlateBarcode"]],
+                                      freezer_address = list(location_name = input[["CreateEmptyMicronixPlateLocation"]],
+                                                             level_I = input[["CreateEmptyMicronixPlateLevelI"]],
+                                                             level_II = input[["CreateEmptyMicronixPlateLevelII"]]))
     
-    RSQLite::dbCommit(conn)
-    RSQLite::dbDisconnect(conn)
-    vals$data <- ""
-    removeModal()
+      RSQLite::dbCommit(conn)
+      RSQLite::dbDisconnect(conn)
+      vals$data <- ""
+      removeModal()
+    }
+
   })
   
   output$CreateEmptyMicronixPlateMessage <- renderPrint({

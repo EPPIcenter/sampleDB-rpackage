@@ -28,14 +28,12 @@ MicronixUpload <- function(session, output, input, database){
 
           users_upload_file <- read.csv(unformatted_file, header = F) %>% suppressWarnings() # will throw a pointless corrupt last line warning if file comes from excel
           
-          print(paste0("MicronixUpload: ", users_upload_file))
-
           #check colnames of user provided file
           UploadFileLogisticalColnameCheck <- CheckLogisticalColnamesOfUserProvidedMicronixFile(input = input, output = output, users_upload_file = users_upload_file, ui_elements = GetUIUploadElements("micronix"))
           UploadFileMetadataColnameCheck <- CheckMetadataColnamesOfUserProvidedMicronixFile(input = input, output = output, users_upload_file = users_upload_file, ui_elements = GetUIUploadElements("micronix"))
            
-          validate(need(isTRUE(UploadFileLogisticalColnameCheck), "*** ERROR: Logistical column name check failed."))
-          validate(need(isTRUE(UploadFileMetadataColnameCheck), "*** ERROR: Metadata column name check failed."))
+          validate(need(isTRUE(UploadFileLogisticalColnameCheck), "Logistical column name check failed."))
+          validate(need(isTRUE(UploadFileMetadataColnameCheck), "Metadata column name check failed."))
 
           #There have been bugs caused by empty colums
           #Find and remove columns on upload
@@ -49,7 +47,7 @@ MicronixUpload <- function(session, output, input, database){
           #reformat upload file
           formatted_file <- FormatMicronixUploadData(database, input = input, users_upload_file = users_upload_file, ui_elements = GetUIUploadElements("micronix"))
           #after formatting takes place, check upload data content
-          validate(need(!is.null(formatted_file), "*** ERROR: Formatting micronix upload data."))
+          validate(need(!is.null(formatted_file), "Formatting micronix upload data."))
 
           CheckFormattedUploadFile(output = output, database = database, formatted_upload_file = formatted_file, ui_elements = GetUIUploadElements("micronix")) 
 
@@ -66,11 +64,11 @@ MicronixUpload <- function(session, output, input, database){
           removeNotification(id = "UploadNotification")
         },
         warning = function(w) {
-          output$UploadMicronixReturnMessage2 <- renderText({ paste("ERROR:", w$message) })
+          output$UploadMicronixReturnMessage2 <- renderText({ w$message })
           message(w)
         },
         error = function(e) {
-          output$UploadMicronixReturnMessage2 <- renderText({ paste("*** ABORT:", e$message) })
+          output$UploadMicronixReturnMessage2 <- renderText({ paste("ERROR:", e$message) })
           message(e)
         },
         finally = {}
