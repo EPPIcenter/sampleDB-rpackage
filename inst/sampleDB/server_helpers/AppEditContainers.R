@@ -9,20 +9,41 @@ EditWetlabContainers <- function(session, input, database, output){
       freezer.name <- input$MoveContainerLocation
       freezer.levelI <- input$MoveContainerLocationLevelI
       freezer.levelII <- input$MoveContainerLocationLevelII
-      
-      #move container
-      return_message <- sampleDB::MoveContainers(sample_type = container.type,
-                                                 container_name = container.name,
-                                                 freezer = list(freezer.name = freezer.name,
-                                              freezer.levelI = freezer.levelI,
-                                              freezer.levelII = freezer.levelII))
 
-      output$MoveContainerMessage <- renderText(return_message)
-      
-      #reset
-      shinyjs::reset("EditContainerName")
-      shinyjs::reset("MoveContainerLocation")
-      shinyjs::reset("MoveContainerMessage")
+      database <- Sys.getenv("SDB_PATH")
+      conn <-  RSQLite::dbConnect(RSQLite::SQLite(), database)
+      RSQLite::dbBegin(conn)
+
+
+      tryCatch(
+        expr = {
+
+          #move container
+          return_message <- sampleDB::MoveContainers(
+            sample_type = container.type,
+            container_name = container.name,
+            freezer = list(
+              freezer.name = freezer.name,
+              freezer.levelI = freezer.levelI,
+              freezer.levelII = freezer.levelII
+            ),
+            conn = conn)
+
+          output$RenameContainerMessage <- renderText(return_message)
+        },
+        warning = function(w) {
+          output$RenameContainerMessage <- renderText({ paste("ERROR:", w$message) })
+          message(w)
+        },
+        error = function(e) {
+          output$RenameContainerMessage <- renderText({ paste("ABORT:", e$message) })
+          message(e)
+        },
+        finally = {
+          RSQLite::dbCommit(conn)
+          RSQLite::dbDisconnect(conn)
+        }
+      )
     }))
   
   observeEvent(
@@ -32,17 +53,35 @@ EditWetlabContainers <- function(session, input, database, output){
       container.type <- input$EditContainerSampleType
       current_container.name <- input$EditContainerName
       new_container.name <- input$RenameContainerPlateName
+
+      database <- Sys.getenv("SDB_PATH")
+      conn <-  RSQLite::dbConnect(RSQLite::SQLite(), database)
+      RSQLite::dbBegin(conn)
       
-      #rename container
-      return_message <- sampleDB::RenameContainers(sample_type = container.type, 
-                                                   new_container_name = new_container.name, 
-                                                   current_container_name = current_container.name)
-      output$RenameContainerMessage <- renderText(return_message)
-      
-      #reset
-      shinyjs::reset("EditContainerName")
-      shinyjs::reset("RenameContainerPlateName")
-      shinyjs::reset("RenameContainerMessage")
+      tryCatch(
+        expr = {
+
+          #rename container
+          return_message <- sampleDB::RenameContainers(sample_type = container.type, 
+                                                       new_container_name = new_container.name, 
+                                                       current_container_name = current_container.name,
+                                                       conn = conn)
+
+          output$RenameContainerMessage <- renderText(return_message)
+        },
+        warning = function(w) {
+          output$RenameContainerMessage <- renderText({ paste("ERROR:", w$message) })
+          message(w)
+        },
+        error = function(e) {
+          output$RenameContainerMessage <- renderText({ paste("ABORT:", e$message) })
+          message(e)
+        },
+        finally = {
+          RSQLite::dbCommit(conn)
+          RSQLite::dbDisconnect(conn)
+        }
+      )
     }))
   
   observeEvent(
@@ -55,16 +94,35 @@ EditWetlabContainers <- function(session, input, database, output){
       # get user information
       container.type <- input$EditContainerSampleType
       container.name <- input$EditContainerName
+
+      database <- Sys.getenv("SDB_PATH")
+      conn <-  RSQLite::dbConnect(RSQLite::SQLite(), database)
+      RSQLite::dbBegin(conn)
       
       # delete plate
-      return_message <- sampleDB::DeleteEmptyContainer(type = container.type, container_name = container.name)
-      output$DeleteContainerMessage <- renderText({return_message})
-      
-      shinyjs::reset("EditContainerName")
+      tryCatch(
+        expr = {
+          return_message <- sampleDB::DeleteEmptyContainer(type = container.type, container_name = container.name, conn = conn)
+          output$RenameContainerMessage <- renderText({return_message})
+        },
+        warning = function(w) {
+          output$RenameContainerMessage <- renderText({ paste("ERROR:", w$message) })
+          message(w)
+        },
+        error = function(e) {
+          output$RenameContainerMessage <- renderText({ paste("ABORT:", e$message) })
+          message(e)
+        },
+        finally = {
+          RSQLite::dbCommit(conn)
+          RSQLite::dbDisconnect(conn)
+        }
+      )
     }))
   
   observe({
     updateSelectInput(session, selected = input$MoveContainerLocation, "MoveContainerLocation", choices = dbUpdateEvent()$location %>% sort())
+    updateSelectizeInput(session, selected = input$EditContainerName, "EditContainerName", choices = dbUpdateEvent()$plate_name %>% sort())
   })
   
   # smart dropdown

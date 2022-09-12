@@ -52,14 +52,6 @@ MicronixUpload <- function(session, output, input, database){
           validate(need(!is.null(formatted_file), "*** ERROR: Formatting micronix upload data."))
 
           CheckFormattedUploadFile(output = output, database = database, formatted_upload_file = formatted_file, ui_elements = GetUIUploadElements("micronix")) 
-          
-          # finally, remove any missing values (sometimes not collectiondate) 
-          study <- filter(sampleDB::CheckTable(database = database, "study"), short_code %in% formatted_file$study_short_code)
-          if (0 < nrow(study) && 0 == study$is_longitudinal) {
-            formatted_file <- tidyr::drop_na(formatted_file, -collection_date) 
-          } else {
-            formatted_file <- tidyr::drop_na(formatted_file) 
-          }
 
           showNotification("Working...", id = "UploadNotification", type = "message", action = NULL, duration = 3, closeButton = FALSE)
           output$UploadMicronixReturnMessage2 <- renderText({
@@ -74,13 +66,14 @@ MicronixUpload <- function(session, output, input, database){
           removeNotification(id = "UploadNotification")
         },
         warning = function(w) {
-          # output$UploadMicronixReturnMessage2 <- renderText({ w })
+          output$UploadMicronixReturnMessage2 <- renderText({ paste("ERROR:", w$message) })
           message(w)
         },
         error = function(e) {
-          # output$UploadMicronixReturnMessage2 <- renderText({ e })
+          output$UploadMicronixReturnMessage2 <- renderText({ paste("*** ABORT:", e$message) })
           message(e)
-        }
+        },
+        finally = {}
       )
     }
 
