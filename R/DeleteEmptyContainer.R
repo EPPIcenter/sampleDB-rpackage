@@ -17,7 +17,7 @@ DeleteEmptyContainer <- function(type, container_name, conn){
                                 id = as.character(id.container))
       return_message <- paste0("Successfully Deleted Container: \n", container_name)
     }else{
-      return_message <- "Error Contianer is not empty"
+      return_message <- "Error Container is not empty"
     }
   }
   else if(type == "cryovial"){
@@ -31,7 +31,7 @@ DeleteEmptyContainer <- function(type, container_name, conn){
                                 id = as.character(id.container))
       return_message <- paste0("Successfully Deleted Container: \n", container_name)
     }else{
-      return_message <- "Error Contianer is not empty"
+      return_message <- "Error Container is not empty"
     }
   }
   else if(type == "rdt"){
@@ -45,7 +45,7 @@ DeleteEmptyContainer <- function(type, container_name, conn){
                                 id = as.character(id.container))
       return_message <- paste0("Successfully Deleted Container: \n", container_name)
     }else{
-      return_message <- "Error Contianer is not empty"
+      return_message <- "Error Container is not empty"
     }
   }
   else{
