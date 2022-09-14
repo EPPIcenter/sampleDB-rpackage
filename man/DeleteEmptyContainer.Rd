@@ -4,7 +4,7 @@
 \alias{DeleteEmptyContainer}
 \title{Delete Empty Wetlab Containers in the EPPIcenter SampleDB database}
 \usage{
-DeleteEmptyContainer(type, container_name)
+DeleteEmptyContainer(type, container_name, conn)
 }
 \description{
 Delete Empty Wetlab Containers in the EPPIcenter SampleDB database

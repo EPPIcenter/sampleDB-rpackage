@@ -4,7 +4,7 @@
 \alias{MoveContainers}
 \title{Move Wetlab Containers in the EPPIcenter SampleDB database}
 \usage{
-MoveContainers(sample_type, container_name, freezer)
+MoveContainers(sample_type, container_name, freezer, conn)
 }
 \arguments{
 \item{sample_type}{A string specifying the type of samples that are being moved. Options include: \code{micronix}, \code{cryovial}, \code{rdt} and \code{paper}}
