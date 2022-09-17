@@ -1,3 +1,5 @@
+library(shiny)
+library(shinybusy)
 
 # App Function for Uploading Samples
 
@@ -22,12 +24,15 @@ MicronixUpload <- function(session, output, input, database){
 
     unformatted_file <- input$UploadMicronixDataSet$datapath
     formatted_file <- NULL
-    if(!is.null(unformatted_file)) {
-      tryCatch(
-        expr = {
+    b_use_wait_dialog <- FALSE
+    output$UploadMicronixReturnMessage2 <- renderText({
+      tryCatch({
 
           users_upload_file <- read.csv(unformatted_file, header = F) %>% suppressWarnings() # will throw a pointless corrupt last line warning if file comes from excel
-          
+
+          # simple way to add a dialog or not
+          b_use_wait_dialog <- nrow(users_upload_file) > 10
+
           #check colnames of user provided file
           UploadFileLogisticalColnameCheck <- CheckLogisticalColnamesOfUserProvidedMicronixFile(input = input, output = output, users_upload_file = users_upload_file, ui_elements = GetUIUploadElements("micronix"))
           UploadFileMetadataColnameCheck <- CheckMetadataColnamesOfUserProvidedMicronixFile(input = input, output = output, users_upload_file = users_upload_file, ui_elements = GetUIUploadElements("micronix"))
@@ -50,30 +55,38 @@ MicronixUpload <- function(session, output, input, database){
           validate(need(!is.null(formatted_file), "Formatting micronix upload data."))
 
           CheckFormattedUploadFile(output = output, database = database, formatted_upload_file = formatted_file, ui_elements = GetUIUploadElements("micronix")) 
+          
+          if (b_use_wait_dialog) {
+            show_modal_spinner(
+              spin = "double-bounce",
+              color = "#00bfff",
+              text = paste("Uploading", nrow(formatted_file), "samples, please be patient...")
+            )
+          }
 
-          showNotification("Working...", id = "UploadNotification", type = "message", action = NULL, duration = 3, closeButton = FALSE)
-          output$UploadMicronixReturnMessage2 <- renderText({
-            sampleDB::UploadSamples(sample_type = input$UploadSampleType, 
-                                                  upload_data = formatted_file, 
-                                                  container_name = isolate({ input$UploadMicronixPlateID }), 
-                                                  container_barcode = input$UploadMicronixPlateBarcode, 
-                                                  freezer_address = list(location_name = input$UploadMicronixLocation, 
-                                                                         level_I = input$UploadLocationMicronixLevelI, 
-                                                                         level_II = input$UploadLocationMicronixLevelII))
-          })
-          removeNotification(id = "UploadNotification")
+          sampleDB::UploadSamples(sample_type = input$UploadSampleType, 
+                                                upload_data = formatted_file, 
+                                                container_name = isolate({ input$UploadMicronixPlateID }), 
+                                                container_barcode = input$UploadMicronixPlateBarcode, 
+                                                freezer_address = list(location_name = input$UploadMicronixLocation, 
+                                                                       level_I = input$UploadLocationMicronixLevelI, 
+                                                                       level_II = input$UploadLocationMicronixLevelII))
         },
         warning = function(w) {
-          output$UploadMicronixReturnMessage2 <- renderText({ w$message })
           message(w)
+          w$message
         },
         error = function(e) {
-          output$UploadMicronixReturnMessage2 <- renderText({ paste("ERROR:", e$message) })
           message(e)
+          e$message
         },
-        finally = {}
+        finally = {
+          if (b_use_wait_dialog) {
+            remove_modal_spinner()
+          }
+        }
       )
-    }
+    })
 
   })
 
