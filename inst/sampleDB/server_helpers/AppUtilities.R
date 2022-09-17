@@ -205,18 +205,19 @@ SearchFunction <- function(input, output, ui_elements){
   search.type <- input[[ui_elements$ui.input$SearchBySampleType]]
   barcode.search_method <- input[[ui_elements$ui.input$SearchByBarcodeType]]
   if(barcode.search_method == "multiple_barcodes"){
-    search.label <- list(micronix.labels = input[[ui_elements$ui.input$SearchByBarcode]]$datapath, 
-                         cryovial.labels = input[[ui_elements$ui.input$SearchByCryovialLabels]]$datapath,
-                         rdt.labels = input[[ui_elements$ui.input$SearchByRDTLabels]]$datapath,
-                         paper.labels = input[[ui_elements$ui.input$SearchByPaperLabels]]$datapath) %>% 
+    search.label <- list(input[[ui_elements$ui.input$SearchByBarcode]]$datapath, 
+                         input[[ui_elements$ui.input$SearchByCryovialLabels]]$datapath,
+                         input[[ui_elements$ui.input$SearchByRDTLabels]]$datapath,
+                         input[[ui_elements$ui.input$SearchByPaperLabels]]$datapath) %>% 
       discard(., function(x) is.null(x) | "" %in% x) %>%
-      map(., function(x){if(length(x > 0)){read.csv(x)$Barcode}}) 
+      map(., function(x){if(length(x > 0)){read.csv(x)$Barcode}}) %>%
+      unlist() 
   }else{
     individual_barcode <- NULL
     if(ui_elements$ui.input$SearchBySingleBarcode != ""){
       individual_barcode <- input[[ui_elements$ui.input$SearchBySingleBarcode]] 
     }
-    search.label <- list(micronix.labels = individual_barcode)
+    search.label <- list(individual_barcode)
   }
   
   # search.container <- list(micronix.container_name = input[[ui_elements$ui.input$SearchByPlate]],
