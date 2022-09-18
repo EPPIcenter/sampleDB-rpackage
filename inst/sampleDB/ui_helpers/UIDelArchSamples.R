@@ -9,6 +9,8 @@ UIDelArchSamples <- function(){
       # fileInput("SearchByLabel", label = HTML("Barcode <h6>Single column named \"barcode\"</h6>")), actionButton("ClearSearchBarcodes", label = "Clear Barcodes"), textOutput("WarnSubjectBarcodeFileColnames"), textOutput("WarnSubjectBarcodeFileColnames2"),
       radioButtons("DelArchSearchBySampleType","Sample Type", c("All" = "all", "Micronix" = "micronix", "Cryovial" = "cryo", "RDT" = "rdt", "Paper" = "paper"), select = "micronix", inline = T),
       hr(),
+      actionButton("DelArchSearchReset", width = '100%', label = "Reset Search Criteria", style="color: #fff; background-color: #337ab7; border-color: #2e6da4"),
+      hr(),
       conditionalPanel(condition = "input.DelArchSearchBySampleType == \"micronix\"",
                        conditionalPanel(condition = "input.DelArchSearchByBarcodeType == \"multiple_barcodes\"",
                                         fileInput("DelArchSearchByBarcode", label = "Barcodes")),
