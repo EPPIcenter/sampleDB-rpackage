@@ -71,6 +71,24 @@ SearchWetlabSamples <- function(session, input, database, output, DelArch = FALS
     .SearchSubjectUID(session, input)
   })
 
+  observeEvent(input$SearchReset, {
+    updateRadioButtons(session, selected = "multiple_barcodes", "SearchByBarcodeType", label = NULL, choices = list("Multiple Barcodes" = "multiple_barcodes", "Single Barcode" = "single_barcode"))
+    updateRadioButtons(session, selected = "individual", "SubjectUIDSearchType", label = NULL, choices = list("Single Study Subject" = "individual", "Multiple Study Subjects" = "multiple"))
+    
+    updateSelectInput(session, selected = NULL, "SearchByPlate", label = "Plate Name", choices = c("", dbUpdateEvent()$plate_name))
+    updateSelectInput(session, selected = NULL, "SearchByBox", label = "Box Name", choices = c("", dbUpdateEvent()$box_name))
+    updateSelectInput(session, selected = NULL, "SearchByRDTBag", label = "Bag Name", choices = c("", dbUpdateEvent()$rdt_bag_name))
+    updateSelectInput(session, selected = NULL, "SearchByPaperBag", label = "Bag Name", choices = c("", dbUpdateEvent()$paper_bag_name))
+
+    updateSelectizeInput(session, selected = NULL, "SearchByStudy", "Study", choices = c("", names(dbUpdateEvent()$study)))
+    updateSelectizeInput(session, selected = NULL, "SearchBySpecimenType", "Specimen Type", choices = c("", dbUpdateEvent()$specimen_type))
+    updateSelectizeInput(session, selected = NULL, "SearchByLocation", "Storage Location", choices = c("", dbUpdateEvent()$location))
+
+    updateSelectizeInput(session, selected = Global$DefaultStateSearchTerm, "SearchByState", "State", choices = c(dbUpdateEvent()$state))
+    updateDateRangeInput(session, "dateRange", start = NA, end = NA) %>% suppressWarnings()
+  })
+
+
 
   observeEvent(input$SearchByState, {
     choices <- NULL

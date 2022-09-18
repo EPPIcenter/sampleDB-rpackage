@@ -7,6 +7,8 @@ UISearchSamples <- function(){
       # fileInput("SearchByLabel", label = HTML("Barcode <h6>Single column named \"barcode\"</h6>")), actionButton("ClearSearchBarcodes", label = "Clear Barcodes"), textOutput("WarnSubjectBarcodeFileColnames"), textOutput("WarnSubjectBarcodeFileColnames2"),
       radioButtons("SearchBySampleType","Sample Type", c("All" = "all", "Micronix" = "micronix", "Cryovial" = "cryo", "RDT" = "rdt", "Paper" = "paper"), selected = "micronix", inline = T),
       hr(),
+      actionButton("SearchReset", width = '100%', label = "Reset Search Criteria", style="color: #fff; background-color: #337ab7; border-color: #2e6da4"),
+      hr(),
       conditionalPanel(condition = "input.SearchBySampleType == \"micronix\"",
                        conditionalPanel(condition = "input.SearchByBarcodeType == \"multiple_barcodes\"",
                                         fileInput("SearchByBarcode", label = "Barcodes")),

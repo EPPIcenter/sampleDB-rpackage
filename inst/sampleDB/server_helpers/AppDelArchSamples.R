@@ -116,6 +116,23 @@ DelArchSamples <- function(session, input, database, output, inputs, outputs){
     .UpdateDelArchSubjectUID(session, input)
   })
 
+  observeEvent(input$DelArchSearchReset, {
+    updateRadioButtons(session, selected = "multiple_barcodes", "DelArchSearchByBarcodeType", label = NULL, choices = list("Multiple Barcodes" = "multiple_barcodes", "Single Barcode" = "single_barcode"))
+    updateRadioButtons(session, selected = "individual", "DelArchSubjectUIDSearchType", label = NULL, choices = list("Single Study Subject" = "individual", "Multiple Study Subjects" = "multiple"))
+    
+    updateSelectInput(session, selected = NULL, "DelArchSearchByPlate", label = "Plate Name", choices = c("", dbUpdateEvent()$plate_name))
+    updateSelectInput(session, selected = NULL, "DelArchSearchByBox", label = "Box Name", choices = c("", dbUpdateEvent()$box_name))
+    updateSelectInput(session, selected = NULL, "DelArchSearchByRDTBag", label = "Bag Name", choices = c("", dbUpdateEvent()$rdt_bag_name))
+    updateSelectInput(session, selected = NULL, "DelArchSearchByPaperBag", label = "Bag Name", choices = c("", dbUpdateEvent()$paper_bag_name))
+
+    updateSelectizeInput(session, selected = NULL, "DelArchSearchByStudy", "Study", choices = c("", names(dbUpdateEvent()$study)))
+    updateSelectizeInput(session, selected = NULL, "DelArchSearchBySpecimenType", "Specimen Type", choices = c("", dbUpdateEvent()$specimen_type))
+    updateSelectizeInput(session, selected = NULL, "DelArchSearchByLocation", "Storage Location", choices = c("", dbUpdateEvent()$location))
+
+    updateSelectizeInput(session, selected = NULL, "DelArchSearchByState", "State", choices = c(dbUpdateEvent()$state))  
+    updateDateRangeInput(session, "DelArchdateRange", start = NA, end = NA) %>% suppressWarnings()
+  })
+
   observeEvent(input$DelArchSearchByState, {
     choices <- NULL
     if (input$DelArchSearchByState %in% "Archived") {
