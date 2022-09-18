@@ -1,5 +1,6 @@
 library(shiny)
 library(shinybusy)
+library(shinyjs)
 
 # App Function for Uploading Samples
 
@@ -9,29 +10,32 @@ library(shinybusy)
 
 MicronixUpload <- function(session, output, input, database){
 
+  rv <- reactiveValues(users_upload_file = NULL)
+
+  observe({
+    req(input$UploadMicronixDataSet)
+    rv$users_upload_file <- read.csv(input$UploadMicronixDataSet$datapath, header = F) %>% suppressWarnings() 
+  })
+
   # 1. get path to user provided file, if path exists perform checks and reformat file
-  file_to_upload <- reactiveVal(NULL)
 
   observeEvent(input$UploadMicronixActionButton, {
 
     req(
-      input$UploadMicronixDataSet$datapath,
+      rv$users_upload_file,
       input$UploadMicronixPlateID,
       input$UploadMicronixLocation,
       input$UploadLocationMicronixLevelI,
       input$UploadLocationMicronixLevelII
     )
 
-    unformatted_file <- input$UploadMicronixDataSet$datapath
     formatted_file <- NULL
     b_use_wait_dialog <- FALSE
     output$UploadMicronixReturnMessage2 <- renderText({
       tryCatch({
-
-          users_upload_file <- read.csv(unformatted_file, header = F) %>% suppressWarnings() # will throw a pointless corrupt last line warning if file comes from excel
-
+          users_upload_file <- isolate({ rv$users_upload_file })
           # simple way to add a dialog or not
-          b_use_wait_dialog <- nrow(users_upload_file) > 10
+          b_use_wait_dialog <- nrow(users_upload_file) > 5
 
           #check colnames of user provided file
           UploadFileLogisticalColnameCheck <- CheckLogisticalColnamesOfUserProvidedMicronixFile(input = input, output = output, users_upload_file = users_upload_file, ui_elements = GetUIUploadElements("micronix"))
@@ -63,6 +67,9 @@ MicronixUpload <- function(session, output, input, database){
               text = paste("Uploading", nrow(formatted_file), "samples, please be patient...")
             )
           }
+
+          rv$users_upload_file <- NULL
+          shinyjs::reset("UploadMicronixActionButton")
 
           sampleDB::UploadSamples(sample_type = input$UploadSampleType, 
                                                 upload_data = formatted_file, 
