@@ -8,57 +8,93 @@
 MoveWetlabSamples <- function(session, input, database, output){
   
   # 1. create variable for storing formatted_move_file_list once it is created
-  
+  rv <- reactiveValues(users_move_file = NULL)
+
+  observe({
+    req(input$MoveDataSet)
+    rv$users_move_file <- input[["MoveDataSet"]]
+    print(input$MoveDataSet)
+  })  
+
   # 2. get path to user provided file(s), if path exists perform checks and reformat items in list
   
   observeEvent(input$MoveAction, {
-    req(input[["MoveDataSet"]])
 
-    users_move_file <- input[["MoveDataSet"]]
-    if(!is.null(users_move_file)) {
-      move_data_list <- list()
-      for(i in 1:length(users_move_file[,1])) {
-        plate.name <- users_move_file[[i, 'name']] %>% gsub("\\.csv","",.)
-        #if strip traxcer header toggle is on then strip the last 16 characters
-        if(input$"MoveTraxcerStripFromFilename" == "strip"){
-          plate.name <- substr(plate.name, 1, nchar(plate.name)-16)
+    b_use_wait_dialog <- FALSE
+    output$MoveReturnMessage2  <- renderText({
+      tryCatch({
+        users_move_file <- isolate({ rv$users_move_file })
+        print(users_move_file)
+        move_data_list <- list()
+        for(i in 1:length(users_move_file[,1])) {
+          plate.name <- users_move_file[[i, 'name']] %>% gsub("\\.csv","",.)
+          print(plate.name)
+          print(users_move_file[[i, 'datapath']])
+          #if strip traxcer header toggle is on then strip the last 16 characters
+          if(input$"MoveTraxcerStripFromFilename" == "strip"){
+            plate.name <- substr(plate.name, 1, nchar(plate.name)-16)
+          }
+          move_data <- read.csv(users_move_file[[i, 'datapath']], header = F) %>% suppressWarnings() # will throw a pointless corrupt last line warning if file comes from excel
+          
+          print(move_data)
+          #There have been bugs caused by empty colums
+          #Find and remove columns on upload
+          #Alternatively, could reject files that have empty columns but this
+          #probably is okay on upload
+
+          empty_columns <- colSums(is.na(move_data) | move_data == "") == nrow(move_data)
+          move_data_list[[plate.name]] <- move_data[, !empty_columns]
         }
-        move_data <- read.csv(users_move_file[[i, 'datapath']], header = F) %>% suppressWarnings() # will throw a pointless corrupt last line warning if file comes from excel
-        #There have been bugs caused by empty colums
-        #Find and remove columns on upload
-        #Alternatively, could reject files that have empty columns but this
-        #probably is okay on upload
 
-        empty_columns <- colSums(is.na(move_data) | move_data == "") == nrow(move_data)
-        move_data_list[[plate.name]] <- move_data[, !empty_columns]
-      }
-
-      #check colnames of user provided file
-      MoveLogisticalResults <- c() #store the T or F results of the Logistical File Checks. All must be true in order to reformat
-      for(item in names(move_data_list)){
-        MoveFileLogisticalColnameCheck <- CheckLogisticalColnamesOfUserProvidedMicronixFile(input = input, output = output, users_upload_file = move_data_list[[item]], ui_elements = GetUIMoveElements("micronix")) 
-        MoveLogisticalResults <- c(MoveLogisticalResults, MoveFileLogisticalColnameCheck)
-      }
-      
-      if(all(MoveLogisticalResults)){
-        #reformat move file(s)
-        formatted_move_file_list <- FormatMicronixMoveData(ui_elements = GetUIMoveElements("micronix"), micronix_move_data = move_data_list, input = input)
+        #check colnames of user provided file
+        MoveLogisticalResults <- c() #store the T or F results of the Logistical File Checks. All must be true in order to reformat
+        for(item in names(move_data_list)){
+          MoveFileLogisticalColnameCheck <- CheckLogisticalColnamesOfUserProvidedMicronixFile(input = input, output = output, users_upload_file = move_data_list[[item]], ui_elements = GetUIMoveElements("micronix")) 
+          MoveLogisticalResults <- c(MoveLogisticalResults, MoveFileLogisticalColnameCheck)
+        }
         
-        #after formatting takes place, check move content
-        if(!is.null(formatted_move_file_list)){
-          CheckFormattedMoveFile(output = output, database = database, sample_type = "micronix", formatted_move_file_list = formatted_move_file_list) 
-        } 
-      }
+        if(all(MoveLogisticalResults)){
+          #reformat move file(s)
+          formatted_move_file_list <- FormatMicronixMoveData(ui_elements = GetUIMoveElements("micronix"), micronix_move_data = move_data_list, input = input)
+          
+          #after formatting takes place, check move content
+          if(!is.null(formatted_move_file_list)){
+            CheckFormattedMoveFile(output = output, database = database, sample_type = "micronix", formatted_move_file_list = formatted_move_file_list) 
+          } 
+        }
+        # always be true for now
+        b_use_wait_dialog <- TRUE
+        rv$users_move_file <- NULL
+        shinyjs::reset("MoveAction")
 
-      showNotification("Working...", id = "MoveNotification", type = "message", action = NULL, duration = 3, closeButton = FALSE)
-      output$MoveReturnMessage2 <- renderText({
+        if (b_use_wait_dialog) {
+          show_modal_spinner(
+            spin = "double-bounce",
+            color = "#00bfff",
+            text = paste("Moving samples from", length(formatted_move_file_list), "file, please be patient...")
+          )
+        }
+
         sampleDB::MoveSamples(sample_type = input$MoveSampleType,
-                            move_data = formatted_move_file_list)
-      })
-    
-      removeNotification(id = "MoveNotification")
-    }
-  })
+                              move_data = formatted_move_file_list)
+        
+      },
+      warning = function(w) {
+        message(w)
+        w$message
+      },
+      error = function(e) {
+        message(e)
+        e$message
+      },
+      finally = {
+        if (b_use_wait_dialog) {
+          remove_modal_spinner()
+        }
+      }
+    )
+  }) # rendertext
+  }) # observe
   
   # allow user to reset ui
   MoveReset(input, output)

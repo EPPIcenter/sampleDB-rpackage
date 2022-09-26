@@ -34,9 +34,5 @@ navbarPage("EPPIcenter SampleDB",
             tabPanel("Specimen Types", UISpecimenTypeReference()),
             tabPanel("Studies", UIStudiesReference())),
   #about
-  tabPanel("About",
-          fluidPage(uiOutput("report_issues"),
-                    uiOutput("source_code")),
-          shinyFeedback::useShinyFeedback(),
-          shinyjs::useShinyjs()),
+  tabPanel("Preferences", UIPreferences())
 )

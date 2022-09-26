@@ -13,7 +13,6 @@ UIMicronixUpload <- function(){
       fileInput("UploadMicronixDataSet", "2. Upload Samples File", width = '47%', multiple = FALSE, accept = c("text/csv", "text/comma-separated-values,text/plain", ".csv")),
       fluidRow(column(width = 6, radioButtons("MicronixFileType", label = NULL, choices = c("VisionMate" = "visionmate", "Traxcer" = "traxcer", "NA" = "na"), inline = T)),
                column(width = 6, tags$a(href='micronix_format_info.html', target='blank', 'More Info'))),
-      shinyjs::hidden(textInput("ActionUploadMatrix", label = NULL)),
       textOutput("WarningMicronixUploadSampleID"),
       textOutput("WarningMicronixUploadBarcodeRepeats"),
       textOutput("WarningMicronixUploadLogisticalColnames"),

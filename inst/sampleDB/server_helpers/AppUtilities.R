@@ -1,3 +1,4 @@
+library(yaml)
 
 # Utility Functions for Main Shiny Functions (e.g. MicronixUpload, MoveWetlabSamples, etc.)
 
@@ -294,8 +295,15 @@ CheckLogisticalColnamesOfUserProvidedMicronixFile <- function(input, output, use
     validate(need(out, "Malformed Logistical Colnames in Uploaded File (Valid VisionMate Column Names: LocationRow, LocationColumn, TubeCode)"))
   }
   else if(upload_file_type == "traxcer"){
-    config_position <- ifelse(as.logical(getOption("traxcerTubePosition", default = FALSE)), "Tube Position", "Position") 
-    validate(need(out, paste0("Malformed Logistical Colnames in Uploaded File (Valid Traxcer Column Names: ", config_position, ", Tube ID")))
+
+    config <- yaml::read_yaml(Sys.getenv("SDB_CONFIG"))
+    traxcer_position <- ifelse(
+      is.na(config$traxcer_position$override),
+      config$traxcer_position$default,
+      config$traxcer_position$override
+    )
+
+    validate(need(out, paste0("Malformed Logistical Colnames in Uploaded File (Valid Traxcer Column Names: ", traxcer_position, ", Tube ID")))
   }
   else{
     validate(need(out, "Malformed Logistical Colnames in Uploaded File (Valid Column Names: MicronixBarcode, Row, Column)"))
@@ -520,13 +528,26 @@ FormatMicronixMoveData <- function(ui_elements, micronix_move_data, input){
 }
 
 .FormatMicronixLogisticalData_Traxcer <- function(users_upload_file) {
-    config_position <- ifelse(as.logical(getOption("traxcerTubePosition", default = FALSE)), "Tube Position", "Position")
+    config <- yaml::read_yaml(Sys.getenv("SDB_CONFIG"))
+    traxcer_position <- ifelse(
+      is.na(config$traxcer_position$override),
+      config$traxcer_position$default,
+      config$traxcer_position$override
+    )
 
     formatted_upload_file <- users_upload_file %>% 
-    setNames(.[2,]) %>% .[-c(1,2),] %>%
-    mutate(label = replace(`Tube ID`, nchar(`Tube ID`) != 10, NA),
-           well_position = base::get(config_position)) %>%
-    select(-c(config_position,"Tube ID"))
+      setNames(.[2,]) %>% .[-c(1,2),] 
+
+    # this is to get around an accessibility issue below
+    custom_position_col <- formatted_upload_file %>% pull(all_of(traxcer_position))
+    if (length(custom_position_col) == 0) {
+      warning("Traxcer position column not found in file.")
+    }
+
+    formatted_upload_file <- formatted_upload_file %>%
+      mutate(label = replace(`Tube ID`, nchar(`Tube ID`) != 10, NA),
+             well_position = all_of(custom_position_col)) %>%
+      select(-c(all_of(traxcer_position),"Tube ID"))
 
   return(formatted_upload_file)
 }

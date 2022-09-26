@@ -2,7 +2,6 @@ UIDelArchSamples <- function(){
   sidebarLayout(
     sidebarPanel(
       width = 2,
-      shinyjs::hidden(textInput("delarch_toggle1", label = NULL)),
       # actionButton("verify_delarch", label = NULL),
       HTML("<h4>Delete and Archive Samples</h4>"),
       hr(),

@@ -1,4 +1,5 @@
 library(tools)
+library(yaml)
 
 message('Loading global environment...')
 

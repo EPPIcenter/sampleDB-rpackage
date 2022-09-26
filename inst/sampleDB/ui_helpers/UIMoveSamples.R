@@ -7,7 +7,6 @@ UIMoveSamples <- function(){
       radioButtons("MoveSampleType","1. Sample Storage Type", c("Micronix" = "micronix", "Cryovial" = "cryovial", "RDT" = "rdt", "Paper" = "paper"), inline = T),
       hr(),
       fileInput("MoveDataSet", "2. Move Samples File(s)", width = '47%', multiple = TRUE, accept = c("text/csv", "text/comma-separated-values,text/plain", ".csv")),
-      shinyjs::hidden(textInput("ActionMoveMatrix", label = NULL)),
       fluidRow(column(width = 6, radioButtons("MoveFileType", label = NULL, choices = c("VisionMate" = "visionmate", "Traxcer" = "traxcer", "NA" = "na"), inline = T)),
                column(width = 6, tags$a(href='micronix_format_info.html', target='blank', 'More Info'))),
       conditionalPanel(condition = "input.MoveFileType == \"traxcer\"",

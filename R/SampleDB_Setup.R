@@ -21,6 +21,64 @@ SampleDB_Setup <- function() {
 
   tryCatch(
     expr = {
+
+      # Config Setup
+
+      config <- Sys.getenv("SDB_CONFIG")
+      if (0 == nchar(config)) {
+        config <- suppressWarnings(
+          normalizePath(
+            file.path(
+              ifelse(site_install,
+                rappdirs::site_config_dir(),
+                rappdirs::user_config_dir()
+              ),
+              pkgname,
+              "config.yml"
+            )
+          )
+        )
+
+        environ_file_path <- suppressWarnings(
+          normalizePath(
+              ifelse(site_install,
+                file.path(Sys.getenv("R_HOME"), "etc", "Renviron.site"),
+                file.path(Sys.getenv("HOME"), ".Renviron")
+              )))
+
+        write.table(
+          x = matrix(data = c("SDB_CONFIG", paste0("\"", config, "\"")),
+                              nrow = 1, ncol = 2),
+          file = environ_file_path,
+          append = TRUE, 
+          col.names = FALSE,
+          sep = "=",
+          quote = FALSE,
+          row.names = FALSE)
+
+        Sys.setenv("SDB_CONFIG" = config)
+        message(paste(crayon::green(cli::symbol$tick),
+          paste0("Config location set [", config, "]")))
+
+      } else {
+        message(paste(crayon::white(cli::symbol$info),
+          paste0("Config location already set [", config, "]")))
+      }
+
+      configdir <- dirname(config)
+      if (!dir.exists(configdir))
+        dir.create(configdir)
+
+      if (!file.exists(config)) {
+          file.copy(system.file("conf",
+              "config.yml", package = pkgname), config)
+          message(paste(crayon::green(cli::symbol$tick), paste0("Config file installed [", config, "]")))
+      } else {
+          message(paste(crayon::white(cli::symbol$info), paste0("Configuration file exists [", config, "]")))
+      }
+
+      # Database Setup 
+
       database <- Sys.getenv("SDB_PATH")
 
       if(0 == nchar(database)) {
@@ -42,7 +100,7 @@ SampleDB_Setup <- function() {
                 rappdirs::site_data_dir(),
                 rappdirs::user_data_dir()
               ),
-              "sampleDB",
+              pkgname,
               "sampledb_database.sqlite"
               )
             )
