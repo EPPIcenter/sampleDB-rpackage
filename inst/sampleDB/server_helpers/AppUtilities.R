@@ -288,7 +288,8 @@ CheckLogisticalColnamesOfUserProvidedMicronixFile <- function(input, output, use
     validate(need(out, "Malformed Logistical Colnames in Uploaded File (Valid VisionMate Column Names: LocationRow, LocationColumn, TubeCode)"))
   }
   else if(upload_file_type == "traxcer"){
-    validate(need(out, "Malformed Logistical Colnames in Uploaded File (Valid Traxcer Column Names: Position, Tube ID)"))
+    config_position <- ifelse(as.logical(getOption("traxcerTubePosition", default = FALSE)), "Tube Position", "Position") 
+    validate(need(out, paste0("Malformed Logistical Colnames in Uploaded File (Valid Traxcer Column Names: ", config_position, ", Tube ID")))
   }
   else{
     validate(need(out, "Malformed Logistical Colnames in Uploaded File (Valid Column Names: MicronixBarcode, Row, Column)"))
@@ -513,12 +514,13 @@ FormatMicronixMoveData <- function(ui_elements, micronix_move_data, input){
 }
 
 .FormatMicronixLogisticalData_Traxcer <- function(users_upload_file) {
-  formatted_upload_file <- users_upload_file %>% 
+    config_position <- ifelse(as.logical(getOption("traxcerTubePosition", default = FALSE)), "Tube Position", "Position")
+
+    formatted_upload_file <- users_upload_file %>% 
     setNames(.[2,]) %>% .[-c(1,2),] %>%
     mutate(label = replace(`Tube ID`, nchar(`Tube ID`) != 10, NA),
-           well_position = paste0(substring(Position, 1, 1), substring(Position, 2))) %>%
-    tidyr::drop_na() %>%
-    select(-c("Position","Tube ID"))
+           well_position = base::get(config_position)) %>%
+    select(-c(config_position,"Tube ID"))
 
   return(formatted_upload_file)
 }
@@ -528,7 +530,6 @@ FormatMicronixMoveData <- function(ui_elements, micronix_move_data, input){
     setNames(.[1,]) %>% .[-1,] %>%
     mutate(label = replace(TubeCode, nchar(TubeCode) != 10, NA),
            well_position = paste0(LocationRow, LocationColumn)) %>%
-    tidyr::drop_na() %>%
     select(-c("TubeCode","LocationRow", "LocationColumn"))
 
   return(formatted_upload_file)
@@ -565,8 +566,7 @@ FormatMicronixMoveData <- function(ui_elements, micronix_move_data, input){
       formatted_upload_file <- users_upload_file %>%
         setNames(.[1,]) %>% .[-1,] %>%
         mutate(label = replace(MicronixBarcode, nchar(MicronixBarcode) != 10, NA),
-               well_position = paste0(Row, Column)) %>%
-        tidyr::drop_na()
+               well_position = paste0(Row, Column))
     }
   
   return(formatted_upload_file)

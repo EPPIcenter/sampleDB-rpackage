@@ -99,8 +99,9 @@
     out <- all(required_visionmate_colnames %in% names(users_upload_file)) || all(visionmate_colnames_withdate %in% names(users_upload_file))
   }
   else if(upload_file_type == "traxcer"){
+    config_position <- ifelse(as.logical(getOption("traxcerTubePosition", default = FALSE)), "Tube Position", "Position")
     users_upload_file <- users_upload_file %>% setNames(.[2,]) %>% .[-c(1, 2),]
-    required_traxcer_colnames <- c("Position", "Tube ID")
+    required_traxcer_colnames <- c(config_position, "Tube ID")
     traxcer_colnames_withdate <- c(required_traxcer_colnames, "CollectionDate")
     out <- all(required_traxcer_colnames %in% names(users_upload_file)) || all(traxcer_colnames_withdate %in% names(users_upload_file))
   }
