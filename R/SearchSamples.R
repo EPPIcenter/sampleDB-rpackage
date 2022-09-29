@@ -325,7 +325,7 @@ SearchSamples <- function(sample_type = NULL, sample_label = NULL, container_nam
   for (filter_index in seq_along(filter_terms)) {
     search_term <- filter_terms[filter_index]
     if (!search_term %in% "collection_date") {
-      search_mat[,filter_index] <- (tmp.search_term %>% pull(search_term)) %in% filters[[search_term]]
+      search_mat[, filter_index] <- (tmp.search_term %>% pull(search_term)) %in% filters[[search_term]]
     } else {
       date.from <- lubridate::as_date(filters$collection_date$date.from)
       date.to <- lubridate::as_date(filters$collection_date$date.to)
