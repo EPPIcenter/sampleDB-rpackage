@@ -297,7 +297,7 @@ CheckLogisticalColnamesOfUserProvidedMicronixFile <- function(input, output, use
 
     config <- yaml::read_yaml(Sys.getenv("SDB_CONFIG"))
     traxcer_position <- ifelse(
-      is.null(config$traxcer_position$override),
+      is.na(config$traxcer_position$override),
       config$traxcer_position$default,
       config$traxcer_position$override
     )
@@ -529,7 +529,7 @@ FormatMicronixMoveData <- function(ui_elements, micronix_move_data, input){
 .FormatMicronixLogisticalData_Traxcer <- function(users_upload_file) {
     config <- yaml::read_yaml(Sys.getenv("SDB_CONFIG"))
     traxcer_position <- ifelse(
-      is.null(config$traxcer_position$override),
+      is.na(config$traxcer_position$override),
       config$traxcer_position$default,
       config$traxcer_position$override
     )
