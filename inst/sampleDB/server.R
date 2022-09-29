@@ -74,15 +74,8 @@ function(input, output, session) {
     # Update EPPIcenter Lab Studies
     UpdateLabStudies(session, input, output, database)
 
+    # Configuration panel
+    AppPreferencesPanel(session, input, output, database)
+
     # --------------- About ------------
-
-    url <- a("here", href="https://github.com/EPPIcenter/sampleDB-rpackage/issues/")
-    output$report_issues <- renderUI({
-      tagList(HTML("Please report issues"), url)
-    })
-
-    url <- a("here", href="https://github.com/EPPIcenter/sampleDB-rpackage/")
-    output$source_code <- renderUI({
-      tagList("Source code can be found ", url)
-    })
 }

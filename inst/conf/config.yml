@@ -1,0 +1,6 @@
+traxcer_position:
+  name: "Traxcer Position Override"
+  description: "Overrides traxcer column name"
+  type: "character"
+  default: "Position"
+  override: null

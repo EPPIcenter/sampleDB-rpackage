@@ -25,7 +25,9 @@ Imports:
     shinyjs,
     DT,
     rappdirs,
-    shinybusy
+    shinybusy,
+    config,
+    yaml
 License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true

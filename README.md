@@ -40,7 +40,7 @@ uses the application.
 
 To install sampleDB at the site level, you can run the command below using an R process with elevated privileges:
 
-```Rf
+```R
 devtools::install_github(
     "https://github.com/EPPIcenter/sampleDB-rpackage", 
     ref = "v1.2.0",
