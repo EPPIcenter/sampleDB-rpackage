@@ -102,7 +102,7 @@ library(yaml)
   else if(upload_file_type == "traxcer"){
     config <- yaml::read_yaml(Sys.getenv("SDB_CONFIG"))
     traxcer_position <- ifelse(
-      is.null(config$traxcer_position$override),
+      is.na(config$traxcer_position$override),
       config$traxcer_position$default,
       config$traxcer_position$override
     )

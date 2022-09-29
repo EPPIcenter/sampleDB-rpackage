@@ -3,4 +3,4 @@ traxcer_position:
   description: "Overrides traxcer column name"
   type: "character"
   default: "Position"
-  override: null
+  override: .na
