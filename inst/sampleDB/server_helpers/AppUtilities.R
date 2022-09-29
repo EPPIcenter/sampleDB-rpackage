@@ -262,7 +262,6 @@ SearchFunction <- function(input, output, ui_elements){
       search.study <- search_multiple_file$StudyCode
       search.study_subject <- search_multiple_file$Participant
       search.specimen_type <- search_multiple_file$SpecimenType
-      # browser()
       if (!is.null(search_multiple_file$CollectionDate)) {
         search.date <- list(date.from = search_multiple_file$CollectionDate, date.to = search_multiple_file$CollectionDate)
       } else {
@@ -298,7 +297,7 @@ CheckLogisticalColnamesOfUserProvidedMicronixFile <- function(input, output, use
 
     config <- yaml::read_yaml(Sys.getenv("SDB_CONFIG"))
     traxcer_position <- ifelse(
-      is.na(config$traxcer_position$override),
+      is.null(config$traxcer_position$override),
       config$traxcer_position$default,
       config$traxcer_position$override
     )
@@ -530,7 +529,7 @@ FormatMicronixMoveData <- function(ui_elements, micronix_move_data, input){
 .FormatMicronixLogisticalData_Traxcer <- function(users_upload_file) {
     config <- yaml::read_yaml(Sys.getenv("SDB_CONFIG"))
     traxcer_position <- ifelse(
-      is.na(config$traxcer_position$override),
+      is.null(config$traxcer_position$override),
       config$traxcer_position$default,
       config$traxcer_position$override
     )
