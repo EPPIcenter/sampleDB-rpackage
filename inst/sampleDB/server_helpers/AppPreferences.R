@@ -3,14 +3,11 @@ library(yaml)
 AppPreferencesPanel <- function(session, input, output, database) {
 
 	config <- reactive({
-		print("reading..")
 		yaml::read_yaml(Sys.getenv("SDB_CONFIG"))
 	})
 
 	observe({
 		opts <- config()
-		print(opts)
-		# print(input$PrefTraxerPositionOverride)
 		updateTextInput(
 			session = session,
 			inputId = "PrefTraxerPositionOverride",
@@ -18,7 +15,7 @@ AppPreferencesPanel <- function(session, input, output, database) {
 			value = ifelse(
 				!is.null(opts$traxcer_position$override),
 				opts$traxcer_position$override,
-				NULL),
+				NA),
 			placeholder = opts$traxcer_position$default
 		)
 	})
@@ -33,6 +30,7 @@ AppPreferencesPanel <- function(session, input, output, database) {
     	)
 
     	yaml::write_yaml(opts, Sys.getenv("SDB_CONFIG"))
+    	showNotification("Configuration Saved!", duration = 1, closeButton = FALSE)
     }))
 
 }
