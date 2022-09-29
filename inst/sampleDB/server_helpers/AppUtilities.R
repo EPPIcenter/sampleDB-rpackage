@@ -261,7 +261,13 @@ SearchFunction <- function(input, output, ui_elements){
       search.study <- search_multiple_file$StudyCode
       search.study_subject <- search_multiple_file$Participant
       search.specimen_type <- search_multiple_file$SpecimenType
-      search.date <- list(date.from = search_multiple_file$CollectionDate, date.to = search_multiple_file$CollectionDate)
+      # browser()
+      if (!is.null(search_multiple_file$CollectionDate)) {
+        search.date <- list(date.from = search_multiple_file$CollectionDate, date.to = search_multiple_file$CollectionDate)
+      } else {
+        search.date <- NULL
+      }
+
 
       list.search_results <- sampleDB::SearchSamples(sample_type = search.type, sample_label = search.label, container_name = search.container, study_subject = search.study_subject,
                                                      specimen_type = search.specimen_type, study = search.study, collection_dates = search.date, status = search.status,
