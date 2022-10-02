@@ -327,10 +327,20 @@ SearchSamples <- function(sample_type = NULL, sample_label = NULL, container_nam
     if (!search_term %in% "collection_date") {
       search_mat[, filter_index] <- (tmp.search_term %>% pull(search_term)) %in% filters[[search_term]]
     } else {
-      date.from <- lubridate::as_date(filters$collection_date$date.from)
-      date.to <- lubridate::as_date(filters$collection_date$date.to)
+      intervals <- list()
+      for (i in 1:length(filters$collection_date$date.from)) {
+        intervals <- append(
+          intervals,
+          list(
+            interval(
+              lubridate::as_date(filters$collection_date$date.from[i]),
+              lubridate::as_date(filters$collection_date$date.to[i])
+            )
+          )
+        )
+      }
 
-      search_mat[, filter_index] <- results.search_term %>% pull(collection_date) %within% interval(date.from,date.to)
+      search_mat[, filter_index] <- results.search_term %>% pull(collection_date) %within% intervals
       search_mat[, filter_index] <- replace(search_mat[, filter_index], is.na(search_mat[, filter_index]), FALSE)
     }
   }
