@@ -260,7 +260,6 @@ SearchFunction <- function(input, output, ui_elements){
 
       search.study_subject <- search_multiple_file$StudySubject
       search.study <- search_multiple_file$StudyCode
-      search.study_subject <- search_multiple_file$Participant
       search.specimen_type <- search_multiple_file$SpecimenType
       if (!is.null(search_multiple_file$CollectionDate)) {
         search.date <- list(date.from = search_multiple_file$CollectionDate, date.to = search_multiple_file$CollectionDate)
