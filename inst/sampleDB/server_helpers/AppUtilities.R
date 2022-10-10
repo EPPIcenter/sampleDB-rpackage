@@ -254,11 +254,13 @@ SearchFunction <- function(input, output, ui_elements){
       search_multiple_file <- read.csv(input[[ui_elements$ui.input$SearchBySubjectUIDFile]]$datapath)
 
       # remove empty columns
-      empty_columns <- colSums(is.na(search_multiple_file) | search_multiple_file == "") == nrow(search_multiple_file)
-      search_multiple_file <- search_multiple_file[, !empty_columns]
-      search_multiple_file <- search_multiple_file[!apply(search_multiple_file, 1, function(row) all(row == "")),] 
+      if (typeof(search_multiple_file) != "list") {
+        empty_columns <- colSums(is.na(search_multiple_file) | search_multiple_file == "") == nrow(search_multiple_file)
+        search_multiple_file <- search_multiple_file[, !empty_columns]
+        search_multiple_file <- search_multiple_file[!apply(search_multiple_file, 1, function(row) all(row == "")), ] 
+      }
 
-      search.study_subject <- search_multiple_file$StudySubject
+      search.study_subject <- search_multiple_file$Participant
       search.study <- search_multiple_file$StudyCode
       search.specimen_type <- search_multiple_file$SpecimenType
       if (!is.null(search_multiple_file$CollectionDate)) {
