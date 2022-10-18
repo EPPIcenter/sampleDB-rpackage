@@ -8,10 +8,10 @@
 #' Required `upload_data` columns are:\cr
 #' `well_position`: the row and column of the sample in the storage housing
 #' `label`: the sample's label or barcode
-#' `study_subject_id`: the participant id of for the subject in the cohort (ie study)
+#' `study_subject_id`: the StudySubject id of for the subject in the cohort (ie study)
 #' `study_short_code`: the code of the study
 #' `specimen_type`: the sample type
-#' `collection_date`: (optional) the date the sample was first collected from the cohort participant
+#' `collection_date`: (optional) the date the sample was first collected from the cohort StudySubject
 #'
 #' #' **upload data example without collection_date**
 #'
@@ -199,12 +199,12 @@ UploadSamples <- function(sample_type, upload_data, container_name, freezer_addr
     eval.specimen_type_id <- filter(CheckTableTx(conn = conn, "specimen_type"), label == eval.specimen_type)$id
     eval.study_id <- filter(CheckTableTx(conn = conn, "study"), short_code == eval.study_code)$id
 
-    #2a. check if this upload item's participant (subject+study combination) exists in the database
+    #2a. check if this upload item's StudySubject (subject+study combination) exists in the database
     tmp_table.study_subject <- inner_join(CheckTableTx(conn = conn, "study_subject")[, c("subject", "study_id")],
                                           tibble(subject = eval.subject, study_id = eval.study_id),
                                           by = c("subject", "study_id"))
 
-    #if this upload item's participant exists in the database, then get the necessary "study_subject" id
+    #if this upload item's StudySubject exists in the database, then get the necessary "study_subject" id
     if(nrow(tmp_table.study_subject) > 0){
       eval.study_subject_id <- filter(CheckTableTx(conn = conn, "study_subject"), subject == eval.subject, study_id == eval.study_id)$id
 
@@ -231,7 +231,7 @@ UploadSamples <- function(sample_type, upload_data, container_name, freezer_addr
         }
       }else{
 
-        #3b. if this participant (study_subject) exists in the database but sample (specimen) does not, then create a new "specimen"
+        #3b. if this StudySubject (study_subject) exists in the database but sample (specimen) does not, then create a new "specimen"
         AddToTable("specimen",
                              list(created = lubridate::now() %>% as.character(),
                                   last_updated = lubridate::now() %>% as.character(),
@@ -244,7 +244,7 @@ UploadSamples <- function(sample_type, upload_data, container_name, freezer_addr
         eval.specimen_id <- tail(CheckTableTx(conn = conn, "specimen"), 1)$id
       }
     }else{
-      #2b. if this upload item's participant (combination of subject+study) does not exist in the database then create a new study_subject entry in the database
+      #2b. if this upload item's StudySubject (combination of subject+study) does not exist in the database then create a new study_subject entry in the database
       AddToTable("study_subject",
                            list(created = lubridate::now() %>% as.character(),
                                 last_updated = lubridate::now() %>% as.character(),

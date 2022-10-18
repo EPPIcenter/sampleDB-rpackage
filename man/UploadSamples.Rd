@@ -19,10 +19,10 @@ UploadSamples(
 Required \code{upload_data} columns are:\cr
 \code{well_position}: the row and column of the sample in the storage housing
 \code{label}: the sample's label or barcode
-\code{study_subject_id}: the participant id of for the subject in the cohort (ie study)
+\code{study_subject_id}: the StudySubject id of for the subject in the cohort (ie study)
 \code{study_short_code}: the code of the study
 \code{specimen_type}: the sample type
-\code{collection_date}: (optional) the date the sample was first collected from the cohort participant
+\code{collection_date}: (optional) the date the sample was first collected from the cohort StudySubject
 
 #' \strong{upload data example without collection_date}\tabular{lllll}{
    well_position \tab label \tab study_subject_id \tab specimen_type \tab study_short_code \cr

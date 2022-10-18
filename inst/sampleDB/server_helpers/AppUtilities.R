@@ -240,7 +240,7 @@ SearchFunction <- function(input, output, ui_elements){
   
   tryCatch(
     
-    # search (if a single participant is searched for)
+    # search (if a single StudySubject is searched for)
     if(input[[ui_elements$ui.input$SubjectUIDSearchType]] == "individual"){
       search.study_subject <- input[[ui_elements$ui.input$SearchBySubjectUID]]
       list.search_results <- sampleDB::SearchSamples(sample_type = search.type, sample_label = search.label, container_name = search.container, study_subject = search.study_subject,
@@ -248,7 +248,7 @@ SearchFunction <- function(input, output, ui_elements){
                                                      state = search.state, freezer = search.location, return_sample_ids = T) %>% suppressWarnings()
     }else{
       
-      # search (if a file of participants is searched for)
+      # search (if a file of StudySubjects is searched for)
       search_multiple_file <- read.csv(input[[ui_elements$ui.input$SearchBySubjectUIDFile]]$datapath)
 
       # remove empty columns
@@ -258,7 +258,7 @@ SearchFunction <- function(input, output, ui_elements){
         search_multiple_file <- search_multiple_file[!apply(search_multiple_file, 1, function(row) all(row == "")), ] 
       }
 
-      search.study_subject <- search_multiple_file$Participant
+      search.study_subject <- search_multiple_file$StudySubject
       search.study <- search_multiple_file$StudyCode
       search.specimen_type <- search_multiple_file$SpecimenType
       if (!is.null(search_multiple_file$CollectionDate)) {
@@ -564,7 +564,7 @@ FormatMicronixMoveData <- function(ui_elements, micronix_move_data, input){
   else{ # na
       formatted_upload_file <- users_upload_file %>%
         setNames(.[1,]) %>% .[-1,] %>%
-        mutate(label = replace(MicronixBarcode, nchar(MicronixBarcode) != 10, NA),
+        mutate(label = replace(Barcode, nchar(Barcode) != 10, NA),
           well_position = paste0(Row, Column))
     }
   
@@ -583,7 +583,7 @@ FormatMicronixMoveData <- function(ui_elements, micronix_move_data, input){
       #removing row if micronix barcode is not string len 10
       formatted_upload_file <- users_upload_file %>%
         setNames(.[1,]) %>% .[-1,] %>%
-        mutate(label = replace(MicronixBarcode, nchar(MicronixBarcode) != 10, NA),
+        mutate(label = replace(Barcode, nchar(Barcode) != 10, NA),
                well_position = paste0(Row, Column))
     }
   
@@ -595,7 +595,7 @@ FormatMicronixMoveData <- function(ui_elements, micronix_move_data, input){
   formatted_upload_file <- users_upload_file %>% 
     rename(specimen_type = SpecimenType,
            study_short_code = StudyCode,
-           study_subject_id = Participant)
+           study_subject_id = StudySubject)
 
   if("CollectionDate" %in% names(formatted_upload_file)){
     formatted_upload_file <- formatted_upload_file %>% 
