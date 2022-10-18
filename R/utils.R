@@ -157,6 +157,11 @@ library(yaml)
 
   # make sure the columns are numbers and above zero
   col_numbers <- substr(well_positions, 2, nchar(well_positions))
+
+  if (!all(nchar(col_numbers) == 2)) {
+    stop("Numbers should be in ## format. Fill with zero if less than 10 (e.g \"05\")")
+  }
+
   col_number_indices <- which(col_numbers %>%
     as.numeric() %>%
     suppressWarnings() > 0)
