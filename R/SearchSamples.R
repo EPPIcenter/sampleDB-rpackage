@@ -353,7 +353,7 @@ SearchSamples <- function(sample_type = NULL, sample_label = NULL, container_nam
     rename(`Sample Type` = type,
            `Container Name` = container_name,
            `Container Position` = container_position,
-           `Label` = label,
+           `Barcode` = label,
            `Study Subject` = subject_uid,
            `Study Code` = study,
            `Specimen Type` = specimen_type,
