@@ -7,7 +7,6 @@ GetUIUploadElements <- function(sample_type, msg = NULL){
   
   if(sample_type == "micronix"){
     ui.input <- list(UploadPlateID = "UploadMicronixPlateID",
-                     UploadPlateBarcode = "UploadMicronixPlateBarcode",
                      UploadDataSet = "UploadMicronixDataSet",
                      MicronixFileType = "MicronixFileType",
                      ClearForm = "ClearMicronixUploadForm",
@@ -25,7 +24,6 @@ GetUIUploadElements <- function(sample_type, msg = NULL){
                      WarningUploadStudyShortCodes = "WarningUploadMicronixStudyShortCodes",
                      WarningSpecimenExists = "WarningMicronixSpecimenExists",
                      WarningUploadContainerName = "WarningMicronixUploadContainerName",
-                     WarningUploadContainerBarcode = "WarningMicronixUploadContainerBarcode",
                      WarningUploadBarcodeRepeats = "WarningMicronixUploadBarcodeRepeats")
   }
 
@@ -406,13 +404,6 @@ CheckPlates <- function(database, sample_type, input, output){
   #   out <- sampleDB:::.CheckUploadContainerNameDuplication(database = database,plate_name = plate_name, only_active = T)
   #   validate(need(out, "ERROR:\nPlate name is not unique"))
   # })
-  
-  # check unique plate barcodes
-  output[[ui_elements$ui.output$WarningUploadContainerBarcode]] <- renderText({
-    plate_barcode <- input[[ui_elements$ui.input$UploadPlateBarcode]]
-    out <- sampleDB:::.CheckUploadContainerBarcodeDuplication(plate_barcode = plate_barcode, database = database)
-    validate(need(out, "ERROR:\nPlate barcode is not unique"))
-  })
 }
 
 FreezerChangesChecks <- function(input, database, output, ui_elements){

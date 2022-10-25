@@ -55,7 +55,7 @@
 #' @import lubridate
 #' @export
 
-UploadSamples <- function(sample_type, upload_data, container_name, container_barcode = NULL, freezer_address){
+UploadSamples <- function(sample_type, upload_data, container_name, freezer_address){
 
   # locate the database and connect to it
   database <- Sys.getenv("SDB_PATH")
@@ -74,6 +74,10 @@ UploadSamples <- function(sample_type, upload_data, container_name, container_ba
     upload_data$comment <- NA
   }
 
+  if(!"plate_barcode" %in% names(upload_data)){
+    upload_data$plate_barcode <- NA
+  }
+
 
   # remove empty strings, replace with NA
   upload_data <- upload_data %>% 
@@ -81,13 +85,11 @@ UploadSamples <- function(sample_type, upload_data, container_name, container_ba
 
   # perform upload checks
   .UploadChecks(sample_type = sample_type, input = input, database = database,
-                freezer_address = freezer_address, container_name = container_name,
-                container_barcode = container_barcode, upload_data = upload_data)
+                freezer_address = freezer_address, container_name = container_name, upload_data = upload_data)
 
   # upload data
   .UploadSamples(upload_data = upload_data, sample_type = sample_type,
-                 conn = conn, container_name = container_name, freezer_address = freezer_address,
-                 container_barcode = container_barcode)
+                 conn = conn, container_name = container_name, freezer_address = freezer_address)
 
   return_message <- paste("Upload Successful!\nPlate", container_name, "with", nrow(upload_data), "sample(s) were added to freezer address:", paste(unlist(freezer_address, use.names=F), collapse = ", "), "\n")
 
@@ -185,6 +187,7 @@ UploadSamples <- function(sample_type, upload_data, container_name, container_ba
     eval.barcode <- upload_data[i,]$"label" %>% as.character()
     eval.well_position <- upload_data[i,]$"well_position"
     eval.comment <- upload_data[i,]$"comment" %>% as.character()
+    eval.plate_barcode <- upload_data[i,]$"plate_barcode" %>% as.character()
     if(is.na(upload_data[i, ]$"collection_date")){
       eval.collection_date <- as.double(as.Date(NA))
     }else{
@@ -288,7 +291,7 @@ UploadSamples <- function(sample_type, upload_data, container_name, container_ba
     if(sample_type == "micronix"){
       # create a new housing (if it does not already exist)
       if(!container_name %in% CheckTableTx(conn = conn, "matrix_plate")$plate_name){
-        eval.plate_id <- sampleDB:::.UploadMicronixPlate(conn = conn, container_name = container_name, container_barcode = container_barcode, freezer_address = freezer_address)
+        eval.plate_id <- sampleDB:::.UploadMicronixPlate(conn = conn, container_name = container_name, container_barcode = eval.plate_barcode, freezer_address = freezer_address)
       }else{
         eval.plate_id <- filter(CheckTableTx(conn = conn, "matrix_plate"), plate_name == container_name)$id
       }
