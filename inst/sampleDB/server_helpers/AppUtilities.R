@@ -304,7 +304,7 @@ CheckLogisticalColnamesOfUserProvidedMicronixFile <- function(input, output, use
     validate(need(out, paste0("Malformed Logistical Colnames in Uploaded File (Valid Traxcer Column Names: ", traxcer_position, ", Tube ID")))
   }
   else{
-    validate(need(out, "Malformed Logistical Colnames in Uploaded File (Valid Column Names: MicronixBarcode, Row, Column)"))
+    validate(need(out, "Malformed Logistical Colnames in Uploaded File (Valid Column Names: Barcode, Row, Column)"))
   }
 
   return(out)
@@ -318,8 +318,8 @@ CheckMetadataColnamesOfUserProvidedMicronixFile <- function(input, output, users
   #validate colnames of user provided file format and print user messages if file is not valid
   upload_file_type <- input[[ui_elements$ui.input$MicronixFileType]]
   out <- sampleDB:::.CheckMetadataColnamesOfUserProvidedMicronixFile(users_upload_file = users_upload_file, upload_file_type = upload_file_type)
- 
-  validate(need(out, "ERROR:\nMalformed Metadata Colnames (Valid Metadata Column Names: StudyCode, Participant, SpecimenType, [CollectionDate])"))
+
+  validate(need(out, "ERROR:\nMalformed Metadata Colnames (Valid Metadata Column Names: StudyCode, StudySubject, SpecimenType, [CollectionDate, PlateBarcode])"))
   return(out)
 }
 
@@ -332,7 +332,7 @@ CheckFormattedUploadFile <- function(output, database, formatted_upload_file, ui
   df_invalid <- formatted_upload_file[rowSums(is.na(formatted_upload_file[!colnames(formatted_upload_file) %in% c("collection_date", "comment")])) > 0, ]
 
   if (nrow(df_invalid) > 0) {
-    errmsg <- paste("Missing data for following sample barcode(s):", paste(df_invalid$MicronixBarcode, collapse = " "))
+    errmsg <- paste("Missing data for following sample barcode(s):", paste(df_invalid$Barcode, collapse = " "))
     warning(errmsg)
   }
 
@@ -374,7 +374,7 @@ CheckFormattedUploadFile <- function(output, database, formatted_upload_file, ui
     filter(is_longitudinal == 1 & is.na(collection_date))
 
   if (nrow(df_invalid) > 0) {
-    errmsg <- paste("Missing collection date for following sample barcode(s):", paste(df_invalid$MicronixBarcode, collapse = " "))
+    errmsg <- paste("Missing collection date for following sample barcode(s):", paste(df_invalid$Barcode, collapse = " "))
     warning(errmsg)
   }
 }
@@ -605,6 +605,11 @@ FormatMicronixMoveData <- function(ui_elements, micronix_move_data, input){
   if ("Comment" %in% names(formatted_upload_file)){
     formatted_upload_file <- formatted_upload_file %>% 
       rename(comment = Comment)
+  }
+
+  if ("PlateBarcode" %in% names(formatted_upload_file)) {
+    formatted_upload_file <- formatted_upload_file %>%
+    rename(plate_barcode = PlateBarcode)
   }
   
   return(formatted_upload_file)

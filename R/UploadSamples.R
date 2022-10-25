@@ -102,7 +102,7 @@ UploadSamples <- function(sample_type, upload_data, container_name, freezer_addr
   return(return_message)
 }
 
-.UploadChecks <- function(sample_type, input, database, freezer_address, container_name, container_barcode, upload_data){
+.UploadChecks <- function(sample_type, input, database, freezer_address, container_name, upload_data){
 
   message("Performing upload checks...")
 
@@ -157,7 +157,15 @@ UploadSamples <- function(sample_type, upload_data, container_name, freezer_addr
   # stopifnot("Error: Container name is not unique" = sampleDB:::.CheckUploadContainerNameDuplication(database = database, plate_name = container_name, only_active = TRUE))
 
   # check plate barcode
-  stopifnot("Error: Container barcode is not unique" = sampleDB:::.CheckUploadContainerBarcodeDuplication(plate_barcode = container_barcode, database = database))
+
+  if ("plate_barcode" %in% colnames(upload_data)) {
+    stopifnot("only one unique plate barcode can exist in an upload file" = (length(unique(upload_data$plate_barcode)) == 1))
+    for (plate_barcode in unique(upload_data$plate_barcode)) {
+      stopifnot("Error: Container barcode is not unique" = sampleDB:::.CheckUploadContainerBarcodeDuplication(plate_barcode = plate_barcode, database = database))
+    }
+  }
+
+  stopifnot("Error: Container barcode is not unique" = sampleDB:::.CheckUploadContainerBarcodeDuplication(plate_barcode = upload_data$plate_barcode, database = database))
 
   # check that uploaded samples are not going to take the well of an active sample
   if (sample_type == "micronix") {
