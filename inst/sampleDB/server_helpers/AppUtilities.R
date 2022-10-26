@@ -288,7 +288,7 @@ CheckLogisticalColnamesOfUserProvidedMicronixFile <- function(input, output, use
   #validate colnames of user provided file format and print user messages if file is not valid
   upload_file_type <- input[[ui_elements$ui.input$MicronixFileType]]
   out <- sampleDB:::.CheckLogisticalColnamesOfUserProvidedMicronixFile(upload_file_type = upload_file_type, users_upload_file = users_upload_file)
-  
+
   if(upload_file_type == "visionmate"){
     validate(need(out, "Malformed Logistical Colnames in Uploaded File (Valid VisionMate Column Names: LocationRow, LocationColumn, TubeCode)"))
   }
@@ -301,7 +301,7 @@ CheckLogisticalColnamesOfUserProvidedMicronixFile <- function(input, output, use
       config$traxcer_position$override
     )
 
-    validate(need(out, paste0("Malformed Logistical Colnames in Uploaded File (Valid Traxcer Column Names: ", traxcer_position, ", Tube ID")))
+    validate(need(out, paste0("Malformed Logistical Colnames in Uploaded File (Valid Traxcer Column Names: ", traxcer_position, ", Tube ID, [Rack ID]")))
   }
   else{
     validate(need(out, "Malformed Logistical Colnames in Uploaded File (Valid Column Names: Barcode, Row, Column)"))
@@ -319,7 +319,7 @@ CheckMetadataColnamesOfUserProvidedMicronixFile <- function(input, output, users
   upload_file_type <- input[[ui_elements$ui.input$MicronixFileType]]
   out <- sampleDB:::.CheckMetadataColnamesOfUserProvidedMicronixFile(users_upload_file = users_upload_file, upload_file_type = upload_file_type)
 
-  validate(need(out, "ERROR:\nMalformed Metadata Colnames (Valid Metadata Column Names: StudyCode, StudySubject, SpecimenType, [CollectionDate, PlateBarcode])"))
+  validate(need(out, "ERROR:\nMalformed Metadata Colnames (Valid Metadata Column Names: StudyCode, StudySubject, SpecimenType, [CollectionDate])"))
   return(out)
 }
 
@@ -610,6 +610,11 @@ FormatMicronixMoveData <- function(ui_elements, micronix_move_data, input){
   if ("PlateBarcode" %in% names(formatted_upload_file)) {
     formatted_upload_file <- formatted_upload_file %>%
     rename(plate_barcode = PlateBarcode)
+  }
+
+  if ("Rack ID" %in% names(formatted_upload_file)) {
+    formatted_upload_file <- formatted_upload_file %>%
+      rename(plate_barcode = `Rack ID`)
   }
   
   return(formatted_upload_file)

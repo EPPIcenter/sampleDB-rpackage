@@ -299,15 +299,6 @@ library(yaml)
   return(out)
 }
 
-.CheckUploadContainerBarcodeDuplication <- function(plate_barcode, database){
-
-  if(plate_barcode != "" && !is.null(plate_barcode)){
-    out <- all(!(plate_barcode %in% c(sampleDB::CheckTable(database = database, "matrix_plate")$plate_barcode)))
-  }else{
-    out <- TRUE
-  }
-  return(out)
-}
 
 # Freezer Address Check
 .CheckFreezerAddress <- function(freezer_address, database){
@@ -419,10 +410,10 @@ library(yaml)
 #upload a new micronix plate
 .UploadMicronixPlate <- function(conn, container_name, container_barcode, freezer_address){
   eval.location_id <- filter(CheckTableTx(conn = conn, "location"), location_name == freezer_address$location, level_I == freezer_address$level_I, level_II == freezer_address$level_II)$id
-  if(is.null(container_barcode)){
+  if(is.null(container_barcode) | is.na(container_barcode)) {
     container_barcode <- NA
   }
-  else if(container_barcode == ""){
+  else if(container_barcode == "" | container_barcode == "NA") {
     container_barcode <- NA
   }
   else{

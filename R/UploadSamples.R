@@ -159,13 +159,15 @@ UploadSamples <- function(sample_type, upload_data, container_name, freezer_addr
   # check plate barcode
 
   if ("plate_barcode" %in% colnames(upload_data)) {
-    stopifnot("only one unique plate barcode can exist in an upload file" = (length(unique(upload_data$plate_barcode)) == 1))
-    for (plate_barcode in unique(upload_data$plate_barcode)) {
-      stopifnot("Error: Container barcode is not unique" = sampleDB:::.CheckUploadContainerBarcodeDuplication(plate_barcode = plate_barcode, database = database))
-    }
-  }
+    stopifnot("Only one unique plate barcode can exist in an upload file" = (length(unique(upload_data$plate_barcode)) == 1))
+    tmp <- sampleDB::CheckTable(database = database, "matrix_plate") %>%
+      select(plate_name, plate_barcode) %>%
+      filter(
+        (plate_name == container_name & plate_barcode != unique(upload_data$plate_barcode)) |
+        (plate_name != container_name & plate_barcode == unique(upload_data$plate_barcode)))
 
-  stopifnot("Error: Container barcode is not unique" = sampleDB:::.CheckUploadContainerBarcodeDuplication(plate_barcode = upload_data$plate_barcode, database = database))
+    stopifnot("Plate name and plate barcode should have a one-to-one relationship." = (nrow(tmp) == 0))
+  }
 
   # check that uploaded samples are not going to take the well of an active sample
   if (sample_type == "micronix") {
@@ -185,7 +187,6 @@ UploadSamples <- function(sample_type, upload_data, container_name, freezer_addr
 
 .UploadSamples <- function(upload_data, sample_type, conn, container_name, container_barcode, freezer_address){
   RSQLite::dbBegin(conn)
-
   for(i in 1:nrow(upload_data)){
 
     #1. get upload item's metadata
