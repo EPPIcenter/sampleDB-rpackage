@@ -9,13 +9,13 @@ To cut down on time spent renaming columns, aside from the default format, Sampl
 
 - SampleDB expects the first line of the traxcer format to be a plate barcode line. This line will be skipped during uploads.
 - The `Row` and `Column` storage information columns are combined into a column named `Position`.
-- The `MicronixBarcode` column is named `Tube ID`.
+- The `Barcode` column is named `Tube ID`.
 
 ### VisionMate Format
 
 - The `Row` column is named `LocationRow`.
 - The `Column` column is named `LocationColumn`.
-- The `MicronixBarcode` column is named `TubeCode`.
+- The `Barcode` column is named `TubeCode`.
 
 ### Blank CSV Rows
   

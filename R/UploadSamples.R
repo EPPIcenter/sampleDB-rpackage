@@ -8,10 +8,10 @@
 #' Required `upload_data` columns are:\cr
 #' `well_position`: the row and column of the sample in the storage housing
 #' `label`: the sample's label or barcode
-#' `study_subject_id`: the participant id of for the subject in the cohort (ie study)
+#' `study_subject_id`: the StudySubject id of for the subject in the cohort (ie study)
 #' `study_short_code`: the code of the study
 #' `specimen_type`: the sample type
-#' `collection_date`: (optional) the date the sample was first collected from the cohort participant
+#' `collection_date`: (optional) the date the sample was first collected from the cohort StudySubject
 #'
 #' #' **upload data example without collection_date**
 #'
@@ -55,7 +55,7 @@
 #' @import lubridate
 #' @export
 
-UploadSamples <- function(sample_type, upload_data, container_name, container_barcode = NULL, freezer_address){
+UploadSamples <- function(sample_type, upload_data, container_name, freezer_address){
 
   # locate the database and connect to it
   database <- Sys.getenv("SDB_PATH")
@@ -74,6 +74,10 @@ UploadSamples <- function(sample_type, upload_data, container_name, container_ba
     upload_data$comment <- NA
   }
 
+  if(!"plate_barcode" %in% names(upload_data)){
+    upload_data$plate_barcode <- NA
+  }
+
 
   # remove empty strings, replace with NA
   upload_data <- upload_data %>% 
@@ -81,13 +85,11 @@ UploadSamples <- function(sample_type, upload_data, container_name, container_ba
 
   # perform upload checks
   .UploadChecks(sample_type = sample_type, input = input, database = database,
-                freezer_address = freezer_address, container_name = container_name,
-                container_barcode = container_barcode, upload_data = upload_data)
+                freezer_address = freezer_address, container_name = container_name, upload_data = upload_data)
 
   # upload data
   .UploadSamples(upload_data = upload_data, sample_type = sample_type,
-                 conn = conn, container_name = container_name, freezer_address = freezer_address,
-                 container_barcode = container_barcode)
+                 conn = conn, container_name = container_name, freezer_address = freezer_address)
 
   return_message <- paste("Upload Successful!\nPlate", container_name, "with", nrow(upload_data), "sample(s) were added to freezer address:", paste(unlist(freezer_address, use.names=F), collapse = ", "), "\n")
 
@@ -100,7 +102,7 @@ UploadSamples <- function(sample_type, upload_data, container_name, container_ba
   return(return_message)
 }
 
-.UploadChecks <- function(sample_type, input, database, freezer_address, container_name, container_barcode, upload_data){
+.UploadChecks <- function(sample_type, input, database, freezer_address, container_name, upload_data){
 
   message("Performing upload checks...")
 
@@ -155,7 +157,17 @@ UploadSamples <- function(sample_type, upload_data, container_name, container_ba
   # stopifnot("Error: Container name is not unique" = sampleDB:::.CheckUploadContainerNameDuplication(database = database, plate_name = container_name, only_active = TRUE))
 
   # check plate barcode
-  stopifnot("Error: Container barcode is not unique" = sampleDB:::.CheckUploadContainerBarcodeDuplication(plate_barcode = container_barcode, database = database))
+
+  if ("plate_barcode" %in% colnames(upload_data)) {
+    stopifnot("Only one unique plate barcode can exist in an upload file" = (length(unique(upload_data$plate_barcode)) == 1))
+    tmp <- sampleDB::CheckTable(database = database, "matrix_plate") %>%
+      select(plate_name, plate_barcode) %>%
+      filter(
+        (plate_name == container_name & plate_barcode != unique(upload_data$plate_barcode)) |
+        (plate_name != container_name & plate_barcode == unique(upload_data$plate_barcode)))
+
+    stopifnot("Plate name and plate barcode should have a one-to-one relationship." = (nrow(tmp) == 0))
+  }
 
   # check that uploaded samples are not going to take the well of an active sample
   if (sample_type == "micronix") {
@@ -175,7 +187,6 @@ UploadSamples <- function(sample_type, upload_data, container_name, container_ba
 
 .UploadSamples <- function(upload_data, sample_type, conn, container_name, container_barcode, freezer_address){
   RSQLite::dbBegin(conn)
-
   for(i in 1:nrow(upload_data)){
 
     #1. get upload item's metadata
@@ -185,6 +196,7 @@ UploadSamples <- function(sample_type, upload_data, container_name, container_ba
     eval.barcode <- upload_data[i,]$"label" %>% as.character()
     eval.well_position <- upload_data[i,]$"well_position"
     eval.comment <- upload_data[i,]$"comment" %>% as.character()
+    eval.plate_barcode <- upload_data[i,]$"plate_barcode" %>% as.character()
     if(is.na(upload_data[i, ]$"collection_date")){
       eval.collection_date <- as.double(as.Date(NA))
     }else{
@@ -196,12 +208,12 @@ UploadSamples <- function(sample_type, upload_data, container_name, container_ba
     eval.specimen_type_id <- filter(CheckTableTx(conn = conn, "specimen_type"), label == eval.specimen_type)$id
     eval.study_id <- filter(CheckTableTx(conn = conn, "study"), short_code == eval.study_code)$id
 
-    #2a. check if this upload item's participant (subject+study combination) exists in the database
+    #2a. check if this upload item's StudySubject (subject+study combination) exists in the database
     tmp_table.study_subject <- inner_join(CheckTableTx(conn = conn, "study_subject")[, c("subject", "study_id")],
                                           tibble(subject = eval.subject, study_id = eval.study_id),
                                           by = c("subject", "study_id"))
 
-    #if this upload item's participant exists in the database, then get the necessary "study_subject" id
+    #if this upload item's StudySubject exists in the database, then get the necessary "study_subject" id
     if(nrow(tmp_table.study_subject) > 0){
       eval.study_subject_id <- filter(CheckTableTx(conn = conn, "study_subject"), subject == eval.subject, study_id == eval.study_id)$id
 
@@ -228,7 +240,7 @@ UploadSamples <- function(sample_type, upload_data, container_name, container_ba
         }
       }else{
 
-        #3b. if this participant (study_subject) exists in the database but sample (specimen) does not, then create a new "specimen"
+        #3b. if this StudySubject (study_subject) exists in the database but sample (specimen) does not, then create a new "specimen"
         AddToTable("specimen",
                              list(created = lubridate::now() %>% as.character(),
                                   last_updated = lubridate::now() %>% as.character(),
@@ -241,7 +253,7 @@ UploadSamples <- function(sample_type, upload_data, container_name, container_ba
         eval.specimen_id <- tail(CheckTableTx(conn = conn, "specimen"), 1)$id
       }
     }else{
-      #2b. if this upload item's participant (combination of subject+study) does not exist in the database then create a new study_subject entry in the database
+      #2b. if this upload item's StudySubject (combination of subject+study) does not exist in the database then create a new study_subject entry in the database
       AddToTable("study_subject",
                            list(created = lubridate::now() %>% as.character(),
                                 last_updated = lubridate::now() %>% as.character(),
@@ -288,7 +300,7 @@ UploadSamples <- function(sample_type, upload_data, container_name, container_ba
     if(sample_type == "micronix"){
       # create a new housing (if it does not already exist)
       if(!container_name %in% CheckTableTx(conn = conn, "matrix_plate")$plate_name){
-        eval.plate_id <- sampleDB:::.UploadMicronixPlate(conn = conn, container_name = container_name, container_barcode = container_barcode, freezer_address = freezer_address)
+        eval.plate_id <- sampleDB:::.UploadMicronixPlate(conn = conn, container_name = container_name, container_barcode = eval.plate_barcode, freezer_address = freezer_address)
       }else{
         eval.plate_id <- filter(CheckTableTx(conn = conn, "matrix_plate"), plate_name == container_name)$id
       }

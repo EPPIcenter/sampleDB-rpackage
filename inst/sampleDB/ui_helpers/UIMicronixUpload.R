@@ -24,10 +24,8 @@ UIMicronixUpload <- function(){
       textOutput("WarningMicronixSpecimenExists"),
       #insert plate infor
       HTML("<h5><b>3. Plate Name</b></h5>"),
-      fluidRow(column(width = 6, HTML("<p>Human Readable Name</p>"), selectizeInput("UploadMicronixPlateID", label = NULL, choices = c("", sampleDB::CheckTable(database = database, "matrix_plate")$plate_name))),
-               column(width = 6,  HTML("<p>Barcode (Optional)</p>"), textInput("UploadMicronixPlateBarcode", label = NULL))),
+      fluidRow(column(width = 6, HTML("<p>Human Readable Name</p>"), selectizeInput("UploadMicronixPlateID", label = NULL, choices = c("", sampleDB::CheckTable(database = database, "matrix_plate")$plate_name)))),
       textOutput("WarningMicronixUploadContainerName"), 
-      textOutput("WarningMicronixUploadContainerBarcode"),
       #add freezer infor
       HTML("<h5><b>4. Freezer Address</b></h5>"),
       HTML("<p>Freezer Name</p>"), selectInput("UploadMicronixLocation", label = NULL, width = '47%', choices = c("", sampleDB::CheckTable(database = database, "location")$location_name) %>% sort()),

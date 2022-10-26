@@ -74,7 +74,6 @@ MicronixUpload <- function(session, output, input, database){
           sampleDB::UploadSamples(sample_type = input$UploadSampleType, 
                                                 upload_data = formatted_file, 
                                                 container_name = isolate({ input$UploadMicronixPlateID }), 
-                                                container_barcode = input$UploadMicronixPlateBarcode, 
                                                 freezer_address = list(location_name = input$UploadMicronixLocation, 
                                                                        level_I = input$UploadLocationMicronixLevelI, 
                                                                        level_II = input$UploadLocationMicronixLevelII))

@@ -114,7 +114,7 @@ library(yaml)
   }
   else{
     users_upload_file <- users_upload_file %>% setNames(.[1,]) %>% .[-c(1),]
-    general_colnames <- c("MicronixBarcode", "Row", "Column")
+    general_colnames <- c("Barcode", "Row", "Column")
     out <- all(general_colnames %in% names(users_upload_file))
   }
   return(out)
@@ -157,6 +157,11 @@ library(yaml)
 
   # make sure the columns are numbers and above zero
   col_numbers <- substr(well_positions, 2, nchar(well_positions))
+
+  if (!all(nchar(col_numbers) == 2)) {
+    stop("Numbers should be in ## format. Fill with zero if less than 10 (e.g \"05\")")
+  }
+
   col_number_indices <- which(col_numbers %>%
     as.numeric() %>%
     suppressWarnings() > 0)
@@ -233,7 +238,7 @@ library(yaml)
 .CheckMetadataColnamesOfUserProvidedMicronixFile <- function(users_upload_file, upload_file_type){
 
   #establish required metadata column names
-  names.base <- c("Participant", "SpecimenType", "StudyCode")
+  names.base <- c("StudySubject", "SpecimenType", "StudyCode")
 
   if(upload_file_type == "traxcer"){
     users_upload_file <- users_upload_file %>% setNames(.[2,]) %>% .[-c(1, 2),]
@@ -247,7 +252,7 @@ library(yaml)
 }
 
 .CheckFormattedMetaDataColnames <- function(formatted_upload_file){
-  valid_metadata_colnames <- c("study_subject_id", "specimen_type", "study_short_code", "collection_date")
+  valid_metadata_colnames <- c("study_subject_id", "specimen_type", "study_short_code", "collection_date", "plate_barcode")
   out <- all(valid_metadata_colnames %in% names(formatted_upload_file))
   return(out)
 }
@@ -299,15 +304,6 @@ library(yaml)
   return(out)
 }
 
-.CheckUploadContainerBarcodeDuplication <- function(plate_barcode, database){
-
-  if(plate_barcode != "" && !is.null(plate_barcode)){
-    out <- all(!(plate_barcode %in% c(sampleDB::CheckTable(database = database, "matrix_plate")$plate_barcode)))
-  }else{
-    out <- TRUE
-  }
-  return(out)
-}
 
 # Freezer Address Check
 .CheckFreezerAddress <- function(freezer_address, database){
@@ -419,10 +415,10 @@ library(yaml)
 #upload a new micronix plate
 .UploadMicronixPlate <- function(conn, container_name, container_barcode, freezer_address){
   eval.location_id <- filter(CheckTableTx(conn = conn, "location"), location_name == freezer_address$location, level_I == freezer_address$level_I, level_II == freezer_address$level_II)$id
-  if(is.null(container_barcode)){
+  if(is.null(container_barcode) | is.na(container_barcode)) {
     container_barcode <- NA
   }
-  else if(container_barcode == ""){
+  else if(container_barcode == "" | container_barcode == "NA") {
     container_barcode <- NA
   }
   else{
