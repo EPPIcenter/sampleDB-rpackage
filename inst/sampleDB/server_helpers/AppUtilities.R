@@ -369,13 +369,18 @@ CheckFormattedUploadFile <- function(output, database, formatted_upload_file, ui
   }
 
   study <- filter(sampleDB::CheckTable(database = database, "study"), short_code %in% formatted_upload_file$study_short_code)
-  df_invalid <- formatted_upload_file %>%
-    inner_join(study, by = c("study_short_code" = "short_code")) %>%
-    filter(is_longitudinal == 1 & is.na(collection_date))
+  tmp <- formatted_upload_file %>%
+    inner_join(study, by = c("study_short_code" = "short_code"))
 
-  if (nrow(df_invalid) > 0) {
-    errmsg <- paste("Missing collection date for following sample barcode(s):", paste(df_invalid$Barcode, collapse = " "))
-    warning(errmsg)
+  # check this first
+  if (!"collection_date" %in% colnames(formatted_upload_file) && nrow(filter(tmp, is_longitudinal == 1)) > 0) {
+    warning("Collection date is required for samples of longitudinal studies.")
+  } else if ("collection_date" %in% colnames(formatted_upload_file)) {
+    df_invalid <- filter(tmp, is_longitudinal == 1 & is.na(collection_date))
+    if (nrow(df_invalid) > 0) {
+      errmsg <- paste("Missing collection date for following sample barcode(s):", paste(df_invalid$label, collapse = " "))
+      warning(errmsg)
+    }    
   }
 }
 
