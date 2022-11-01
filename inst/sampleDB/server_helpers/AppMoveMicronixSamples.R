@@ -153,7 +153,7 @@ CreateEmptyMicronixPlate <- function(input, output, database){
       filter(input$CreateEmptyMicronixPlateID == plate_name | plate_barcode == input$CreateEmptyMicronixPlateBarcode) %>%
       nrow(.) > 0) {
       showNotification("Value would have created a duplicate!", id = "MoveNotification", type = "error", action = NULL, duration = 3, closeButton = TRUE)
-    } else if (nchar(input$CreateEmptyMicronixPlateBarcode) != 10) {
+    } else if (nchar(input$CreateEmptyMicronixPlateBarcode) > 0 && nchar(input$CreateEmptyMicronixPlateBarcode) != 10) {
       showNotification("Barcode must be 10 digits!", id = "MoveNotification", type = "error", action = NULL, duration = 3, closeButton = TRUE)
     } else {
       conn <- RSQLite::dbConnect(RSQLite::SQLite(), database)
