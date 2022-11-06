@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS "specimen_type" (
 	"last_updated"		DATETIME NOT NULL,
 
 	"id"				INTEGER NOT NULL,
-	"label"				VARCHAR NOT NULL UNIQUE,
+	"name"				VARCHAR NOT NULL UNIQUE,
 
 	PRIMARY KEY("id")
 );

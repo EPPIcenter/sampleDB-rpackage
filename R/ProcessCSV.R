@@ -149,7 +149,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
 
   if ("upload" %in% c(user_action)) {
     processed_file$study_short_code <- user_file$StudyCode
-    processed_file$study_subject_id <- user_file$Participant
+    processed_file$study_subject <- user_file$StudySubject
     processed_file$specimen_type <- user_file$SpecimenType
 
     if ("CollectionDate" %in% colnames(user_file)) {
@@ -208,7 +208,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
     required_names <- c(required_names,
       c(
         "study_short_code",
-        "study_subject_id",
+        "study_subject",
         "specimen_type",
         "collection_date",
         "comment"
@@ -217,7 +217,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
     requires_data <- c(requires_data,
       c(
         "study_short_code",
-        "study_subject_id",
+        "study_subject",
         "specimen_type"
 
     ))
@@ -296,7 +296,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
           nrow(.) > 0)
 
         stopifnot("Specimen type not found" = tbl(con, "specimen_type") %>%
-          filter(label %in% specimen_types) %>%
+          filter(barcode %in% specimen_types) %>%
           collect() %>%
           nrow(.) > 0)
       }

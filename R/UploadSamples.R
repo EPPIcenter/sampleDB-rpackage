@@ -86,11 +86,11 @@ UploadSamples <- function(sample_type, upload_data, container_name, freezer_addr
     #1. get upload item's metadata
     eval.specimen_type <- upload_data[i, ]$"specimen_type" %>% as.character()
     eval.study_code <- upload_data[i, ]$"study_short_code" %>% as.character()
-    eval.subject <- upload_data[i, ]$"study_subject_id" %>% as.character()
-    eval.barcode <- upload_data[i,]$"label" %>% as.character()
-    eval.well_position <- upload_data[i,]$"well_position"
+    eval.subject <- upload_data[i, ]$"participant" %>% as.character()
+    eval.barcode <- upload_data[i,]$"barcode" %>% as.character()
+    eval.well_position <- upload_data[i,]$"index"
     eval.comment <- upload_data[i,]$"comment" %>% as.character()
-    eval.plate_barcode <- upload_data[i,]$"plate_barcode" %>% as.character()
+    eval.plate_barcode <- upload_data[i,]$"manifest_barcode" %>% as.character()
     if(is.na(upload_data[i, ]$"collection_date")){
       eval.collection_date <- as.double(as.Date(NA))
     }else{
@@ -99,7 +99,7 @@ UploadSamples <- function(sample_type, upload_data, container_name, freezer_addr
     }
 
     #get a database id for a upload item's specimen_type and study
-    eval.specimen_type_id <- filter(CheckTableTx(conn = conn, "specimen_type"), label == eval.specimen_type)$id
+    eval.specimen_type_id <- filter(CheckTableTx(conn = conn, "specimen_type"), barcode == eval.specimen_type)$id
     eval.study_id <- filter(CheckTableTx(conn = conn, "study"), short_code == eval.study_code)$id
 
     #2a. check if this upload item's StudySubject (subject+study combination) exists in the database
@@ -187,20 +187,20 @@ UploadSamples <- function(sample_type, upload_data, container_name, freezer_addr
                               comment = eval.comment),
                          conn = conn) %>% suppressWarnings()
 
-    #5. get just item's storage container id and use it as the primary key in the matrix tube table
+    #5. get just item's storage container id and use it as the primary key in the matrix cryovial_tube table
     eval.id <- tail(CheckTableTx(conn = conn, "storage_container"), 1)$id
 
     # 6. Create new sample housing (if it does not alread exist) and upload samples into housing
     if(sample_type == "micronix"){
       # create a new housing (if it does not already exist)
-      if(!container_name %in% CheckTableTx(conn = conn, "matrix_plate")$plate_name){
+      if(!container_name %in% CheckTableTx(conn = conn, "micronix_plate")$plate_name){
         eval.plate_id <- sampleDB:::.UploadMicronixPlate(conn = conn, container_name = container_name, container_barcode = eval.plate_barcode, freezer_address = freezer_address)
       }else{
-        eval.plate_id <- filter(CheckTableTx(conn = conn, "matrix_plate"), plate_name == container_name)$id
+        eval.plate_id <- filter(CheckTableTx(conn = conn, "micronix_plate"), plate_name == container_name)$id
       }
 
       # 7. upload micronix sample
-      AddToTable(table_name = "matrix_tube",
+      AddToTable(table_name = "micronix_tube",
                            info_list = list(id = eval.id,
                                             plate_id = eval.plate_id,
                                             well_position = eval.well_position,
@@ -233,14 +233,14 @@ UploadSamples <- function(sample_type, upload_data, container_name, freezer_addr
 #   }
 #   # print(container_barcode)
 #   AddToTable(database = database,
-#                        "matrix_plate",
+#                        "micronix_plate",
 #                        list(created = lubridate::now() %>% as.character(),
 #                             last_updated = lubridate::now() %>% as.character(),
 #                             location_id = eval.location_id,
 #                             plate_name = container_name,
 #                             plate_barcode = container_barcode),
 #                        conn = conn) %>% suppressWarnings()
-#   eval.plate_id <- tail(sampleDB::CheckTable(database = database, "matrix_plate"), 1)$id
+#   eval.plate_id <- tail(sampleDB::CheckTable(database = database, "micronix_plate"), 1)$id
 #
 #   return(eval.plate_id)
 #

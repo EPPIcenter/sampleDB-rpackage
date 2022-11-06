@@ -9,11 +9,11 @@ ArchiveAndDeleteSamples(operation, data, comment, status, verification = TRUE)
 \arguments{
 \item{operation}{A string specifying the type of operation to perform. Valid operations are \code{archive} and \code{delete}.
 
-\code{archive} should be used to delete all external data from the sample (tube/paper/rdt information, container information, storage location)
+\code{archive} should be used to delete all external data from the sample (cryovial_tube/paper/rdt information, container information, storage location)
 but preserve internal data (sample id, specimen information, study subject information).
-This operation can be used for example when a micronix tube is emptied or rancid and needs to be discarded. \cr
+This operation can be used for example when a micronix cryovial_tube is emptied or rancid and needs to be discarded. \cr
 \code{delete} should be used to remove all traces of the sample (internal and external data).
-Deletions are recursive in the sense that they if sample ids associated with samples from an entire box are deleted then the box is automatically deleted.}
+Deletions are recursive in the sense that they if sample ids associated with samples from an entire cryovial_box are deleted then the cryovial_box is automatically deleted.}
 
 \item{verification}{A logical value. If set to TRUE user verification of the operation is required. If set to false user verification is bypassed. Default is set to TRUE.}
 

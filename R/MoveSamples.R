@@ -101,17 +101,17 @@ MoveSamples <- function(sample_type, move_data){
     # Get sample data
     for (i in 1:nrow(samples)){
       if(sample_type == "micronix"){
-        eval.barcode <- samples[i,]$"label"
-        eval.well_pos <- samples[i,]$"well_position"
+        eval.barcode <- samples[i,]$"barcode"
+        eval.well_pos <- samples[i,]$"index"
 
         # Find move data that matches sample data
         m <- which(stacked_orphaned_sample_data$barcode == eval.barcode)
 
         # Use move data to place sample into proper container
-        stacked_orphaned_sample_data[m, "plate_id"] <- filter(sampleDB::CheckTable(database = database, "matrix_plate"), plate_name == container_name)$id
+        stacked_orphaned_sample_data[m, "plate_id"] <- filter(sampleDB::CheckTable(database = database, "micronix_plate"), name == container_name)$id
 
         # Use move data to place sample into proper container position
-        stacked_orphaned_sample_data[m, "well_position"] <- eval.well_pos
+        stacked_orphaned_sample_data[m, "index"] <- eval.well_pos
       }
     }
   }
@@ -142,10 +142,10 @@ MoveSamples <- function(sample_type, move_data){
     if(sample_type == "micronix"){
 
       # Get sample's container id
-      existing.container <- filter(sampleDB::CheckTableTx(conn = conn, "matrix_plate"), plate_name == container.name)$id
+      existing.container <- filter(sampleDB::CheckTableTx(conn = conn, "micronix_plate"), plate_name == container.name)$id
 
       # Make a reference df with all samples in container
-      sample_data.existing_container <- filter(sampleDB::CheckTableTx(conn = conn, "matrix_tube"), plate_id == existing.container) %>%
+      sample_data.existing_container <- filter(sampleDB::CheckTableTx(conn = conn, "micronix_tube"), plate_id == existing.container) %>%
         inner_join(sampleDB::CheckTableTx(conn = conn, "storage_container"), by = c("id" = "id"))
 
       # Put samples into container with negative id number
@@ -154,7 +154,7 @@ MoveSamples <- function(sample_type, move_data){
         if (!is.na(state) && !is_empty(state) && state == 1) {
           id <- sample_data.existing_container[i,]$id
           ModifyTable(conn = conn,
-                      table_name = "matrix_tube",
+                      table_name = "micronix_tube",
                       info_list = list(well_position = paste0('-', (sample_data.existing_container[i,]$well_position))),
                       id = id) %>% suppressWarnings()
           }
@@ -180,17 +180,17 @@ MoveSamples <- function(sample_type, move_data){
       # Get data for each sample
       for (i in 1:nrow(move_data)){
         if(sample_type == "micronix"){
-          eval.barcode <- move_data[i,]$"label"
-          eval.well_pos <- move_data[i,]$"well_position"
+          eval.barcode <- move_data[i,]$barcode
+          eval.well_pos <- move_data[i,]$index
 
           # get sample id
-          id <- filter(sampleDB::CheckTable(database = database, "matrix_tube"), barcode == eval.barcode)$id
+          id <- filter(sampleDB::CheckTable(database = database, "micronix_tube"), barcode == eval.barcode)$id
 
           # get container id
-          eval.container_id <- filter(sampleDB::CheckTable(database = database, "matrix_plate"), plate_name == container_name)$id
+          eval.container_id <- filter(sampleDB::CheckTable(database = database, "micronix_plate"), plate_name == container_name)$id
           # link sample with container id, if there is a sample id (which is not the case if an empty csv was intentionally uploaded)
           ModifyTable(conn = conn,
-                      "matrix_tube",
+                      "micronix_tube",
                       info_list = list(plate_id = eval.container_id,
                                        well_position = eval.well_pos),
                       id = id) %>% suppressWarnings()
@@ -213,8 +213,8 @@ MoveSamples <- function(sample_type, move_data){
     label.missing <- stacked_orphaned_sample_data[remaining_well_positions, ] %>% pull(barcode)
 
     # GET PLATE ID/PLATE NAME WHICH CONTAINED BARCODE STILL IN DUMMY
-    container_id_with_missing_label <- filter(CheckTable(database = database, "matrix_tube"), barcode %in% label.missing)$plate_id
-    container_name_with_missing_label <- filter(CheckTable(database = database, "matrix_plate"), id %in% container_id_with_missing_label)$plate_name
+    container_id_with_missing_label <- filter(CheckTable(database = database, "micronix_tube"), barcode %in% label.missing)$plate_id
+    container_name_with_missing_label <- filter(CheckTable(database = database, "micronix_plate"), id %in% container_id_with_missing_label)$plate_name
   }
 
   message.fail <- paste0("Move Failed:\n",
@@ -231,8 +231,8 @@ MoveSamples <- function(sample_type, move_data){
 
   stopifnot("*** ERROR: Sample type move not implemented" = "micronix" %in% sample_type)
   if(sample_type == "micronix"){
-    container_type <- "matrix_plate"
-    sample_type <- "matrix_tube"
+    container_type <- "micronix_plate"
+    sample_type <- "micronix_tube"
     colname.container_name <- "plate_name"
     colname.container_id <- "plate_id"
   }
@@ -309,7 +309,7 @@ MoveSamples <- function(sample_type, move_data){
   # make sure the samples being moved are active - NOTE: this does prevent moving inactive samples, but that should be in a separate workflow (dare is say unarchive?)
 
   for(item in names(move_data)){
-      out <- sampleDB:::.CheckAllSamplesAreActive(database = database, tokens = move_data[[item]]$label, type = "micronix")
+      out <- sampleDB:::.CheckAllSamplesAreActive(database = database, tokens = move_data[[item]]$barcode, type = "micronix")
       errmsg <- paste("*** ERROR: Move file", item, "contains samples that have been inactivated.")
       validate(need(out, errmsg))
     }

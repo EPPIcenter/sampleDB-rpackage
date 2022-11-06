@@ -149,7 +149,7 @@ CreateEmptyMicronixPlate <- function(input, output, database){
       input$CreateEmptyMicronixPlateLevelII
     )
       
-    if (CheckTable(database = database, table = "matrix_plate") %>%
+    if (CheckTable(database = database, table = "micronix_plate") %>%
       filter(input$CreateEmptyMicronixPlateID == plate_name | plate_barcode == input$CreateEmptyMicronixPlateBarcode) %>%
       nrow(.) > 0) {
       showNotification("Value would have created a duplicate!", id = "MoveNotification", type = "error", action = NULL, duration = 3, closeButton = TRUE)

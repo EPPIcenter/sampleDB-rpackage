@@ -94,5 +94,5 @@ ShowSpecimenTypes <- function(output, database){
   output$TableSpecimenType <- DT::renderDataTable({
     sampleDB::CheckTable(database = database, "specimen_type") %>%
       dplyr::select(-c(`created`:id)) %>%
-      rename(`Specimen Type` = label)})
+      rename(`Specimen Type` = name)})
 }

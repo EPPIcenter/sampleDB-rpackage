@@ -17,16 +17,14 @@ dbUpdateEvent <- reactivePoll(1000 * 5, NULL,
     function() file.mtime(Sys.getenv("SDB_PATH")),
     function() {
       list.data <- list(
-          plate_name = sampleDB::CheckTable("matrix_plate")$plate_name,
-          box_name = sampleDB::CheckTable("box")$box_name,
-          rdt_bag_name = sampleDB::CheckTable("bag")$bag_name,
-          paper_bag_name = sampleDB::CheckTable("bag")$bag_name,
+          micronix_plate_name = sampleDB::CheckTable("micronix_plate")$name,
+          cryovial_box_name = sampleDB::CheckTable("cryovial_box")$name,
           study = sampleDB::CheckTable("study") %>%
             pull(var = id, name = short_code),
-          specimen_type = sampleDB::CheckTable("specimen_type")$label,
+          specimen_type = sampleDB::CheckTable("specimen_type")$name,
           location = sampleDB::CheckTable("location")$location_name,
           subject = sampleDB::CheckTable(database = database, "study_subject") %>%
-            pull(var = study_id, name = subject),
+            pull(var = study_id, name = name),
           status = sampleDB::CheckTable(database = database, "status")$name,
           state = sampleDB::CheckTable(database = database, "state")$name
         )

@@ -17,24 +17,24 @@ MoveContainers <- function(sample_type, container_name, freezer, conn){
   eval.location_id <- eval.location$id
   
   if(sample_type == "micronix"){
-    container_id <- filter(sampleDB::CheckTableTx(conn = conn, "matrix_plate"), plate_name == container_name)$id
+    container_id <- filter(sampleDB::CheckTableTx(conn = conn, "micronix_plate"), plate_name == container_name)$id
     if (is_empty(container_id)) {
       warning("Attempt to move plate that does not exist (was it deleted after deleting all of it's samples?)")
     }
 
     ModifyTable(conn = conn,
-                          table_name = "matrix_plate",
+                          table_name = "micronix_plate",
                           info_list = list(location_id = eval.location_id),
                           id = container_id)
     return_message <- paste0("Successfully Moved Container: \n", container_name)
   }
   else if(sample_type == "cryovile"){
-    container_id <- filter(sampleDB::CheckTableTx(conn = conn, "box"), box_name == container_name)$id
+    container_id <- filter(sampleDB::CheckTableTx(conn = conn, "cryovial_box"), box_name == container_name)$id
     if (is_empty(container_id)) {
-      warning("Attempt to move box that does not exist (was it deleted after deleting all of it's samples?)")
+      warning("Attempt to move cryovial_box that does not exist (was it deleted after deleting all of it's samples?)")
     }
     ModifyTable(conn = conn,
-                          table_name = "box",
+                          table_name = "cryovial_box",
                           info_list = list(location_id = eval.location_id),
                           id = container_id)
     return_message <- paste0("Successfully Moved Container: \n", container_name)

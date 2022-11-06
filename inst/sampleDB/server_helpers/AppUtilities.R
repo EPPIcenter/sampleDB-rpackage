@@ -540,8 +540,8 @@ UpdateFreezerDropdowns <- function(database, session){
 UpdateSpecimenTypeDropdowns <- function(database, session){
   shinyjs::reset("AddSpecimenType")
   shinyjs::reset("RenameSpecimenType2")
-  updateSelectInput(session = session, inputId = "RenameSpecimenType1", choices = c("", sampleDB::CheckTable(database = database, "specimen_type")$label))
-  updateSelectInput(session = session, inputId = "DeleteSpecimenType", choices = c("", sampleDB::CheckTable(database = database, "specimen_type")$label))
+  updateSelectInput(session = session, inputId = "RenameSpecimenType1", choices = c("", sampleDB::CheckTable(database = database, "specimen_type")$name))
+  updateSelectInput(session = session, inputId = "DeleteSpecimenType", choices = c("", sampleDB::CheckTable(database = database, "specimen_type")$name))
 }
 
 UpdateStudyDropdowns <- function(database, session){

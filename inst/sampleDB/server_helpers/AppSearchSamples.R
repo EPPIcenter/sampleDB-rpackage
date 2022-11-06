@@ -48,7 +48,7 @@ SearchWetlabSamples <- function(session, input, database, output, DelArch = FALS
   
   # load dropdown using the server -- saves time
   updateSelectizeInput(session, 'SearchBySubjectUID', 
-                       choices = c("", sampleDB::CheckTable(database = database, "study_subject")$subject %>% 
+                       choices = c("", sampleDB::CheckTable(database = database, "study_subject")$name %>% 
                                      unique()), 
                        server = TRUE)
   
@@ -56,10 +56,8 @@ SearchWetlabSamples <- function(session, input, database, output, DelArch = FALS
   .SearchReset(input)
 
   observe({
-    updateSelectInput(session, selected = input$SearchByPlate, "SearchByPlate", label = "Plate Name", choices = c("", dbUpdateEvent()$plate_name))
-    updateSelectInput(session, selected = input$SearchByBox, "SearchByBox", label = "Box Name", choices = c("", dbUpdateEvent()$box_name))
-    updateSelectInput(session, selected = input$SearchByRDTBag, "SearchByRDTBag", label = "Bag Name", choices = c("", dbUpdateEvent()$rdt_bag_name))
-    updateSelectInput(session, selected = input$SearchByPaperBag, "SearchByPaperBag", label = "Bag Name", choices = c("", dbUpdateEvent()$paper_bag_name))
+    updateSelectInput(session, selected = input$SearchByPlate, "SearchByPlate", label = "Plate Name", choices = c("", dbUpdateEvent()$micronix_plate_name))
+    updateSelectInput(session, selected = input$SearchByBox, "SearchByBox", label = "Box Name", choices = c("", dbUpdateEvent()$cryovial_box_name))
 
     updateSelectizeInput(session, selected = input$SearchByStudy, "SearchByStudy", "Study", choices = c("", names(dbUpdateEvent()$study)))
     updateSelectizeInput(session, selected = input$SearchBySpecimenType, "SearchBySpecimenType", "Specimen Type", choices = c("", dbUpdateEvent()$specimen_type))
@@ -67,7 +65,7 @@ SearchWetlabSamples <- function(session, input, database, output, DelArch = FALS
 
     updateSelectizeInput(session, selected = input$SearchByState, "SearchByState", "State", choices = c(dbUpdateEvent()$state))
     
-    # subject uid should be updated when db updates + when studies are selected
+    # name uid should be updated when db updates + when studies are selected
     .SearchSubjectUID(session, input)
   })
 
@@ -75,10 +73,8 @@ SearchWetlabSamples <- function(session, input, database, output, DelArch = FALS
     updateRadioButtons(session, selected = "multiple_barcodes", "SearchByBarcodeType", label = NULL, choices = list("Multiple Barcodes" = "multiple_barcodes", "Single Barcode" = "single_barcode"))
     updateRadioButtons(session, selected = "individual", "SubjectUIDSearchType", label = NULL, choices = list("Single Study Subject" = "individual", "Multiple Study Subjects" = "multiple"))
     
-    updateSelectInput(session, selected = NULL, "SearchByPlate", label = "Plate Name", choices = c("", dbUpdateEvent()$plate_name))
-    updateSelectInput(session, selected = NULL, "SearchByBox", label = "Box Name", choices = c("", dbUpdateEvent()$box_name))
-    updateSelectInput(session, selected = NULL, "SearchByRDTBag", label = "Bag Name", choices = c("", dbUpdateEvent()$rdt_bag_name))
-    updateSelectInput(session, selected = NULL, "SearchByPaperBag", label = "Bag Name", choices = c("", dbUpdateEvent()$paper_bag_name))
+    updateSelectInput(session, selected = NULL, "SearchByPlate", label = "Plate Name", choices = c("", dbUpdateEvent()$micronix_plate_name))
+    updateSelectInput(session, selected = NULL, "SearchByBox", label = "Box Name", choices = c("", dbUpdateEvent()$cryovial_box_name))
 
     updateSelectizeInput(session, selected = NULL, "SearchByStudy", "Study", choices = c("", names(dbUpdateEvent()$study)))
     updateSelectizeInput(session, selected = NULL, "SearchBySpecimenType", "Specimen Type", choices = c("", dbUpdateEvent()$specimen_type))
@@ -135,10 +131,10 @@ SearchWetlabSamples <- function(session, input, database, output, DelArch = FALS
 #    study_subject_ref_id <- filter(sampleDB::CheckTable(database = database, "study_subject"), study_id %in% study_ref_id)$id
 #    specimen_ref_id <- filter(sampleDB::CheckTable(database = database, "specimen"), study_subject_id %in% study_subject_ref_id)$id
 #    storage_container_id <- filter(sampleDB::CheckTable(database = database, "storage_container"), specimen_id %in% specimen_ref_id)$id
-#    matrix_tube_ids <- filter(sampleDB::CheckTable(database = database, "matrix_tube"), id %in% storage_container_id)$id
+#    matrix_tube_ids <- filter(sampleDB::CheckTable(database = database, "micronix_tube"), id %in% storage_container_id)$id
 #    
-#    plate_ids <- filter(sampleDB::CheckTable(database = database, "matrix_tube"), id %in% matrix_tube_ids)$plate_id %>% unique()
-#    plate_names <- filter(sampleDB::CheckTable(database = database, "matrix_plate"), id %in% plate_ids)$uid
+#    plate_ids <- filter(sampleDB::CheckTable(database = database, "micronix_tube"), id %in% matrix_tube_ids)$plate_id %>% unique()
+#    plate_names <- filter(sampleDB::CheckTable(database = database, "micronix_plate"), id %in% plate_ids)$uid
 #    return(plate_names)
 #  }
 

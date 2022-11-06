@@ -146,7 +146,7 @@ UpdateReferences <- function(reference, operation, identifier = NULL, update = N
                            table_name = "specimen_type",
                            list(created = as.character(lubridate::now()),
                                 last_updated = as.character(lubridate::now()),
-                                label = update$specimen_type_name))
+                                name = update$specimen_type_name))
       return_message <- paste0("Added New Specimen Type:\n",
                                "\tName: \"", update$specimen_type_name, "\"")
     }
@@ -154,7 +154,7 @@ UpdateReferences <- function(reference, operation, identifier = NULL, update = N
       
       stopifnot("identifier list must include: specimen_type_name" = 
                   names(identifier) == "specimen_type_name")
-      tmp_table.specimen_type <- filter(sampleDB::CheckTable(database = database, "specimen_type"), label == identifier$specimen_type_name)
+      tmp_table.specimen_type <- filter(sampleDB::CheckTable(database = database, "specimen_type"), name == identifier$specimen_type_name)
       stopifnot("specimen type could not be identified" = nrow(tmp_table.specimen_type) != 0)
       id.ref_specimen_type <- as.character(tmp_table.specimen_type$id)
       eval.created <- as.character(tmp_table.specimen_type$created)
@@ -162,7 +162,7 @@ UpdateReferences <- function(reference, operation, identifier = NULL, update = N
                             table_name = "specimen_type",
                             info_list = list(created = eval.created,
                                              last_updated = as.character(lubridate::now()),
-                                             label = update$specimen_type_name),
+                                             name = update$specimen_type_name),
                             id = id.ref_specimen_type)
       
       return_message <- paste0("Modified Specimen Type with:\n",
@@ -174,7 +174,7 @@ UpdateReferences <- function(reference, operation, identifier = NULL, update = N
       
       stopifnot("identifier list must include: specimen_type_name" = 
                   names(identifier) == c("specimen_type_name"))
-      tmp_table.specimen_type <- filter(sampleDB::CheckTableTx(conn = conn, "specimen_type"), label == identifier$specimen_type_name)
+      tmp_table.specimen_type <- filter(sampleDB::CheckTableTx(conn = conn, "specimen_type"), name == identifier$specimen_type_name)
       stopifnot("specimen type could not be identified" = nrow(tmp_table.specimen_type) != 0)
       id.ref_specimen_type <- as.character(tmp_table.specimen_type$id)
       sampleDB::DeleteFromTable(conn = conn, 

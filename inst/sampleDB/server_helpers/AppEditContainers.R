@@ -122,7 +122,7 @@ EditWetlabContainers <- function(session, input, database, output){
   
   observe({
     updateSelectInput(session, selected = input$MoveContainerLocation, "MoveContainerLocation", choices = dbUpdateEvent()$location %>% sort())
-    updateSelectizeInput(session, selected = input$EditContainerName, "EditContainerName", choices = dbUpdateEvent()$plate_name %>% sort())
+    updateSelectizeInput(session, selected = input$EditContainerName, "EditContainerName", choices = dbUpdateEvent()$micronix_plate_name %>% sort())
   })
   
   # smart dropdown
@@ -135,29 +135,19 @@ EditWetlabContainers <- function(session, input, database, output){
   # user selected storage type
   observe({
     if(input$EditContainerSampleType == "micronix"){
-      updateSelectizeInput(session, "EditContainerName", label = NULL, choices = c("", sampleDB::CheckTable("matrix_plate")$plate_name))
+      updateSelectizeInput(session, "EditContainerName", label = NULL, choices = c("", sampleDB::CheckTable("micronix_plate")$name))
     }
-    else if(input$EditContainerSampleType == "cryovile"){
-      updateSelectizeInput(session, "EditContainerName", label = NULL, choices = c("", sampleDB::CheckTable("box")$box_name))
-    }
-    else if(input$EditContainerSampleType == "rdt"){
-      updateSelectizeInput(session, "EditContainerName", label = NULL, choices = c("", sampleDB::CheckTable("bag")$bag_name))
-    }else{
-      updateSelectizeInput(session, "EditContainerName", label = NULL, choices = c("", sampleDB::CheckTable("bag")$bag_name))
+    else if(input$EditContainerSampleType == "cryovial"){
+      updateSelectizeInput(session, "EditContainerName", label = NULL, choices = c("", sampleDB::CheckTable("cryovial_box")$name))
     }
   })
 
   observe({
     if(input$EditContainerSampleType == "micronix"){
-      updateSelectizeInput(session, "EditContainerName", label = NULL, choices = c("", sampleDB::CheckTable("matrix_plate")$plate_name))
+      updateSelectizeInput(session, "EditContainerName", label = NULL, choices = c("", sampleDB::CheckTable("micronix_plate")$name))
     }
-    else if(input$EditContainerSampleType == "cryovile"){
-      updateSelectizeInput(session, "EditContainerName", label = NULL, choices = c("", sampleDB::CheckTable("box")$box_name))
-    }
-    else if(input$EditContainerSampleType == "rdt"){
-      updateSelectizeInput(session, "EditContainerName", label = NULL, choices = c("", sampleDB::CheckTable("bag")$bag_name))
-    }else{
-      updateSelectizeInput(session, "EditContainerName", label = NULL, choices = c("", sampleDB::CheckTable("bag")$bag_name))
+    else if(input$EditContainerSampleType == "cryovial"){
+      updateSelectizeInput(session, "EditContainerName", label = NULL, choices = c("", sampleDB::CheckTable("cryovial_box")$name))
     }
   })
   

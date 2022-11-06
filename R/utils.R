@@ -86,7 +86,7 @@ library(yaml)
 .CheckUploadContainerBarcodeDuplication <- function(plate_barcode, database){
 
   if(plate_barcode != "" && !is.null(plate_barcode)){
-    out <- all(!(plate_barcode %in% c(sampleDB::CheckTable(database = database, "matrix_plate")$plate_barcode)))
+    out <- all(!(plate_barcode %in% c(sampleDB::CheckTable(database = database, "micronix_plate")$plate_barcode)))
   }else{
     out <- TRUE
   }
@@ -116,7 +116,7 @@ library(yaml)
                             level_I == freezer_address$freezer_levelI,
                             level_II == freezer_address$freezer_levelII)
   if(length(freezer_address$id) > 0){
-    items_at_address <- filter(sampleDB::CheckTable(database = database, "matrix_plate"), location_id == freezer_address$id)
+    items_at_address <- filter(sampleDB::CheckTable(database = database, "micronix_plate"), location_id == freezer_address$id)
     num_items_at_address <- items_at_address %>% nrow()
   }
   if(num_items_at_address > 0){
@@ -129,7 +129,7 @@ library(yaml)
 
 #Specimen Type Check
 .CheckSpecimenTypeUnique <- function(input, database, specimen_type){
-  specimen_type_dup_test <- filter(sampleDB::CheckTable(database = database, "specimen_type"), label == specimen_type) %>% nrow()
+  specimen_type_dup_test <- filter(sampleDB::CheckTable(database = database, "specimen_type"), name == specimen_type) %>% nrow()
   if(specimen_type_dup_test > 0){
     out <- FALSE
   }else{
@@ -142,7 +142,7 @@ library(yaml)
 .CheckSpecimenTypeDeletion <- function(input, database, specimen_type){
 
   num_items_of_specimen_type <- 0
-  specimen_type <- filter(sampleDB::CheckTable(database = database, "specimen_type"), label == specimen_type)
+  specimen_type <- filter(sampleDB::CheckTable(database = database, "specimen_type"), name == specimen_type)
   if(length(specimen_type$id) > 0){
     num_items_of_specimen_type <- filter(sampleDB::CheckTable(database = database, "specimen"), specimen_type_id == specimen_type$id) %>% nrow()
   }
@@ -202,7 +202,7 @@ library(yaml)
     container_barcode <- container_barcode
   }
 
-  AddToTable("matrix_plate",
+  AddToTable("micronix_plate",
                        list(created = lubridate::now() %>% as.character(),
                             last_updated = lubridate::now() %>% as.character(),
                             location_id = eval.location_id,
@@ -210,7 +210,7 @@ library(yaml)
                             plate_barcode = container_barcode),
                        conn = conn) %>% suppressWarnings()
 
-  eval.plate_id <- tail(sampleDB::CheckTableTx(conn = conn, "matrix_plate"), 1)$id
+  eval.plate_id <- tail(sampleDB::CheckTableTx(conn = conn, "micronix_plate"), 1)$id
 
   return(eval.plate_id)
 
