@@ -132,8 +132,9 @@ SampleDB_Setup <- function() {
 
       # install database file
       if (!file.exists(database)) {
-          file.copy(system.file("extdata",
-              "sampledb_database.sqlite", package = pkgname), database)
+          database_sql <- system.file("extdata",
+                        "sampledb_database.sql", package = pkgname)
+          system2("sqlite3", paste(database, "<", database_sql))
           Sys.chmod(database, mode = "0777", use_umask = FALSE)
           message(paste(crayon::green(cli::symbol$tick), paste0("Database installed [", database, "]")))
       } else {
