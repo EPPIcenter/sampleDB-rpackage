@@ -64,29 +64,6 @@ UploadSamples <- function(sample_type, upload_data, container_name, freezer_addr
   # save a copy of the upload data as a csv
   .SaveUploadCSV(upload_data, container_name)
 
-  # if there is no collection date, for standardization create a collection date column of NAs
-  if(!"collection_date" %in% names(upload_data)){
-    upload_data$collection_date <- NA
-  }
-  
-  # if there is no comment, for standardization create a collection date column of NAs
-  if(!"comment" %in% names(upload_data)){
-    upload_data$comment <- NA
-  }
-
-  if(!"plate_barcode" %in% names(upload_data)){
-    upload_data$plate_barcode <- NA
-  }
-
-
-  # remove empty strings, replace with NA
-  upload_data <- upload_data %>% 
-      mutate_if(is.character, list(~na_if(.,"")))
-
-  # perform upload checks
-  .UploadChecks(sample_type = sample_type, input = input, database = database,
-                freezer_address = freezer_address, container_name = container_name, upload_data = upload_data)
-
   # upload data
   .UploadSamples(upload_data = upload_data, sample_type = sample_type,
                  conn = conn, container_name = container_name, freezer_address = freezer_address)
@@ -101,89 +78,6 @@ UploadSamples <- function(sample_type, upload_data, container_name, freezer_addr
   message(return_message)
   return(return_message)
 }
-
-.UploadChecks <- function(sample_type, input, database, freezer_address, container_name, upload_data){
-
-  message("Performing upload checks...")
-
-  stopifnot("Error: Empty file detected." = nrow(upload_data) > 0)
-
-  # check storage type
-  stopifnot("Error: Storage type is not valid." = sampleDB:::.CheckSampleStorageType(sample_type = sample_type))
-
-  # check logistical colnames
-  stopifnot("Error: Malformed colnames. Valid colnames are:" = sampleDB:::.CheckFormattedLogisticalColnames(formatted_upload_file = upload_data))
-
-  # check logistical colnames
-  stopifnot("Error: Malformed colnames. Valid colnames are:" = sampleDB:::.CheckFormattedMetaDataColnames(formatted_upload_file = upload_data))
-
-  # check freezer address exists
-  stopifnot("Error: Freezer address does not exist" = sampleDB:::.CheckFreezerAddress(freezer_address = freezer_address, database = database))
-
-  # check that specimen type exists
-  stopifnot("Error: Specimen type(s) does not exist" = sampleDB:::.CheckUploadSpecimenTypes(database = database, formatted_upload_file = upload_data))
-
-  # check that study codes exists
-  stopifnot("Error: Study Short Code(s) does not exist" = sampleDB:::.CheckUploadStudyShortCodes(database = database, formatted_upload_file = upload_data))
-
-  # check collection date format is correct
-  #create a vector from the collection date column and remove all NAs in the vector the perform this check
-  collection_dates <- upload_data$"collection_date"[!is.na(upload_data$"collection_date")]
-  if(length(collection_dates) != 0){
-    stopifnot("Error: Collection date is not in Year, Month, Day format" = sampleDB:::.CheckUploadDateFormat(database = database, formatted_upload_file = upload_data))
-  }
-
-  # check that micronix containerbarcodes are unique
-  out <- sampleDB:::.CheckBarcodeIsntInDB(database = database, formatted_upload_file = upload_data)
-  stopifnot("Error: Barcode Unique Constraint" = out$out1)
-  if(length(out$out2) > 0){
-    print(out$out2)
-  }
-
-  out <- sampleDB:::.CheckWellPositionIsValid(database = database, formatted_upload_file = upload_data)
-  if (!out$out1) {
-    message(paste0(x <- names(out$out2),":", paste0(out$out2[x], sep='\n')))
-    stopifnot("Error: Well Validation Constraint" = out$out1)
-  }
-
-  # check that micronix container barcodes are not duplicated
-  out <- sampleDB:::.CheckBarcodeArentRepeated(database = database, formatted_upload_file = upload_data)
-  stopifnot("Barcodes in upload data are duplicated" = out$out1)
-  if(length(out$out2) > 0){
-    print(out$out2)
-  }
-
-  # check plate name
-  # stopifnot("Error: Container name is not unique" = sampleDB:::.CheckUploadContainerNameDuplication(database = database, plate_name = container_name, only_active = TRUE))
-
-  # check plate barcode
-
-  if ("plate_barcode" %in% colnames(upload_data)) {
-    stopifnot("Only one unique plate barcode can exist in an upload file" = (length(unique(upload_data$plate_barcode)) == 1))
-    tmp <- sampleDB::CheckTable(database = database, "matrix_plate") %>%
-      select(plate_name, plate_barcode) %>%
-      filter(
-        (plate_name == container_name & plate_barcode != unique(upload_data$plate_barcode)) |
-        (plate_name != container_name & plate_barcode == unique(upload_data$plate_barcode)))
-
-    stopifnot("Plate name and plate barcode should have a one-to-one relationship." = (nrow(tmp) == 0))
-  }
-
-  # check that uploaded samples are not going to take the well of an active sample
-  if (sample_type == "micronix") {
-    tmp <- sampleDB::CheckTable(database = database, "storage_container") %>%
-      select(status_id, id) %>%
-      filter(status_id == 1) %>%
-      inner_join(sampleDB::CheckTable(database = database, "matrix_tube"), by = c("id" = "id")) %>%
-      inner_join(sampleDB::CheckTable(database = database, "matrix_plate"), by = c("plate_id" = "id")) %>%
-      filter(plate_name %in% container_name) %>%
-      select(plate_id, well_position, status_id) %>%
-      inner_join(upload_data, by = c("well_position" = "well_position"))
-
-    stopifnot("Uploading sample to well location that already has an active sample" = (nrow(tmp) == 0))
-  }
-}
-
 
 .UploadSamples <- function(upload_data, sample_type, conn, container_name, container_barcode, freezer_address){
   RSQLite::dbBegin(conn)
