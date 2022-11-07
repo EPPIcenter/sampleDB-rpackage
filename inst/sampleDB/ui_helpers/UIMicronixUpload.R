@@ -10,32 +10,41 @@ UIMicronixUpload <- function(){
       radioButtons("UploadSampleType","1. Sample Storage Type", c("Micronix" = "micronix", "Cryovial" = "cryovial", "RDT" = "rdt", "Paper" = "paper"), inline = T),
       hr(),
       #upload data
-      fileInput("UploadMicronixDataSet", "2. Upload Samples File", width = '47%', multiple = FALSE, accept = c("text/csv", "text/comma-separated-values,text/plain", ".csv")),
-      fluidRow(column(width = 6, radioButtons("MicronixFileType", label = NULL, choices = c("VisionMate" = "visionmate", "Traxcer" = "traxcer", "NA" = "na"), inline = T)),
-               column(width = 6, tags$a(href='micronix_format_info.html', target='blank', 'More Info'))),
-      textOutput("WarningMicronixUploadSampleID"),
-      textOutput("WarningMicronixUploadBarcodeRepeats"),
-      textOutput("WarningMicronixUploadLogisticalColnames"),
-      textOutput("WarningMicronixUploadMetadataColnames"),
-      textOutput("WarningUploadMicronixSpecimenTypes"),
-      textOutput("WarningMicronixUploadDateFormat"),
-      textOutput("WarningUploadInvalidData"),
-      textOutput("WarningUploadMicronixStudyShortCodes"),
+      fileInput("UploadSampleDataSet", "2. Upload Samples File", width = '47%', multiple = FALSE, accept = c("text/csv", "text/comma-separated-values,text/plain", ".csv")),
+      conditionalPanel(condition = "input.UploadSampleType == \"micronix\"",
+                fluidRow(column(width = 6, radioButtons("UploadFileType", label = NULL, choices = c("VisionMate" = "visionmate", "Traxcer" = "traxcer", "NA" = "na"), inline = T)),
+                         column(width = 6, tags$a(href='micronix_format_info.html', target='blank', 'More Info'))
+                )
+      ),
+      conditionalPanel(condition = "input.UploadSampleType == \"cryovial\"",
+                fluidRow( column(width = 6, radioButtons("UploadFileType", label = NULL, choices = c("NA" = "na"), inline = T)),
+                          column(width = 6, tags$a(href='micronix_format_info.html', target='blank', 'More Info'))
+                )
+      ),
       textOutput("WarningMicronixSpecimenExists"),
       #insert plate infor
-      HTML("<h5><b>3. Plate Name</b></h5>"),
-      fluidRow(column(width = 6, HTML("<p>Human Readable Name</p>"), selectizeInput("UploadMicronixPlateID", label = NULL, choices = c("", sampleDB::CheckTable(database = database, "micronix_plate")$name)))),
+      conditionalPanel(condition = "input.UploadSampleType == \"micronix\"",
+        HTML("<h5><b>3. Plate Name</b></h5>"),
+        fluidRow(column(width = 6, HTML("<p>Human Readable Name</p>"), selectizeInput("UploadStorageContainerDestID", label = NULL, choices = c("", sampleDB::CheckTable(database = database, "micronix_plate")$name), options = list(create = TRUE))),
+                 column(width = 6,  HTML("<p>Barcode (Optional)</p>"), textInput("UploadStorageContainerDestBarcode", label = NULL)))
+      ),
+      conditionalPanel(condition = "input.UploadSampleType == \"cryovial\"",
+        HTML("<h5><b>3. Box Name</b></h5>"),
+        fluidRow(column(width = 6, HTML("<p>Human Readable Name</p>"), selectizeInput("UploadStorageContainerDestID", label = NULL, choices = c("", sampleDB::CheckTable(database = database, "cryovial_box")$name), , options = list(create = TRUE))),
+                 column(width = 6,  HTML("<p>Barcode (Optional)</p>"), textInput("UploadStorageContainerDestBarcode", label = NULL)))
+      ),
       textOutput("WarningMicronixUploadContainerName"), 
+      textOutput("WarningMicronixUploadContainerBarcode"),
       #add freezer infor
       HTML("<h5><b>4. Freezer Address</b></h5>"),
-      HTML("<p>Freezer Name</p>"), selectInput("UploadMicronixLocation", label = NULL, width = '47%', choices = c("", sampleDB::CheckTable(database = database, "location")$location_name) %>% sort()),
-      HTML("<p>Shelf Name</p>"), selectInput("UploadLocationMicronixLevelI", label = NULL, width = '47%', choices = NULL),
-      HTML("<p>Basket Name</p>"), selectInput("UploadLocationMicronixLevelII", label = NULL, width = '47%', choices = NULL),
+      HTML("<p>Freezer Name</p>"), selectInput("UploadStorageContainerDestLocation", label = NULL, width = '47%', choices = c("", sampleDB::CheckTable(database = database, "location")$location_name) %>% sort()),
+      HTML("<p>Shelf Name</p>"), selectInput("UploadStorageContainerDestLocationLevelI", label = NULL, width = '47%', choices = NULL),
+      HTML("<p>Basket Name</p>"), selectInput("UploadStorageContainerDestLocationLevelII", label = NULL, width = '47%', choices = NULL),
       
       hr(),
       #action buttons
-      fluidRow(column(width = 6, actionButton("UploadMicronixActionButton", width = '100%', label = "Upload Samples", style="color: #fff; background-color: #337ab7; border-color: #2e6da4")),
-               column(width = 6, actionButton("ClearMicronixUploadForm", width = '100%', label = "Clear Form", style="color:#c4244c; background-color: #fff4f4; border-color: #c4244c"))),
+      fluidRow(column(width = 6, actionButton("UploadAction", width = '100%', label = "Upload Samples", style="color: #fff; background-color: #337ab7; border-color: #2e6da4")),
+               column(width = 6, actionButton("ClearUploadForm", width = '100%', label = "Clear Form", style="color:#c4244c; background-color: #fff4f4; border-color: #c4244c"))),
       
       br(),
       #output messages

@@ -67,11 +67,11 @@ CREATE TABLE IF NOT EXISTS "storage_container" (
 
 	"id"				INTEGER NOT NULL,
 	"specimen_id"		INTEGER NOT NULL,
-	"type"				VARCHAR(255),
+	"type"				VARCHAR NOT NULL,
 	"comment" 			TEXT DEFAULT NULL,
 	"state_id"			INTEGER NOT NULL,
 	"status_id"			INTEGER NOT NULL,
-	"derived_storage_container_id"	INTEGER NOT NULL,
+	"derived_storage_container_id"	INTEGER DEFAULT NULL,
 
 	PRIMARY KEY("id"),
 	FOREIGN KEY("state_id") 	REFERENCES "state"("id"),
@@ -90,7 +90,7 @@ CREATE TABLE IF NOT EXISTS "cryovial_box" (
 	"id"			INTEGER NOT NULL,
 	"location_id"	INTEGER NOT NULL,
 	"name"			VARCHAR NOT NULL UNIQUE,
-	"barcode"		VARCHAR NOT NULL UNIQUE,
+	"barcode"		VARCHAR DEFAULT NULL UNIQUE,
 
 	PRIMARY KEY("id"),
 	FOREIGN KEY("location_id") REFERENCES "location"("id")
@@ -104,7 +104,7 @@ CREATE TABLE IF NOT EXISTS "micronix_plate" (
 	"id"			INTEGER NOT NULL,
 	"location_id"	INTEGER NOT NULL,
 	"name"			VARCHAR NOT NULL UNIQUE, 
-	"barcode"		VARCHAR NOT NULL UNIQUE,
+	"barcode"		VARCHAR DEFAULT NULL UNIQUE,
 
 	PRIMARY KEY("id"),
 	FOREIGN KEY("location_id") REFERENCES "location"("id")
@@ -118,28 +118,27 @@ CREATE TABLE IF NOT EXISTS "micronix_tube" (
 	"id"			INTEGER NOT NULL,
 	"manifest_id"	INTEGER NOT NULL,
 	"barcode"		VARCHAR NOT NULL UNIQUE,
-	"index"			VARCHAR,
+	"position"		VARCHAR CHECK(length("position") == 3 OR "position" IS NULL),
 
 	PRIMARY KEY("id"),
 	FOREIGN KEY("id") REFERENCES "storage_container"("id"),
 	FOREIGN KEY("manifest_id") REFERENCES "micronix_plate"("id"),
 
-	CONSTRAINT "matrix_tube_position_plate_uc" UNIQUE("index","manifest_id")
-	CHECK(length("index") == 3)
+	CONSTRAINT "matrix_tube_position_plate_uc" UNIQUE("position", "manifest_id")
 );
 
 CREATE TABLE IF NOT EXISTS "cryovial_tube" (
 	"id"			INTEGER NOT NULL,
 	"manifest_id"	INTEGER NOT NULL,
 	"barcode"		VARCHAR NOT NULL UNIQUE,
-	"index"			VARCHAR,
+	"position"		VARCHAR CHECK(length("position") == 3 OR "position" IS NULL),
 
 	PRIMARY KEY("id"),
 	FOREIGN KEY("id") REFERENCES "storage_container"("id"),
 	FOREIGN KEY("manifest_id") REFERENCES "cryovial_box"("id"),
 
-	CONSTRAINT "box_index_plate_uc" UNIQUE("index","manifest_id"),
-	CHECK(length("index") == 3)
+	CONSTRAINT "box_index_plate_uc" UNIQUE("position", "manifest_id")
+	
 );
 
 CREATE TABLE IF NOT EXISTS "location" (

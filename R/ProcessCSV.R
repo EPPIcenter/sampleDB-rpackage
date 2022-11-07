@@ -75,11 +75,11 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
 
   # applies for all upload storage types
   if (user_action %in% c("upload")) {
-    required_user_column_names <- c(required_user_column_names, c("Participant", "SpecimenType", "StudyCode"))
+    required_user_column_names <- c(required_user_column_names, c("StudySubject", "SpecimenType", "StudyCode"))
     conditional_user_column_names <- c("CollectionDate")
     optional_user_column_names <- c("Comment")
   } else if (user_action %in% c("search")) {
-    optional_user_column_names <- c("CollectionDate", "StudyCode", "Participant", "SpecimenType")
+    optional_user_column_names <- c("CollectionDate", "StudyCode", "StudySubject", "SpecimenType")
   }
 
   ## second row is valid because traxcer will have "plate_label:" in the first row
@@ -108,7 +108,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
     } else if ("collection_date" %in% colnames(user_file)) {
       df_invalid <- filter(tmp, is_longitudinal == 1 & is.na(collection_date))
       if (nrow(df_invalid) > 0) {
-        errmsg <- paste("Missing collection date for following sample barcode(s):", paste(df_invalid$index, collapse = " "))
+        errmsg <- paste("Missing collection date for following sample barcode(s):", paste(df_invalid$position, collapse = " "))
         stop(errmsg)
       }
     }
@@ -127,19 +127,19 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
     ## Micronix
     if (sample_storage_type == "micronix" && file_type == "na") {
       processed_file$barcode <- user_file$MicronixBarcode
-      processed_file$index <- paste0(user_file$Row, user_file$Column)
+      processed_file$position <- paste0(user_file$Row, user_file$Column)
     } else if (sample_storage_type == "micronix" && file_type == "traxcer") {
       processed_file$barcode <- user_file$`Tube ID`
-      processed_file$index <- user_file %>% pull(all_of(traxcer_position))
+      processed_file$position <- user_file %>% pull(all_of(traxcer_position))
     } else if (sample_storage_type == "micronix" && file_type == "visionmate") {
       processed_file$barcode = user_file$TubeCode
-      processed_file$index  = paste0(user_file$LocationRow, user_file$LocationColumn) 
+      processed_file$position  = paste0(user_file$LocationRow, user_file$LocationColumn) 
     }
 
     ## Cryovial
     else if (sample_storage_type == "cryovial") {
       processed_file$barcode <- user_file$Barcode
-      processed_file$index <-  paste0(user_file$BoxRow, ":", user_file$BoxColumn)
+      processed_file$position <-  paste0(user_file$BoxRow, ":", user_file$BoxColumn)
     }
   }
 
@@ -163,13 +163,23 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
     } else {
       processed_file$comment <- rep(NA, nrow(user_file))
     }
+
+
+    manifest_barcode_name <- switch(sample_storage_type,
+      "micronix" = "PlateBarcode",
+      "cryovial" = "Rack ID")
+
+    if (manifest_barcode_name %in% colnames(user_file)) {
+      processed_file$manifest_barcode <- user_file %>% pull(all_of(manifest_barcode_name))
+    } else {
+      processed_file$manifest_barcode <- rep(NA, nrow(user_file))
+    }
   }
 
   processed_file <- as.data.frame(processed_file)
-  print(processed_file)
   ### Quality check the data now
 
-  print("Formatting complete.")
+  message("Formatting complete.")
   .CheckFormattedFileData(
     database = database,
     formatted_csv = processed_file,
@@ -187,16 +197,17 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
 
 .CheckFormattedFileData <- function(database, formatted_csv, sample_storage_type, user_action, required_user_column_names, conditional_user_column_names, optional_user_column_names, container_name) {
 
+  
   # this is an internal mapping to the database that should not be exposed to the user
   required_names <- requires_data <- container_metadata <- NULL
   if (user_action %in% c("upload", "move")) {
     required_names <- switch(sample_storage_type,
         "micronix" = c(
-          "index",
+          "position",
           "barcode"
         ),
         "cryovial" = c(
-          "index",
+          "position",
           "barcode"
         )
       )
@@ -283,7 +294,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
         inner_join(tbl(con, container_tables[["container_class"]]), by = c("id" = "id")) %>%
         inner_join(tbl(con, container_tables[["manifest"]]), by = c("manifest_id" = "id")) %>%
         filter(name == container_name) %>%
-        select(manifest_id, index, status_id) %>%
+        select(manifest_id, position, status_id) %>%
         collect() %>%
         nrow(.) == 0)
 
@@ -296,12 +307,12 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
           nrow(.) > 0)
 
         stopifnot("Specimen type not found" = tbl(con, "specimen_type") %>%
-          filter(barcode %in% specimen_types) %>%
+          filter(name %in% specimen_types) %>%
           collect() %>%
           nrow(.) > 0)
       }
 
-      print("Validation Complete.")
+      message("Validation complete.")
     },
     error = function(e) {
       bError <<- TRUE
@@ -325,7 +336,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
   # sanity check
   stopifnot("File is empty" = nrow(user_file) > 1)
 
-  # this variable will be set with the valid header row index (if it exists)
+  # this variable will be set with the valid header row position (if it exists)
   header_ridx <- 0
 
   for (colname_ridx in valid_header_rows) {
@@ -341,7 +352,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
 
 .CheckIndexIsValid <- function(formatted_csv, sample_storage_type) {
 
-  indexes <- formatted_csv %>% pull(index)
+  indexes <- formatted_csv %>% pull(position)
   if ("micronix" == sample_storage_type) {
 
     # check row letters
@@ -356,10 +367,10 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
     # check for duplicates
     well_dups_check <- !duplicated(indexes)
 
-    stopifnot("Invalid micronix index" = all(row_letter_check) && length(col_number_indices) == length(indexes) && all(well_dups_check))
+    stopifnot("Invalid micronix position" = all(row_letter_check) && length(col_number_indices) == length(indexes) && all(well_dups_check))
   } else if ("cryovial" == sample_storage_type) {
     valid <- lapply(strsplit(indexes, ":"), function(x) { return(nchar(x[1]) == 1 & !is.na(as.integer(x[1])) & nchar(x[2]) == 1 & !is.na(as.integer(x[2]))) })
-    stopifnot("Invalid cryovial index" = all(unlist(valid)))
+    stopifnot("Invalid cryovial position" = all(unlist(valid)))
   } else {
     stop("Index validation for sample_storage_type is not implemented.")
   }

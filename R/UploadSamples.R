@@ -80,15 +80,16 @@ UploadSamples <- function(sample_type, upload_data, container_name, freezer_addr
 }
 
 .UploadSamples <- function(upload_data, sample_type, conn, container_name, container_barcode, freezer_address){
+  browser()
   RSQLite::dbBegin(conn)
   for(i in 1:nrow(upload_data)){
 
     #1. get upload item's metadata
     eval.specimen_type <- upload_data[i, ]$"specimen_type" %>% as.character()
     eval.study_code <- upload_data[i, ]$"study_short_code" %>% as.character()
-    eval.subject <- upload_data[i, ]$"participant" %>% as.character()
+    eval.subject <- upload_data[i, ]$"study_subject" %>% as.character()
     eval.barcode <- upload_data[i,]$"barcode" %>% as.character()
-    eval.well_position <- upload_data[i,]$"index"
+    eval.well_position <- upload_data[i,]$"position"
     eval.comment <- upload_data[i,]$"comment" %>% as.character()
     eval.plate_barcode <- upload_data[i,]$"manifest_barcode" %>% as.character()
     if(is.na(upload_data[i, ]$"collection_date")){
@@ -99,17 +100,17 @@ UploadSamples <- function(sample_type, upload_data, container_name, freezer_addr
     }
 
     #get a database id for a upload item's specimen_type and study
-    eval.specimen_type_id <- filter(CheckTableTx(conn = conn, "specimen_type"), barcode == eval.specimen_type)$id
+    eval.specimen_type_id <- filter(CheckTableTx(conn = conn, "specimen_type"), name == eval.specimen_type)$id
     eval.study_id <- filter(CheckTableTx(conn = conn, "study"), short_code == eval.study_code)$id
 
     #2a. check if this upload item's StudySubject (subject+study combination) exists in the database
-    tmp_table.study_subject <- inner_join(CheckTableTx(conn = conn, "study_subject")[, c("subject", "study_id")],
-                                          tibble(subject = eval.subject, study_id = eval.study_id),
-                                          by = c("subject", "study_id"))
+    tmp_table.study_subject <- inner_join(CheckTableTx(conn = conn, "study_subject")[, c("name", "study_id")],
+                                          tibble(name = eval.subject, study_id = eval.study_id),
+                                          by = c("name", "study_id"))
 
     #if this upload item's StudySubject exists in the database, then get the necessary "study_subject" id
     if(nrow(tmp_table.study_subject) > 0){
-      eval.study_subject_id <- filter(CheckTableTx(conn = conn, "study_subject"), subject == eval.subject, study_id == eval.study_id)$id
+      eval.study_subject_id <- filter(CheckTableTx(conn = conn, "study_subject"), name == eval.subject, study_id == eval.study_id)$id
 
       #3a. check if this sample exists (subject+study+specimen_type) in the database
       tmp_table.specimen <- inner_join(CheckTableTx(conn = conn, "specimen")[,c("study_subject_id", "specimen_type_id", "collection_date")],
@@ -151,7 +152,7 @@ UploadSamples <- function(sample_type, upload_data, container_name, freezer_addr
       AddToTable("study_subject",
                            list(created = lubridate::now() %>% as.character(),
                                 last_updated = lubridate::now() %>% as.character(),
-                                subject = eval.subject,
+                                name = eval.subject,
                                 study_id = eval.study_id),
                            conn = conn) %>% suppressWarnings()
 
@@ -193,17 +194,34 @@ UploadSamples <- function(sample_type, upload_data, container_name, freezer_addr
     # 6. Create new sample housing (if it does not alread exist) and upload samples into housing
     if(sample_type == "micronix"){
       # create a new housing (if it does not already exist)
-      if(!container_name %in% CheckTableTx(conn = conn, "micronix_plate")$plate_name){
-        eval.plate_id <- sampleDB:::.UploadMicronixPlate(conn = conn, container_name = container_name, container_barcode = eval.plate_barcode, freezer_address = freezer_address)
+      if(!container_name %in% CheckTableTx(conn = conn, "micronix_plate")$name){
+        eval.plate_id <- sampleDB:::.UploadPlate(conn = conn, container_name = container_name, container_barcode = eval.plate_barcode, freezer_address = freezer_address, table = "micronix_plate")
       }else{
-        eval.plate_id <- filter(CheckTableTx(conn = conn, "micronix_plate"), plate_name == container_name)$id
+        eval.plate_id <- filter(CheckTableTx(conn = conn, "micronix_plate"), name == container_name)$id
       }
 
       # 7. upload micronix sample
       AddToTable(table_name = "micronix_tube",
                            info_list = list(id = eval.id,
-                                            plate_id = eval.plate_id,
-                                            well_position = eval.well_position,
+                                            manifest_id = eval.plate_id,
+                                            position = eval.well_position,
+                                            barcode = eval.barcode),
+                           conn = conn) %>% suppressWarnings()
+    }
+    else if (sample_type == "cryovial") {
+      browser()
+     # create a new housing (if it does not already exist)
+      if(!container_name %in% CheckTableTx(conn = conn, "cryovial_box")$name){
+        eval.plate_id <- sampleDB:::.UploadPlate(conn = conn, container_name = container_name, container_barcode = eval.plate_barcode, freezer_address = freezer_address, table = "cryovial_box")
+      }else{
+        eval.plate_id <- filter(CheckTableTx(conn = conn, "cryovial_box"), name == container_name)$id
+      }
+
+      # 7. upload micronix sample
+      AddToTable(table_name = "cryovial_tube",
+                           info_list = list(id = eval.id,
+                                            manifest_id = eval.plate_id,
+                                            position = eval.well_position,
                                             barcode = eval.barcode),
                            conn = conn) %>% suppressWarnings()
     }
@@ -249,7 +267,7 @@ UploadSamples <- function(sample_type, upload_data, container_name, freezer_addr
 .SaveUploadCSV <- function(upload_data, container_name){
   path <- normalizePath(
       file.path(dirname(Sys.getenv("SDB_PATH")), "upload_files"))
-  
+
   if(dir.exists(path)) {
     write.csv(upload_data,
       suppressWarnings(

@@ -236,7 +236,7 @@ SearchSamples <- function(sample_type = NULL, sample_barcode = NULL, container_n
                          tables.database$table.cryovial_box[, c("id","name", "location_id")],
                          by = c("box_id" = "id")) %>%
     select(-c(box_id)) %>%
-    rename(container_position = index,
+    rename(container_position = position,
            container_name = name) %>%
     mutate(type = "Cryovial")
 
@@ -244,7 +244,7 @@ SearchSamples <- function(sample_type = NULL, sample_barcode = NULL, container_n
                          tables.database$table.plate[, c("id","name", "location_id")],
                          by = c("plate_id" = "id")) %>%
     select(-c(plate_id)) %>%
-    rename(container_position = index,
+    rename(container_position = position,
            container_name = name,
            barcode = barcode) %>%
     mutate(type = "Micronix")
@@ -255,7 +255,7 @@ SearchSamples <- function(sample_type = NULL, sample_barcode = NULL, container_n
   external_data <- inner_join(external_data, tables.database$table.location, by = c("location_id" = "id")) %>%
     select(-c("created", "last_updated"))
 
-  archived_df <-  tibble(id = setdiff(storage_container_id, external_data$id), index = NA,
+  archived_df <-  tibble(id = setdiff(storage_container_id, external_data$id), position = NA,
                          container_position = NA, container_name = NA, location_id = NA, type = NA,
                          location_name = NA, location_type = NA, level_I = NA, level_II = NA, level_III = NA)
 

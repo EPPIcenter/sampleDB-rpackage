@@ -190,7 +190,8 @@ library(yaml)
 }
 
 #upload a new micronix plate
-.UploadMicronixPlate <- function(conn, container_name, container_barcode, freezer_address){
+.UploadPlate <- function(conn, container_name, container_barcode, freezer_address, table){
+
   eval.location_id <- filter(CheckTableTx(conn = conn, "location"), location_name == freezer_address$location, level_I == freezer_address$level_I, level_II == freezer_address$level_II)$id
   if(is.null(container_barcode) | is.na(container_barcode)) {
     container_barcode <- NA
@@ -202,15 +203,15 @@ library(yaml)
     container_barcode <- container_barcode
   }
 
-  AddToTable("micronix_plate",
+  AddToTable(table,
                        list(created = lubridate::now() %>% as.character(),
                             last_updated = lubridate::now() %>% as.character(),
                             location_id = eval.location_id,
-                            plate_name = container_name,
-                            plate_barcode = container_barcode),
+                            name = container_name,
+                            barcode = container_barcode),
                        conn = conn) %>% suppressWarnings()
 
-  eval.plate_id <- tail(sampleDB::CheckTableTx(conn = conn, "micronix_plate"), 1)$id
+  eval.plate_id <- tail(sampleDB::CheckTableTx(conn = conn, table), 1)$id
 
   return(eval.plate_id)
 

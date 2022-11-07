@@ -32,7 +32,7 @@ function(input, output, session) {
     # --------- Upload Samples -------------
 
     # Upload Micronix Samples
-    MicronixUpload(session, output, input, database)
+    AppUploadSamples(session, output, input, database)
     
     # Upload Cryo Samples
     # CryoUpload(session, output, input, database)

@@ -102,7 +102,7 @@ MoveSamples <- function(sample_type, move_data){
     for (i in 1:nrow(samples)){
       if(sample_type == "micronix"){
         eval.barcode <- samples[i,]$"barcode"
-        eval.well_pos <- samples[i,]$"index"
+        eval.well_pos <- samples[i,]$"position"
 
         # Find move data that matches sample data
         m <- which(stacked_orphaned_sample_data$barcode == eval.barcode)
@@ -111,7 +111,7 @@ MoveSamples <- function(sample_type, move_data){
         stacked_orphaned_sample_data[m, "plate_id"] <- filter(sampleDB::CheckTable(database = database, "micronix_plate"), name == container_name)$id
 
         # Use move data to place sample into proper container position
-        stacked_orphaned_sample_data[m, "index"] <- eval.well_pos
+        stacked_orphaned_sample_data[m, "position"] <- eval.well_pos
       }
     }
   }
@@ -181,7 +181,7 @@ MoveSamples <- function(sample_type, move_data){
       for (i in 1:nrow(move_data)){
         if(sample_type == "micronix"){
           eval.barcode <- move_data[i,]$barcode
-          eval.well_pos <- move_data[i,]$index
+          eval.well_pos <- move_data[i,]$position
 
           # get sample id
           id <- filter(sampleDB::CheckTable(database = database, "micronix_tube"), barcode == eval.barcode)$id

@@ -16,7 +16,7 @@ After minimal installation and setup SampleDB can be accessed at the url:
 3. R >= 4.0
 4. [Rstudio Server](https://www.rstudio.com/products/rstudio/download-server/) or ![Rstudio Workbench](https://www.rstudio.com/products/workbench/)
 5. [Shiny Server](https://www.rstudio.com/products/shiny/download-server/)
-6. [sqlite3](https://www.sqlite.org/index.html)
+6. [sqlite3](https://www.sqlite.org/position.html)
 
 ## Installation
 
