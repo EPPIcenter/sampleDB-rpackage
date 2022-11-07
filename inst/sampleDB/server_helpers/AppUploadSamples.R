@@ -14,9 +14,7 @@ AppUploadSamples <- function(session, output, input, database){
 
   observe({
     req(input$UploadSampleDataSet)
-    print("reaction!")
-    print(rv$user_file)
-    rv$user_file <- read.csv(input$UploadSampleDataSet$datapath, header = F) %>% suppressWarnings() 
+    rv$user_file <- input$UploadSampleDataSet$datapath
   })
 
   # 1. get path to user provided file, if path exists perform checks and reformat file
@@ -43,17 +41,24 @@ AppUploadSamples <- function(session, output, input, database){
 
     file_type <- input$UploadFileType
     sample_storage_type <- input$UploadSampleType
+    container_name <- input$UploadStorageContainerDestID
 
     formatted_file <- NULL
     b_use_wait_dialog <- FALSE
     output$UploadMicronixReturnMessage2 <- renderText({
       tryCatch({
           user_file <- isolate({ rv$user_file })
-          # simple way to add a dialog or not
-          b_use_wait_dialog <- nrow(user_file) > 5
 
           #check colnames of user provided file
-          user_file <- sampleDB::ProcessCSV(user_file = user_file, user_action = "upload", file_type = file_type, sample_storage_type = sample_storage_type)
+          user_file <- sampleDB::ProcessCSV(
+            user_csv = user_file,
+            user_action = "upload",
+            file_type = file_type,
+            sample_storage_type = sample_storage_type,
+            container_name = container_name)
+
+          # simple way to add a dialog or not
+          b_use_wait_dialog <- nrow(user_file) > 5
 
           if (b_use_wait_dialog) {
             show_modal_spinner(
@@ -68,8 +73,7 @@ AppUploadSamples <- function(session, output, input, database){
 
           sampleDB::UploadSamples(sample_type = sample_storage_type, 
                                                 upload_data = user_file, 
-                                                container_name = isolate({ input$UploadStorageContainerDestID }), 
-                                                container_barcode = input$UploadStorageContainerDestBarcode, 
+                                                container_name = isolate({ input$UploadStorageContainerDestID }),
                                                 freezer_address = list(location_name = input$UploadStorageContainerDestLocation, 
                                                                        level_I = input$UploadStorageContainerDestLocationLevelI, 
                                                                        level_II = input$UploadStorageContainerDestLocationLevelII))

@@ -79,12 +79,13 @@ SearchSamples <- function(sample_type = NULL, sample_barcode = NULL, container_n
   aggregated.results <- .UseInternalAndExternalDataToGetResults(internal_data = aggregated.internal_data,
                                                                  external_data = aggregated.external_data)
 
+
   # TODO: this is temporary until we get a better
   # search system down. The previous search terms were
   # already there, renaming for ease of use and because
   # short on time.
   filters <- list(type = sample_type,
-                  barcode = sample_label,
+                  barcode = sample_barcode,
                   container_name = container_name,
                   subject_uid = study_subject,
                   specimen_type = specimen_type,
@@ -169,7 +170,7 @@ SearchSamples <- function(sample_type = NULL, sample_barcode = NULL, container_n
   # USE LOCATION LIST TO GET STORAGE CONTAINER ID
   if(term.search == "search.location"){
     location_ref_id <- .GetLocationID(filters = filters, tables.database = tables.database)
-    tubes_id <- filter(tables.database$table.cryovial_tube, box_id %in% filter(tables.database$table.cryovial_box, location_id %in% location_ref_id)$id)$id
+    tubes_id <- filter(tables.database$table.cryovial_tube, manifest_id %in% filter(tables.database$table.cryovial_box, location_id %in% location_ref_id)$id)$id
     matrix_tubes_id <- filter(tables.database$table.micronix_tube, plate_id %in% filter(tables.database$table.plate, location_id %in% location_ref_id)$id)$id
     storage_container_id <- filter(tables.database$table.storage_container, id %in% c(tubes_id, rdt_id, paper_id, matrix_tubes_id))$id
   }
@@ -213,11 +214,12 @@ SearchSamples <- function(sample_type = NULL, sample_barcode = NULL, container_n
   collection_date <- table.ref1$collection_date
 
   table.ref2 <- inner_join(table.ref1, tables.database$table.study_subject, by = c("study_subject_id" = "id"))
-  subject_uids <- table.ref2$name
+  table.ref2 <- table.ref2 %>% rename(study_subject_name = name)
+  subject_uids <- table.ref2$study_subject_name
   study_short_code <- inner_join(table.ref2, tables.database$table.study, by = c("study_id" = "id"))$short_code
   status_info <- inner_join(table.ref2, tables.database$table.status, by = c("status_id" = "id"))$name
   state_info <- inner_join(table.ref2, tables.database$table.state, by = c("state_id" = "id"))$name
-  specimen_type_labels <- inner_join(table.ref1, tables.database$table.specimen_type, by = c("specimen_type_id" = "id"))$barcode
+  specimen_type_labels <- inner_join(table.ref1, tables.database$table.specimen_type, by = c("specimen_type_id" = "id"))$name
 
   internal_data <- list(storage_container_id = storage_container_id,
                         status_info = status_info,
@@ -234,16 +236,16 @@ SearchSamples <- function(sample_type = NULL, sample_barcode = NULL, container_n
 .UseStorageContainerIDToGetExternalData <- function(storage_container_id, tables.database){
   tube_dat <- inner_join(filter(tables.database$table.cryovial_tube, id %in% storage_container_id),
                          tables.database$table.cryovial_box[, c("id","name", "location_id")],
-                         by = c("box_id" = "id")) %>%
-    select(-c(box_id)) %>%
+                         by = c("manifest_id" = "id")) %>%
+    select(-c(manifest_id)) %>%
     rename(container_position = position,
            container_name = name) %>%
     mutate(type = "Cryovial")
 
   micr_dat <- inner_join(filter(tables.database$table.micronix_tube, id %in% storage_container_id),
                          tables.database$table.plate[, c("id","name", "location_id")],
-                         by = c("plate_id" = "id")) %>%
-    select(-c(plate_id)) %>%
+                         by = c("manifest_id" = "id")) %>%
+    select(-c(manifest_id)) %>%
     rename(container_position = position,
            container_name = name,
            barcode = barcode) %>%

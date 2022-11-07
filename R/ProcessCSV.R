@@ -50,7 +50,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
           "Tube ID"
         ),
         "na" = c(
-          "MicronixBarcode",
+          "Barcode",
           "Row",
           "Column"
         )
@@ -126,7 +126,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
   if (user_action %in% c("upload", "move")) {
     ## Micronix
     if (sample_storage_type == "micronix" && file_type == "na") {
-      processed_file$barcode <- user_file$MicronixBarcode
+      processed_file$barcode <- user_file$Barcode
       processed_file$position <- paste0(user_file$Row, user_file$Column)
     } else if (sample_storage_type == "micronix" && file_type == "traxcer") {
       processed_file$barcode <- user_file$`Tube ID`
@@ -253,10 +253,9 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
 
       stopifnot("All collection dates are not in YMD format" = .CheckDateFormat(formatted_csv))
 
-      .CheckIndexIsValid(formatted_csv, sample_storage_type)
+      .CheckPositionIsValid(formatted_csv, sample_storage_type)
 
       # check that there are no empty cells besides collection_date (checked later) and comment (may or may not exist)
-
 
       errmsg <- paste0(sample_storage_type, " barcodes must be ", barcode_length_constraint, " long.")
       stopifnot(errmsg = all(nchar(formatted_csv$barcode) == barcode_length_constraint))
@@ -350,26 +349,31 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
   return(header_ridx)
 }
 
-.CheckIndexIsValid <- function(formatted_csv, sample_storage_type) {
+.CheckPositionIsValid <- function(formatted_csv, sample_storage_type) {
 
-  indexes <- formatted_csv %>% pull(position)
+  positions <- formatted_csv %>% pull(position)
   if ("micronix" == sample_storage_type) {
 
     # check row letters
-    row_letter_check <- substr(indexes, 1, 1) %in% LETTERS
+    row_letter_check <- substr(positions, 1, 1) %in% LETTERS
 
     # make sure the columns are numbers and above zero
-    col_numbers <- substr(indexes, 2, nchar(indexes))
+    col_numbers <- substr(positions, 2, nchar(positions))
     col_number_indices <- which(col_numbers %>%
       as.numeric() %>%
       suppressWarnings() > 0)
 
-    # check for duplicates
-    well_dups_check <- !duplicated(indexes)
 
-    stopifnot("Invalid micronix position" = all(row_letter_check) && length(col_number_indices) == length(indexes) && all(well_dups_check))
+    if (!all(nchar(col_numbers) == 2)) {
+      stop("Numbers should be in ## format. Fill with zero if less than 10 (e.g \"05\")")
+    }
+
+    # check for duplicates
+    well_dups_check <- !duplicated(positions)
+
+    stopifnot("Invalid micronix position" = all(row_letter_check) && length(col_number_indices) == length(positions) && all(well_dups_check))
   } else if ("cryovial" == sample_storage_type) {
-    valid <- lapply(strsplit(indexes, ":"), function(x) { return(nchar(x[1]) == 1 & !is.na(as.integer(x[1])) & nchar(x[2]) == 1 & !is.na(as.integer(x[2]))) })
+    valid <- lapply(strsplit(positions, ":"), function(x) { return(nchar(x[1]) == 1 & !is.na(as.integer(x[1])) & nchar(x[2]) == 1 & !is.na(as.integer(x[2]))) })
     stopifnot("Invalid cryovial position" = all(unlist(valid)))
   } else {
     stop("Index validation for sample_storage_type is not implemented.")

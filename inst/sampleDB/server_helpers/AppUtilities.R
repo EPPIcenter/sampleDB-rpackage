@@ -4,7 +4,7 @@ library(yaml)
 
 # Get UI Elements
 GetUIUploadElements <- function(sample_type, msg = NULL){
-  
+
   if(sample_type == "micronix"){
     ui.input <- list(UploadPlateID = "UploadMicronixPlateID",
                      UploadDataSet = "UploadMicronixDataSet",
@@ -32,7 +32,7 @@ GetUIUploadElements <- function(sample_type, msg = NULL){
 }
 
 GetUISearchElements <- function(){
-  
+
   ui.input <- list(SearchByLocation = "SearchByLocation",
                    SearchByLevelI = "SearchByLevelI",
                    SearchByLevelII = "SearchByLevelII",
@@ -57,13 +57,13 @@ GetUISearchElements <- function(){
                    SearchByBarcodeType = "SearchByBarcodeType")
   ui.output <- list(SearchResultsTable = "SearchResultsTable",
                     downloadData = "downloadData")
-  
+
   ui_elements <- list(ui.input = ui.input, ui.output = ui.output)
   return(ui_elements)
 }
 
 GetUIMoveElements <- function(sample_type, msg = NULL){
-  
+
   if(sample_type == "micronix"){
     ui.input <-  list(MicronixFileType = "MoveFileType",
                       MoveDataSet = "MoveDataSet",
@@ -73,13 +73,13 @@ GetUIMoveElements <- function(sample_type, msg = NULL){
     ui.output <- list(WarningLogisticalColnames = "WarningMoveLogisticalColnames",
                       WarningMoveBarcodesExist = "WarningMoveBarcodesExist")
   }
-  
+
   ui_elements <- list(ui.input = ui.input, ui.output = ui.output)
   return(ui_elements)
 }
 
 GetUIFreezerElements <- function(msg = NULL){
-  
+
   ui.input <- list(AddFreezerName = "AddFreezerName",
                    AddFreezerType = "AddFreezerType",
                    AddFreezerLevel_I = "AddFreezerLevel_I",
@@ -101,13 +101,13 @@ GetUIFreezerElements <- function(msg = NULL){
                    WarningFreezerNameChangeUnique = "WarningFreezerNameChangeUnique",
                    WarningFreezerDeletion = "WarningFreezerDeletion",
                    FreezerReturnMessage = "FreezerReturnMessage")
-  
+
   ui_elements <- list(ui.input = ui.input, ui.output = ui.output)
   return(ui_elements)
 }
 
 GetUISpecimenTypeElements <- function(msg = NULL){
-  
+
   ui.input <- list(AddSpecimenType = "AddSpecimenType",
                    AddSpecimenTypeAction = "AddSpecimenTypeAction",
                    RenameSpecimenType1 = "RenameSpecimenType1",
@@ -119,13 +119,13 @@ GetUISpecimenTypeElements <- function(msg = NULL){
                    WarningChangeSpecimenTypeUnique = "WarningChangeSpecimenTypeUnique",
                    WarningSpecimenTypeDeletion = "WarningSpecimenTypeDeletion",
                    SpecimenReturnMessage = "SpecimenReturnMessage")
-  
+
   ui_elements <- list(ui.input = ui.input, ui.output = ui.output)
   return(ui_elements)
 }
 
 GetUIStudiesElements <- function(msg = NULL){
-  
+
   ui.input <-  list(AddStudyTitle = "AddStudyTitle",
                     AddStudyDescription = "AddStudyDescription",
                     AddStudyLeadPerson = "AddStudyLeadPerson",
@@ -147,13 +147,13 @@ GetUIStudiesElements <- function(msg = NULL){
                     WarningStudyChangeShortCodeUnique = "WarningStudyChangeShortCodeUnique",
                     WarnStudyDeletion = "WarnStudyDeletion",
                     StudyReturnMessage = "StudyReturnMessage")
-  
+
   ui_elements <- list(ui.input = ui.input, ui.output = ui.output)
   return(ui_elements)
 }
 
 GetUIDelArchElements <- function(){
-  
+
   ui.input <- list(SearchByLocation = "DelArchSearchByLocation",
                    SearchByLevelI = "DelArchSearchByLevelI",
                    SearchByLevelII = "DelArchSearchByLevelII",
@@ -184,45 +184,45 @@ GetUIDelArchElements <- function(){
   ui.output <- list(SearchResultsTable = "DelArchSearchResultsTable",
                     SelectedRowsTable = "DelArchSearchResultsTable",
                     DelArchMessage = "DelArchMessage")
-  
+
   ui_elements <- list(ui.input = ui.input, ui.output = ui.output)
   return(ui_elements)
 }
 
 SearchFunction <- function(input, output, ui_elements){
-  
+
   #set default list.search_results
   list.search_results <- NULL
-  
+
   # get user ui input
   if(!is.na(input[[ui_elements$ui.input$dateRange]][1]) & !is.na(input[[ui_elements$ui.input$dateRange]][2])){
     eval.search.date <- list(date.from = input[[ui_elements$ui.input$dateRange]][1], date.to = input[[ui_elements$ui.input$dateRange]][2])
   }else{
     eval.search.date <- ""
   }
-  
+
   search.type <- input[[ui_elements$ui.input$SearchBySampleType]]
   barcode.search_method <- input[[ui_elements$ui.input$SearchByBarcodeType]]
   if(barcode.search_method == "multiple_barcodes"){
-    search.label <- list(input[[ui_elements$ui.input$SearchByBarcode]]$datapath, 
+    search.label <- list(input[[ui_elements$ui.input$SearchByBarcode]]$datapath,
                          input[[ui_elements$ui.input$SearchByCryovialLabels]]$datapath,
                          input[[ui_elements$ui.input$SearchByRDTLabels]]$datapath,
-                         input[[ui_elements$ui.input$SearchByPaperLabels]]$datapath) %>% 
+                         input[[ui_elements$ui.input$SearchByPaperLabels]]$datapath) %>%
       discard(., function(x) is.null(x) | "" %in% x) %>%
       map(., function(x){if(length(x > 0)){read.csv(x)$Barcode}}) %>%
-      unlist() 
+      unlist()
   }else{
     individual_barcode <- NULL
     if(ui_elements$ui.input$SearchBySingleBarcode != ""){
-      individual_barcode <- input[[ui_elements$ui.input$SearchBySingleBarcode]] 
+      individual_barcode <- input[[ui_elements$ui.input$SearchBySingleBarcode]]
     }
     search.label <- list(individual_barcode)
   }
-  
+
   # search.container <- list(micronix.container_name = input[[ui_elements$ui.input$SearchByPlate]],
   #                          cryovial.container_name = input[[ui_elements$ui.input$SearchByBox]],
   #                          rdt.container_name = input[[ui_elements$ui.input$SearchByRDTBag]],
-  #                          paper.container_name = input[[ui_elements$ui.input$SearchByPaperBag]]) %>% 
+  #                          paper.container_name = input[[ui_elements$ui.input$SearchByPaperBag]]) %>%
   #   discard(., function(x) is.null(x) | "" %in% x)
 
 
@@ -237,17 +237,17 @@ SearchFunction <- function(input, output, ui_elements){
                           level_II = input[[ui_elements$ui.input$SearchByLevelII]])
   search.specimen_type <- input[[ui_elements$ui.input$SearchBySpecimenType]]
   search.study <- input[[ui_elements$ui.input$SearchByStudy]]
-  
+
   tryCatch(
-    
+
     # search (if a single StudySubject is searched for)
     if(input[[ui_elements$ui.input$SubjectUIDSearchType]] == "individual"){
       search.study_subject <- input[[ui_elements$ui.input$SearchBySubjectUID]]
-      list.search_results <- sampleDB::SearchSamples(sample_type = search.type, sample_label = search.label, container_name = search.container, study_subject = search.study_subject,
+      list.search_results <- sampleDB::SearchSamples(sample_type = search.type, sample_barcode = search.label, container_name = search.container, study_subject = search.study_subject,
                                                      specimen_type = search.specimen_type, study = search.study, collection_dates = search.date, status = search.status,
                                                      state = search.state, freezer = search.location, return_sample_ids = T) %>% suppressWarnings()
     }else{
-      
+
       # search (if a file of StudySubjects is searched for)
       search_multiple_file <- read.csv(input[[ui_elements$ui.input$SearchBySubjectUIDFile]]$datapath)
 
@@ -255,7 +255,7 @@ SearchFunction <- function(input, output, ui_elements){
       if (typeof(search_multiple_file) != "list") {
         empty_columns <- colSums(is.na(search_multiple_file) | search_multiple_file == "") == nrow(search_multiple_file)
         search_multiple_file <- search_multiple_file[, !empty_columns]
-        search_multiple_file <- search_multiple_file[!apply(search_multiple_file, 1, function(row) all(row == "")), ] 
+        search_multiple_file <- search_multiple_file[!apply(search_multiple_file, 1, function(row) all(row == "")), ]
       }
 
       search.study_subject <- search_multiple_file$StudySubject
@@ -268,10 +268,10 @@ SearchFunction <- function(input, output, ui_elements){
       }
 
 
-      list.search_results <- sampleDB::SearchSamples(sample_type = search.type, sample_label = search.label, container_name = search.container, study_subject = search.study_subject,
+      list.search_results <- sampleDB::SearchSamples(sample_type = search.type, sample_barcode = search.label, container_name = search.container, study_subject = search.study_subject,
                                                      specimen_type = search.specimen_type, study = search.study, collection_dates = search.date, status = search.status,
                                                      state = search.state, freezer = search.location, return_sample_ids = T) %>% suppressWarnings()
-      
+
     },
     error=function(e){}
   )
@@ -280,11 +280,11 @@ SearchFunction <- function(input, output, ui_elements){
 }
 
 CheckPlates <- function(database, sample_type, input, output){
-  
+
   #get ui elements
   ui_elements <- GetUIUploadElements(sample_type)
   message("Checking user provided plate names...")
-  
+
   # check unique plate names
   # output[[ui_elements$ui.output$WarningUploadContainerName]] <- renderText({
   #   plate_name <- input[[ui_elements$ui.input$UploadPlateID]]
@@ -296,13 +296,13 @@ CheckPlates <- function(database, sample_type, input, output){
 FreezerChangesChecks <- function(input, database, output, ui_elements){
   # warn if freezer name is redundant
   output[[ui_elements$ui.output$WarningFreezerNameAddUnique]] <- renderText({
-    out <- sampleDB:::.CheckFreezerNameIsUnique(input, database, 
+    out <- sampleDB:::.CheckFreezerNameIsUnique(input, database,
                                      freezer_address = list(freezer_name = input[[ui_elements$ui.input$AddFreezerName]],
                                                             freezer_levelI = input[[ui_elements$ui.input$AddFreezerLevel_I]],
                                                             freezer_levelII = input[[ui_elements$ui.input$AddFreezerLevel_II]]))
     validate(need(out, "ERROR:\nFreezer address must be unique"))
   })
-  
+
   # warn if freezer name is redundant
   output[[ui_elements$ui.output$WarningFreezerNameChangeUnique]] <- renderText({
     out <- sampleDB:::.CheckFreezerNameIsUnique(input, database,
@@ -311,7 +311,7 @@ FreezerChangesChecks <- function(input, database, output, ui_elements){
                                                         freezer_levelII = input[[ui_elements$ui.input$RenameFreezerLevelII2]]))
     validate(need(out, "ERROR:\nFreezer address must be unique"))
   })
-  
+
   #warn deletion of freezer in use
   output$WarningFreezerDeletion <- renderText({
     out <- sampleDB:::.CheckFreezerDeletion(input, database,
@@ -328,13 +328,13 @@ SpecimenTypeChangesChecks <- function(input, database, output, ui_elements){
     out <- sampleDB:::.CheckSpecimenTypeUnique(input, database, specimen_type = input[[ui_elements$ui.input$AddSpecimenType]])
     validate(need(out, "ERROR:\nSpecimen type is not unique"))
   })
-  
+
   # warn if specimen type is redundant
   output[[ui_elements$ui.output$WarningChangeSpecimenTypeUnique]] <- renderText({
     out <- sampleDB:::.CheckSpecimenTypeUnique(input, database, specimen_type = input[[ui_elements$ui.input$RenameSpecimenType2]])
     validate(need(out, "ERROR:\nSpecimen type is not unique"))
   })
-  
+
   #warn deletion of specimen type in use
   output[[ui_elements$ui.output$WarningSpecimenTypeDeletion]] <- renderText({
     out <- sampleDB:::.CheckSpecimenTypeDeletion(input, database , specimen_type = input[[ui_elements$ui.input$DeleteSpecimenType]])
@@ -348,25 +348,25 @@ StudyChangesChecks <- function(input, database, output, ui_elements) {
     out <- sampleDB:::.CheckStudyTitleIsUnique(study_title = input[[ui_elements$ui.input$AddStudyTitle]], input = input, database = database)
     validate(need(out, "ERROR:\nStudy title is not unique"))
   })
-  
+
   #warn against study title duplication
   output[[ui_elements$ui.output$WarningStudyChangeTitleUnique]] <- renderText({
     out <- sampleDB:::.CheckStudyTitleIsUnique(study_title = input[[ui_elements$ui.input$RenameStudyTitle]], input = input, database = database)
     validate(need(out, "ERROR:\nStudy title is not unique"))
   })
-  
+
   #warn against study code duplication
   output[[ui_elements$ui.output$WarningStudyAddShortCodeUnique]] <- renderText({
     out <- sampleDB:::.CheckStudyShortCodeIsUnique(study_short_code = input[[ui_elements$ui.input$AddStudyShortCode]], input = input, database = database)
     validate(need(out, "ERROR:\nStudy code is not unique"))
   })
-  
+
   #warn against study code duplication
   output[[ui_elements$ui.output$WarningStudyChangeShortCodeUnique]] <- renderText({
     out <- sampleDB:::.CheckStudyShortCodeIsUnique(study_short_code = input[[ui_elements$ui.input$RenameStudyShortCode]], input = input, database = database)
     validate(need(out, "ERROR:\nStudy code is not unique"))
   })
-  
+
   #warn against study code deletion
   output[[ui_elements$ui.output$WarnStudyDeletion]] <- renderText({
     out <- sampleDB:::.CheckStudyDeletion(study_ui = input[[ui_elements$ui.input$DeleteStudyShortCode]], input, database)
@@ -376,12 +376,12 @@ StudyChangesChecks <- function(input, database, output, ui_elements) {
 
 # General Operations
 SmartFreezerDropdownFilter <- function(database, session, input = input, location_ui, levelI_ui, levelII_ui){
-  
+
   observe({
     if(!is.null(input[[location_ui]]) && input[[location_ui]] != ""){
       tmp_table.location <- filter(sampleDB::CheckTable(database = database, "location"), location_name == input[[location_ui]])
       updateSelectInput(session, levelI_ui, label = NULL, choices = c(tmp_table.location$level_I) %>% sort())
-      levelII_choices <- list(`working baskets` = grep("working", tmp_table.location$level_II, value = T) %>% sort(), 
+      levelII_choices <- list(`working baskets` = grep("working", tmp_table.location$level_II, value = T) %>% sort(),
                               `non-working baskets` = grep("working", tmp_table.location$level_II, value = T, invert = T) %>% sort())
       updateSelectInput(session, levelII_ui, label = NULL, choices = c("", levelII_choices))
     }else{
@@ -408,17 +408,17 @@ DataTableRenderOptions <- function(){
         "        .css({'color': 'rgb(151,151,151)', 'font-style': 'italic'});",
         "    }",
         "  }",
-        "}"  
+        "}"
       )
     ))
   return(out)
 }
 
 #requirements
-SetUploadRequirements <- function(input, database, sample_type){  
+SetUploadRequirements <- function(input, database, sample_type){
   #get ui elements
   ui_elements <- GetUIUploadElements(sample_type)
-  
+
   out <- req(
     input[[ui_elements$ui.input$UploadDataSet]]$datapath,
     input[[ui_elements$ui.input$UploadPlateID]],
@@ -426,19 +426,19 @@ SetUploadRequirements <- function(input, database, sample_type){
     input[[ui_elements$ui.input$UploadFreezerNameLevelI]],
     input[[ui_elements$ui.input$UploadFreezerNameLevelII]],
   )
-  
+
   return(out)
 }
 
 SetMoveRequirements <- function(input, sample_type){
-  
+
   #get ui elements
   ui_elements <- GetUIMoveElements(sample_type)
-  
+
   out <- req(
     input[[ui_elements$ui.input$MoveDataSet]] # user must supply move files
   )
-  
+
   return(out)
 }
 
@@ -447,7 +447,7 @@ SetFreezerAddRequirements <- function(input, database, ui_elements){
       input[[ui_elements$ui.input$AddFreezerType]],
       input[[ui_elements$ui.input$AddFreezerLevel_I]],
       input[[ui_elements$ui.input$AddFreezerLevel_II]],
-      sampleDB:::.CheckFreezerNameIsUnique(input, database, 
+      sampleDB:::.CheckFreezerNameIsUnique(input, database,
                                            freezer_address = list(freezer_name = input[[ui_elements$ui.input$AddFreezerName]],
                                                                   freezer_levelI = input[[ui_elements$ui.input$AddFreezerLevel_I]],
                                                                   freezer_levelII = input[[ui_elements$ui.input$AddFreezerLevel_II]])) == TRUE)
@@ -501,10 +501,10 @@ SetDeleteStudyRequirements <- function(input, database, ui_elements){
 
 # Resets
 UploadReset <- function(input, output, sample_type){
-  
+
   #get ui elements
   ui_elements <- GetUIUploadElements(sample_type)
-  
+
   observeEvent(
     input[[ui_elements$ui.input$ClearForm]],
     ({
@@ -516,7 +516,7 @@ UploadReset <- function(input, output, sample_type){
       output[[ui_elements$ui.output$WarningUploadSampleID]] <- renderText({""})
       output[[ui_elements$ui.input$UploadReturnMessage1]] <- renderText({""})
       output[[ui_elements$ui.input$UploadReturnMessage2]] <- renderText({""})
-    }))  
+    }))
 }
 
 MoveReset <- function(input, output){

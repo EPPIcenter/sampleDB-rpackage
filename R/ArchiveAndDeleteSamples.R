@@ -242,7 +242,7 @@ ArchiveAndDeleteSamples <- function(operation, data, comment, status, verificati
     else if(eval.id %in% database.tables$table.cryovial_tube$id){
 
       # get container id before deletion
-      box_id <- filter(database.tables$table.cryovial_tube, id %in% eval.id)$box_id
+      manifest_id <- filter(database.tables$table.cryovial_tube, id %in% eval.id)$manifest_id
 
       #delete sample
       sampleDB::DeleteFromTable(conn = conn,
@@ -250,51 +250,51 @@ ArchiveAndDeleteSamples <- function(operation, data, comment, status, verificati
                                 id = as.character(eval.id))
 
       # delete container if container id is no longer in cryovial_tube table
-      if(!box_id %in% CheckTableTx(conn = conn, "cryovial_tube")$box_id){
+      if(!manifest_id %in% CheckTableTx(conn = conn, "cryovial_tube")$manifest_id) {
 
         sampleDB::DeleteFromTable(conn = conn,
                                   table_name = "cryovial_box",
-                                  id = as.character(box_id))
+                                  id = as.character(manifest_id))
       }
     }
 
-    # DELETE EXTERNAL DATA -- rdt & bag if deletion empties bag
-    else if(eval.id %in% database.tables$table.rdt$id){
+    # # DELETE EXTERNAL DATA -- rdt & bag if deletion empties bag
+    # else if(eval.id %in% database.tables$table.rdt$id){
 
-      # get container id before deletion
-      bag_id <- filter(database.tables$table.rdt, id %in% eval.id)$bag_id
+    #   # get container id before deletion
+    #   bag_id <- filter(database.tables$table.rdt, id %in% eval.id)$bag_id
 
-      #delete sample
-      sampleDB::DeleteFromTable(conn = conn,
-                                table_name = "rdt",
-                                id = as.character(eval.id))
+    #   #delete sample
+    #   sampleDB::DeleteFromTable(conn = conn,
+    #                             table_name = "rdt",
+    #                             id = as.character(eval.id))
 
-      # delete container if container id is no longer in rdt table
-      if(!bag_id %in% CheckTableTx(conn = conn, "rdt")$bag_id){
-        sampleDB::DeleteFromTable(conn = conn,
-                                  table_name = "bag",
-                                  id = as.character(bag_id))
-      }
-    }
+    #   # delete container if container id is no longer in rdt table
+    #   if(!bag_id %in% CheckTableTx(conn = conn, "rdt")$bag_id){
+    #     sampleDB::DeleteFromTable(conn = conn,
+    #                               table_name = "bag",
+    #                               id = as.character(bag_id))
+    #   }
+    # }
 
-    # DELETE EXTERNAL DATA -- paper & bag if deletion empties bag
-    else{
+    # # DELETE EXTERNAL DATA -- paper & bag if deletion empties bag
+    # else{
 
-      # get container id before deletion
-      bag_id <- filter(database.tables$table.paper, id %in% eval.id)$bag_id
+    #   # get container id before deletion
+    #   bag_id <- filter(database.tables$table.paper, id %in% eval.id)$bag_id
 
-      #delete sample
-      sampleDB::DeleteFromTable(conn = conn,
-                                table_name = "paper",
-                                id = as.character(eval.id))
+    #   #delete sample
+    #   sampleDB::DeleteFromTable(conn = conn,
+    #                             table_name = "paper",
+    #                             id = as.character(eval.id))
 
-      # delete container if container id is no longer in bag table
-      if(!bag_id %in% CheckTableTx(conn = conn, "paper")$bag_id){
-        sampleDB::DeleteFromTable(conn = conn,
-                                  table_name = "bag",
-                                  id = as.character(bag_id))
-      }
-    }
+    #   # delete container if container id is no longer in bag table
+    #   if(!bag_id %in% CheckTableTx(conn = conn, "paper")$bag_id){
+    #     sampleDB::DeleteFromTable(conn = conn,
+    #                               table_name = "bag",
+    #                               id = as.character(bag_id))
+    #   }
+    # }
   }
 
 }

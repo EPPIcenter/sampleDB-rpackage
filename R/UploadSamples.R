@@ -80,7 +80,6 @@ UploadSamples <- function(sample_type, upload_data, container_name, freezer_addr
 }
 
 .UploadSamples <- function(upload_data, sample_type, conn, container_name, container_barcode, freezer_address){
-  browser()
   RSQLite::dbBegin(conn)
   for(i in 1:nrow(upload_data)){
 
@@ -209,7 +208,6 @@ UploadSamples <- function(sample_type, upload_data, container_name, freezer_addr
                            conn = conn) %>% suppressWarnings()
     }
     else if (sample_type == "cryovial") {
-      browser()
      # create a new housing (if it does not already exist)
       if(!container_name %in% CheckTableTx(conn = conn, "cryovial_box")$name){
         eval.plate_id <- sampleDB:::.UploadPlate(conn = conn, container_name = container_name, container_barcode = eval.plate_barcode, freezer_address = freezer_address, table = "cryovial_box")
