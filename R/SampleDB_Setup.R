@@ -10,6 +10,7 @@
 #'
 #' @import dplyr
 #' @import rappdirs
+#' @import yaml
 #' @export
 #'
 
@@ -72,8 +73,23 @@ SampleDB_Setup <- function() {
       if (!file.exists(config)) {
           file.copy(system.file("conf",
               "config.yml", package = pkgname), config)
-          message(paste(crayon::green(cli::symbol$tick), paste0("Config file installed [", config, "]")))
+          message(paste(crayon::green(cli::symbol$tick), paste0("Configuration file installed [", config, "]")))
       } else {
+
+          browser()
+          versions <- yaml::read_yaml(system.file("extdata",
+                          "versions.yml", package = pkgname))
+          new_config <- yaml::read_yaml(system.file("conf",
+                          "config.yml", package = pkgname))
+          
+          current_config <- yaml::read_yaml(Sys.getenv("SDB_CONFIG"))
+
+          if (is.null(current_config$version) || current_config$version < versions$config) {
+            .recurse_update_config(current_config, new_config)
+          } 
+
+          browser()
+
           message(paste(crayon::white(cli::symbol$info), paste0("Configuration file exists [", config, "]")))
       }
 
@@ -132,8 +148,8 @@ SampleDB_Setup <- function() {
 
       # install database file
       if (!file.exists(database)) {
-          database_sql <- system.file("extdata",
-                        "sampledb_database.sql", package = pkgname)
+            database_sql <- system.file("extdata",
+                          "sampledb_database.sql", package = pkgname)
           system2("sqlite3", paste(database, "<", database_sql))
           Sys.chmod(database, mode = "0777", use_umask = FALSE)
           message(paste(crayon::green(cli::symbol$tick), paste0("Database installed [", database, "]")))
@@ -223,4 +239,34 @@ SampleDB_Setup <- function() {
       message(e)
     }
   )
+}
+
+
+.recurse_update_config <- function(current_config, new_config) {
+
+  browser()
+  for (name in names(new_config)) {
+    .recurse_update_config(current_config[[name]], new_config[[name]])
+
+    if (is.list(current_config[[name]])) {
+      next
+    }
+
+    if (is.null(current_config[[name]]) || is.null(new_config[[name]])) {
+      next
+    }
+
+    if (is.na(current_config[[name]]) & is.na(new_config[[name]])) {
+      next
+    }
+
+    if (is.na(new_config[[name]]) & !is.na(current_config[[name]])) {
+      new_config[[name]] <- current_config[[name]]
+      next
+    }
+
+    if (new_config[[name]] != current_config[[name]]) { 
+      new_config[[name]] <- current_config[[name]]
+    }
+  }
 }
