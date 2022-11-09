@@ -142,7 +142,7 @@ MoveSamples <- function(sample_type, move_data){
     if(sample_type == "micronix"){
 
       # Get sample's container id
-      existing.container <- filter(sampleDB::CheckTableTx(conn = conn, "micronix_plate"), plate_name == container.name)$id
+      existing.container <- filter(sampleDB::CheckTableTx(conn = conn, "micronix_plate"), name == container.name)$id
 
       # Make a reference df with all samples in container
       sample_data.existing_container <- filter(sampleDB::CheckTableTx(conn = conn, "micronix_tube"), plate_id == existing.container) %>%
@@ -233,8 +233,8 @@ MoveSamples <- function(sample_type, move_data){
   if(sample_type == "micronix"){
     container_type <- "micronix_plate"
     sample_type <- "micronix_tube"
-    colname.container_name <- "plate_name"
-    colname.container_id <- "plate_id"
+    colname.container_name <- "name"
+    colname.container_id <- "manifest_id"
   }
 
   tbl.plate_names <- sampleDB::CheckTable(database = database, container_type) %>%

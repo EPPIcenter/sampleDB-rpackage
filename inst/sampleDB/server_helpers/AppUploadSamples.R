@@ -20,17 +20,6 @@ AppUploadSamples <- function(session, output, input, database){
   # 1. get path to user provided file, if path exists perform checks and reformat file
 
   observeEvent(input$UploadAction, {
-
-    print("rv_file")
-    print(rv$user_file)
-    print("UploadStorageContainerDestID")
-    print(input$UploadStorageContainerDestID)
-    print("UploadStorageContainerDestLocation")
-    print(input$UploadStorageContainerDestLocation)
-    print("UploadStorageContainerDestLocationLevelI")
-    print(input$UploadStorageContainerDestLocationLevelI)
-    print("UploadStorageContainerDestLocationLevelII")
-    print(input$UploadStorageContainerDestLocationLevelII)
     req(
       rv$user_file,
       input$UploadStorageContainerDestID,
@@ -45,7 +34,7 @@ AppUploadSamples <- function(session, output, input, database){
 
     formatted_file <- NULL
     b_use_wait_dialog <- FALSE
-    output$UploadMicronixReturnMessage2 <- renderText({
+    output$UploadOutputConsole <- renderText({
       tryCatch({
           user_file <- isolate({ rv$user_file })
 
@@ -118,16 +107,16 @@ AppUploadSamples <- function(session, output, input, database){
     updateSelectizeInput(session, selected = "", "UploadStorageContainerDestID", choices = container_choices %>% sort(), option = list(create = TRUE), server = TRUE)
   })
 
-
-  #3. check plate info
-  observe({
-    if(input$UploadStorageContainerDestID != "" && !is.null(input$UploadStorageContainerDestID)) {
-      CheckPlates(input = input, output = output, database = database, sample_type = input$UploadSampleType) 
-    }
-  })
-
   # allow user to reset ui
-  # UploadReset(input = input, output = output, sample_type = input$UploadSampleType)
+  observeEvent(input$ClearUploadForm, {
+      print("clear!")
+      shinyjs::reset(input$UploadStorageContainerDestID)
+      shinyjs::reset(input$UploadSampleDataSet)
+      shinyjs::reset(input$UploadStorageContainerDestLocation)
+      shinyjs::reset(input$UploadStorageContainerDestLocationLevelI)
+      shinyjs::reset(input$UploadStorageContainerDestLocationII)
+      output$UploadOutputConsole <- renderText({""})
+  })
   
   # auto-filter freezer addresses in dropdown
   SmartFreezerDropdownFilter(database = database, session = session,

@@ -3,34 +3,6 @@ library(yaml)
 # Utility Functions for Main Shiny Functions (e.g. MicronixUpload, MoveWetlabSamples, etc.)
 
 # Get UI Elements
-GetUIUploadElements <- function(sample_type, msg = NULL){
-
-  if(sample_type == "micronix"){
-    ui.input <- list(UploadPlateID = "UploadMicronixPlateID",
-                     UploadDataSet = "UploadMicronixDataSet",
-                     MicronixFileType = "MicronixFileType",
-                     ClearForm = "ClearMicronixUploadForm",
-                     UploadFreezerName = "UploadMicronixLocation",
-                     UploadFreezerNameLevelI = "UploadLocationMicronixLevelI",
-                     UploadFreezerNameLevelII = "UploadLocationMicronixLevelII",
-                     UploadReturnMessage1 = "UploadMicronixReturnMessage1",
-                     UploadReturnMessage2 = "UploadMicronixReturnMessage2")
-    ui.output = list(WarningUploadSampleID = "WarningMicronixUploadSampleID",
-                     WarningLogisticalColnames = "WarningMicronixUploadLogisticalColnames",
-                     WarningMetadataColnames = "WarningMicronixUploadMetadataColnames",
-                     WarningUploadSpecimenTypes = "WarningUploadMicronixSpecimenTypes",
-                     WarningUploadInvalidData = "WarningUploadInvalidData",
-                     WarningUploadDateFormat = "WarningMicronixUploadDateFormat",
-                     WarningUploadStudyShortCodes = "WarningUploadMicronixStudyShortCodes",
-                     WarningSpecimenExists = "WarningMicronixSpecimenExists",
-                     WarningUploadContainerName = "WarningMicronixUploadContainerName",
-                     WarningUploadBarcodeRepeats = "WarningMicronixUploadBarcodeRepeats")
-  }
-
-  ui_elements <- list(ui.input = ui.input, ui.output = ui.output)
-  return(ui_elements)
-}
-
 GetUISearchElements <- function(){
 
   ui.input <- list(SearchByLocation = "SearchByLocation",
@@ -279,20 +251,6 @@ SearchFunction <- function(input, output, ui_elements){
   return(list.search_results)
 }
 
-CheckPlates <- function(database, sample_type, input, output){
-
-  #get ui elements
-  ui_elements <- GetUIUploadElements(sample_type)
-  message("Checking user provided plate names...")
-
-  # check unique plate names
-  # output[[ui_elements$ui.output$WarningUploadContainerName]] <- renderText({
-  #   plate_name <- input[[ui_elements$ui.input$UploadPlateID]]
-  #   out <- sampleDB:::.CheckUploadContainerNameDuplication(database = database,plate_name = plate_name, only_active = T)
-  #   validate(need(out, "ERROR:\nPlate name is not unique"))
-  # })
-}
-
 FreezerChangesChecks <- function(input, database, output, ui_elements){
   # warn if freezer name is redundant
   output[[ui_elements$ui.output$WarningFreezerNameAddUnique]] <- renderText({
@@ -414,22 +372,6 @@ DataTableRenderOptions <- function(){
   return(out)
 }
 
-#requirements
-SetUploadRequirements <- function(input, database, sample_type){
-  #get ui elements
-  ui_elements <- GetUIUploadElements(sample_type)
-
-  out <- req(
-    input[[ui_elements$ui.input$UploadDataSet]]$datapath,
-    input[[ui_elements$ui.input$UploadPlateID]],
-    input[[ui_elements$ui.input$UploadFreezerName]],
-    input[[ui_elements$ui.input$UploadFreezerNameLevelI]],
-    input[[ui_elements$ui.input$UploadFreezerNameLevelII]],
-  )
-
-  return(out)
-}
-
 SetMoveRequirements <- function(input, sample_type){
 
   #get ui elements
@@ -497,26 +439,6 @@ SetDeleteStudyRequirements <- function(input, database, ui_elements){
   req(input[[ui_elements$ui.input$DeleteStudyShortCode]],
       sampleDB:::.CheckStudyDeletion(input, database,
                                      study_ui = input[[ui_elements$ui.input$DeleteStudyShortCode]]) == TRUE)
-}
-
-# Resets
-UploadReset <- function(input, output, sample_type){
-
-  #get ui elements
-  ui_elements <- GetUIUploadElements(sample_type)
-
-  observeEvent(
-    input[[ui_elements$ui.input$ClearForm]],
-    ({
-      shinyjs::reset(ui_elements$ui.input$UploadPlateID)
-      shinyjs::reset(ui_elements$ui.input$UploadDataSet)
-      shinyjs::reset(ui_elements$ui.input$UploadFreezerName)
-      shinyjs::reset(ui_elements$ui.input$UploadFreezerNameLevelI)
-      shinyjs::reset(ui_elements$ui.input$UploadFreezerNameLevelII)
-      output[[ui_elements$ui.output$WarningUploadSampleID]] <- renderText({""})
-      output[[ui_elements$ui.input$UploadReturnMessage1]] <- renderText({""})
-      output[[ui_elements$ui.input$UploadReturnMessage2]] <- renderText({""})
-    }))
 }
 
 MoveReset <- function(input, output){

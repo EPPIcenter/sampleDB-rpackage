@@ -48,8 +48,7 @@ UIMicronixUpload <- function(){
       
       br(),
       #output messages
-      span(verbatimTextOutput("UploadMicronixReturnMessage1"), style="font-size: 28px"),
-      span(verbatimTextOutput("UploadMicronixReturnMessage2"), style="font-size: 28px")
+      span(verbatimTextOutput("UploadOutputConsole"), style="font-size: 28px")
     ),
     mainPanel(
       tags$head(

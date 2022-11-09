@@ -101,10 +101,8 @@ DelArchSamples <- function(session, input, database, output, inputs, outputs){
   })
 
   observe({
-    updateSelectInput(session, selected = input$DelArchSearchByPlate, "DelArchSearchByPlate", label = "Plate Name", choices = c("", dbUpdateEvent()$plate_name))
-    updateSelectInput(session, selected = input$DelArchSearchByBox, "DelArchSearchByBox", label = "Box Name", choices = c("", dbUpdateEvent()$name))
-    updateSelectInput(session, selected = input$DelArchSearchByRDTBag, "DelArchSearchByRDTBag", label = "Bag Name", choices = c("", dbUpdateEvent()$rdt_bag_name))
-    updateSelectInput(session, selected = input$DelArchSearchByPaperBag, "DelArchSearchByPaperBag", label = "Bag Name", choices = c("", dbUpdateEvent()$paper_bag_name))
+    updateSelectInput(session, selected = input$DelArchSearchByPlate, "DelArchSearchByPlate", label = "Plate Name", choices = c("", dbUpdateEvent()$micronix_plate_name))
+    updateSelectInput(session, selected = input$DelArchSearchByBox, "DelArchSearchByBox", label = "Box Name", choices = c("", dbUpdateEvent()$cryovial_box_name))
 
     updateSelectizeInput(session, selected = input$DelArchSearchByStudy, "DelArchSearchByStudy", "Study", choices = c("", names(dbUpdateEvent()$study)))
     updateSelectizeInput(session, selected = input$DelArchSearchBySpecimenType, "DelArchSearchBySpecimenType", "Specimen Type", choices = c("", dbUpdateEvent()$specimen_type))
@@ -120,10 +118,8 @@ DelArchSamples <- function(session, input, database, output, inputs, outputs){
     updateRadioButtons(session, selected = "multiple_barcodes", "DelArchSearchByBarcodeType", label = NULL, choices = list("Multiple Barcodes" = "multiple_barcodes", "Single Barcode" = "single_barcode"))
     updateRadioButtons(session, selected = "individual", "DelArchSubjectUIDSearchType", label = NULL, choices = list("Single Study Subject" = "individual", "Multiple Study Subjects" = "multiple"))
     
-    updateSelectInput(session, selected = NULL, "DelArchSearchByPlate", label = "Plate Name", choices = c("", dbUpdateEvent()$plate_name))
-    updateSelectInput(session, selected = NULL, "DelArchSearchByBox", label = "Box Name", choices = c("", dbUpdateEvent()$name))
-    updateSelectInput(session, selected = NULL, "DelArchSearchByRDTBag", label = "Bag Name", choices = c("", dbUpdateEvent()$rdt_bag_name))
-    updateSelectInput(session, selected = NULL, "DelArchSearchByPaperBag", label = "Bag Name", choices = c("", dbUpdateEvent()$paper_bag_name))
+    updateSelectInput(session, selected = NULL, "DelArchSearchByPlate", label = "Plate Name", choices = c("", dbUpdateEvent()$micronix_plate_name))
+    updateSelectInput(session, selected = NULL, "DelArchSearchByBox", label = "Box Name", choices = c("", dbUpdateEvent()$cryovial_box_name))
 
     updateSelectizeInput(session, selected = NULL, "DelArchSearchByStudy", "Study", choices = c("", names(dbUpdateEvent()$study)))
     updateSelectizeInput(session, selected = NULL, "DelArchSearchBySpecimenType", "Specimen Type", choices = c("", dbUpdateEvent()$specimen_type))
