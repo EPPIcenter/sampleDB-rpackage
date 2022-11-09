@@ -76,7 +76,6 @@ SampleDB_Setup <- function() {
           message(paste(crayon::green(cli::symbol$tick), paste0("Configuration file installed [", config, "]")))
       } else {
 
-          browser()
           versions <- yaml::read_yaml(system.file("extdata",
                           "versions.yml", package = pkgname))
           new_config <- yaml::read_yaml(system.file("conf",
@@ -85,10 +84,8 @@ SampleDB_Setup <- function() {
           current_config <- yaml::read_yaml(Sys.getenv("SDB_CONFIG"))
 
           if (is.null(current_config$version) || current_config$version < versions$config) {
-            .recurse_update_config(current_config, new_config)
+            new_config <- .recurse_update_config(current_config, new_config)
           } 
-
-          browser()
 
           message(paste(crayon::white(cli::symbol$info), paste0("Configuration file exists [", config, "]")))
       }
@@ -244,9 +241,8 @@ SampleDB_Setup <- function() {
 
 .recurse_update_config <- function(current_config, new_config) {
 
-  browser()
   for (name in names(new_config)) {
-    .recurse_update_config(current_config[[name]], new_config[[name]])
+    new_config[[name]] <- .recurse_update_config(current_config[[name]], new_config[[name]])
 
     if (is.list(current_config[[name]])) {
       next
@@ -269,4 +265,6 @@ SampleDB_Setup <- function() {
       new_config[[name]] <- current_config[[name]]
     }
   }
+
+  return(new_config)
 }
