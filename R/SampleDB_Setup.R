@@ -23,6 +23,9 @@ SampleDB_Setup <- function() {
   tryCatch(
     expr = {
 
+      expected_versions <- yaml::read_yaml(system.file("extdata",
+                                              "versions.yml", package = pkgname))
+
       # Config Setup
 
       config <- Sys.getenv("SDB_CONFIG")
@@ -51,7 +54,7 @@ SampleDB_Setup <- function() {
           x = matrix(data = c("SDB_CONFIG", paste0("\"", config, "\"")),
                               nrow = 1, ncol = 2),
           file = environ_file_path,
-          append = TRUE, 
+          append = TRUE,
           col.names = FALSE,
           sep = "=",
           quote = FALSE,
@@ -75,22 +78,21 @@ SampleDB_Setup <- function() {
               "config.yml", package = pkgname), config)
           message(paste(crayon::green(cli::symbol$tick), paste0("Configuration file installed [", config, "]")))
       } else {
-
-          versions <- yaml::read_yaml(system.file("extdata",
-                          "versions.yml", package = pkgname))
           new_config <- yaml::read_yaml(system.file("conf",
                           "config.yml", package = pkgname))
-          
+
           current_config <- yaml::read_yaml(Sys.getenv("SDB_CONFIG"))
 
-          if (is.null(current_config$version) || current_config$version < versions$config) {
-            new_config <- .recurse_update_config(current_config, new_config)
-          } 
-
-          message(paste(crayon::white(cli::symbol$info), paste0("Configuration file exists [", config, "]")))
+          if (is.null(current_config$version) || current_config$version < expected_versions$config) {
+            current_config <- .recurse_update_config(current_config, new_config)
+            yaml::write_yaml(current_config, Sys.getenv("SDB_CONFIG"))
+            message(paste(crayon::green(cli::symbol$tick), paste0("Configuration file updated to version ", current_config$version, " [", config, "]")))
+          } else {
+            message(paste(crayon::white(cli::symbol$info), paste0("Configuration file exists [", config, "]")))
+          }
       }
 
-      # Database Setup 
+      # Database Setup
 
       database <- Sys.getenv("SDB_PATH")
 
@@ -124,11 +126,12 @@ SampleDB_Setup <- function() {
           x = matrix(data = c("SDB_PATH", paste0("\"", database, "\"")),
                               nrow = 1, ncol = 2),
           file = environ_file_path,
-          append = TRUE, 
+          append = TRUE,
           col.names = FALSE,
           sep = "=",
           quote = FALSE,
-          row.names = FALSE)
+          row.names = FALSE
+        )
 
         Sys.setenv("SDB_PATH" = database)
         message(paste(crayon::green(cli::symbol$tick),
@@ -145,13 +148,54 @@ SampleDB_Setup <- function() {
 
       # install database file
       if (!file.exists(database)) {
-            database_sql <- system.file("extdata",
-                          "sampledb_database.sql", package = pkgname)
+          database_sql <- system.file("extdata",
+                                      paste0(file.path("db", expected_versions$database, paste(c("sampledb", "database", expected_versions$database), collapse = "_")), ".sql"),
+                                      package = pkgname)
+
           system2("sqlite3", paste(database, "<", database_sql))
           Sys.chmod(database, mode = "0777", use_umask = FALSE)
-          message(paste(crayon::green(cli::symbol$tick), paste0("Database installed [", database, "]")))
-      } else {
+          message(paste(crayon::green(cli::symbol$tick), paste0("Database version ", expected_versions$database, " installed [", database, "]")))
+      }
+
+      # upgrade to the newest database iteratively
+      else {
+        upgrade_directory <- system.file("extdata", "db", package = pkgname)
+        db_versions <- list.dirs(upgrade_directory)
+        if (length(db_versions) < 2) {
+          stop("The upgrade file directory structure is incomplete.")
+        }
+
+        upgrade_scripts <- db_versions[2:length(db_versions)] # remove parent directory in list
+        db_versions <- basename(upgrade_scripts)
+
+        # note: might make more sense to get this information from the database itself,
+        # or at least confirm up front that the db version is the expected version
+        current_version_idx = which(current_config$version == db_versions)
+
+        # if the databases match, don't do anything
+        if (db_versions[current_version_idx] == expected_versions$database) {
           message(paste(crayon::white(cli::symbol$info), paste0("Database exists [", database, "]")))
+        }
+
+        # iterate from the current version to the target version iteratively
+        else {
+
+          # note: backs up to SDB_PATH backup folder
+          message("Backing up current database.")
+          Backup_SampleDB()
+
+          while (db_versions[current_version_idx] != expected_versions$database) {
+            stopifnot("no upgrade could be found for the version specified" = current_version_idx <= length(db_versions))
+            upgrade_script <- system.file("extdata",
+                                          paste0(file.path("db", db_versions[current_version_idx + 1], paste(c("sampledb", "database", db_versions[current_version_idx], db_versions[current_version_idx + 1]), collapse = "_")), ".R"),
+                                          package = pkgname)
+
+            source(upgrade_script)
+            current_version_idx <- current_version_idx + 1
+          }
+
+          message(paste(crayon::green(cli::symbol$tick), paste0("Database upgraded to ", expected_versions$database, " [", database, "]")))
+        }
       }
 
       # create subdirectories
@@ -248,6 +292,11 @@ SampleDB_Setup <- function() {
       next
     }
 
+    # if (is.null(current_config[[name]]) && !is.null(new_config[[name]])) {
+    #   new_config[[name]] <- current_config[[name]]
+    #   next
+    # }
+
     if (is.null(current_config[[name]]) || is.null(new_config[[name]])) {
       next
     }
@@ -261,7 +310,7 @@ SampleDB_Setup <- function() {
       next
     }
 
-    if (new_config[[name]] != current_config[[name]]) { 
+    if (new_config[[name]] != current_config[[name]]) {
       new_config[[name]] <- current_config[[name]]
     }
   }

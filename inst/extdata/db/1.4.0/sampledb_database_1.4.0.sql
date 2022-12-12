@@ -194,7 +194,7 @@ VALUES
 	(3, 2, FALSE), 
 	(4, 2, FALSE); 	
 
-INSERT OR IGNORE INTO "version" ("name") VALUES ("1.0.0");
+INSERT OR IGNORE INTO "version" ("name") VALUES ("1.4.0");
 
 CREATE VIEW IF NOT EXISTS view_archive_statuses
 AS 

@@ -1,9 +1,9 @@
-setwd("~/Desktop")
-
 library(dplyr)
 library(sampleDB)
 library(stringr)
 
+# define these here as this module specifically
+# migrates from db version v1.0.0 - v1.4.0
 database <- file.path("~", "Desktop", "sampledb_database.sqlite")
 next_database_schema <- "/home/bpalmer/Documents/GitHub/sampleDB-rpackage/inst/extdata/db/1.4.0/sampledb_database_1.4.0.sql"
 
@@ -23,7 +23,7 @@ tryCatch({
 
   for (tab in DBI::dbListTables(con)) {
 
-    print(tab)
+    message(paste0("Updating ", tab))
     if ("matrix_tube" %in% tab) {
       x <- tbl(con, 'matrix_tube') %>%
         filter(str_length(well_position) == 2) %>%
@@ -32,7 +32,7 @@ tryCatch({
 
       for (i in 1:nrow(x)) {
         if (x[i, ]$well_position == "NA" || grepl("[A-H]0", x[i, ]$well_position)) {
-          print(paste('fix up:', x[i, ]$well_position))
+          message(paste('Fixing:', x[i, ]$well_position))
           x[i, ]$well_position <- NA
           next
         }
@@ -56,8 +56,8 @@ tryCatch({
           arrange(id)
 
         # set positions to NA - the positions were just copiies of their barcodes
+        message(paste(c('Fixing:', df.payload[df.payload$manifest_id == 254, ]$position), collapse = "\n"))
         df.payload[df.payload$manifest_id == 254, ]$position <- NA
-
 
         DBI::dbAppendTable(con2, "micronix_tube", df.payload)
       }
@@ -136,7 +136,7 @@ tryCatch({
       }
     }
 
-    else if (tab %in% c("location", "specimen", "study")) {
+    else if (tab %in% c("location", "specimen", "study", "version")) {
       if (DBI::dbExistsTable(con, tab)) {
         x <- tbl(con, tab) %>%
           collect()
@@ -144,33 +144,28 @@ tryCatch({
         DBI::dbAppendTable(con2, tab, x)
       }
     }
-
-    else if ("version" %in% tab) {
-      if (DBI::dbExistsTable(con, 'version')) {
-        x <- tbl(con, 'version') %>%
-          mutate(name = next_db_version) %>%
-          collect()
-
-        DBI::dbAppendTable(con2, "version", x)
-      }
-    }
   }
 
   DBI::dbCommit(con2)
 
-  if (file.exists(destination))
-    file.remove(destination)
+  destination <- Sys.getenv("SDB_PATH")
 
+  message(paste0("Writing to", destination))
+  if (file.exists(destination)) {
+    message(paste0("Removing existing file"))
+    file.remove(destination)
+  }
+  message("Copying")
   file.copy(target, destination)
 
 },
 warning = function(w) {
-  DBI::dbRollback(con2)
   message(w)
+  DBI::dbRollback(con2)
 },
 error = function(e) {
-  DBI::dbRollback(con2)
   message(e)
+  DBI::dbRollback(con2)
 },
 finally = {
   DBI::dbDisconnect(con)
