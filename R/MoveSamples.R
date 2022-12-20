@@ -104,7 +104,7 @@ MoveSamples <- function(sample_type, move_data){
         m <- which(stacked_orphaned_sample_data$barcode == eval.barcode)
 
         # Use move data to place sample into proper container
-        stacked_orphaned_sample_data[m, "plate_id"] <- filter(sampleDB::CheckTable(database = database, "micronix_plate"), name == container_name)$id
+        stacked_orphaned_sample_data[m, "manifest_id"] <- filter(sampleDB::CheckTable(database = database, "micronix_plate"), name == container_name)$id
 
         # Use move data to place sample into proper container position
         stacked_orphaned_sample_data[m, "position"] <- eval.well_pos
@@ -141,7 +141,7 @@ MoveSamples <- function(sample_type, move_data){
       existing.container <- filter(sampleDB::CheckTableTx(conn = conn, "micronix_plate"), name == container.name)$id
 
       # Make a reference df with all samples in container
-      sample_data.existing_container <- filter(sampleDB::CheckTableTx(conn = conn, "micronix_tube"), plate_id == existing.container) %>%
+      sample_data.existing_container <- filter(sampleDB::CheckTableTx(conn = conn, "micronix_tube"), manifest_id == existing.container) %>%
         inner_join(sampleDB::CheckTableTx(conn = conn, "storage_container"), by = c("id" = "id"))
 
       # Put samples into container with negative id number
@@ -183,11 +183,11 @@ MoveSamples <- function(sample_type, move_data){
           id <- filter(sampleDB::CheckTable(database = database, "micronix_tube"), barcode == eval.barcode)$id
 
           # get container id
-          eval.container_id <- filter(sampleDB::CheckTable(database = database, "micronix_plate"), plate_name == container_name)$id
+          eval.container_id <- filter(sampleDB::CheckTable(database = database, "micronix_plate"), name == container_name)$id
           # link sample with container id, if there is a sample id (which is not the case if an empty csv was intentionally uploaded)
           ModifyTable(conn = conn,
                       "micronix_tube",
-                      info_list = list(plate_id = eval.container_id,
+                      info_list = list(manifest_id = eval.container_id,
                                        position = eval.well_pos),
                       id = id) %>% suppressWarnings()
         }
@@ -209,8 +209,8 @@ MoveSamples <- function(sample_type, move_data){
     label.missing <- stacked_orphaned_sample_data[remaining_well_positions, ] %>% pull(barcode)
 
     # GET PLATE ID/PLATE NAME WHICH CONTAINED BARCODE STILL IN DUMMY
-    container_id_with_missing_label <- filter(CheckTable(database = database, "micronix_tube"), barcode %in% label.missing)$plate_id
-    container_name_with_missing_label <- filter(CheckTable(database = database, "micronix_plate"), id %in% container_id_with_missing_label)$plate_name
+    container_id_with_missing_label <- filter(CheckTable(database = database, "micronix_tube"), barcode %in% label.missing)$manifest_id
+    container_name_with_missing_label <- filter(CheckTable(database = database, "micronix_plate"), id %in% container_id_with_missing_label)$name
   }
 
   message.fail <- paste0("Move Failed:\n",
