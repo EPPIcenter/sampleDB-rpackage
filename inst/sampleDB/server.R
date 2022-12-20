@@ -49,7 +49,7 @@ function(input, output, session) {
     
     # -------- Move Samples -------------
 
-    MoveWetlabSamples(session, input, database, output)
+    MoveSamples(session, input, database, output)
 
     # -------- Edit Containers --------
     

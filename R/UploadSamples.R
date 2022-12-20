@@ -55,7 +55,9 @@
 #' @import lubridate
 #' @export
 
-UploadSamples <- function(sample_type, upload_data, container_name, freezer_address){
+UploadSamples <- function(sample_type, upload_data, container_name, freezer_address, container_barcode = NULL) {
+
+  browser()
 
   # locate the database and connect to it
   database <- Sys.getenv("SDB_PATH")
@@ -66,7 +68,7 @@ UploadSamples <- function(sample_type, upload_data, container_name, freezer_addr
 
   # upload data
   .UploadSamples(upload_data = upload_data, sample_type = sample_type,
-                 conn = conn, container_name = container_name, freezer_address = freezer_address)
+                 conn = conn, container_name = container_name, freezer_address = freezer_address, container_barcode = container_barcode)
 
   return_message <- paste("Upload Successful!\nPlate", container_name, "with", nrow(upload_data), "sample(s) were added to freezer address:", paste(unlist(freezer_address, use.names=F), collapse = ", "), "\n")
 
@@ -81,8 +83,9 @@ UploadSamples <- function(sample_type, upload_data, container_name, freezer_addr
 
 .UploadSamples <- function(upload_data, sample_type, conn, container_name, container_barcode, freezer_address){
   RSQLite::dbBegin(conn)
+  browser()
   for(i in 1:nrow(upload_data)){
-
+    browser()
     #1. get upload item's metadata
     eval.specimen_type <- upload_data[i, ]$"specimen_type" %>% as.character()
     eval.study_code <- upload_data[i, ]$"study_short_code" %>% as.character()

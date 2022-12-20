@@ -1,6 +1,6 @@
 library(yaml)
 
-# Utility Functions for Main Shiny Functions (e.g. MicronixUpload, MoveWetlabSamples, etc.)
+# Utility Functions for Main Shiny Functions (e.g. MicronixUpload, MoveSamples, etc.)
 
 # Get UI Elements
 GetUISearchElements <- function(){
@@ -39,9 +39,9 @@ GetUIMoveElements <- function(sample_type, msg = NULL){
   if(sample_type == "micronix"){
     ui.input <-  list(MicronixFileType = "MoveFileType",
                       MoveDataSet = "MoveDataSet",
-                      CreateEmptyMicronixPlateLocation = "CreateEmptyMicronixPlateLocation",
-                      CreateEmptyMicronixPlateLevelI = "CreateEmptyMicronixPlateLevelI",
-                      CreateEmptyMicronixPlateLevelII = "CreateEmptyMicronixPlateLevelII")
+                      CreateEmptyManifestLocation = "CreateEmptyManifestLocation",
+                      CreateEmptyManifestLevelI = "CreateEmptyManifestLevelI",
+                      CreateEmptyManifestLevelII = "CreateEmptyManifestLevelII")
     ui.output <- list(WarningLogisticalColnames = "WarningMoveLogisticalColnames",
                       WarningMoveBarcodesExist = "WarningMoveBarcodesExist")
   }

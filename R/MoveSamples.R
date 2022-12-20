@@ -29,16 +29,12 @@
 
 #want to be able to move samples and to move containers
 MoveSamples <- function(sample_type, move_data){
-
   database <- Sys.getenv("SDB_PATH")
   conn <-  RSQLite::dbConnect(RSQLite::SQLite(), database)
   RSQLite::dbBegin(conn)
 
   # Save MoveCSVs
   .SaveMoveCSVs(move_data)
-
-  # Check move data
-  .MoveChecks(sample_type = sample_type, input = input, database = database, move_data = move_data)
 
   # Check if move creates orphans - returns TRUE if pass, FALSE if fail
   orphan_check_return <- .CheckForOrphans(move_data_list = move_data, database, sample_type = sample_type)
@@ -282,39 +278,6 @@ MoveSamples <- function(sample_type, move_data){
   return(stacked_orphaned_sample_data)
 }
 
-.MoveChecks <- function(sample_type, input, database, move_data){
-
-  # check storage type
-  validate(need(
-    sampleDB:::.CheckSampleStorageType(sample_type = sample_type),
-    message = paste("*** ERROR: Storage type", sample_type, "is not valid.")))
-
-  # check logistical colnames
-  for(item in names(move_data)){
-    move_item <- move_data[[item]]
-    validate(need(
-        sampleDB:::.CheckFormattedLogisticalColnames(formatted_upload_file = move_item),
-        message = paste("*** ERROR: Malformed colnames.")
-      ))
-  }
-
-  # make sure all barcodes are in the db
-
-  check_barcodes = sampleDB:::.CheckBarcodesInDatabase(database = database, formatted_move_file_list = move_data)
-  validate(need(
-    check_barcodes$out1,
-    message = paste("*** ERROR: Barcode not in database:", check_barcodes$out2)))
-
-
-  # make sure the samples being moved are active - NOTE: this does prevent moving inactive samples, but that should be in a separate workflow (dare is say unarchive?)
-
-  for(item in names(move_data)){
-      out <- sampleDB:::.CheckAllSamplesAreActive(database = database, tokens = move_data[[item]]$barcode, type = "micronix")
-      errmsg <- paste("*** ERROR: Move file", item, "contains samples that have been inactivated.")
-      validate(need(out, errmsg))
-    }
-
-}
 
 .SaveMoveCSVs <- function(move_data_list){
   path <- normalizePath(

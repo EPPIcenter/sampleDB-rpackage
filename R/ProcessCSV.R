@@ -37,7 +37,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
   # todo: add cryovials here
 
   optional_user_column_names <- conditional_user_column_names <- required_user_column_names <- NULL
-  if (user_action %in% c("upload", "move")) {
+  if (user_action %in% c("upload")) {
     required_user_column_names <- switch(sample_storage_type,
       "micronix" = switch(file_type,
         "visionmate" = c(
@@ -62,9 +62,31 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
       )
     )
 
-    if (is.null(required_user_column_names)) {
-      stop(paste("The expected column names for sample type", sample_storage_type, "and file type", file_type, "are not implemented (yet)."))
-    }
+  } else if (user_action %in% c("move")) {
+    required_user_column_names <- switch(sample_storage_type,
+      "micronix" = switch(file_type,
+        "visionmate" = c(
+          "Location",
+          "TubeCode"
+        ),
+        "traxcer" = c(
+          traxcer_position, # definable in user preferences
+          "Tube ID"
+        ),
+        "na" = c(
+          "Barcode",
+          "Position"
+        )
+      ),
+      "cryovial" = c(
+        "Tube ID",
+        "Position"
+      )
+    )
+  } 
+
+  if (is.null(required_user_column_names)) {
+    stop(paste("The expected column names for sample type", sample_storage_type, "and file type", file_type, "are not implemented (yet)."))
   }
 
   # Additional user action driven columns below
@@ -114,8 +136,10 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
     }
   }
 
-  if (user_action %in% c("upload", "move")) {
+  if (user_action %in% c("upload")) {
     user_file <- select(user_file, all_of(required_user_column_names), contains(conditional_user_column_names), contains(optional_user_column_names))
+  } else if (user_action %in% c("move")) {
+    user_file <- select(user_file, all_of(required_user_column_names))
   }
 
   ## Now convert to sampleDB formatting
@@ -351,6 +375,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
 
 .CheckPositionIsValid <- function(formatted_csv, sample_storage_type) {
 
+  message(sample_storage_type)
   positions <- formatted_csv %>% pull(position)
   if ("micronix" == sample_storage_type) {
 
