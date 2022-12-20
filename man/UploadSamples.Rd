@@ -17,7 +17,7 @@ UploadSamples(
 
 \item{upload_data}{A dataframe of SampleDB Upload data.\cr
 Required \code{upload_data} columns are:\cr
-\code{well_position}: the row and column of the sample in the storage housing
+\code{position}: the row and column of the sample in the storage housing
 \code{label}: the sample's label or barcode
 \code{study_subject_id}: the StudySubject id of for the subject in the cohort (ie study)
 \code{study_short_code}: the code of the study
@@ -25,14 +25,14 @@ Required \code{upload_data} columns are:\cr
 \code{collection_date}: (optional) the date the sample was first collected from the cohort StudySubject
 
 #' \strong{upload data example without collection_date}\tabular{lllll}{
-   well_position \tab label \tab study_subject_id \tab specimen_type \tab study_short_code \cr
+   position \tab label \tab study_subject_id \tab specimen_type \tab study_short_code \cr
    A0 \tab xxx1 \tab subject_1 \tab PLASMA \tab KAM06 \cr
    A1 \tab xxx2 \tab subject_2 \tab PLASMA \tab KAM06 \cr
 }
 
 
 \strong{upload data example with collection_date}\tabular{llllll}{
-   well_position \tab label \tab study_subject_id \tab specimen_type \tab study_short_code \tab collection_data \cr
+   position \tab label \tab study_subject_id \tab specimen_type \tab study_short_code \tab collection_data \cr
    A0 \tab xxx1 \tab subject_1 \tab PLASMA \tab KAM06 \tab 2022-04-11 \cr
    A1 \tab xxx2 \tab subject_2 \tab PLASMA \tab KAM06 \tab 2022-04-11 \cr
 }}
@@ -53,7 +53,7 @@ Currently the type of wetlab samples supported is only \code{micronix}. <!---cry
 \examples{
 \dontrun{
 UploadSamples(sample_type = "micronix",
-              upload_data = tibble(well_position = c("A0"),
+              upload_data = tibble(position = c("A0"),
                                    label = c("XXX 1"),
                                    study_subject_id = c("1"),
                                    specimen_type = c("PLASMA"),

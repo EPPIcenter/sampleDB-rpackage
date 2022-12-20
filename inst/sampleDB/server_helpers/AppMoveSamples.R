@@ -123,16 +123,16 @@ CreateEmptyManifest <- function(input, output, database){
     )
       
     if (CheckTable(database = database, table = manifest_table) %>%
-      filter(input$CreateEmptyManifestID == name | barcode == input$CreateEmptyMicronixPlateBarcode) %>%
+      filter(input$CreateEmptyManifestID == name | barcode == input$CreateEmptyManifestBarcode) %>%
       nrow(.) > 0) {
       showNotification("Value would have created a duplicate!", id = "MoveNotification", type = "error", action = NULL, duration = 3, closeButton = TRUE)
-    } else if (nchar(input$CreateEmptyMicronixPlateBarcode) > 0 && nchar(input$CreateEmptyMicronixPlateBarcode) != 10) {
+    } else if (nchar(input$CreateEmptyManifestBarcode) > 0 && nchar(input$CreateEmptyManifestBarcode) != 10) {
       showNotification("Barcode must be 10 digits!", id = "MoveNotification", type = "error", action = NULL, duration = 3, closeButton = TRUE)
     } else {
-      sampleDB:::UploadSamples(container_name = input[["CreateEmptyManifestID"]],
-                                      sample_type = input$MoveSampleType,
-                                      upload_data = NULL,
-                                      container_barcode = input[["CreateEmptyMicronixPlateBarcode"]],
+      sampleDB:::.UploadEmptyManifest(manifest_table = manifest_table,
+                                      database = Sys.getenv("SDB_PATH"),
+                                      container_name = input[["CreateEmptyManifestID"]],
+                                      container_barcode = input[["CreateEmptyManifestBarcode"]],
                                       freezer_address = list(location_name = input[["CreateEmptyManifestLocation"]],
                                                              level_I = input[["CreateEmptyManifestLevelI"]],
                                                              level_II = input[["CreateEmptyManifestLevelII"]]))
@@ -156,7 +156,7 @@ dataModal <- function(failed = FALSE, database) {
     HTML("<h4>Fill out the section below</h4>"),
     br(),
     fluidRow(column(width = 6, HTML("<p>Human Readable Name</p>"), textInput("CreateEmptyManifestID", label = NULL, placeholder = "PRISM-2022-001")),
-             column(width = 6,  HTML("<p>Barcode (Optional)</p>"), textInput("CreateEmptyMicronixPlateBarcode", label = NULL))),
+             column(width = 6,  HTML("<p>Barcode (Optional)</p>"), textInput("CreateEmptyManifestBarcode", label = NULL))),
     HTML("<p>Freezer Name</p>"), selectInput("CreateEmptyManifestLocation", label = NULL, width = '47%', choices = c("", sampleDB::CheckTable(database = database, "location")$location_name) %>% sort()),
     HTML("<p>Shelf Name</p>"), selectInput("CreateEmptyManifestLevelI", label = NULL, width = '47%', choices = NULL),
     HTML("<p>Basket Name</p>"), selectInput("CreateEmptyManifestLevelII", label = NULL, width = '47%', choices = NULL),

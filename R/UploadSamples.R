@@ -6,7 +6,7 @@
 #' @param sample_type A string specifying the type of samples that are being uploaded Options include: `micronix`, `cryovial`, `rdt` and `paper`
 #' @param upload_data A dataframe of SampleDB Upload data.\cr
 #' Required `upload_data` columns are:\cr
-#' `well_position`: the row and column of the sample in the storage housing
+#' `position`: the row and column of the sample in the storage housing
 #' `label`: the sample's label or barcode
 #' `study_subject_id`: the StudySubject id of for the subject in the cohort (ie study)
 #' `study_short_code`: the code of the study
@@ -15,14 +15,14 @@
 #'
 #' #' **upload data example without collection_date**
 #'
-#' | well_position | label | study_subject_id | specimen_type | study_short_code |
+#' | position | label | study_subject_id | specimen_type | study_short_code |
 #' | ------------- | ----- | ---------------- | ------------- | ---------------- |
 #' | A0            | xxx1  | subject_1        | PLASMA        | KAM06            |
 #' | A1            | xxx2  | subject_2        | PLASMA        | KAM06            |
 #'
 #' **upload data example with collection_date**
 #'
-#' | well_position | label | study_subject_id | specimen_type | study_short_code | collection_data |
+#' | position | label | study_subject_id | specimen_type | study_short_code | collection_data |
 #' | ------------- | ----- | ---------------- | ------------- | ---------------- | --------------- |
 #' | A0            | xxx1  | subject_1        | PLASMA        | KAM06            | 2022-04-11      |
 #' | A1            | xxx2  | subject_2        | PLASMA        | KAM06            | 2022-04-11      |
@@ -36,7 +36,7 @@
 #' @examples
 #' \dontrun{
 #' UploadSamples(sample_type = "micronix",
-#'               upload_data = tibble(well_position = c("A0"),
+#'               upload_data = tibble(position = c("A0"),
 #'                                    label = c("XXX 1"),
 #'                                    study_subject_id = c("1"),
 #'                                    specimen_type = c("PLASMA"),
@@ -57,7 +57,6 @@
 
 UploadSamples <- function(sample_type, upload_data, container_name, freezer_address, container_barcode = NULL) {
 
-  browser()
 
   # locate the database and connect to it
   database <- Sys.getenv("SDB_PATH")
@@ -83,15 +82,13 @@ UploadSamples <- function(sample_type, upload_data, container_name, freezer_addr
 
 .UploadSamples <- function(upload_data, sample_type, conn, container_name, container_barcode, freezer_address){
   RSQLite::dbBegin(conn)
-  browser()
   for(i in 1:nrow(upload_data)){
-    browser()
     #1. get upload item's metadata
     eval.specimen_type <- upload_data[i, ]$"specimen_type" %>% as.character()
     eval.study_code <- upload_data[i, ]$"study_short_code" %>% as.character()
     eval.subject <- upload_data[i, ]$"study_subject" %>% as.character()
     eval.barcode <- upload_data[i,]$"barcode" %>% as.character()
-    eval.well_position <- upload_data[i,]$"position"
+    eval.position <- upload_data[i,]$"position"
     eval.comment <- upload_data[i,]$"comment" %>% as.character()
     eval.plate_barcode <- upload_data[i,]$"manifest_barcode" %>% as.character()
     if(is.na(upload_data[i, ]$"collection_date")){
@@ -206,7 +203,7 @@ UploadSamples <- function(sample_type, upload_data, container_name, freezer_addr
       AddToTable(table_name = "micronix_tube",
                            info_list = list(id = eval.id,
                                             manifest_id = eval.plate_id,
-                                            position = eval.well_position,
+                                            position = eval.position,
                                             barcode = eval.barcode),
                            conn = conn) %>% suppressWarnings()
     }
@@ -222,7 +219,7 @@ UploadSamples <- function(sample_type, upload_data, container_name, freezer_addr
       AddToTable(table_name = "cryovial_tube",
                            info_list = list(id = eval.id,
                                             manifest_id = eval.plate_id,
-                                            position = eval.well_position,
+                                            position = eval.position,
                                             barcode = eval.barcode),
                            conn = conn) %>% suppressWarnings()
     }
@@ -239,31 +236,36 @@ UploadSamples <- function(sample_type, upload_data, container_name, freezer_addr
 
 }
 
-# .UploadMicronixPlate <- function(database, container_name, container_barcode, freezer_address, conn){
-#   eval.location_id <- filter(CheckTable(database = database, "location"), location_name == freezer_address$location, level_I == freezer_address$level_I, level_II == freezer_address$level_II)$id
-#   if(is.null(container_barcode)){
-#     container_barcode <- NA
-#   }
-#   else if(container_barcode == ""){
-#     container_barcode <- NA
-#   }
-#   else{
-#     container_barcode <- container_barcode
-#   }
-#   # print(container_barcode)
-#   AddToTable(database = database,
-#                        "micronix_plate",
-#                        list(created = lubridate::now() %>% as.character(),
-#                             last_updated = lubridate::now() %>% as.character(),
-#                             location_id = eval.location_id,
-#                             plate_name = container_name,
-#                             plate_barcode = container_barcode),
-#                        conn = conn) %>% suppressWarnings()
-#   eval.plate_id <- tail(sampleDB::CheckTable(database = database, "micronix_plate"), 1)$id
-#
-#   return(eval.plate_id)
-#
-# }
+.UploadEmptyManifest <- function(manifest_table, database, container_name, container_barcode, freezer_address) {
+  conn <-  RSQLite::dbConnect(RSQLite::SQLite(), database)
+  RSQLite::dbBegin(conn)
+
+  eval.location_id <- filter(CheckTable(database = database, "location"), location_name == freezer_address$location, level_I == freezer_address$level_I, level_II == freezer_address$level_II)$id
+  if(is.null(container_barcode)){
+    container_barcode <- NA
+  }
+  else if(container_barcode == ""){
+    container_barcode <- NA
+  }
+  else{
+    container_barcode <- container_barcode
+  }
+  # print(container_barcode)
+  AddToTable(manifest_table,
+                       list(created = lubridate::now() %>% as.character(),
+                            last_updated = lubridate::now() %>% as.character(),
+                            location_id = eval.location_id,
+                            name = container_name,
+                            barcode = container_barcode),
+                       conn = conn) %>% suppressWarnings()
+  eval.plate_id <- tail(sampleDB::CheckTable(database = database, manifest_table), 1)$id
+
+  RSQLite::dbCommit(conn)
+  RSQLite::dbDisconnect(conn)
+
+  return(eval.plate_id)
+
+}
 
 .SaveUploadCSV <- function(upload_data, container_name){
   path <- normalizePath(

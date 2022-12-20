@@ -181,7 +181,7 @@ ArchiveAndDeleteSamples <- function(operation, data, comment, status, verificati
 
     ModifyTable(conn = conn,
                           table_name = "micronix_tube",
-                          info_list = list(well_position = NA),
+                          info_list = list(position = NA),
                           id = as.character(eval.id))
 
     # # delete sample

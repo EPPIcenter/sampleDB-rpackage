@@ -9,7 +9,7 @@
 #'
 #' The structure of a move file is shown below.
 #'
-#' | well_position | label |
+#' | position | label |
 #' | ------------- | ----- |
 #' | A0            | xxx1  |
 #' | A1            | xxx2  |
@@ -116,7 +116,7 @@ MoveSamples <- function(sample_type, move_data){
     # check if there are any samples with the same barcode
     stopifnot("AT LEAST TWO SAMPLES HAVE THE SAME BARCODE" = sum(duplicated(stacked_orphaned_sample_data$barcode)) == 0)
 
-    if(any(startsWith(stacked_orphaned_sample_data$well_position, '-'))) {
+    if(any(startsWith(stacked_orphaned_sample_data$position, '-'))) {
       # there are orphans left - move would produce orphans
       out <- list(error = FALSE, orphan_check_toggle = FALSE, stacked_orphaned_sample_data = stacked_orphaned_sample_data)
 
@@ -151,7 +151,7 @@ MoveSamples <- function(sample_type, move_data){
           id <- sample_data.existing_container[i,]$id
           ModifyTable(conn = conn,
                       table_name = "micronix_tube",
-                      info_list = list(well_position = paste0('-', (sample_data.existing_container[i,]$well_position))),
+                      info_list = list(position = paste0('-', (sample_data.existing_container[i,]$position))),
                       id = id) %>% suppressWarnings()
           }
       }
@@ -188,7 +188,7 @@ MoveSamples <- function(sample_type, move_data){
           ModifyTable(conn = conn,
                       "micronix_tube",
                       info_list = list(plate_id = eval.container_id,
-                                       well_position = eval.well_pos),
+                                       position = eval.well_pos),
                       id = id) %>% suppressWarnings()
         }
       }
@@ -205,7 +205,7 @@ MoveSamples <- function(sample_type, move_data){
 .GetOrphanedSamples <- function(sample_type, stacked_orphaned_sample_data, database){
   # GET LABEL STILL IN DUMMY PLATE
   if(sample_type == "micronix") {
-    remaining_well_positions <- grepl("-", stacked_orphaned_sample_data %>% pull(well_position), fixed = TRUE)
+    remaining_well_positions <- grepl("-", stacked_orphaned_sample_data %>% pull(position), fixed = TRUE)
     label.missing <- stacked_orphaned_sample_data[remaining_well_positions, ] %>% pull(barcode)
 
     # GET PLATE ID/PLATE NAME WHICH CONTAINED BARCODE STILL IN DUMMY
@@ -264,11 +264,11 @@ MoveSamples <- function(sample_type, move_data){
     #keeping plate information for the time being.
     if(0 < nrow(sample_data[[eval.container_id]])) {
       sample_data[[eval.container_id]] <- sample_data[[eval.container_id]] %>%
-        filter(sample_type %in% "micronix" & !(sample_data[[eval.container_id]]$well_position %in% "NA"))
+        filter(sample_type %in% "micronix" & !(sample_data[[eval.container_id]]$position %in% "NA"))
 
       if (nrow(sample_data[[eval.container_id]]) > 0)
         sample_data[[eval.container_id]] <- sample_data[[eval.container_id]] %>%
-                 mutate(well_position = paste0('-', (sample_data[[eval.container_id]]$well_position)))
+                 mutate(position = paste0('-', (sample_data[[eval.container_id]]$position)))
     }
   }
 
