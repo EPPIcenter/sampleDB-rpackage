@@ -55,7 +55,7 @@
 #' @import lubridate
 #' @export
 
-UploadSamples <- function(sample_type, upload_data, container_name, freezer_address, container_barcode = NULL) {
+UploadSamples <- function(sample_type, upload_data) {
 
 
   # locate the database and connect to it
@@ -63,13 +63,12 @@ UploadSamples <- function(sample_type, upload_data, container_name, freezer_addr
   conn <-  RSQLite::dbConnect(RSQLite::SQLite(), database)
 
   # save a copy of the upload data as a csv
-  .SaveUploadCSV(upload_data, container_name)
+  .SaveUploadCSV(upload_data)
 
   # upload data
-  .UploadSamples(upload_data = upload_data, sample_type = sample_type,
-                 conn = conn, container_name = container_name, freezer_address = freezer_address, container_barcode = container_barcode)
+  .UploadSamples(upload_data = upload_data, sample_type = sample_type, conn = conn)
 
-  return_message <- paste("Upload Successful!\nPlate", container_name, "with", nrow(upload_data), "sample(s) were added to freezer address:", paste(unlist(freezer_address, use.names=F), collapse = ", "), "\n")
+  return_message <- paste("Upload Successful!", nrow(upload_data), "sample(s) were uploaded.")
 
   #close connection
   tryCatch(
@@ -80,7 +79,7 @@ UploadSamples <- function(sample_type, upload_data, container_name, freezer_addr
   return(return_message)
 }
 
-.UploadSamples <- function(upload_data, sample_type, conn, container_name, container_barcode, freezer_address){
+.UploadSamples <- function(upload_data, sample_type, conn){
   RSQLite::dbBegin(conn)
   for(i in 1:nrow(upload_data)){
     #1. get upload item's metadata
@@ -91,6 +90,13 @@ UploadSamples <- function(sample_type, upload_data, container_name, freezer_addr
     eval.position <- upload_data[i,]$"position"
     eval.comment <- upload_data[i,]$"comment" %>% as.character()
     eval.plate_barcode <- upload_data[i,]$"manifest_barcode" %>% as.character()
+    eval.container_name <- upload_data[i,]$"manifest_name" %>% as.character()
+    eval.freezer_address <- list(
+      location = upload_data[i,]$"location_name",
+      level_I = upload_data[i,]$"level_I",
+      level_II = upload_data[i,]$"level_II"
+    )
+
     if(is.na(upload_data[i, ]$"collection_date")){
       eval.collection_date <- as.double(as.Date(NA))
     }else{
@@ -191,12 +197,13 @@ UploadSamples <- function(sample_type, upload_data, container_name, freezer_addr
     eval.id <- tail(CheckTableTx(conn = conn, "storage_container"), 1)$id
 
     # 6. Create new sample housing (if it does not alread exist) and upload samples into housing
+
     if(sample_type == "micronix"){
       # create a new housing (if it does not already exist)
-      if(!container_name %in% CheckTableTx(conn = conn, "micronix_plate")$name){
-        eval.plate_id <- sampleDB:::.UploadPlate(conn = conn, container_name = container_name, container_barcode = eval.plate_barcode, freezer_address = freezer_address, table = "micronix_plate")
+      if(!eval.container_name %in% CheckTableTx(conn = conn, "micronix_plate")$name){
+        eval.plate_id <- sampleDB:::.UploadPlate(conn = conn, container_name = eval.container_name, container_barcode = eval.plate_barcode, freezer_address = eval.freezer_address, table = "micronix_plate")
       }else{
-        eval.plate_id <- filter(CheckTableTx(conn = conn, "micronix_plate"), name == container_name)$id
+        eval.plate_id <- filter(CheckTableTx(conn = conn, "micronix_plate"), name == eval.container_name)$id
       }
 
       # 7. upload micronix sample
@@ -209,10 +216,10 @@ UploadSamples <- function(sample_type, upload_data, container_name, freezer_addr
     }
     else if (sample_type == "cryovial") {
      # create a new housing (if it does not already exist)
-      if(!container_name %in% CheckTableTx(conn = conn, "cryovial_box")$name){
-        eval.plate_id <- sampleDB:::.UploadPlate(conn = conn, container_name = container_name, container_barcode = eval.plate_barcode, freezer_address = freezer_address, table = "cryovial_box")
+      if(!eval.container_name %in% CheckTableTx(conn = conn, "cryovial_box")$name){
+        eval.plate_id <- sampleDB:::.UploadPlate(conn = conn, container_name = eval.container_name, container_barcode = eval.plate_barcode, freezer_address = eval.freezer_address, table = "cryovial_box")
       }else{
-        eval.plate_id <- filter(CheckTableTx(conn = conn, "cryovial_box"), name == container_name)$id
+        eval.plate_id <- filter(CheckTableTx(conn = conn, "cryovial_box"), name == eval.container_name)$id
       }
 
       # 7. upload micronix sample
@@ -267,7 +274,10 @@ UploadSamples <- function(sample_type, upload_data, container_name, freezer_addr
 
 }
 
-.SaveUploadCSV <- function(upload_data, container_name){
+.SaveUploadCSV <- function(upload_data){
+
+  manifests <- paste(unique(upload_data$manifest_name), collapse = "-")
+
   path <- normalizePath(
       file.path(dirname(Sys.getenv("SDB_PATH")), "upload_files"))
 
@@ -278,7 +288,7 @@ UploadSamples <- function(sample_type, upload_data, container_name, freezer_addr
           file.path(path,
                  paste0(gsub("[T:]", "_",
                     lubridate::format_ISO8601(lubridate::now())),
-                 "_", container_name, "_",
+                 "_", manifests, "_",
                  "UPLOAD.csv")))),
           row.names = FALSE)
   }
