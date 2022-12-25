@@ -168,9 +168,15 @@ SampleDB_Setup <- function() {
         upgrade_scripts <- db_versions[2:length(db_versions)] # remove parent directory in list
         db_versions <- basename(upgrade_scripts)
 
-        # note: might make more sense to get this information from the database itself,
-        # or at least confirm up front that the db version is the expected version
-        current_version_idx = which(current_config$version == db_versions)
+        # get the current database version
+        con <- DBI::dbConnect(SQLite(), Sys.getenv("SDB_PATH"))
+        DBI::dbConnect(con)
+
+        lastest_db_version <- DBI::dbGetQuery(con, "SELECT name FROM version ORDER BY name DESC LIMIT 1")
+
+        DBI::dbDisconnect(con)
+
+        current_version_idx = which(lastest_db_version$name == db_versions)
 
         # if the databases match, don't do anything
         if (db_versions[current_version_idx] == expected_versions$database) {
