@@ -1,5 +1,3 @@
-BEGIN TRANSACTION;
-
 --- Cryovial Box ---
 
 CREATE TABLE IF NOT EXISTS  "cryovial_box"  (
@@ -15,11 +13,9 @@ CREATE TABLE IF NOT EXISTS  "cryovial_box"  (
 	FOREIGN KEY("location_id") REFERENCES "location"("id")
 );
 
-INSERT OR ABORT INTO "cryovial_box" (created, last_updated, id, location_id, name)
+INSERT OR ROLLBACK INTO "cryovial_box" (created, last_updated, id, location_id, name)
 SELECT created, last_updated, id, location_id, box_name
 FROM "box";
-
-DROP TABLE IF EXISTS "box";
 
 --- Cryovial Tube ---
 
@@ -43,11 +39,9 @@ CREATE TABLE IF NOT EXISTS "micronix_plate" (
 	FOREIGN KEY("location_id") REFERENCES "location"("id")
 );
 
-INSERT OR ABORT INTO "micronix_plate" (created, last_updated, id, location_id, name)
+INSERT OR ROLLBACK INTO "micronix_plate" (created, last_updated, id, location_id, name)
 SELECT created, last_updated, id, location_id, plate_name
 FROM "matrix_plate";
-
-DROP TABLE IF EXISTS "matrix_plate";
 
 --- Micronix Tube ---
 
@@ -64,7 +58,7 @@ CREATE TABLE IF NOT EXISTS "micronix_tube" (
 	CONSTRAINT "matrix_tube_position_plate_uc" UNIQUE("position", "manifest_id")
 );
 
-INSERT OR ABORT INTO "micronix_tube" (id, manifest_id, barcode, position)
+INSERT OR ROLLBACK INTO "micronix_tube" (id, manifest_id, barcode, position)
 SELECT id, plate_id, barcode, well_position
 FROM "matrix_tube";
 
@@ -82,13 +76,13 @@ ALTER TABLE "storage_container" ADD COLUMN "derived_storage_container_id";
 
 ALTER TABLE "study_subject" RENAME COLUMN "subject" TO "name";
 
-DROP TABLE IF EXISTS bag;
-DROP TABLE IF EXISTS paper;
-DROP TABLE IF EXISTS rdt;
-DROP TABLE IF EXISTS sequencing_files;
-DROP TABLE IF EXISTS sqlite_sequence;
+DROP TABLE IF EXISTS "matrix_plate";
+DROP TABLE IF EXISTS "box";
+DROP TABLE IF EXISTS "bag";
+DROP TABLE IF EXISTS "paper";
+DROP TABLE IF EXISTS "rdt";
+DROP TABLE IF EXISTS "sequencing_files";
 
 
 --- update database version ---
-UPDATE version SET name='1.4.0' WHERE rowid=1;
-COMMIT;
+INSERT OR ROLLBACK INTO version (name) VALUES ('1.4.0');

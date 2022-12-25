@@ -11,6 +11,7 @@
 #' @import dplyr
 #' @import rappdirs
 #' @import yaml
+#' @import glue
 #' @export
 #'
 
@@ -146,62 +147,89 @@ SampleDB_Setup <- function() {
       if (!dir.exists(datadir))
         dir.create(datadir)
 
-      # install database file
-      if (!file.exists(database)) {
-          database_sql <- system.file("extdata",
-                                      paste0(file.path("db", expected_versions$database, paste(c("sampledb", "database", expected_versions$database), collapse = "_")), ".sql"),
-                                      package = pkgname)
-
-          system2("sqlite3", paste(database, "<", database_sql))
-          Sys.chmod(database, mode = "0777", use_umask = FALSE)
-          message(paste(crayon::green(cli::symbol$tick), paste0("Database version ", expected_versions$database, " installed [", database, "]")))
+      db_directory <- system.file("extdata", "db", package = pkgname)
+      db_versions <- list.dirs(db_directory)
+      if (length(db_versions) < 2) {
+        stop("The upgrade file directory structure is incomplete.")
       }
 
-      # upgrade to the newest database iteratively
-      else {
-        upgrade_directory <- system.file("extdata", "db", package = pkgname)
-        db_versions <- list.dirs(upgrade_directory)
-        if (length(db_versions) < 2) {
-          stop("The upgrade file directory structure is incomplete.")
+      upgrade_scripts <- db_versions[2:length(db_versions)] # remove parent directory in list
+
+      db_versions <- basename(upgrade_scripts)
+
+      stopifnot("no upgrade could be found for the version specified" = expected_versions$database %in% db_versions)
+
+      current_version_idx <- NULL
+      current_db_version <- NA
+
+      # get the current database version
+      if (!file.exists(database)) {
+        base_db_sql <- system.file("extdata",
+                                    paste0(file.path("db", db_versions[1], paste(c("sampledb", "database", db_versions[1]), collapse = "_")), ".sql"),
+                                    package = pkgname)
+
+        system2("sqlite3", paste(database, "<", base_db_sql))
+        Sys.chmod(database, mode = "0777", use_umask = FALSE)
+      }
+
+      con <- DBI::dbConnect(SQLite(), Sys.getenv("SDB_PATH"))
+      DBI::dbConnect(con)
+      current_db_version <- DBI::dbGetQuery(con, "SELECT name FROM version ORDER BY name DESC LIMIT 1") %>% pull(name)
+      DBI::dbDisconnect(con)
+
+      # if the databases match, don't do anything
+      if (current_db_version == expected_versions$database) {
+        message(paste(crayon::white(cli::symbol$info), paste0("Database exists [", database, "]")))
+      } else {
+        message(paste(crayon::white(cli::symbol$info), paste0("Installing database [version=", expected_versions$database, "]")))
+
+        Backup_SampleDB()
+
+        new_database <- tempfile()
+
+        if (file.exists(database)) {
+          Backup_SampleDB(backup_dest = new_database)
         }
 
-        upgrade_scripts <- db_versions[2:length(db_versions)] # remove parent directory in list
-        db_versions <- basename(upgrade_scripts)
+        current_version_idx <- which(current_db_version == db_versions)
 
-        # get the current database version
-        con <- DBI::dbConnect(SQLite(), Sys.getenv("SDB_PATH"))
-        DBI::dbConnect(con)
+        tryCatch({
 
-        lastest_db_version <- DBI::dbGetQuery(con, "SELECT name FROM version ORDER BY name DESC LIMIT 1")
+          con <- DBI::dbConnect(SQLite(), Sys.getenv("SDB_PATH"))
+          DBI::dbConnect(con)
 
-        DBI::dbDisconnect(con)
+          while (current_db_version != expected_versions$database) {
 
-        current_version_idx = which(lastest_db_version$name == db_versions)
-
-        # if the databases match, don't do anything
-        if (db_versions[current_version_idx] == expected_versions$database) {
-          message(paste(crayon::white(cli::symbol$info), paste0("Database exists [", database, "]")))
-        }
-
-        # iterate from the current version to the target version iteratively
-        else {
-
-          # note: backs up to SDB_PATH backup folder
-          message("Backing up current database.")
-          Backup_SampleDB()
-
-          while (db_versions[current_version_idx] != expected_versions$database) {
-            stopifnot("no upgrade could be found for the version specified" = current_version_idx <= length(db_versions))
+            DBI::dbBegin(con)
             upgrade_script <- system.file("extdata",
-                                          paste0(file.path("db", db_versions[current_version_idx + 1], paste(c("sampledb", "database", db_versions[current_version_idx], db_versions[current_version_idx + 1]), collapse = "_")), ".R"),
+                                          paste0(file.path("db", db_versions[current_version_idx + 1], paste(c("sampledb", "database", db_versions[current_version_idx], db_versions[current_version_idx + 1]), collapse = "_")), ".sql"),
                                           package = pkgname)
 
-            source(upgrade_script)
-            current_version_idx <- current_version_idx + 1
+            sql <- read_lines(upgrade_script) %>%
+              glue_collapse(sep = "\n") %>%
+              glue_sql(.con = con) %>%
+              strsplit(., ';')
+
+            lapply(sql[[1]], function(s) { DBI::dbExecute(con, s) })
+
+            DBI::dbCommit(con)
+
+            current_db_version <- DBI::dbGetQuery(con, "SELECT name FROM version ORDER BY name DESC LIMIT 1") %>% pull(name)
           }
 
+          DBI::dbDisconnect(con)
+
+          file.copy(new_database, Sys.getenv("SDB_PATH"))
           message(paste(crayon::green(cli::symbol$tick), paste0("Database upgraded to ", expected_versions$database, " [", database, "]")))
-        }
+          Sys.chmod(Sys.getenv("SDB_PATH"), mode = "0777", use_umask = FALSE)
+        },
+        error = function(e) {
+          if (file.exists(new_database))
+            file.remove(new_database)
+
+          DBI::dbDisconnect(con)
+          stop(e$message)
+        })
       }
 
       # create subdirectories
