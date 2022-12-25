@@ -9,6 +9,14 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
     stop("Function requires dplyr for database access!")
   }
 
+  if(!is.null(container_name) && container_name == "") {
+    container_name <- NULL
+  }
+
+  if (!is.null(freezer_address) && all(freezer_address == "")) {
+    freezer_address <- NULL
+  }
+
   user_file <- read.csv(file = user_csv, header = FALSE)
 
   valid_actions = c("upload", "move")

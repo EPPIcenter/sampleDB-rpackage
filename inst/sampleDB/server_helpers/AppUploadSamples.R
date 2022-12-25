@@ -8,7 +8,7 @@ library(shinyjs)
 # perform various checks of "user provided" file, reformat "user provided" file, and print user messages if file does not pass checks
 # checks in ui can unfortunately be ignored by the user
 
-AppUploadSamples <- function(session, output, input, database){
+AppUploadSamples <- function(session, output, input, database) {
 
   rv <- reactiveValues(user_file = NULL)
 
@@ -20,31 +20,34 @@ AppUploadSamples <- function(session, output, input, database){
   # 1. get path to user provided file, if path exists perform checks and reformat file
 
   observeEvent(input$UploadAction, {
-    req(
-      rv$user_file,
-      input$UploadStorageContainerDestID,
-      input$UploadStorageContainerDestLocation,
-      input$UploadStorageContainerDestLocationLevelI,
-      input$UploadStorageContainerDestLocationLevelII
-    )
+    
+    req(rv$user_file, input$UploadFileType, input$UploadStorageType)
 
     file_type <- input$UploadFileType
-    sample_storage_type <- input$UploadSampleType
+    sample_storage_type <- input$UploadStorageType
     container_name <- input$UploadStorageContainerDestID
 
     formatted_file <- NULL
     b_use_wait_dialog <- FALSE
+
     output$UploadOutputConsole <- renderText({
       tryCatch({
           user_file <- isolate({ rv$user_file })
 
           #check colnames of user provided file
+
           user_file <- sampleDB::ProcessCSV(
             user_csv = user_file,
             user_action = "upload",
             file_type = file_type,
             sample_storage_type = sample_storage_type,
-            container_name = container_name)
+            container_name = container_name,
+            freezer_address = list(
+              location_name = input$UploadStorageContainerDestLocation, 
+              level_I = input$UploadStorageContainerDestLocationLevelI, 
+              level_II = input$UploadStorageContainerDestLocationLevelII
+            )
+          )
 
           # simple way to add a dialog or not
           b_use_wait_dialog <- nrow(user_file) > 5
@@ -57,49 +60,43 @@ AppUploadSamples <- function(session, output, input, database){
             )
           }
 
-          rv$user_file <- NULL
           shinyjs::reset("UploadAction")
-
-          sampleDB::UploadSamples(sample_type = sample_storage_type, 
-                                                upload_data = user_file, 
-                                                container_name = isolate({ input$UploadStorageContainerDestID }),
-                                                freezer_address = list(location_name = input$UploadStorageContainerDestLocation, 
-                                                                       level_I = input$UploadStorageContainerDestLocationLevelI, 
-                                                                       level_II = input$UploadStorageContainerDestLocationLevelII))
+          sampleDB::UploadSamples(sample_type = sample_storage_type, upload_data = user_file)                                  
         },
         warning = function(w) {
+          rv$user_file <- NULL
           message(w)
           w$message
         },
         error = function(e) {
+          rv$user_file <- NULL
           message(e)
           e$message
         },
         finally = {
+          rv$user_file <- NULL
           if (b_use_wait_dialog) {
             remove_modal_spinner()
           }
         }
       )
     })
-
   })
 
-  observeEvent(input$UploadSampleType, {
-    container_choices <- switch(input$UploadSampleType,
+  observeEvent(input$UploadStorageType, {
+    container_choices <- switch(input$UploadStorageType,
       "micronix" = dbUpdateEvent()$micronix_plate_name,
       "cryovial" = dbUpdateEvent()$cryovial_box_name
     )
 
     shinyjs::reset(input$UploadStorageContainerDestID)
     updateSelectizeInput(session, selected = "", "UploadStorageContainerDestID", choices = container_choices %>% sort(), option = list(create = TRUE), server = TRUE)
-    print(input$UploadStorageContainerDestID)
   })
 
   observeEvent(dbUpdateEvent(), {
     updateSelectInput(session, selected = input$UploadStorageContainerDestLocation, "UploadStorageContainerDestLocation", choices = dbUpdateEvent()$location %>% sort())
     
-    container_choices <- switch(input$UploadSampleType,
+    container_choices <- switch(input$UploadStorageType,
       "micronix" = dbUpdateEvent()$micronix_plate_name,
       "cryovial" = dbUpdateEvent()$cryovial_box_name
     )
@@ -109,7 +106,6 @@ AppUploadSamples <- function(session, output, input, database){
 
   # allow user to reset ui
   observeEvent(input$ClearUploadForm, {
-      print("clear!")
       shinyjs::reset(input$UploadStorageContainerDestID)
       shinyjs::reset(input$UploadSampleDataSet)
       shinyjs::reset(input$UploadStorageContainerDestLocation)
@@ -131,8 +127,8 @@ AppUploadSamples <- function(session, output, input, database){
 
 MicronixUploadExamples <- function(input, database, output){
   
-  observeEvent(input$UploadSampleType, {
-    if(input$UploadSampleType == "micronix"){
+  observeEvent(input$UploadStorageType, {
+    if(input$UploadStorageType == "micronix"){
         ui.output <- list(LogisticsItems = "LogisticsItems",
                           MetadataItems = "MetadataItems",
                           CombinedItems = "CombinedItems")

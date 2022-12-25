@@ -1,4 +1,5 @@
 library(yaml)
+library(RSQLite)
 
 AppPreferencesPanel <- function(session, input, output, database) {
 
@@ -33,4 +34,15 @@ AppPreferencesPanel <- function(session, input, output, database) {
     	showNotification("Configuration Saved!", duration = 1, closeButton = FALSE)
     }))
 
+    output$PrefVersionTable <- renderTable({
+    	con <- RSQLite::dbConnect(RSQLite::SQLite(), Sys.getenv("SDB_PATH"))
+    	versions <- sort(tbl(con, "version") %>% pull('name'))
+
+    	df <- data.frame(
+    		Component = c("Database", "User Configuration"),
+	    	Version = c(versions[ length(versions) ], config()$version)
+	    )
+
+    	return (df)
+    })
 }

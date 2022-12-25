@@ -172,8 +172,7 @@ SampleDB_Setup <- function() {
         Sys.chmod(database, mode = "0777", use_umask = FALSE)
       }
 
-      con <- DBI::dbConnect(SQLite(), Sys.getenv("SDB_PATH"))
-      DBI::dbConnect(con)
+      con <- DBI::dbConnect(SQLite(), database)
       current_db_version <- DBI::dbGetQuery(con, "SELECT name FROM version ORDER BY name DESC LIMIT 1") %>% pull(name)
       DBI::dbDisconnect(con)
 
@@ -183,40 +182,37 @@ SampleDB_Setup <- function() {
       } else {
         message(paste(crayon::white(cli::symbol$info), paste0("Installing database [version=", expected_versions$database, "]")))
 
-        Backup_SampleDB()
-
         new_database <- tempfile()
-
-        if (file.exists(database)) {
-          Backup_SampleDB(backup_dest = new_database)
-        }
-
         current_version_idx <- which(current_db_version == db_versions)
 
         tryCatch({
 
-          con <- DBI::dbConnect(SQLite(), Sys.getenv("SDB_PATH"))
-          DBI::dbConnect(con)
+          con <- DBI::dbConnect(SQLite(), database)
+
+          lapply(c("PRAGMA locking_mode = EXCLUSIVE;", "BEGIN EXCLUSIVE;"), function(s) { DBI::dbExecute(con, s) })
+          if (file.exists(database)) {
+            file.copy(database, new_database)
+          }
 
           while (current_db_version != expected_versions$database) {
 
-            DBI::dbBegin(con)
             upgrade_script <- system.file("extdata",
                                           paste0(file.path("db", db_versions[current_version_idx + 1], paste(c("sampledb", "database", db_versions[current_version_idx], db_versions[current_version_idx + 1]), collapse = "_")), ".sql"),
                                           package = pkgname)
 
-            sql <- read_lines(upgrade_script) %>%
-              glue_collapse(sep = "\n") %>%
-              glue_sql(.con = con) %>%
+            sql <- readr::read_lines(upgrade_script) %>%
+              glue::glue_collapse(sep = "\n") %>%
+              glue::glue_sql(.con = con) %>%
               strsplit(., ';')
 
             lapply(sql[[1]], function(s) { DBI::dbExecute(con, s) })
 
-            DBI::dbCommit(con)
-
             current_db_version <- DBI::dbGetQuery(con, "SELECT name FROM version ORDER BY name DESC LIMIT 1") %>% pull(name)
+
+            current_version_idx <- current_version_idx + 1
           }
 
+          DBI::dbCommit(con)
           DBI::dbDisconnect(con)
 
           file.copy(new_database, Sys.getenv("SDB_PATH"))
@@ -325,11 +321,6 @@ SampleDB_Setup <- function() {
     if (is.list(current_config[[name]])) {
       next
     }
-
-    # if (is.null(current_config[[name]]) && !is.null(new_config[[name]])) {
-    #   new_config[[name]] <- current_config[[name]]
-    #   next
-    # }
 
     if (is.null(current_config[[name]]) || is.null(new_config[[name]])) {
       next

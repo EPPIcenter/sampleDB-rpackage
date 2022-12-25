@@ -46,6 +46,9 @@ FROM "matrix_plate";
 --- Micronix Tube ---
 
 CREATE TABLE IF NOT EXISTS "micronix_tube" (
+	"created"		DATETIME NOT NULL,
+	"last_updated"	DATETIME NOT NULL,
+
 	"id"			INTEGER NOT NULL,
 	"manifest_id"	INTEGER NOT NULL,
 	"barcode"		VARCHAR NOT NULL UNIQUE,
@@ -76,13 +79,55 @@ ALTER TABLE "storage_container" ADD COLUMN "derived_storage_container_id";
 
 ALTER TABLE "study_subject" RENAME COLUMN "subject" TO "name";
 
+--- Storage Type ---
+
+CREATE TABLE IF NOT EXISTS "storage_type" (
+	"created"		DATETIME NOT NULL default current_timestamp,
+	"last_updated"	DATETIME NOT NULL default current_timestamp,
+
+	"id"			INTEGER NOT NULL,
+	"name"			VARCHAR NOT NULL UNIQUE,
+	"description"	TEXT NOT NULL,
+
+	PRIMARY KEY("id")
+);
+
+INSERT OR ROLLBACK INTO "storage_type" (name, description)
+VALUES
+	("micronix", "Micronix description placeholder"),
+	("cryovial", "Cryovial description placeholder");
+
+--- Location ---
+
+CREATE TABLE IF NOT EXISTS "NEW_location" (
+	"created"	DATETIME NOT NULL,
+	"last_updated"	DATETIME NOT NULL,
+
+	"id"				INTEGER NOT NULL,
+	"name"				VARCHAR NOT NULL,
+	"storage_type_id"	INTEGER NOT NULL,
+	"description" 		TEXT,
+
+	PRIMARY KEY("id"),
+	FOREIGN KEY("storage_type_id") REFERENCES "storage_type"("id")
+
+);
+
+INSERT OR ROLLBACK INTO "NEW_location" (created, last_updated, name, storage_type_id, description)
+SELECT created, last_updated, location_name, 1, location_type
+FROM "location";
+
+DROP TABLE IF EXISTS "location";
+ALTER TABLE "NEW_location" RENAME TO "location";
+
+--- Sample Types ---
+
 DROP TABLE IF EXISTS "matrix_plate";
 DROP TABLE IF EXISTS "box";
 DROP TABLE IF EXISTS "bag";
 DROP TABLE IF EXISTS "paper";
 DROP TABLE IF EXISTS "rdt";
 DROP TABLE IF EXISTS "sequencing_files";
-
 
 --- update database version ---
 INSERT OR ROLLBACK INTO version (name) VALUES ('1.4.0');
