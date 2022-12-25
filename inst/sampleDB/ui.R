@@ -5,6 +5,7 @@ library(shiny)
 library(markdown)
 library(DT)
 library(shinyWidgets)
+library(bslib)
 
 #load helper files
 for(ui_helper in list.files(path = "ui_helpers", full.names = T, recursive = T)){
@@ -18,6 +19,8 @@ navbarPage("EPPIcenter SampleDB",
            
   #css setup
   header = UICSS(),
+
+  theme = bs_theme(version = 4, bootswatch = "flatly"),
   #upload 
   tabPanel("Upload Samples", UIMicronixUpload()),
   #search
