@@ -163,42 +163,53 @@ SampleDB_Setup <- function() {
       current_db_version <- NA
 
       # get the current database version
-      if (!file.exists(database)) {
-        base_db_sql <- system.file("extdata",
-                                    paste0(file.path("db", db_versions[1], paste(c("sampledb", "database", db_versions[1]), collapse = "_")), ".sql"),
-                                    package = pkgname)
-
-        system2("sqlite3", paste(database, "<", base_db_sql))
-        Sys.chmod(database, mode = "0777", use_umask = FALSE)
+      if (file.exists(database)) {
+        con <- DBI::dbConnect(SQLite(), database)
+        current_db_version <- DBI::dbGetQuery(con, "SELECT name FROM version ORDER BY name DESC LIMIT 1") %>% pull(name)
+        DBI::dbDisconnect(con)
       }
 
-      con <- DBI::dbConnect(SQLite(), database)
-      current_db_version <- DBI::dbGetQuery(con, "SELECT name FROM version ORDER BY name DESC LIMIT 1") %>% pull(name)
-      DBI::dbDisconnect(con)
-
       # if the databases match, don't do anything
-      if (current_db_version == expected_versions$database) {
-        message(paste(crayon::white(cli::symbol$info), paste0("Database exists [", database, "]")))
+      if (!is.na(current_db_version) && current_db_version == expected_versions$database) {
+        message(paste(crayon::white(cli::symbol$info), paste0("Database exists [version=", current_db_version, "]")))
       } else {
         message(paste(crayon::white(cli::symbol$info), paste0("Installing database [version=", expected_versions$database, "]")))
 
         new_database <- tempfile()
-        current_version_idx <- which(current_db_version == db_versions)
 
         tryCatch({
 
-          con <- DBI::dbConnect(SQLite(), database)
+          old_db_con <- NULL
+          # if the database does not exist, create base db in temporary location, otherwise copy the old database to the temp location
+          if (!file.exists(database)) {
+            base_db_sql <- system.file("extdata",
+                                        paste0(file.path("db", db_versions[1], paste(c("sampledb", "database", db_versions[1]), collapse = "_")), ".sql"),
+                                        package = pkgname)
+
+            system2("sqlite3", paste(new_database, "<", base_db_sql))
+            Sys.chmod(new_database, mode = "0777", use_umask = FALSE)
+          } else {
+            old_db_con <- DBI::dbConnect(SQLite(), database)
+
+            lapply(c("PRAGMA locking_mode = EXCLUSIVE;", "BEGIN EXCLUSIVE;"), function(s) { DBI::dbExecute(old_db_con, s) })
+
+            if (file.exists(database)) {
+              file.copy(database, new_database)
+            }
+          }
+
+          con <- DBI::dbConnect(SQLite(), new_database)
 
           lapply(c("PRAGMA locking_mode = EXCLUSIVE;", "BEGIN EXCLUSIVE;"), function(s) { DBI::dbExecute(con, s) })
-          if (file.exists(database)) {
-            file.copy(database, new_database)
-          }
+
+          current_db_version <- DBI::dbGetQuery(con, "SELECT name FROM version ORDER BY name DESC LIMIT 1") %>% pull(name)
+          current_version_idx <- which(current_db_version == db_versions) 
 
           while (current_db_version != expected_versions$database) {
 
             upgrade_script <- system.file("extdata",
-                                          paste0(file.path("db", db_versions[current_version_idx + 1], paste(c("sampledb", "database", db_versions[current_version_idx], db_versions[current_version_idx + 1]), collapse = "_")), ".sql"),
-                                          package = pkgname)
+              paste0(file.path("db", db_versions[current_version_idx + 1], paste(c("sampledb", "database", db_versions[current_version_idx], db_versions[current_version_idx + 1]), collapse = "_")), ".sql"),
+              package = pkgname)
 
             sql <- readr::read_lines(upgrade_script) %>%
               glue::glue_collapse(sep = "\n") %>%
@@ -207,14 +218,22 @@ SampleDB_Setup <- function() {
 
             lapply(sql[[1]], function(s) { DBI::dbExecute(con, s) })
 
-            current_db_version <- DBI::dbGetQuery(con, "SELECT name FROM version ORDER BY name DESC LIMIT 1") %>% pull(name)
-
             current_version_idx <- current_version_idx + 1
+            current_db_version <- db_versions[current_version_idx]
           }
 
+          # commit 
           DBI::dbCommit(con)
+
+          # remove unused pages and close connection to the new database
+          DBI::dbExecute(con, "VACUUM")
           DBI::dbDisconnect(con)
 
+          # close lock on the old database
+          if (!is.null(old_db_con)) {
+            DBI::dbDisconnect(old_db_con)
+            file.remove(database)
+          }
           file.copy(new_database, Sys.getenv("SDB_PATH"))
           message(paste(crayon::green(cli::symbol$tick), paste0("Database upgraded to ", expected_versions$database, " [", database, "]")))
           Sys.chmod(Sys.getenv("SDB_PATH"), mode = "0777", use_umask = FALSE)
