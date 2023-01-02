@@ -204,7 +204,7 @@ SearchFunction <- function(input, output, ui_elements){
   search.date <- eval.search.date
   search.status <- input[[ui_elements$ui.input$SearchByStatus]]
   search.state <- input[[ui_elements$ui.input$SearchByState]]
-  search.location <- list(location_name = input[[ui_elements$ui.input$SearchByLocation]],
+  search.location <- list(name = input[[ui_elements$ui.input$SearchByLocation]],
                           level_I = input[[ui_elements$ui.input$SearchByLevelI]],
                           level_II = input[[ui_elements$ui.input$SearchByLevelII]])
   search.specimen_type <- input[[ui_elements$ui.input$SearchBySpecimenType]]
@@ -337,7 +337,7 @@ SmartFreezerDropdownFilter <- function(database, session, input = input, locatio
 
   observe({
     if(!is.null(input[[location_ui]]) && input[[location_ui]] != ""){
-      tmp_table.location <- filter(sampleDB::CheckTable(database = database, "location"), location_name == input[[location_ui]])
+      tmp_table.location <- filter(sampleDB::CheckTable(database = database, "location"), name == input[[location_ui]])
       updateSelectInput(session, levelI_ui, label = NULL, choices = c(tmp_table.location$level_I) %>% sort())
       levelII_choices <- list(`working baskets` = grep("working", tmp_table.location$level_II, value = T) %>% sort(),
                               `non-working baskets` = grep("working", tmp_table.location$level_II, value = T, invert = T) %>% sort())
@@ -455,8 +455,8 @@ UpdateFreezerDropdowns <- function(database, session){
   shinyjs::reset("AddFreezerLevel_I")
   shinyjs::reset("AddFreezerLevel_II")
   shinyjs::reset("RenameFreezerName2")
-  updateSelectInput(session = session, inputId = "RenameFreezerName1", choices = c("", sampleDB::CheckTable(database = database, "location")$location_name))
-  updateSelectInput(session = session, inputId = "DeleteFreezerName", choices = c("", sampleDB::CheckTable(database = database, "location")$location_name))
+  updateSelectInput(session = session, inputId = "RenameFreezerName1", choices = c("", sampleDB::CheckTable(database = database, "location")$name))
+  updateSelectInput(session = session, inputId = "DeleteFreezerName", choices = c("", sampleDB::CheckTable(database = database, "location")$name))
 }
 
 UpdateSpecimenTypeDropdowns <- function(database, session){

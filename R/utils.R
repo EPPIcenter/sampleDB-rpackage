@@ -96,7 +96,7 @@ library(yaml)
 .CheckFreezerNameIsUnique <- function(input, database, freezer_address){
 
   freezer_address_dup_test <- filter(sampleDB::CheckTable("location"),
-                                     location_name == freezer_address$freezer_name,
+                                     name == freezer_address$freezer_name,
                                      level_I == freezer_address$freezer_levelI,
                                      level_II == freezer_address$freezer_levelII) %>% nrow()
 
@@ -112,7 +112,7 @@ library(yaml)
   num_items_at_address <- 0
 
   freezer_address <- filter(sampleDB::CheckTable(database = database, "location"),
-                            location_name == freezer_address$freezer_name,
+                            name == freezer_address$freezer_name,
                             level_I == freezer_address$freezer_levelI,
                             level_II == freezer_address$freezer_levelII)
   if(length(freezer_address$id) > 0){
@@ -192,7 +192,7 @@ library(yaml)
 #upload a new micronix plate
 .UploadPlate <- function(conn, container_name, container_barcode, freezer_address, table){
 
-  eval.location_id <- filter(CheckTableTx(conn = conn, "location"), location_name == freezer_address$location, level_I == freezer_address$level_I, level_II == freezer_address$level_II)$id
+  eval.location_id <- filter(CheckTableTx(conn = conn, "location"), name == freezer_address$location, level_I == freezer_address$level_I, level_II == freezer_address$level_II)$id
   if(is.null(container_barcode) | is.na(container_barcode)) {
     container_barcode <- NA
   }

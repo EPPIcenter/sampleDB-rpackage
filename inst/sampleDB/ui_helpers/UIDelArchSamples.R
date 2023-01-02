@@ -29,7 +29,7 @@ UIDelArchSamples <- function(){
       radioButtons("DelArchSubjectUIDSearchType", label = NULL, choices = list("Single Study Subject" = "individual", "Multiple Study Subjects" = "multiple"), selected = "individual"),
       selectizeInput("DelArchSearchBySpecimenType", "Specimen Type", choices = c("", sampleDB::CheckTable(database = database, "specimen_type")$name)),
       dateRangeInput("DelArchdateRange", label = "Collection Dates", start = NA, end = NA) %>% suppressWarnings(),
-      selectizeInput("DelArchSearchByLocation", "Storage Location", choices = c("", sampleDB::CheckTable("location")$location_name)),
+      selectizeInput("DelArchSearchByLocation", "Storage Location", choices = c("", sampleDB::CheckTable("location")$name)),
       selectizeInput("DelArchSearchByLevelI", "Storage Location: Level I", choices = c("")),
       selectizeInput("DelArchSearchByLevelII", "Storage Location: Level II", choices = c("")),
       selectizeInput("DelArchSearchByState", "State", choices = c(Global$DefaultStateSearchTerm)),

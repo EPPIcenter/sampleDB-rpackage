@@ -43,7 +43,7 @@ AppUploadSamples <- function(session, output, input, database) {
             sample_storage_type = sample_storage_type,
             container_name = container_name,
             freezer_address = list(
-              location_name = input$UploadStorageContainerDestLocation, 
+              name = input$UploadStorageContainerDestLocation, 
               level_I = input$UploadStorageContainerDestLocationLevelI, 
               level_II = input$UploadStorageContainerDestLocationLevelII
             )

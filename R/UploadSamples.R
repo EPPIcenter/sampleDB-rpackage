@@ -30,7 +30,7 @@
 #' @param container_name A string specifying the name of the container the samples are in. Names must be unique within each sample type.
 #' @param container_barcode A string specifying the barcode for the container the samples are in. Container barcodes are optional. Barcodes must be unique within each sample type.
 #' @param freezer_address A list specifying the freezer address used to store samples. \cr
-#' Required items in the freezer_address list are `location_name`, `level_I` and `level_II`.
+#' Required items in the freezer_address list are `name`, `level_I` and `level_II`.
 #' If the freezer_address type is `minus eighty` then `level_I` and `level_II` items specify the rack and position, respecively.
 #' If the freezer_address type is `minus twenty` then `level_I` and `level_II` items specify the shelf and basket, respecively.
 #' @examples
@@ -43,7 +43,7 @@
 #'                                    study_short_code = c("KAM06"),
 #'                                    collection_date = c("2021-04-10")),
 #'                container_name = "test_container",
-#'                freezer_address = list(location_name = "TBD",
+#'                freezer_address = list(name = "TBD",
 #'                                       level_I = "TBD",
 #'                                       level_II = "seve's working basket"))
 #' }
@@ -92,7 +92,7 @@ UploadSamples <- function(sample_type, upload_data) {
     eval.plate_barcode <- upload_data[i,]$"manifest_barcode" %>% as.character()
     eval.container_name <- upload_data[i,]$"manifest_name" %>% as.character()
     eval.freezer_address <- list(
-      location = upload_data[i,]$"location_name",
+      location = upload_data[i,]$"name",
       level_I = upload_data[i,]$"level_I",
       level_II = upload_data[i,]$"level_II"
     )
@@ -247,7 +247,7 @@ UploadSamples <- function(sample_type, upload_data) {
   conn <-  RSQLite::dbConnect(RSQLite::SQLite(), database)
   RSQLite::dbBegin(conn)
 
-  eval.location_id <- filter(CheckTable(database = database, "location"), location_name == freezer_address$location, level_I == freezer_address$level_I, level_II == freezer_address$level_II)$id
+  eval.location_id <- filter(CheckTable(database = database, "location"), name == freezer_address$location, level_I == freezer_address$level_I, level_II == freezer_address$level_II)$id
   if(is.null(container_barcode)){
     container_barcode <- NA
   }

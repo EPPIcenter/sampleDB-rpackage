@@ -42,7 +42,7 @@ Required \code{upload_data} columns are:\cr
 \item{container_barcode}{A string specifying the barcode for the container the samples are in. Container barcodes are optional. Barcodes must be unique within each sample type.}
 
 \item{freezer_address}{A list specifying the freezer address used to store samples. \cr
-Required items in the freezer_address list are \code{location_name}, \code{level_I} and \code{level_II}.
+Required items in the freezer_address list are \code{name}, \code{level_I} and \code{level_II}.
 If the freezer_address type is \verb{minus eighty} then \code{level_I} and \code{level_II} items specify the rack and position, respecively.
 If the freezer_address type is \verb{minus twenty} then \code{level_I} and \code{level_II} items specify the shelf and basket, respecively.}
 }
@@ -60,7 +60,7 @@ UploadSamples(sample_type = "micronix",
                                    study_short_code = c("KAM06"),
                                    collection_date = c("2021-04-10")),
                container_name = "test_container",
-               freezer_address = list(location_name = "TBD",
+               freezer_address = list(name = "TBD",
                                       level_I = "TBD",
                                       level_II = "seve's working basket"))
 }

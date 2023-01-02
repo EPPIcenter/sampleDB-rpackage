@@ -28,7 +28,7 @@ UISearchSamples <- function(){
       radioButtons("SubjectUIDSearchType", label = NULL, choices = list("Single Study Subject" = "individual", "Multiple Study Subjects" = "multiple"), selected = "individual"),
       selectizeInput("SearchBySpecimenType", "Specimen Type", choices = c("", sampleDB::CheckTable(database = database, "specimen_type")$name)),
       dateRangeInput("dateRange", label = "Collection Dates", start = NA, end = NA) %>% suppressWarnings(),
-      selectizeInput("SearchByLocation", "Storage Location", choices = c("", sampleDB::CheckTable("location")$location_name)),
+      selectizeInput("SearchByLocation", "Storage Location", choices = c("", sampleDB::CheckTable("location")$name)),
       selectizeInput("SearchByLevelI", "Storage Location: Level I", choices = c("")),
       selectizeInput("SearchByLevelII", "Storage Location: Level II", choices = c("")),
       selectizeInput("SearchByState", "State", choices = c(Global$DefaultStateSearchTerm)),

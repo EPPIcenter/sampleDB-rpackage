@@ -10,7 +10,7 @@
 #' @param study A study short code string or a vector of study short code strings.
 #' @param collection_dates A list of date values strings (`date.to` and `date.from`) that can be used to filter EPPIcenter samples
 #' @param archived A logical value. `TRUE` filters for archived samples and `FALSE` filters for active samples
-#' @param freezer A list specifying the vector `location_name`, `level_I`, and/or`level_II`
+#' @param freezer A list specifying the vector `name`, `level_I`, and/or`level_II`
 #' @param return_sample_ids A logical value. Setting `return_sample_ids` to `TRUE` means `SearchSamples` returns sample ids as well as search results. Setting `return_sample_ids` to `FALSE` means `SearchSamples` returns only search results. Default value is `FALSE`.
 #' @examples
 #' \dontrun{
@@ -189,8 +189,8 @@ SearchSamples <- function(sample_type = NULL, sample_barcode = NULL, container_n
 .GetLocationID <- function(filters, tables.database){
   # make sure you can search by just one aspect of locations in the filters$search.location(ie freezer name, l1, l2), and that that search can include multiple names (l1 = c("A_rack", "B_rack"))
   tmp.table.location <- tables.database$table.location
-  if(!is.null(filters$search.location$location_name)){
-    tmp.table.location <- filter(tmp.table.location, location_name %in% filters$search.location$location_name)
+  if(!is.null(filters$search.location$name)){
+    tmp.table.location <- filter(tmp.table.location, name %in% filters$search.location$name)
   }
   if(!is.null(filters$search.location$level_I)){
     tmp.table.location <- filter(tmp.table.location, level_I %in% filters$search.location$level_I)
@@ -259,7 +259,7 @@ SearchSamples <- function(sample_type = NULL, sample_barcode = NULL, container_n
 
   archived_df <-  tibble(id = setdiff(storage_container_id, external_data$id), position = NA,
                          container_position = NA, container_name = NA, location_id = NA, type = NA,
-                         location_name = NA, location_type = NA, level_I = NA, level_II = NA, level_III = NA)
+                         name = NA, location_type = NA, level_I = NA, level_II = NA, level_III = NA)
 
   external_data <- rbind(external_data, archived_df) %>% arrange(id)
 
@@ -276,7 +276,7 @@ SearchSamples <- function(sample_type = NULL, sample_barcode = NULL, container_n
                            container_position = external_data$container_position %>% as.factor(),
                            barcode = external_data$barcode,
                            type = external_data$type %>% as.factor(),
-                           freezer = external_data$location_name %>% as.factor(),
+                           freezer = external_data$name %>% as.factor(),
                            freezer_l1 = external_data$level_I %>% as.factor(),
                            freezer_l2 = external_data$level_II %>% as.factor(),
                            status = internal_data$status_info %>% as.factor(),

@@ -11,7 +11,7 @@ UIMoveContainerOfSamples <- function(){
       conditionalPanel(condition = "input.EditContainerType == \"MoveContainer\"",
                        #should print to user the current location of the container
                        HTML("<p><b>Freezer Address</b></p>"),
-                       HTML("<p>Freezer Name</p>"), selectInput("MoveContainerLocation", label = NULL, width = '47%', choices = c("", sampleDB::CheckTable(database = database, "location")$location_name) %>% sort()),
+                       HTML("<p>Freezer Name</p>"), selectInput("MoveContainerLocation", label = NULL, width = '47%', choices = c("", sampleDB::CheckTable(database = database, "location")$name) %>% sort()),
                        HTML("<p>Shelf Name</p>"), selectInput("MoveContainerLocationLevelI", label = NULL, width = '47%', choices = NULL),
                        HTML("<p>Basket Name</p>"), selectInput("MoveContainerLocationLevelII", label = NULL, width = '47%', choices = NULL),
                        fluidRow(column(width = 12,

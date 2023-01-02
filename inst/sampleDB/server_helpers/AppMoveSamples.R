@@ -133,7 +133,7 @@ CreateEmptyManifest <- function(input, output, database){
                                       database = Sys.getenv("SDB_PATH"),
                                       container_name = input[["CreateEmptyManifestID"]],
                                       container_barcode = input[["CreateEmptyManifestBarcode"]],
-                                      freezer_address = list(location_name = input[["CreateEmptyManifestLocation"]],
+                                      freezer_address = list(name = input[["CreateEmptyManifestLocation"]],
                                                              level_I = input[["CreateEmptyManifestLevelI"]],
                                                              level_II = input[["CreateEmptyManifestLevelII"]]))
     
@@ -157,7 +157,7 @@ dataModal <- function(failed = FALSE, database) {
     br(),
     fluidRow(column(width = 6, HTML("<p>Human Readable Name</p>"), textInput("CreateEmptyManifestID", label = NULL, placeholder = "PRISM-2022-001")),
              column(width = 6,  HTML("<p>Barcode (Optional)</p>"), textInput("CreateEmptyManifestBarcode", label = NULL))),
-    HTML("<p>Freezer Name</p>"), selectInput("CreateEmptyManifestLocation", label = NULL, width = '47%', choices = c("", sampleDB::CheckTable(database = database, "location")$location_name) %>% sort()),
+    HTML("<p>Freezer Name</p>"), selectInput("CreateEmptyManifestLocation", label = NULL, width = '47%', choices = c("", sampleDB::CheckTable(database = database, "location")$name) %>% sort()),
     HTML("<p>Shelf Name</p>"), selectInput("CreateEmptyManifestLevelI", label = NULL, width = '47%', choices = NULL),
     HTML("<p>Basket Name</p>"), selectInput("CreateEmptyManifestLevelII", label = NULL, width = '47%', choices = NULL),
     if(failed){

@@ -111,12 +111,12 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
     # location parameters are conditional as they could be set in the UI
     location_parameters <- switch(sample_storage_type,
       "micronix" = list(
-        location_name = "FreezerName",
+        name = "FreezerName",
         level_I = "ShelfName",
         level_II = "BasketName"
       ),
       "cryovial" = list(
-        location_name = "FreezerName",
+        name = "FreezerName",
         level_I = "RackNumber",
         level_II = "RackPosition"
       )
@@ -252,11 +252,11 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
     }
 
     if (all(location_parameters %in% colnames(user_file)) && is.null(freezer_address)) {
-      processed_file$location_name <- user_file %>% pull(all_of(unlist(location_parameters['location_name'])))
+      processed_file$name <- user_file %>% pull(all_of(unlist(location_parameters['name'])))
       processed_file$level_I <- user_file %>% pull(all_of(unlist(location_parameters['level_I'])))
       processed_file$level_II <- user_file %>% pull(all_of(unlist(location_parameters['level_II'])))
     } else {
-      processed_file$location_name <- rep(freezer_address['location_name'], nrow(user_file))
+      processed_file$name <- rep(freezer_address['name'], nrow(user_file))
       processed_file$level_I <- rep(freezer_address['level_I'], nrow(user_file))
       processed_file$level_II <- rep(freezer_address['level_II'], nrow(user_file))
     }
@@ -410,9 +410,9 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
 
         db_locations <- tbl(con, "location") %>%
           collect() %>%
-          pull(location_name)
+          pull(name)
 
-        stopifnot("Location does not exist" = all(unique(formatted_csv$location_name) %in% db_locations))
+        stopifnot("Location does not exist" = all(unique(formatted_csv$name) %in% db_locations))
       }
 
       message("Validation complete.")

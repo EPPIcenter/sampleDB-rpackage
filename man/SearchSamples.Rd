@@ -33,7 +33,7 @@ SearchSamples(
 
 \item{collection_dates}{A list of date values strings (\code{date.to} and \code{date.from}) that can be used to filter EPPIcenter samples}
 
-\item{freezer}{A list specifying the vector \code{location_name}, \code{level_I}, and/or\code{level_II}}
+\item{freezer}{A list specifying the vector \code{name}, \code{level_I}, and/or\code{level_II}}
 
 \item{return_sample_ids}{A logical value. Setting \code{return_sample_ids} to \code{TRUE} means \code{SearchSamples} returns sample ids as well as search results. Setting \code{return_sample_ids} to \code{FALSE} means \code{SearchSamples} returns only search results. Default value is \code{FALSE}.}
 

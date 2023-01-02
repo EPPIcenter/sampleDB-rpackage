@@ -128,7 +128,7 @@ ShowFreezers <- function(output, database){
   output$TableFreezer <- DT::renderDataTable({
     sampleDB::CheckTable(database = database, "location") %>%
       dplyr::select(-c(created:id, level_III)) %>%
-      rename(`Freezer Name` = location_name,
+      rename(`Freezer Name` = name,
              `Type` = location_type,
              `Level I` = level_I,
              `Level II` = level_II)

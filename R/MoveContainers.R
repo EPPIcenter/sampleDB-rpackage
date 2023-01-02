@@ -2,7 +2,7 @@
 #' 
 #' @param sample_type A string specifying the type of samples that are being moved. Options include: `micronix`, `cryovial`, `rdt` and `paper`
 #' @param container_name A vector specifying the name of the container being moved
-#' @param freezer A list specifying the vector `location_name`, `level_I`, and/or`level_II`
+#' @param freezer A list specifying the vector `name`, `level_I`, and/or`level_II`
 #' @import dplyr
 #' @export
 
@@ -10,7 +10,7 @@ MoveContainers <- function(sample_type, container_name, freezer, conn){
   
   stopifnot("Sample Type is not valid" = sample_type %in% c("micronix", "cryovile", "rdt", "paper"))
   eval.location <- filter(sampleDB::CheckTableTx(conn = conn, table = "location"), 
-                          location_name == freezer$freezer.name & level_I == freezer$freezer.levelI & level_II == freezer$freezer.levelII)
+                          name == freezer$freezer.name & level_I == freezer$freezer.levelI & level_II == freezer$freezer.levelII)
   if (nrow(eval.location) == 0) {
     warning("Location does not exist!")
   }
