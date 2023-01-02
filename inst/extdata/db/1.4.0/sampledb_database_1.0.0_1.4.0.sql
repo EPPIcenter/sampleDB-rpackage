@@ -85,17 +85,16 @@ CREATE TABLE IF NOT EXISTS "storage_type" (
 	"created"		DATETIME NOT NULL default current_timestamp,
 	"last_updated"	DATETIME NOT NULL default current_timestamp,
 
-	"id"			INTEGER NOT NULL,
 	"name"			VARCHAR NOT NULL UNIQUE,
 	"description"	TEXT NOT NULL,
 
-	PRIMARY KEY("id")
+	PRIMARY KEY("name")
 );
 
 INSERT OR ROLLBACK INTO "storage_type" (name, description)
 VALUES
-	("micronix", "Micronix description placeholder"),
-	("cryovial", "Cryovial description placeholder");
+	("Micronix", "Micronix description placeholder"),
+	("Cryovial", "Cryovial description placeholder");
 
 --- Location ---
 
