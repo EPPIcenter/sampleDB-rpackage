@@ -246,8 +246,7 @@ UploadSamples <- function(sample_type, upload_data) {
 .UploadEmptyManifest <- function(manifest_table, database, container_name, container_barcode, freezer_address) {
   conn <-  RSQLite::dbConnect(RSQLite::SQLite(), database)
   RSQLite::dbBegin(conn)
-
-  eval.location_id <- filter(CheckTable(database = database, "location"), name == freezer_address$location, level_I == freezer_address$level_I, level_II == freezer_address$level_II)$id
+  eval.location_id <- filter(CheckTable(database = database, "location"), name == freezer_address$name, level_I == freezer_address$level_I, level_II == freezer_address$level_II)$id
   if(is.null(container_barcode)){
     container_barcode <- NA
   }

@@ -264,7 +264,7 @@ MoveSamples <- function(sample_type, move_data){
     #keeping plate information for the time being.
     if(0 < nrow(sample_data[[eval.container_id]])) {
       sample_data[[eval.container_id]] <- sample_data[[eval.container_id]] %>%
-        filter(sample_type %in% "micronix" & !(sample_data[[eval.container_id]]$position %in% "NA"))
+        filter(sample_type %in% "micronix" & !is.na(sample_data[[eval.container_id]]$position))
 
       if (nrow(sample_data[[eval.container_id]]) > 0)
         sample_data[[eval.container_id]] <- sample_data[[eval.container_id]] %>%

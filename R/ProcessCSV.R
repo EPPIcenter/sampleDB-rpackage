@@ -256,9 +256,9 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
       processed_file$level_I <- user_file %>% pull(all_of(unlist(location_parameters['level_I'])))
       processed_file$level_II <- user_file %>% pull(all_of(unlist(location_parameters['level_II'])))
     } else {
-      processed_file$name <- rep(freezer_address['name'], nrow(user_file))
-      processed_file$level_I <- rep(freezer_address['level_I'], nrow(user_file))
-      processed_file$level_II <- rep(freezer_address['level_II'], nrow(user_file))
+      processed_file$name <- rep(freezer_address[['name']], nrow(user_file))
+      processed_file$level_I <- rep(freezer_address[['level_I']], nrow(user_file))
+      processed_file$level_II <- rep(freezer_address[['level_II']], nrow(user_file))
     }
 
     if (manifest_barcode_name %in% colnames(user_file)) {
@@ -347,7 +347,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
 
       stopifnot("All collection dates are not in YMD format" = .CheckDateFormat(formatted_csv))
 
-      .CheckPositionIsValid(formatted_csv, sample_storage_type)
+      .CheckPositionIsValid(formatted_csv, sample_storage_type, user_action)
 
       # check that there are no empty cells besides collection_date (checked later) and comment (may or may not exist)
 
@@ -453,7 +453,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
   return(header_ridx)
 }
 
-.CheckPositionIsValid <- function(formatted_csv, sample_storage_type) {
+.CheckPositionIsValid <- function(formatted_csv, sample_storage_type, user_action) {
 
   positions <- formatted_csv %>% pull(position)
   if (any(c("micronix", "cryovial") %in% sample_storage_type)) {
@@ -472,9 +472,12 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
       stop("Numbers should be in ## format. Fill with zero if less than 10 (e.g \"05\")")
     }
 
-    duplicates <- formatted_csv %>%
-      group_by(manifest_name, position) %>%
-      filter(n() > 1)
+    duplicates <- data.frame()
+    if (user_action %in% "upload") {
+      duplicates <- formatted_csv %>%
+        group_by(manifest_name, position) %>%
+        filter(n() > 1)
+    }
 
     stopifnot("Invalid micronix position" = all(row_letter_check) && length(col_number_indices) == length(positions) && nrow(duplicates) == 0)
   } else {

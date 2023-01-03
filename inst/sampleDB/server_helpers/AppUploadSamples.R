@@ -25,21 +25,16 @@ AppUploadSamples <- function(session, output, input, database) {
 
     file_type <- input$UploadFileType
     container_name <- input$UploadManifestName
-    sample_storage_type <- input$UploadStorageType
+    sample_storage_type <- switch(input$UploadStorageType,
+      "Micronix" = "micronix",
+      "Cryovial" = "cryovial"
+    )
 
     formatted_file <- NULL
     b_use_wait_dialog <- FALSE
 
     output$UploadOutputConsole <- renderText({
       tryCatch({
-
-          con <- DBI::dbConnect(SQLite(), Sys.getenv("SDB_PATH"))
-
-          # todo: there has to be a way get the named values from an input - maybe use a one time reactive?
-          upload_location <- DBI::dbReadTable(con, "location") %>% filter(id == input$UploadLocation) %>% pull(name)
-          location_node_parent <- DBI::dbReadTable(con, "location_node") %>% filter(id == input$UploadLocationNodeParent) %>% pull(name)
-          location_node_child <- DBI::dbReadTable(con, "location_node") %>% filter(id == input$UploadLocationNodeChild) %>% pull(name)
-          DBI::dbDisconnect(con)
 
           user_file <- isolate({ rv$user_file })
 
@@ -52,9 +47,9 @@ AppUploadSamples <- function(session, output, input, database) {
             sample_storage_type = sample_storage_type,
             container_name = container_name,
             freezer_address = list(
-              name = upload_location,
-              level_I = location_node_parent, 
-              level_II = location_node_child
+              name = input$UploadLocationRoot,
+              level_I = input$UploadLocationLevelI, 
+              level_II = input$UploadLocationLevelII
             )
           )
 
@@ -98,10 +93,11 @@ AppUploadSamples <- function(session, output, input, database) {
       session, 
       "UploadLocationRoot",
       selected = "",
-      choices = (tbl(con, "location") %>%
+      choices = c("", tbl(con, "location") %>%
         filter(storage_type == local(input$UploadStorageType)) %>%
         collect() %>% 
-        pull(id, name = "name")
+        pull(name) %>%
+        unique(.)
       )
     )
 
@@ -113,7 +109,7 @@ AppUploadSamples <- function(session, output, input, database) {
       session,
       "UploadManifestName",
       selected = "",
-      choices = dbReadTable(con, manifest) %>% pull(name)
+      choices = c("", dbReadTable(con, manifest) %>% pull(name))
     )
 
     updateSelectInput(
@@ -143,13 +139,16 @@ AppUploadSamples <- function(session, output, input, database) {
       session,
       "UploadLocationLevelI",
       selected = "",
-      choices = (tbl(con, "location") %>%
-        filter(id == as.integer(local(input$UploadLocationRoot))) %>%
+      choices = c("", tbl(con, "location") %>%
+        filter(name == local(input$UploadLocationRoot)) %>%
         collect() %>% 
-        pull(id, name = "level_I")
+        pull(level_I)
       )
     )
     DBI::dbDisconnect(con)
+
+    shinyjs::reset("UploadLocationLevelI")
+    shinyjs::reset("UploadLocationLevelII")
   })
 
   observeEvent(input$UploadLocationLevelI, {
@@ -158,10 +157,10 @@ AppUploadSamples <- function(session, output, input, database) {
       session,
       "UploadLocationLevelII",
       selected = "",
-      choices = (tbl(con, "location") %>%
-        filter(level_I == local(input$UploadLocationLevelI)) %>%
+      choices = c("", tbl(con, "location") %>%
+        filter(name == local(input$UploadLocationRoot) && level_I == local(input$UploadLocationLevelI)) %>%
         collect() %>% 
-        pull(id, name = "level_II")
+        pull(level_II)
       )
     )
     DBI::dbDisconnect(con)

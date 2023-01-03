@@ -191,7 +191,6 @@ library(yaml)
 
 #upload a new micronix plate
 .UploadPlate <- function(conn, container_name, container_barcode, freezer_address, table){
-
   eval.location_id <- filter(CheckTableTx(conn = conn, "location"), name == freezer_address$location, level_I == freezer_address$level_I, level_II == freezer_address$level_II)$id
   if(is.null(container_barcode) | is.na(container_barcode)) {
     container_barcode <- NA
