@@ -8,16 +8,16 @@ UIUploadSamples <- function() {
       shinyjs::useShinyjs(),
       width = 3,
       h4("Upload Samples"),
-      radioButtons("UploadStorageType","1. Sample Storage Type", choices = DBI::dbReadTable(con, "storage_type") %>% pull(nam"), inline = TRUE),
+      radioButtons("UploadStorageType","1. Sample Storage Type", choices = DBI::dbReadTable(con, "storage_type") %>% pull(name), inline = TRUE),
       hr(),
       radioButtons("UploadFileType", "Choose a file type", choices = c("NA" = "na", "Traxcer" = "traxcer", "VisionMate" = "visionmate"), inline = TRUE),
       #upload data
       fileInput("UploadSampleDataSet", "2. Upload Samples File", multiple = FALSE, accept = c("text/csv", "text/comma-separated-values,text/plain", ".csv")),
       #add freezer infor
       selectizeInput("UploadManifestName", label = "Manifest Name", choices = c(),  options = list(create = TRUE)),
-      selectInput("UploadLocation", label = "Upload Location", choices = c()),        
-      selectInput("UploadLocationNodeParent", label = NULL, choices = c()),
-      selectInput("UploadLocationNodeChild", label = NULL, choices = c()),
+      selectInput("UploadLocationRoot", label = "Upload Location", choices = c()),        
+      selectInput("UploadLocationLevelI", label = NULL, choices = c()),
+      selectInput("UploadLocationLevelII", label = NULL, choices = c()),
       #output messages
       hr(),
       #action buttons

@@ -1,10 +1,14 @@
 UIFreezerReference <- function(){
-  sidebarLayout(
+
+  con <- DBI::dbConnect(RSQLite::SQLite(), Sys.getenv("SDB_PATH"))
+
+  ui <- sidebarLayout(
     sidebarPanel(
       width = 3,
       HTML("<h4><b>Add a Freezer</b></h4>"),
-      textInput("AddFreezerName", label = NULL, placeholder = "New Name"),
-      textInput("AddFreezerType", label = NULL, placeholder = "New Type"),
+      textInput("AddFreezerName", label = NULL, placeholder = "Give the location a unique name"),
+      selectInput("AddFreezerType", label = NULL, choices = DBI::dbReadTable(con, "storage_type") %>% pull(name)),
+      selectInput("AddFreezerDesc", label = NULL, placeholder = "Add a description for this location"),
       textInput("AddFreezerLevel_I", label = NULL, placeholder = "New Level I"),
       textInput("AddFreezerLevel_II", label = NULL, placeholder = "New Level II"),
       actionButton("AddFreezerAction", label = "Add", style="color: #fff; background-color: #337ab7; border-color: #2e6da4"),
@@ -15,7 +19,7 @@ UIFreezerReference <- function(){
       selectInput("RenameFreezerLevelI1", label = NULL, choices = c("", sampleDB::CheckTable(database = database, "location")$name)),
       selectInput("RenameFreezerLevelII1", label = NULL, choices = c("", sampleDB::CheckTable(database = database, "location")$name)),
       textInput("RenameFreezerName2", label = NULL, placeholder = "New Name"),
-      textInput("RenameFreezerType2", label = NULL, placeholder = "New Type"),
+      selectInput("RenameFreezerType", label = NULL, choices = DBI::dbReadTable(con, "storage_type") %>% pull(name)),
       textInput("RenameFreezerLevelI2", label = NULL, placeholder = "New Level I"),
       textInput("RenameFreezerLevelII2", label = NULL, placeholder = "New Level II"),
       actionButton("RenameFreezerAction", label = "Rename", style="color: #fff; background-color: #337ab7; border-color: #2e6da4"),
@@ -34,4 +38,7 @@ UIFreezerReference <- function(){
       width = 9,
       HTML("<h4><b>Freezers</b></h4>"),
       DT::dataTableOutput("TableFreezer")))
+
+  DBI::dbDisconnect(con)
+  return(ui)
 }

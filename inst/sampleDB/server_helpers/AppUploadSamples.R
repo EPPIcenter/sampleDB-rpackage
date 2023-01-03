@@ -20,18 +20,27 @@ AppUploadSamples <- function(session, output, input, database) {
   # 1. get path to user provided file, if path exists perform checks and reformat file
 
   observeEvent(input$UploadAction, {
-    
+
     req(rv$user_file, input$UploadFileType, input$UploadStorageType)
 
     file_type <- input$UploadFileType
+    container_name <- input$UploadManifestName
     sample_storage_type <- input$UploadStorageType
-    container_name <- input$UploadStorageContainerDestID
 
     formatted_file <- NULL
     b_use_wait_dialog <- FALSE
 
     output$UploadOutputConsole <- renderText({
       tryCatch({
+
+          con <- DBI::dbConnect(SQLite(), Sys.getenv("SDB_PATH"))
+
+          # todo: there has to be a way get the named values from an input - maybe use a one time reactive?
+          upload_location <- DBI::dbReadTable(con, "location") %>% filter(id == input$UploadLocation) %>% pull(name)
+          location_node_parent <- DBI::dbReadTable(con, "location_node") %>% filter(id == input$UploadLocationNodeParent) %>% pull(name)
+          location_node_child <- DBI::dbReadTable(con, "location_node") %>% filter(id == input$UploadLocationNodeChild) %>% pull(name)
+          DBI::dbDisconnect(con)
+
           user_file <- isolate({ rv$user_file })
 
           #check colnames of user provided file
@@ -43,9 +52,9 @@ AppUploadSamples <- function(session, output, input, database) {
             sample_storage_type = sample_storage_type,
             container_name = container_name,
             freezer_address = list(
-              name = input$UploadStorageContainerDestLocation, 
-              level_I = input$UploadStorageContainerDestLocationLevelI, 
-              level_II = input$UploadStorageContainerDestLocationLevelII
+              name = upload_location,
+              level_I = location_node_parent, 
+              level_II = location_node_child
             )
           )
 
@@ -63,11 +72,6 @@ AppUploadSamples <- function(session, output, input, database) {
           shinyjs::reset("UploadAction")
           sampleDB::UploadSamples(sample_type = sample_storage_type, upload_data = user_file)                                  
         },
-        warning = function(w) {
-          rv$user_file <- NULL
-          message(w)
-          w$message
-        },
         error = function(e) {
           rv$user_file <- NULL
           message(e)
@@ -84,54 +88,82 @@ AppUploadSamples <- function(session, output, input, database) {
   })
 
   observeEvent(input$UploadStorageType, {
-    container_choices <- switch(input$UploadStorageType,
-      "micronix" = dbUpdateEvent()$micronix_plate_name,
-      "cryovial" = dbUpdateEvent()$cryovial_box_name
+
+    shinyjs::reset("UploadLocationRoot")
+    shinyjs::reset("UploadLocationLevelI")
+    shinyjs::reset("UploadLocationLevelII")
+
+    con <- dbConnect(SQLite(), Sys.getenv("SDB_PATH"))
+    updateSelectInput(
+      session, 
+      "UploadLocationRoot",
+      selected = "",
+      choices = (tbl(con, "location") %>%
+        filter(storage_type == local(input$UploadStorageType)) %>%
+        collect() %>% 
+        pull(id, name = "name")
+      )
     )
 
-    shinyjs::reset(input$UploadStorageContainerDestID)
-    updateSelectizeInput(session, selected = "", "UploadStorageContainerDestID", choices = container_choices %>% sort(), option = list(create = TRUE), server = TRUE)
-  })
+    manifest <- switch(input$UploadStorageType,
+      "Micronix" = "micronix_plate",
+      "Cryovial" = "cryovial_box")
 
-  observeEvent(dbUpdateEvent(), {
-    updateSelectInput(session, selected = input$UploadStorageContainerDestLocation, "UploadStorageContainerDestLocation", choices = dbUpdateEvent()$location %>% sort())
-    
-    container_choices <- switch(input$UploadStorageType,
-      "micronix" = dbUpdateEvent()$micronix_plate_name,
-      "cryovial" = dbUpdateEvent()$cryovial_box_name
+    updateSelectizeInput(
+      session,
+      "UploadManifestName",
+      selected = "",
+      choices = dbReadTable(con, manifest) %>% pull(name)
     )
 
-    updateSelectizeInput(session, selected = "", "UploadStorageContainerDestID", choices = container_choices %>% sort(), option = list(create = TRUE), server = TRUE)
+    updateSelectInput(
+      session,
+      "UploadLocationLevelI",
+      label = switch(input$UploadStorageType,
+        "Micronix" = "Shelf Name", 
+        "Cryovial" = "Rack Number"
+      )
+    )
+
+    updateSelectInput(
+      session,
+      "UploadLocationLevelII",
+      label = switch(input$UploadStorageType,
+        "Micronix" = "Basket Name",
+        "Cryovial" = "Rack Position" 
+      )
+    )
+
+    DBI::dbDisconnect(con)
   })
 
-  # allow user to reset ui
-  observeEvent(input$ClearUploadForm, {
-      shinyjs::reset(input$UploadStorageContainerDestID)
-      shinyjs::reset(input$UploadSampleDataSet)
-      shinyjs::reset(input$UploadStorageContainerDestLocation)
-      shinyjs::reset(input$UploadStorageContainerDestLocationLevelI)
-      shinyjs::reset(input$UploadStorageContainerDestLocationII)
-      output$UploadOutputConsole <- renderText({""})
+  observeEvent(input$UploadLocationRoot, {
+    con <- dbConnect(SQLite(), Sys.getenv("SDB_PATH"))
+    updateSelectInput(
+      session,
+      "UploadLocationLevelI",
+      selected = "",
+      choices = (tbl(con, "location") %>%
+        filter(id == as.integer(local(input$UploadLocationRoot))) %>%
+        collect() %>% 
+        pull(id, name = "level_I")
+      )
+    )
+    DBI::dbDisconnect(con)
   })
-  
-  # auto-filter freezer addresses in dropdown
-  SmartFreezerDropdownFilter(database = database, session = session,
-                             input = input,
-                             location_ui = "UploadStorageContainerDestLocation", 
-                             levelI_ui = "UploadStorageContainerDestLocationLevelI", 
-                             levelII_ui = "UploadStorageContainerDestLocationLevelII")
-  
-  # present micronix upload examples
-  MicronixUploadExamples(input = input, database = database, output = output)
-}
 
-MicronixUploadExamples <- function(input, database, output){
-  
-  observeEvent(input$UploadStorageType, {
-    if(input$UploadStorageType == "micronix"){
-        ui.output <- list(LogisticsItems = "LogisticsItems",
-                          MetadataItems = "MetadataItems",
-                          CombinedItems = "CombinedItems")
-      }
-  }) 
+  observeEvent(input$UploadLocationLevelI, {
+    con <- dbConnect(SQLite(), Sys.getenv("SDB_PATH"))
+    updateSelectInput(
+      session,
+      "UploadLocationLevelII",
+      selected = "",
+      choices = (tbl(con, "location") %>%
+        filter(level_I == local(input$UploadLocationLevelI)) %>%
+        collect() %>% 
+        pull(id, name = "level_II")
+      )
+    )
+    DBI::dbDisconnect(con)
+  })
 }

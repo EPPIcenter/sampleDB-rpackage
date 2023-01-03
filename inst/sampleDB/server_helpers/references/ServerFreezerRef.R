@@ -129,7 +129,7 @@ ShowFreezers <- function(output, database){
     sampleDB::CheckTable(database = database, "location") %>%
       dplyr::select(-c(created:id, level_III)) %>%
       rename(`Freezer Name` = name,
-             `Type` = location_type,
+             `Type` = storage_type,
              `Level I` = level_I,
              `Level II` = level_II)
   })
