@@ -22,7 +22,7 @@ navbarPage("EPPIcenter SampleDB",
 
   theme = bs_theme(version = 4, bootswatch = "flatly"),
   #upload 
-  tabPanel("Upload Samples", UIUpload()),
+  tabPanel("Upload Samples", UIUploadSamples()),
   #search
   tabPanel("Search Samples", UISearchSamples()),
   #move
