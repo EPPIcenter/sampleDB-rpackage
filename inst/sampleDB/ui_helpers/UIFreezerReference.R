@@ -8,7 +8,7 @@ UIFreezerReference <- function(){
       HTML("<h4><b>Add a Freezer</b></h4>"),
       textInput("AddFreezerName", label = NULL, placeholder = "Give the location a unique name"),
       selectInput("AddFreezerType", label = NULL, choices = DBI::dbReadTable(con, "storage_type") %>% pull(name)),
-      selectInput("AddFreezerDesc", label = NULL, placeholder = "Add a description for this location"),
+      textInput("AddFreezerDesc", label = NULL, placeholder = "Add a description for this location"),
       textInput("AddFreezerLevel_I", label = NULL, placeholder = "New Level I"),
       textInput("AddFreezerLevel_II", label = NULL, placeholder = "New Level II"),
       actionButton("AddFreezerAction", label = "Add", style="color: #fff; background-color: #337ab7; border-color: #2e6da4"),

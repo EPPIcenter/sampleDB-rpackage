@@ -54,6 +54,7 @@ GetUIFreezerElements <- function(msg = NULL){
 
   ui.input <- list(AddFreezerName = "AddFreezerName",
                    AddFreezerType = "AddFreezerType",
+                   AddFreezerDesc = "AddFreezerDesc",
                    AddFreezerLevel_I = "AddFreezerLevel_I",
                    AddFreezerLevel_II = "AddFreezerLevel_II",
                    AddFreezerAction = "AddFreezerAction",

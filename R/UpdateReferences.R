@@ -70,7 +70,7 @@ UpdateReferences <- function(reference, operation, identifier = NULL, update = N
                            list(created = as.character(lubridate::now()),
                                 last_updated = as.character(lubridate::now()),
                                 name = update$freezer_name,
-                                location_type = update$freezer_type,
+                                storage_type = update$freezer_type,
                                 level_I = update$freezer_levelI,
                                 level_II = update$freezer_levelII,
                                 level_III = NA))
@@ -94,7 +94,7 @@ UpdateReferences <- function(reference, operation, identifier = NULL, update = N
       eval.info_list <- list(created = eval.created,
                              last_updated = as.character(lubridate::now()),
                              name = update$freezer_name,
-                             location_type = update$freezer_type,
+                             storage_type = update$freezer_type,
                              level_I = update$freezer_levelI,
                              level_II = update$freezer_levelII,
                              level_III = NA) %>% 
@@ -109,12 +109,12 @@ UpdateReferences <- function(reference, operation, identifier = NULL, update = N
 
       return_message <- paste0("Modified Freezer:\n",
                                "\tPrevious Name: \"", tmp_table.location$name, "\"\n",
-                               "\tPrevious Type: \"", tmp_table.location$location_type, "\"\n",
+                               "\tPrevious Type: \"", tmp_table.location$storage_type, "\"\n",
                                "\tPrevious Level I: \"", tmp_table.location$level_I, "\"\n",
                                "\tPrevious Level II: \"", tmp_table.location$level_II, "\"\n",
                                "New Freezer:\n",
                                "\tCurrent Name: \"", tmp_table2.location$name, "\"\n",
-                               "\tCurrent Type: \"", tmp_table2.location$location_type, "\"\n",
+                               "\tCurrent Type: \"", tmp_table2.location$storage_type, "\"\n",
                                "\tCurrent Level I: \"", tmp_table2.location$level_I, "\"\n",
                                "\tCurrent Level II: \"", tmp_table2.location$level_II, "\"")
     }
@@ -132,7 +132,7 @@ UpdateReferences <- function(reference, operation, identifier = NULL, update = N
       
       return_message <- paste0("Deleted Freezer:\n",
                                "\tName: \"",identifier$freezer_name, "\"\n",
-                               "\tType: \"", tmp_table.location$location_type, "\"\n",
+                               "\tType: \"", tmp_table.location$storage_type, "\"\n",
                                "\tLevel I: \"", tmp_table.location$level_I, "\"\n",
                                "\tLevel II: \"", tmp_table.location$level_II, "\"")
     }

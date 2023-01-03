@@ -14,8 +14,12 @@ UpdateLabFreezers <- function(session, input, output, database){
       # save user input
       new.freezer_name <- input[[ui_elements$ui.input$AddFreezerName]]
       new.freezer_type <- input[[ui_elements$ui.input$AddFreezerType]]
+      new.freezer_desc <- input[[ui_elements$ui.input$AddFreezerDesc]]
       new.freezer_levelI <- input[[ui_elements$ui.input$AddFreezerLevel_I]]
       new.freezer_levelII <- input[[ui_elements$ui.input$AddFreezerLevel_II]]
+
+      print(new.freezer_type)
+
       
       # set requirements
       SetFreezerAddRequirements(input = input, database = database, ui_elements = ui_elements)
@@ -52,7 +56,7 @@ UpdateLabFreezers <- function(session, input, output, database){
       old.freezer_levelI <- input[[ui_elements$ui.input$RenameFreezerLevelI1]]
       old.freezer_levelII <- input[[ui_elements$ui.input$RenameFreezerLevelII1]]
       new.freezer_name <- input[[ui_elements$ui.input$RenameFreezerName2]]
-      new.freezer_type <- input[[ui_elements$ui.input$RenameFreezerType2]]
+      new.freezer_type <- input[[ui_elements$ui.input$RenameFreezerType]]
       new.freezer_levelI <- input[[ui_elements$ui.input$RenameFreezerLevelI2]]
       new.freezer_levelII <- input[[ui_elements$ui.input$RenameFreezerLevelI2]]
 
