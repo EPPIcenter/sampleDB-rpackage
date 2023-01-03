@@ -1,136 +1,186 @@
-UpdateLabFreezers <- function(session, input, output, database){
-  
-  # get ui freezer elements
-  ui_elements <- GetUIFreezerElements()
-  
-  #check freezer update
-  FreezerChangesChecks(input, database, output, ui_elements = ui_elements)
-  
-  #option1: add freezer address to the database
-  observeEvent(
-    input[[ui_elements$ui.input$AddFreezerAction]],
-    ({
-      
-      # save user input
-      new.freezer_name <- input[[ui_elements$ui.input$AddFreezerName]]
-      new.freezer_type <- input[[ui_elements$ui.input$AddFreezerType]]
-      new.freezer_levelI <- input[[ui_elements$ui.input$AddFreezerLevel_I]]
-      new.freezer_levelII <- input[[ui_elements$ui.input$AddFreezerLevel_II]]
-      
-      # set requirements
-      SetFreezerAddRequirements(input = input, database = database, ui_elements = ui_elements)
-      
-      tryCatch(
-        return_message <- sampleDB::UpdateReferences(reference = "freezer",
-                                                     operation = "add",
-                                                     update = list(freezer_name = new.freezer_name,
-                                                                   freezer_type = new.freezer_type,
-                                                                   freezer_levelI = new.freezer_levelI,
-                                                                   freezer_levelII = new.freezer_levelII)),
-        error=function(e){
-          print(e)
-        }
-      )
-      
-      # print user message
-      output[[ui_elements$ui.output$FreezerReturnMessage]] <- renderText({return_message})
-      
-      # print freezers
-      ShowFreezers(output, database)
-      
-      # update dropdowns
-      UpdateFreezerDropdowns(database, session)
-    }))
-  
-  #option2: change freezer address name
-  observeEvent(
-    input[[ui_elements$ui.input$RenameFreezerAction]],
-    ({
-      
-      # save user input
-      old.freezer_name <- input[[ui_elements$ui.input$RenameFreezerName1]]
-      old.freezer_levelI <- input[[ui_elements$ui.input$RenameFreezerLevelI1]]
-      old.freezer_levelII <- input[[ui_elements$ui.input$RenameFreezerLevelII1]]
-      new.freezer_name <- input[[ui_elements$ui.input$RenameFreezerName2]]
-      new.freezer_type <- input[[ui_elements$ui.input$RenameFreezerType2]]
-      new.freezer_levelI <- input[[ui_elements$ui.input$RenameFreezerLevelI2]]
-      new.freezer_levelII <- input[[ui_elements$ui.input$RenameFreezerLevelI2]]
+library(DBI)
+library(glue)
+library(shinyjs)
+library(shinyWidgets)
 
-      #set requirements
-      SetFreezerChangeRequirements(input = input, database = database, ui_elements = ui_elements)
-      
-      return_message <- sampleDB::UpdateReferences(reference = "freezer",
-                                                   operation = "modify",
-                                                   identifier = list(freezer_name = old.freezer_name,
-                                                                     freezer_levelI = old.freezer_levelI,
-                                                                     freezer_levelII = old.freezer_levelII),
-                                                   update = list(freezer_name = new.freezer_name,
-                                                                 freezer_type = new.freezer_type,
-                                                                 freezer_levelI = new.freezer_levelI,
-                                                                 freezer_levelII = new.freezer_levelII) %>% purrr::discard(function(x){is.null(x) || x == ""}))
-      
-      
-      output[[ui_elements$ui.output$FreezerReturnMessage]] <- renderText({return_message})
-      
-      # print freezers
-      ShowFreezers(output, database)
-      
-      # update dropdowns
-      UpdateFreezerDropdowns(database, session)
-      
-    }))
-  
-  # smart populate freezer dropdowns 
-  SmartFreezerDropdownFilter(database = database, session = session, input = input, 
-                             location_ui = ui_elements$ui.input$RenameFreezerName1, 
-                             levelI_ui = ui_elements$ui.input$RenameFreezerLevelI1, 
-                             levelII_ui = ui_elements$ui.input$RenameFreezerLevelII1)
-  
-  #option3: remove freezer address
-  observeEvent(
-    input$DeleteFreezerAction,
-    ({
-      
-      # save user input
-      delete.freezer_name <- input[[ui_elements$ui.input$DeleteFreezerName]]
-      delete.freezer_levelI <- input[[ui_elements$ui.input$DeleteFreezerLevelI]]
-      delete.freezer_levelII <- input[[ui_elements$ui.input$DeleteFreezerLevelII]]
-      
-      # set requirements
-      SetFreezerDeleteRequirements(input = input, database = database, ui_elements = ui_elements)
-      
-      return_message <- sampleDB::UpdateReferences(reference = "freezer",
-                                                   operation = "delete",
-                                                   identifier = list(freezer_name = delete.freezer_name,
-                                                                     freezer_levelI = delete.freezer_levelI,
-                                                                     freezer_levelII = delete.freezer_levelII))
-      # print user message
-      output$FreezerReturnMessage <- renderText({return_message})
-      
-      # print freezers
-      ShowFreezers(output, database)
-      
-      # update dropdowns
-      UpdateFreezerDropdowns(database, session)
-      
-    })
+UpdateLabFreezers <- function(session, input, output, database) {
+
+  rv <- reactiveValues(
+    data = NULL, 
+    selected = NULL,
+    update = TRUE,
+    error = FALSE
   )
-  
-  # smart populate freezer dropdowns 
-  SmartFreezerDropdownFilter(database = database, session = session, input = input, 
-                             location_ui = "DeleteFreezerName", levelI_ui = "DeleteFreezerLevelI", levelII_ui = "DeleteFreezerLevelII")
-  
-  # print freezers
-  ShowFreezers(output, database)
-}
 
-ShowFreezers <- function(output, database){
-  output$TableFreezer <- DT::renderDataTable({
-    sampleDB::CheckTable(database = database, "location") %>%
-      dplyr::select(-c(created:id, level_III)) %>%
-      rename(`Freezer Name` = name,
-             `Type` = storage_type,
-             `Level I` = level_I,
-             `Level II` = level_II)
+  error <- reactiveValues(
+    title = "",
+    message = ""
+  )
+
+  observeEvent(rv$error, ignoreInit = TRUE, {
+    showModal(
+      modalDialog(
+        title = error$title,
+        error$message,
+        footer = actionButton("exit", "Ok", class = "btn-primary")
+      )
+    )
   })
+
+  observeEvent(input$exit, ignoreInit = TRUE, {
+    removeModal()
+  })
+
+  observeEvent(input$LocationAction, {
+    print(input$LocationAction)
+    if(input$LocationAction == "create") {
+      shinyjs::show("LocationNameText")
+      shinyjs::hide("LocationName")
+      shinyjs::show("LocationType")
+      shinyjs::show("LocationNameLevelI")
+      shinyjs::show("LocationNameLevelII")   
+    } else if (input$LocationAction == "modify") {
+      shinyjs::show("LocationNameText")
+      shinyjs::show("LocationName")
+      shinyjs::hide("LocationType")
+      shinyjs::show("LocationNameLevelI")
+      shinyjs::show("LocationNameLevelII") 
+    } else if (input$LocationAction == "delete") {
+      shinyjs::hide("LocationNameText")
+      shinyjs::show("LocationName")
+      shinyjs::hide("LocationType")
+      shinyjs::show("LocationNameLevelI")
+      shinyjs::show("LocationNameLevelII")
+    }
+  })
+
+  observeEvent(rv$update, {
+    con <- DBI::dbConnect(SQLite(), database)
+    rv$data <- DBI::dbReadTable(con, "location")
+    rv$update <- NULL
+
+    updateSelectInput(session, "LocationName", label = "Sample storage location", unique(DBI::dbReadTable(con, "location") %>% pull(name)))
+
+    DBI::dbDisconnect(con)
+  })
+
+
+  observeEvent(input$LocationType, {
+
+    print(input$LocationType)
+
+    shinyjs::reset("LocationName")
+    shinyjs::reset("LocationNameLevelI")
+    shinyjs::reset("LocationNameLevelII")
+
+    con <- dbConnect(SQLite(), Sys.getenv("SDB_PATH"))
+    updateSelectInput(
+      session, 
+      "LocationName",
+      selected = "",
+      choices = (tbl(con, "location") %>%
+        filter(storage_type == local(input$LocationType)) %>%
+        collect() %>% 
+        pull(id, name = "name")
+      )
+    )
+
+    updateSelectInput(
+      session,
+      "UploadLocationLevelI",
+      label = switch(input$LocationType,
+        "Micronix" = "Shelf Name", 
+        "Cryovial" = "Rack Number"
+      ),
+      selected = "",
+      choices = (tbl(con, "location") %>%
+        filter(storage_type == local(input$LocationType) & name == local(input$LocationName)) %>%
+        collect() %>% 
+        pull(name)
+      )      
+    )
+
+    updateSelectInput(
+      session,
+      "UploadLocationLevelII",
+      label = switch(input$LocationType,
+        "Micronix" = "Basket Name",
+        "Cryovial" = "Rack Position"
+      ),
+      selected = "",
+      choices = (tbl(con, "location") %>%
+        filter(storage_type == local(input$LocationType) & name == local(input$LocationName) & level_I == local(input$LocationNameLevelI)) %>%
+        collect() %>% 
+        pull(name)
+      )
+    )
+
+    DBI::dbDisconnect(con)
+  })
+
+  observeEvent(input$LocationActionSubmit, {
+
+    now = as.character(lubridate::now())
+
+    con <- DBI::dbConnect(SQLite(), database)
+    if (input$LocationAction %in% c("create", "modify")) {
+      df <- tbl(con, "location") %>% filter(name == local(input$LocationNameText)) %>% collect()
+
+      if (nrow(df) > 0) {
+        error$title <- "Invalid Profile"
+        error$message <- "Duplicate name."
+        rv$error <- TRUE
+        return()
+      }
+
+      if (input$LocationAction == "create") {
+        df.payload <- data.frame(
+          created = now,
+          last_updated = now,
+          name = input$LocationNameText,
+          storage_type_id = input$LocationType
+        )
+
+        DBI::dbAppendTable(con, "location", df.payload)
+
+      } else {
+
+        location_id <- tbl(con, "location") %>% 
+          filter(name == local(input$LocationName) & level_I == local(input$LocationNameLevelI) & level_II == local(input$LocationNameLevelII)) %>%
+          collect() %>% pull(id)
+
+        browser()
+        sql <- SQL("UPDATE location SET name=?name, level_I=?level_I, level_II=?level_II WHERE id=?id")
+        sqlInterpolate(con, sql,
+          name = dbQuoteIdentifier(con, input$LocationName),
+          level_I = dbQuoteIdentifier(con, input$LocationNameLevelI),
+          level_II = dbQuoteIdentifier(con, input$LocationNameLevelII),
+          id = dbQuoteIdentifier(con, location_id)
+        )
+
+        # dbExecute(con, glue::glue_sql(
+        #   "UPDATE location SET name='", input$LocationNameText, "', storage_type='", input$LocationType, "' WHERE (id = '", location_id, "');"))
+      }
+    } else {
+      df <- tbl(con, "location") %>% filter(id == local(input$LocationName)) %>% collect()
+      if (nrow(df) == 0) {
+        error$title <- "Invalid Profile"
+        error$message <- "Location does not exist in the database."
+        rv$error <- TRUE
+        return()
+      }
+
+      dbExecute(con, glue::glue_sql("DELETE FROM location WHERE (id = '", input$LocationName, "');"))
+    }
+
+    rv$update <- TRUE 
+    DBI::dbDisconnect(con)
+
+  })
+
+  output$LocationTable <- DT::renderDataTable({
+    rv$data
+  })
+
+  rv$selected <- reactive({ rv$data[ input$DelArchSearchResultsTable_rows_selected, ] })
 }
