@@ -1,3 +1,41 @@
+--- Storage Type ---
+
+CREATE TABLE IF NOT EXISTS "storage_type" (
+	"name"			VARCHAR NOT NULL UNIQUE,
+	"description"	TEXT,
+
+	PRIMARY KEY("name")
+);
+
+INSERT OR ROLLBACK INTO "storage_type" (name)
+VALUES
+	("Micronix"),
+	("Cryovial");
+
+--- Location ---
+
+CREATE TABLE IF NOT EXISTS "NEW_location" (
+	"created"	DATETIME NOT NULL,
+	"last_updated"	DATETIME NOT NULL,
+
+	"id"				INTEGER NOT NULL,
+	"name"				VARCHAR NOT NULL,
+	"storage_type"		VARCHAR NOT NULL,
+	"description" 		TEXT,
+	"level_I"			VARCHAR NOT NULL,
+	"level_II"			VARCHAR NOT NULL,
+	"level_III"			VARCHAR,
+
+
+	PRIMARY KEY("id"),
+	FOREIGN KEY("storage_type") REFERENCES "storage_type"("name")
+
+);
+
+INSERT OR ROLLBACK INTO "NEW_location" (created, last_updated, id, name, storage_type, description, level_I, level_II, level_III)
+SELECT created, last_updated, id, location_name, "Micronix", location_type, level_I, level_II, level_III
+FROM "location";
+
 --- Cryovial Box ---
 
 CREATE TABLE IF NOT EXISTS  "cryovial_box"  (
@@ -83,44 +121,6 @@ ALTER TABLE "storage_container" ADD COLUMN "derived_storage_container_id";
 --- Study Subject ---
 
 ALTER TABLE "study_subject" RENAME COLUMN "subject" TO "name";
-
---- Storage Type ---
-
-CREATE TABLE IF NOT EXISTS "storage_type" (
-	"name"			VARCHAR NOT NULL UNIQUE,
-	"description"	TEXT,
-
-	PRIMARY KEY("name")
-);
-
-INSERT OR ROLLBACK INTO "storage_type" (name)
-VALUES
-	("Micronix"),
-	("Cryovial");
-
---- Location ---
-
-CREATE TABLE IF NOT EXISTS "NEW_location" (
-	"created"	DATETIME NOT NULL,
-	"last_updated"	DATETIME NOT NULL,
-
-	"id"				INTEGER NOT NULL,
-	"name"				VARCHAR NOT NULL,
-	"storage_type"		VARCHAR NOT NULL,
-	"description" 		TEXT,
-	"level_I"			VARCHAR NOT NULL,
-	"level_II"			VARCHAR NOT NULL,
-	"level_III"			VARCHAR,
-
-
-	PRIMARY KEY("id"),
-	FOREIGN KEY("storage_type") REFERENCES "storage_type"("name")
-
-);
-
-INSERT OR ROLLBACK INTO "NEW_location" (created, last_updated, name, storage_type, description, level_I, level_II, level_III)
-SELECT created, last_updated, location_name, "Micronix", location_type, level_I, level_II, level_III
-FROM "location";
 
 DROP TABLE IF EXISTS "location";
 ALTER TABLE "NEW_location" RENAME TO "location";
