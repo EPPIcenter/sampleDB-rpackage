@@ -38,8 +38,6 @@ AppUploadSamples <- function(session, output, input, database) {
     output$UploadOutputConsole <- renderText({
       tryCatch({
 
-          user_file <- isolate({ rv$user_file })
-
           #check colnames of user provided file
 
           user_file <- sampleDB::ProcessCSV(
@@ -170,5 +168,14 @@ AppUploadSamples <- function(session, output, input, database) {
       )
     )
     DBI::dbDisconnect(con)
+  })
+
+  observeEvent(input$ClearUploadForm, {
+    shinyjs::reset("UploadSampleDataSet")
+    shinyjs::reset("UploadManifestName")
+    shinyjs::reset("UploadLocationRoot")
+    shinyjs::reset("UploadLocationLevelI")
+    shinyjs::reset("UploadLocationLevelII")
+    rv$user_file <- NULL
   })
 }
