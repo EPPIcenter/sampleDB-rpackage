@@ -21,11 +21,18 @@ AppUploadSamples <- function(session, output, input, database) {
 
   observeEvent(input$UploadAction, {
 
-    req(rv$user_file, input$UploadFileType, input$UploadStorageType)
+    req(rv$user_file, input$UploadFileType, input$UploadSampleType)
 
     file_type <- input$UploadFileType
     container_name <- input$UploadManifestName
-    sample_storage_type <- switch(input$UploadStorageType,
+
+    sample_type_id <- as(local(input$UploadSampleType), "integer")
+    sample_type_name <- DBI::dbReadTable(con, "sample_type") %>%
+      filter(id == sample_type_id) %>%
+      pull(name)
+
+    # todo: this should be mapped somewhere else
+    sample_storage_type <- switch(sample_type_name,
       "Micronix" = "micronix",
       "Cryovial" = "cryovial"
     )
@@ -82,26 +89,30 @@ AppUploadSamples <- function(session, output, input, database) {
     })
   })
 
-  observeEvent(input$UploadStorageType, {
+  observeEvent(input$UploadSampleType, {
 
     shinyjs::reset("UploadLocationRoot")
     shinyjs::reset("UploadLocationLevelI")
     shinyjs::reset("UploadLocationLevelII")
 
     con <- dbConnect(SQLite(), Sys.getenv("SDB_PATH"))
+    sample_type_id <- as(local(input$UploadSampleType), "integer")
+    sample_type_name <- DBI::dbReadTable(con, "sample_type") %>%
+      filter(id == sample_type_id) %>%
+      pull(name)
+
     updateSelectInput(
       session, 
       "UploadLocationRoot",
       selected = "",
       choices = c("", tbl(con, "location") %>%
-        filter(storage_type == local(input$UploadStorageType)) %>%
         collect() %>% 
         pull(name) %>%
         unique(.)
       )
     )
 
-    manifest <- switch(input$UploadStorageType,
+    manifest <- switch(sample_type_name,
       "Micronix" = "micronix_plate",
       "Cryovial" = "cryovial_box")
 
@@ -109,13 +120,13 @@ AppUploadSamples <- function(session, output, input, database) {
       session,
       "UploadManifestName",
       selected = "",
-      choices = c("", dbReadTable(con, manifest) %>% pull(name))
+      choices = c("", DBI::dbReadTable(con, manifest) %>% pull(name))
     )
 
     updateSelectInput(
       session,
       "UploadLocationLevelI",
-      label = switch(input$UploadStorageType,
+      label = switch(sample_type_name,
         "Micronix" = "Shelf Name", 
         "Cryovial" = "Rack Number"
       )
@@ -124,7 +135,7 @@ AppUploadSamples <- function(session, output, input, database) {
     updateSelectInput(
       session,
       "UploadLocationLevelII",
-      label = switch(input$UploadStorageType,
+      label = switch(sample_type_name,
         "Micronix" = "Basket Name",
         "Cryovial" = "Rack Position" 
       )

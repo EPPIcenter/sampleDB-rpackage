@@ -8,7 +8,7 @@ UIUploadSamples <- function() {
       shinyjs::useShinyjs(),
       width = 3,
       h4("Upload Samples"),
-      radioButtons("UploadStorageType","1. Sample Storage Type", choices = DBI::dbReadTable(con, "storage_type") %>% pull(name), inline = TRUE),
+      radioButtons("UploadSampleType","1. Sample Storage Type", choices = DBI::dbReadTable(con, "sample_type") %>% pull(id, name = "name"), inline = TRUE),
       hr(),
       radioButtons("UploadFileType", "Choose a file type", choices = c("NA" = "na", "Traxcer" = "traxcer", "VisionMate" = "visionmate"), inline = TRUE),
       #upload data

@@ -259,7 +259,7 @@ SearchSamples <- function(sample_type = NULL, sample_barcode = NULL, container_n
 
   archived_df <-  tibble(id = setdiff(storage_container_id, external_data$id), barcode = NA,
                          container_position = NA, container_name = NA, location_id = NA, type = NA,
-                         name = NA, storage_type = NA, description = NA, 
+                         name = NA, sample_type = NA, description = NA, 
                          level_I = NA, level_II = NA, level_III = NA)
 
   external_data <- rbind(external_data, archived_df) %>% arrange(id)
