@@ -26,15 +26,10 @@ AppUploadSamples <- function(session, output, input, database) {
     file_type <- input$UploadFileType
     container_name <- input$UploadManifestName
 
-    sample_type_id <- as(local(input$UploadSampleType), "integer")
-    sample_type_name <- DBI::dbReadTable(con, "sample_type") %>%
-      filter(id == sample_type_id) %>%
-      pull(name)
-
     # todo: this should be mapped somewhere else
-    sample_storage_type <- switch(sample_type_name,
-      "Micronix" = "micronix",
-      "Cryovial" = "cryovial"
+    sample_storage_type <- switch(input$UploadSampleType,
+      "1" = "micronix",
+      "2" = "cryovial"
     )
 
     formatted_file <- NULL
@@ -72,7 +67,7 @@ AppUploadSamples <- function(session, output, input, database) {
           }
 
           shinyjs::reset("UploadAction")
-          sampleDB::UploadSamples(sample_type = sample_storage_type, upload_data = user_file)                                  
+          sampleDB::UploadSamples(sample_type_id = as.integer(input$UploadSampleType), upload_data = user_file)                                  
         },
         error = function(e) {
           rv$user_file <- NULL

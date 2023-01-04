@@ -70,7 +70,7 @@ UpdateReferences <- function(reference, operation, identifier = NULL, update = N
                            list(created = as.character(lubridate::now()),
                                 last_updated = as.character(lubridate::now()),
                                 name = update$freezer_name,
-                                storage_type = update$freezer_type,
+                                storage_type_id = update$freezer_type,
                                 level_I = update$freezer_levelI,
                                 level_II = update$freezer_levelII,
                                 level_III = NA))
@@ -94,7 +94,7 @@ UpdateReferences <- function(reference, operation, identifier = NULL, update = N
       eval.info_list <- list(created = eval.created,
                              last_updated = as.character(lubridate::now()),
                              name = update$freezer_name,
-                             storage_type = update$freezer_type,
+                             storage_type_id = update$freezer_type,
                              level_I = update$freezer_levelI,
                              level_II = update$freezer_levelII,
                              level_III = NA) %>% 

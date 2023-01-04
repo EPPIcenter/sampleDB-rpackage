@@ -13,7 +13,7 @@ UpdateLabFreezers <- function(session, input, output, database){
       
       # save user input
       new.freezer_name <- input[[ui_elements$ui.input$AddFreezerName]]
-      new.freezer_type <- input[[ui_elements$ui.input$AddFreezerType]]
+      new.freezer_type <- as.integer(input[[ui_elements$ui.input$AddFreezerType]])
       new.freezer_desc <- input[[ui_elements$ui.input$AddFreezerDesc]]
       new.freezer_levelI <- input[[ui_elements$ui.input$AddFreezerLevel_I]]
       new.freezer_levelII <- input[[ui_elements$ui.input$AddFreezerLevel_II]]
@@ -130,11 +130,21 @@ UpdateLabFreezers <- function(session, input, output, database){
 
 ShowFreezers <- function(output, database){
   output$TableFreezer <- DT::renderDataTable({
-    sampleDB::CheckTable(database = database, "location") %>%
+    con <- DBI::dbConnect(RSQLite::SQLite(), Sys.getenv("SDB_PATH"))
+
+    data <- tbl(con, "location") %>%
       dplyr::select(-c(created:id, level_III)) %>%
+      inner_join(tbl(con, "storage_type") %>% rename(storage_type_name = name), by = c("storage_type_id" = "id")) %>%
+      select(name, storage_type_name, level_I, level_II) %>%
       rename(`Freezer Name` = name,
-             `Type` = storage_type,
+             `Type` = storage_type_name,
              `Level I` = level_I,
-             `Level II` = level_II)
+             `Level II` = level_II) %>%
+      collect()
+
+    DBI::dbDisconnect(con)
+
+    return(data)
   })
+
 }

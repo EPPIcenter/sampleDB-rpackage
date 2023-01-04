@@ -55,7 +55,7 @@
 #' @import lubridate
 #' @export
 
-UploadSamples <- function(sample_type, upload_data) {
+UploadSamples <- function(sample_type_id, upload_data) {
 
 
   # locate the database and connect to it
@@ -66,7 +66,7 @@ UploadSamples <- function(sample_type, upload_data) {
   .SaveUploadCSV(upload_data)
 
   # upload data
-  .UploadSamples(upload_data = upload_data, sample_type = sample_type, conn = conn)
+  .UploadSamples(upload_data = upload_data, sample_type_id = sample_type_id, conn = conn)
 
   return_message <- paste("Upload Successful!", nrow(upload_data), "sample(s) were uploaded.")
 
@@ -79,7 +79,7 @@ UploadSamples <- function(sample_type, upload_data) {
   return(return_message)
 }
 
-.UploadSamples <- function(upload_data, sample_type, conn){
+.UploadSamples <- function(upload_data, sample_type_id, conn){
   RSQLite::dbBegin(conn)
   for(i in 1:nrow(upload_data)){
     #1. get upload item's metadata
@@ -186,7 +186,7 @@ UploadSamples <- function(sample_type, upload_data) {
     AddToTable("storage_container",
                          list(created = lubridate::now() %>% as.character(),
                               last_updated = lubridate::now() %>% as.character(),
-                              type = sample_type,
+                              sample_type_id = sample_type_id,
                               specimen_id = eval.specimen_id,
                               status_id = eval.status_id, # In Use
                               state_id = eval.state_id,
@@ -198,7 +198,8 @@ UploadSamples <- function(sample_type, upload_data) {
 
     # 6. Create new sample housing (if it does not alread exist) and upload samples into housing
 
-    if(sample_type == "micronix"){
+    # micronix == 1
+    if(sample_type_id == 1){
       # create a new housing (if it does not already exist)
       if(!eval.container_name %in% CheckTableTx(conn = conn, "micronix_plate")$name){
         eval.plate_id <- sampleDB:::.UploadPlate(conn = conn, container_name = eval.container_name, container_barcode = eval.plate_barcode, freezer_address = eval.freezer_address, table = "micronix_plate")
@@ -214,7 +215,8 @@ UploadSamples <- function(sample_type, upload_data) {
                                             barcode = eval.barcode),
                            conn = conn) %>% suppressWarnings()
     }
-    else if (sample_type == "cryovial") {
+    # cryovial == 2
+    else if (sample_type_id == 2) {
      # create a new housing (if it does not already exist)
       if(!eval.container_name %in% CheckTableTx(conn = conn, "cryovial_box")$name){
         eval.plate_id <- sampleDB:::.UploadPlate(conn = conn, container_name = eval.container_name, container_barcode = eval.plate_barcode, freezer_address = eval.freezer_address, table = "cryovial_box")
