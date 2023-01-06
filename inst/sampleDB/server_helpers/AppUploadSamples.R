@@ -25,6 +25,7 @@ AppUploadSamples <- function(session, output, input, database) {
 
     file_type <- input$UploadFileType
     container_name <- input$UploadManifestName
+    user_file <- rv$user_file
 
     # todo: this should be mapped somewhere else
     sample_storage_type <- switch(input$UploadSampleType,
