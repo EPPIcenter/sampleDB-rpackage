@@ -112,8 +112,13 @@ AppUploadSamples <- function(session, output, input, database) {
     updateSelectizeInput(
       session,
       "UploadManifestName",
+      label = switch(sample_type_name,
+        "Micronix" = "Plate Name",
+        "Cryovial" = "Box Name"
+      ),
       selected = "",
-      choices = c("", DBI::dbReadTable(con, manifest) %>% pull(name))
+      choices = c("", DBI::dbReadTable(con, manifest) %>% pull(name)),
+      server = TRUE
     )
 
     updateSelectInput(
