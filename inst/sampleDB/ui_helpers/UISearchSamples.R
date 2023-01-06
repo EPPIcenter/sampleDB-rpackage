@@ -1,11 +1,14 @@
+library(RSQLite)
 UISearchSamples <- function(){
-  sidebarLayout(
+  con <- DBI::dbConnect(RSQLite::SQLite(), Sys.getenv("SDB_PATH"))
+  ui <- sidebarLayout(
     sidebarPanel(
+      shinyjs::useShinyjs(),
       width = 2,
       HTML("<h4>Search Samples</h4>"),
       hr(),
       # fileInput("SearchByLabel", label = HTML("Barcode <h6>Single column named \"barcode\"</h6>")), actionButton("ClearSearchBarcodes", label = "Clear Barcodes"), textOutput("WarnSubjectBarcodeFileColnames"), textOutput("WarnSubjectBarcodeFileColnames2"),
-      radioButtons("SearchBySampleType","Sample Type", c("All" = "all", "Micronix" = "micronix", "Cryovial" = "cryovial", "RDT" = "rdt", "Paper" = "paper"), selected = "micronix", inline = T),
+      radioButtons("SearchBySampleType","Sample Type", choices = c("All" = "all", DBI::dbReadTable(con, "sample_type") %>% pull(id, name = "name")), selected = "all", inline = T),
       hr(),
       actionButton("SearchReset", width = '100%', label = "Reset Search Criteria", style="color: #fff; background-color: #337ab7; border-color: #2e6da4"),
       hr(),
@@ -41,4 +44,8 @@ UISearchSamples <- function(){
       DT::dataTableOutput("SearchResultsTable"),
       downloadButton("downloadData", "Download")
     ))
+
+    DBI::dbDisconnect(con)
+
+    return(ui)
 }

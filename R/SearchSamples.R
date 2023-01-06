@@ -79,7 +79,6 @@ SearchSamples <- function(sample_type = NULL, sample_barcode = NULL, container_n
   aggregated.results <- .UseInternalAndExternalDataToGetResults(internal_data = aggregated.internal_data,
                                                                  external_data = aggregated.external_data)
 
-
   # TODO: this is temporary until we get a better
   # search system down. The previous search terms were
   # already there, renaming for ease of use and because
@@ -131,16 +130,18 @@ SearchSamples <- function(sample_type = NULL, sample_barcode = NULL, container_n
 }
 
 .UseSearchTermToAggregateSamples <- function(filters, term.search, tables.database){
+
+
   # USE TYPE TO GET STORAGE CONTAINER ID
   if(term.search == "search.type"){
     if(length(filters$search.type) == 1){
       if(filters$search.type == "all"){
       storage_container_id <- tables.database$table.storage_container$id
       }else{
-        storage_container_id <- filter(tables.database$table.storage_container, type %in% filters$search.type)$id
+        storage_container_id <- filter(tables.database$table.storage_container, sample_type_id %in% as(filters$search.type, "integer"))$id
       }
     }else{
-      storage_container_id <- filter(tables.database$table.storage_container, type %in% filters$search.type)$id
+      storage_container_id <- filter(tables.database$table.storage_container, sample_type_id %in% as(filters$search.type, "integer"))$id
     }
   }
 
@@ -259,7 +260,7 @@ SearchSamples <- function(sample_type = NULL, sample_barcode = NULL, container_n
 
   archived_df <-  tibble(id = setdiff(storage_container_id, external_data$id), barcode = NA,
                          container_position = NA, container_name = NA, location_id = NA, type = NA,
-                         name = NA, sample_type = NA, description = NA, 
+                         name = NA, storage_type_id = NA, description = NA, 
                          level_I = NA, level_II = NA, level_III = NA)
 
   external_data <- rbind(external_data, archived_df) %>% arrange(id)
@@ -304,10 +305,24 @@ SearchSamples <- function(sample_type = NULL, sample_barcode = NULL, container_n
 
   search_mat <- matrix(data = FALSE, nrow = nrow(tmp.search_term), ncol = length(filters))
   filter_terms <- names(filters)
+
   for (filter_index in seq_along(filter_terms)) {
     search_term <- filter_terms[filter_index]
     if (!search_term %in% "collection_date") {
-      search_mat[, filter_index] <- (tmp.search_term %>% pull(search_term)) %in% filters[[search_term]]
+      if (search_term %in% "type" && filters[["type"]] %in% "ALL") {
+        search_mat[, filter_index] <- TRUE
+      } else if (search_term %in% "type") {
+        con <- DBI::dbConnect(RSQLite::SQLite(), Sys.getenv("SDB_PATH"))
+        sample_type_name <- DBI::dbReadTable(con, "sample_type") %>%
+          filter(id == filters[[search_term]]) %>%
+          pull(name) %>%
+          toupper(.)
+
+        DBI::dbDisconnect(con)
+        search_mat[, filter_index] <- (tmp.search_term %>% pull(search_term)) %in% sample_type_name
+      } else {
+        search_mat[, filter_index] <- (tmp.search_term %>% pull(search_term)) %in% filters[[search_term]]
+      }
     } else {
       intervals <- list()
       for (i in 1:length(filters$collection_date$date.from)) {

@@ -82,6 +82,10 @@ SearchWetlabSamples <- function(session, input, database, output, DelArch = FALS
 
     updateSelectizeInput(session, selected = Global$DefaultStateSearchTerm, "SearchByState", "State", choices = c(dbUpdateEvent()$state))
     updateDateRangeInput(session, "dateRange", start = NA, end = NA) %>% suppressWarnings()
+
+    shinyjs::reset("SearchByBarcode")
+    shinyjs::reset("SearchBySubjectUIDFile")
+
   })
 
 
