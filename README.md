@@ -106,5 +106,4 @@ To run Rstudio as an administrator:
 ```
 sudo /Applications/RStudio.app/Contents/MacOS/RStudio
 ```
-- Press enter
 - Now RStudio will launch with admin access
