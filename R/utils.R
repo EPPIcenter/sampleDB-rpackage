@@ -4,7 +4,7 @@ library(yaml)
 
 .Backup <- function(database, backup_dest) {
 
-  args <- paste(database, paste0("\".backup ", paste0("\'", backup_dest, "\'"), "\""))
+  args <- paste(paste0("\"", database, "\""), paste0("\".backup ", paste0("\'", backup_dest, "\'"), "\""))
   system2("sqlite3", args)
 
   return(file.exists(backup_dest))
@@ -60,7 +60,7 @@ library(yaml)
   on.exit({
     if (!is.null(out)) close(out)
     # Remove incomplete file?
-    if (!outComplete) { 
+    if (!outComplete) {
       file.remove(compressed_file)
     }
   }, add=TRUE)
