@@ -102,9 +102,7 @@ If you are working on a Mac and run into permission issues, you may need to run 
 To run Rstudio as an administrator: 
 - Go to Applications, then right click on RStudio and Select "Show Package Contents"
 - Navigate from Contents > MacOS, in this directory you will see the `RStudio.exec`
-- In Terminal, enter `sudo` and then the path to the `RStudio.exec` (alternatively you can drag and drop `RStudio.exec` into Terminal)
-
-Example
+- In Terminal, enter `sudo` and then the path to the `RStudio.exec` (alternatively you can drag and drop `RStudio.exec` into Terminal). And press enter. Example:
 ```
 sudo /Applications/RStudio.app/Contents/MacOS/RStudio
 ```
