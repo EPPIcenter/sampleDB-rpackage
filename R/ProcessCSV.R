@@ -468,7 +468,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
       suppressWarnings() > 0)
 
 
-    if (!all(nchar(col_numbers) == 2)) {
+    if ("micronix" %in% sample_storage_type && !all(nchar(col_numbers) == 2)) {
       stop("Numbers should be in ## format. Fill with zero if less than 10 (e.g \"05\")")
     }
 

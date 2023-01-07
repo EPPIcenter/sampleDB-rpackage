@@ -119,7 +119,7 @@ AppUploadSamples <- function(session, output, input, database) {
       ),
       selected = "",
       choices = c("", DBI::dbReadTable(con, manifest) %>% pull(name)),
-      server = TRUE
+      options = list(create = TRUE)
     )
 
     updateSelectInput(
