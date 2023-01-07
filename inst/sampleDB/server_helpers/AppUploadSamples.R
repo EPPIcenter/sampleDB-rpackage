@@ -10,24 +10,28 @@ library(shinyjs)
 
 AppUploadSamples <- function(session, output, input, database) {
 
-  rv <- reactiveValues(user_file = NULL, upload = NULL, console_verbatim = FALSE)
+  rv <- reactiveValues(user_file = NULL, console_verbatim = FALSE)
 
   observeEvent(input$UploadSampleDataSet, ignoreInit = TRUE, {
     dataset <- input$UploadSampleDataSet
 
+    rv$user_file <- NULL
+
     tryCatch({
       withCallingHandlers({
         rv$user_file <- sampleDB::ProcessCSV(
-                user_csv = dataset$datapath,
-                user_action = "upload",
-                file_type = input$UploadFileType,
-                sample_storage_type = switch(input$UploadSampleType,
-                  "1" = "micronix",
-                  "2" = "cryovial"
-                ),
-                container_name = NULL,
-                freezer_address = NULL
-              )
+          user_csv = dataset$datapath,
+          user_action = "upload",
+          file_type = input$UploadFileType,
+          sample_storage_type = switch(
+            input$UploadSampleType,
+            "1" = "micronix",
+            "2" = "cryovial"
+          ),
+          validate = FALSE,
+          container_name = NULL,
+          freezer_address = NULL
+        )
       },
       message = function(m) {
         message(m$message)
@@ -45,19 +49,13 @@ AppUploadSamples <- function(session, output, input, database) {
     })
   })
 
-  # 1. get path to user provided file, if path exists perform checks and reformat file
-
   observeEvent(input$UploadAction, ignoreInit = TRUE, {
-    rv$upload <- ifelse(input$UploadAction > 0, TRUE, NULL)
-  })
-
-  observe({
-
-    req(rv$user_file, rv$upload)
+    if (!is.null(rv$user_file)) {
+      return()
+    }
 
     file_type <- input$UploadFileType
     container_name <- input$UploadManifestName
-    user_file <- isolate({ rv$user_file })
 
     # todo: this should be mapped somewhere else
     sample_storage_type <- switch(input$UploadSampleType,
@@ -73,7 +71,7 @@ AppUploadSamples <- function(session, output, input, database) {
         #check colnames of user provided file
 
         # simple way to add a dialog or not
-        b_use_wait_dialog <- nrow(user_file) > 5
+        b_use_wait_dialog <- nrow(rv$user_file) > 5
 
         if (b_use_wait_dialog) {
           show_modal_spinner(
@@ -84,7 +82,7 @@ AppUploadSamples <- function(session, output, input, database) {
         }
 
         shinyjs::reset("UploadAction")
-        sampleDB::UploadSamples(sample_type_id = as.integer(input$UploadSampleType), upload_data = user_file)                                  
+        sampleDB::UploadSamples(sample_type_id = as.integer(input$UploadSampleType), upload_data = rv$user_file)                                  
       },
       error = function(e) {
         rv$user_file <- NULL
