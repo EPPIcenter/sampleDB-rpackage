@@ -3,7 +3,7 @@
 #' @export
 
 
-ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_name = NULL, freezer_address = NULL, file_type = "na", database = Sys.getenv("SDB_PATH"), config_yml = Sys.getenv("SDB_CONFIG")) {
+ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_name = NULL, freezer_address = NULL, file_type = "na", validate = TRUE, database = Sys.getenv("SDB_PATH"), config_yml = Sys.getenv("SDB_CONFIG")) {
 
   if (!require(dplyr)) {
     stop("Function requires dplyr for database access!")
@@ -142,7 +142,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
   }
 
   ## second row is valid because traxcer will have "plate_label:" in the first row
-  valid_header_rows <- c(1, 2)
+  valid_header_rows <- 1:2
 
   header_ridx <- .FindValidHeader(user_file = user_file, required_user_column_names = required_user_column_names, valid_header_rows = valid_header_rows)
 
@@ -279,15 +279,18 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
   ### Quality check the data now
 
   message("Formatting complete.")
-  .CheckFormattedFileData(
-    database = database,
-    formatted_csv = processed_file,
-    sample_storage_type = sample_storage_type,
-    user_action = user_action,
-    required_user_column_names = required_user_column_names,
-    conditional_user_column_names = conditional_user_column_names,
-    optional_user_column_names = optional_user_column_names
-  )
+
+  if (validate) {
+    .CheckFormattedFileData(
+      database = database,
+      formatted_csv = processed_file,
+      sample_storage_type = sample_storage_type,
+      user_action = user_action,
+      required_user_column_names = required_user_column_names,
+      conditional_user_column_names = conditional_user_column_names,
+      optional_user_column_names = optional_user_column_names
+    )
+  }
 
   return(processed_file)
 
@@ -385,6 +388,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
 
       # make sure not uploading to well positions with active samples
       # note: potentially could increase speed by using copy_to if upload files are large
+
       con <- DBI::dbConnect(RSQLite::SQLite(), database)
       stopifnot("Uploading sample to well location that already has an active sample" = tbl(con, "storage_container") %>%
         select(status_id, id) %>%

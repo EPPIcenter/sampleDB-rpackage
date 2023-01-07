@@ -10,37 +10,38 @@ library(shinyjs)
 
 AppUploadSamples <- function(session, output, input, database) {
 
-  rv <- reactiveValues(user_file = NULL, upload = NULL)
+  rv <- reactiveValues(user_file = NULL, upload = NULL, console_verbatim = FALSE)
 
-  observe({
-    req(input$UploadSampleDataSet)
-    output$UploadOutputConsole <- renderText({
-      dataset <- isolate({ input$UploadSampleDataSet })
-      print(input$UploadSampleDataSet$datapath)
+  observeEvent(input$UploadSampleDataSet, ignoreInit = TRUE, {
+    dataset <- input$UploadSampleDataSet
 
-      # todo: this should be mapped somewhere else
-      sample_storage_type <- switch(isolate({ input$UploadSampleType }),
-        "1" = "micronix",
-        "2" = "cryovial"
-      )
-
-      file_type <- isolate({ input$UploadFileType })
-
-      tryCatch({
+    tryCatch({
+      withCallingHandlers({
         rv$user_file <- sampleDB::ProcessCSV(
                 user_csv = dataset$datapath,
                 user_action = "upload",
-                file_type = file_type,
-                sample_storage_type = sample_storage_type,
+                file_type = input$UploadFileType,
+                sample_storage_type = switch(input$UploadSampleType,
+                  "1" = "micronix",
+                  "2" = "cryovial"
+                ),
                 container_name = NULL,
                 freezer_address = NULL
               )
       },
-      error = function(e) {
-        rv$user_file <- NULL
-        message(e)
-        e$message
-      }
+      message = function(m) {
+        message(m$message)
+        shinyjs::html(id = "UploadOutputConsole", html = m$message, add = rv$console_verbatim)
+        rv$console_verbatim <- TRUE
+      })
+    },
+    error = function(e) {
+      rv$user_file <- NULL
+      html<-paste0("<font color='red'>", e$message, "</font>")
+      shinyjs::html(id = "UploadOutputConsole", html = html, add = rv$console_verbatim)
+    },
+    finally = {
+      rv$console_verbatim <- FALSE
     })
   })
 
@@ -50,9 +51,9 @@ AppUploadSamples <- function(session, output, input, database) {
     rv$upload <- ifelse(input$UploadAction > 0, TRUE, NULL)
   })
 
-  observeEvent(rv$upload & rv$user_file, {
+  observe({
 
-    req(rv$user_file, input$UploadFileType, input$UploadSampleType)
+    req(rv$user_file, rv$upload)
 
     file_type <- input$UploadFileType
     container_name <- input$UploadManifestName
