@@ -10,22 +10,53 @@ library(shinyjs)
 
 AppUploadSamples <- function(session, output, input, database) {
 
-  rv <- reactiveValues(user_file = NULL)
+  rv <- reactiveValues(user_file = NULL, upload = NULL)
 
   observe({
     req(input$UploadSampleDataSet)
-    rv$user_file <- input$UploadSampleDataSet$datapath
+    output$UploadOutputConsole <- renderText({
+      dataset <- isolate({ input$UploadSampleDataSet })
+      print(input$UploadSampleDataSet$datapath)
+
+      # todo: this should be mapped somewhere else
+      sample_storage_type <- switch(isolate({ input$UploadSampleType }),
+        "1" = "micronix",
+        "2" = "cryovial"
+      )
+
+      file_type <- isolate({ input$UploadFileType })
+
+      tryCatch({
+        rv$user_file <- sampleDB::ProcessCSV(
+                user_csv = dataset$datapath,
+                user_action = "upload",
+                file_type = file_type,
+                sample_storage_type = sample_storage_type,
+                container_name = NULL,
+                freezer_address = NULL
+              )
+      },
+      error = function(e) {
+        rv$user_file <- NULL
+        message(e)
+        e$message
+      }
+    })
   })
 
   # 1. get path to user provided file, if path exists perform checks and reformat file
 
-  observeEvent(input$UploadAction, {
+  observeEvent(input$UploadAction, ignoreInit = TRUE, {
+    rv$upload <- ifelse(input$UploadAction > 0, TRUE, NULL)
+  })
+
+  observeEvent(rv$upload & rv$user_file, {
 
     req(rv$user_file, input$UploadFileType, input$UploadSampleType)
 
     file_type <- input$UploadFileType
     container_name <- input$UploadManifestName
-    user_file <- rv$user_file
+    user_file <- isolate({ rv$user_file })
 
     # todo: this should be mapped somewhere else
     sample_storage_type <- switch(input$UploadSampleType,
@@ -38,48 +69,33 @@ AppUploadSamples <- function(session, output, input, database) {
 
     output$UploadOutputConsole <- renderText({
       tryCatch({
+        #check colnames of user provided file
 
-          #check colnames of user provided file
+        # simple way to add a dialog or not
+        b_use_wait_dialog <- nrow(user_file) > 5
 
-          user_file <- sampleDB::ProcessCSV(
-            user_csv = user_file,
-            user_action = "upload",
-            file_type = file_type,
-            sample_storage_type = sample_storage_type,
-            container_name = container_name,
-            freezer_address = list(
-              name = input$UploadLocationRoot,
-              level_I = input$UploadLocationLevelI, 
-              level_II = input$UploadLocationLevelII
-            )
+        if (b_use_wait_dialog) {
+          show_modal_spinner(
+            spin = "double-bounce",
+            color = "#00bfff",
+            text = paste("Uploading", nrow(formatted_file), "samples, please be patient...")
           )
-
-          # simple way to add a dialog or not
-          b_use_wait_dialog <- nrow(user_file) > 5
-
-          if (b_use_wait_dialog) {
-            show_modal_spinner(
-              spin = "double-bounce",
-              color = "#00bfff",
-              text = paste("Uploading", nrow(formatted_file), "samples, please be patient...")
-            )
-          }
-
-          shinyjs::reset("UploadAction")
-          sampleDB::UploadSamples(sample_type_id = as.integer(input$UploadSampleType), upload_data = user_file)                                  
-        },
-        error = function(e) {
-          rv$user_file <- NULL
-          message(e)
-          e$message
-        },
-        finally = {
-          rv$user_file <- NULL
-          if (b_use_wait_dialog) {
-            remove_modal_spinner()
-          }
         }
-      )
+
+        shinyjs::reset("UploadAction")
+        sampleDB::UploadSamples(sample_type_id = as.integer(input$UploadSampleType), upload_data = user_file)                                  
+      },
+      error = function(e) {
+        rv$user_file <- NULL
+        message(e)
+        e$message
+      },
+      finally = {
+        rv$user_file <- NULL
+        if (b_use_wait_dialog) {
+          remove_modal_spinner()
+        }
+      })
     })
   })
 
@@ -109,6 +125,7 @@ AppUploadSamples <- function(session, output, input, database) {
     manifest <- switch(sample_type_name,
       "Micronix" = "micronix_plate",
       "Cryovial" = "cryovial_box")
+
 
     updateSelectizeInput(
       session,
