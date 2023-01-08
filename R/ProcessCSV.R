@@ -2,6 +2,7 @@
 #' @import dplyr
 #' @import glue
 #' @import rlang
+#' @import rjson
 #' @export
 
 
@@ -38,6 +39,10 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
   empty_cols <- colSums(user_file == "" | is.na(user_file) | is.null(user_file)) == nrow(user_file)
   user_file <- user_file[!empty_rows, !empty_cols]
 
+  ## Read File Specification File
+  user_inputs <- rjson::fromJSON(file = system.file(
+    "extdata", "file_specifications.json", package = .sampleDB$pkgname))
+
   ## Read Configuration File
   config <- yaml::read_yaml(config_yml)
   traxcer_position <- ifelse(
@@ -47,103 +52,22 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
   )
 
   ## Required Column Names
-
-  optional_user_column_names <- conditional_user_column_names <- required_user_column_names <- location_parameters <- manifest_barcode_name <- NULL
-  if (user_action %in% c("upload")) {
-    required_user_column_names <- switch(sample_storage_type,
-      "micronix" = switch(file_type,
-        "visionmate" = c(
-          "LocationRow",
-          "LocationColumn",
-          "TubeCode"
-        ),
-        "traxcer" = c(
-          traxcer_position, # definable in user preferences
-          "Tube ID"
-        ),
-        "na" = c(
-          "Barcode",
-          "Row",
-          "Column"
-        )
-      ),
-      "cryovial" = c(
-        "Barcode",
-        "BoxRow",
-        "BoxColumn"
-      )
-    )
-
-  } else if (user_action %in% c("move")) {
-    required_user_column_names <- switch(sample_storage_type,
-      "micronix" = switch(file_type,
-        "visionmate" = c(
-          "Location",
-          "TubeCode"
-        ),
-        "traxcer" = c(
-          traxcer_position, # definable in user preferences
-          "Tube ID"
-        ),
-        "na" = c(
-          "Barcode",
-          "Position"
-        )
-      ),
-      "cryovial" = c(
-        "Barcode",
-        "Position"
-      )
-    )
-  }
+  browser()
+  
+  file_index <- which(lapply(user_inputs$file_types, function(x) x$id) == file_type)
+  actions <- user_inputs$file_types[[file_index]]$actions[[user_action]]
+  required_user_column_names <- actions['required']
+  conditional_user_column_names <- actions['conditional']
+  optional_user_column_names <- actions['optional']
 
   if (is.null(required_user_column_names)) {
     stop_formatting_error(paste("The expected column names for sample type", sample_storage_type, "and file type", file_type, "are not implemented (yet)."))
   }
 
-
-
-  # Additional user action driven columns below
-  # - upload: metadata is required, collection date is conditional as requirement depends on the study, and comments are optional
-  # - move: no need to add additional columns
-  # - search: all searchable fields are optional
-
-  # applies for all upload storage types
-  if (user_action %in% c("upload")) {
-    required_user_column_names <- c(required_user_column_names, c("StudySubject", "SpecimenType", "StudyCode"))
-    conditional_user_column_names <- list(collection_date = "CollectionDate")
-
-    # location parameters are conditional as they could be set in the UI
-    location_parameters <- switch(sample_storage_type,
-      "micronix" = list(
-        name = "FreezerName",
-        level_I = "ShelfName",
-        level_II = "BasketName"
-      ),
-      "cryovial" = list(
-        name = "FreezerName",
-        level_I = "RackNumber",
-        level_II = "RackPosition"
-      )
-    )
-
-    manifest_name <- switch(sample_storage_type,
-      "micronix" = "PlateName",
-      "cryovial" = "BoxName"
-    )
-
-    # todo: add this with the other conditional parameters
-    manifest_barcode_name <- switch(sample_storage_type,
-      "micronix" = "PlateBarcode",
-      "cryovial" = "Rack ID"
-    )
-
-    conditional_user_column_names <- c(conditional_user_column_names, location_parameters)
-
-    optional_user_column_names <- c("Comment")
-  } else if (user_action %in% c("search")) {
-    optional_user_column_names <- c("CollectionDate", "StudyCode", "StudySubject", "SpecimenType")
-  }
+  sample_type_index <- which(lapply(user_inputs$shared$sample_type, function(x) x$id) == sample_storage_type)
+  manifest_name <- user_inputs$shared$sample_type[[sample_type_index]]$manifest$name
+  manifest_barcode_name <- user_inputs$shared$sample_type[[sample_type_index]]$manifest$barcode
+  location_parameters <- user_inputs$shared$sample_type[[sample_type_index]]$location
 
   ## second row is valid because traxcer will have "plate_label:" in the first row
   valid_header_rows <- 1:2
@@ -515,13 +439,13 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
 }
 
 stop_usage_error <- function(message) {
-  abort("error_usage", message = message)
+  rlang::abort("error_usage", message = message)
 }
 
 stop_formatting_error <- function(message) {
-  abort("error_formatting", message = message)
+  rlang::abort("error_formatting", message = message)
 }
 
 stop_validation_error <- function(message, values) {
-  abort("error_validation", message = message, values = values)
+  rlang::abort("error_validation", message = message, values = values)
 }

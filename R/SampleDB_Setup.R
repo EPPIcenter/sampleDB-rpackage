@@ -12,6 +12,7 @@
 #' @import rappdirs
 #' @import yaml
 #' @import glue
+#' @import rjson
 #' @export
 #'
 
@@ -24,8 +25,8 @@ SampleDB_Setup <- function() {
   tryCatch(
     expr = {
 
-      expected_versions <- yaml::read_yaml(system.file("extdata",
-                                              "versions.yml", package = pkgname))
+      expected_versions <- rjson::fromJSON(file = system.file("extdata",
+                                              "versions.json", package = pkgname))
 
       # Config Setup
 

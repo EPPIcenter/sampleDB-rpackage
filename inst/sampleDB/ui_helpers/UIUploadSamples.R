@@ -14,10 +14,10 @@ UIUploadSamples <- function() {
       #upload data
       fileInput("UploadSampleDataSet", "Upload Samples File", multiple = TRUE, accept = c("text/csv", "text/comma-separated-values,text/plain", ".csv")),
       #add freezer infor
-      selectizeInput("UploadManifestName", label = "Plate Name", choices = c(),  options = list(create = TRUE)),
-      selectInput("UploadLocationRoot", label = "Upload Location", choices = c()),        
-      selectInput("UploadLocationLevelI", label = "Shelf Name", choices = c()),
-      selectInput("UploadLocationLevelII", label = "Basket Name", choices = c()),
+      # selectizeInput("UploadManifestName", label = "Plate Name", choices = c(),  options = list(create = TRUE)),
+      # selectInput("UploadLocationRoot", label = "Upload Location", choices = c()),        
+      # selectInput("UploadLocationLevelI", label = "Shelf Name", choices = c()),
+      # selectInput("UploadLocationLevelII", label = "Basket Name", choices = c()),
       #output messages
       hr(),
       #action buttons

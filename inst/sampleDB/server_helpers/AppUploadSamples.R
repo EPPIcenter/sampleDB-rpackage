@@ -1,6 +1,7 @@
 library(shiny)
 library(shinybusy)
 library(shinyjs)
+library(purrr)
 
 # App Function for Uploading Samples
 
@@ -10,43 +11,49 @@ library(shinyjs)
 
 AppUploadSamples <- function(session, output, input, database) {
 
-  rv <- reactiveValues(user_files = NULL, console_verbatim = FALSE, )
+  rv <- reactiveValues(user_files = NULL, console_verbatim = FALSE)
 
   observeEvent(input$UploadSampleDataSet, ignoreInit = TRUE, {
     dataset <- input$UploadSampleDataSet
-    rv$user_file <- NULL
+    rv$user_files <- NULL
 
-    tryCatch({
-      withCallingHandlers({
-        rv$user_file <- sampleDB::ProcessCSV(
-          user_csv = dataset$datapath,
-          user_action = "upload",
-          file_type = input$UploadFileType,
-          sample_storage_type = switch(
-            input$UploadSampleType,
-            "1" = "micronix",
-            "2" = "cryovial"
-          ),
-          container_name = NULL,
-          freezer_address = NULL
-        )
+    for (i in 1:nrow(dataset)) {
+      tryCatch({
+        withCallingHandlers({
+          processed_file <- sampleDB::ProcessCSV(
+            user_csv = dataset[i, ]$datapath,
+            user_action = "upload",
+            file_type = input$UploadFileType,
+            sample_storage_type = switch(
+              input$UploadSampleType,
+              "1" = "micronix",
+              "2" = "cryovial"
+            )
+          )
+
+          rv$user_files <- append(rv$user_files, processed_file)
+          names(rv$user_files[length(rv$user_files)]) <- dataset[i, ]$name
+
+          # output$UploadFilesTabset <- renderUI({
+          #   map(col_names(), ~ textInput(.x, NULL))
+          # })
+        },
+        message = function(m) {
+          message(m$message)
+          shinyjs::html(id = "UploadOutputConsole", html = paste0(dataset[i, ]$name, ": ", m$message, "\n"), add = rv$console_verbatim)
+          rv$console_verbatim <- TRUE
+        })
       },
-      message = function(m) {
-        message(m$message)
-        shinyjs::html(id = "UploadOutputConsole", html = m$message, add = rv$console_verbatim)
-        rv$console_verbatim <- TRUE
+      error = function(e) {
+        print(e)
+        html<-paste0("<font color='red'>", paste0(dataset[i, ]$name, ": ", e$message, "\n"), "</font>")
+        shinyjs::html(id = "UploadOutputConsole", html = html, add = rv$console_verbatim)
       })
-    },
-    error = function(e) {
-      print(e)
-      rv$user_files <- NULL
-      html<-paste0("<font color='red'>", e$message, "</font>")
-      shinyjs::html(id = "UploadOutputConsole", html = html, add = rv$console_verbatim)
-    },
-    finally = {
-      rv$console_verbatim <- FALSE
-    })
+    }
+
+    rv$console_verbatim <- FALSE
   })
+
 
   observeEvent(input$UploadAction, ignoreInit = TRUE, {
     if (!is.null(rv$user_files)) {
@@ -193,6 +200,7 @@ AppUploadSamples <- function(session, output, input, database) {
 
   observeEvent(input$ClearUploadForm, {
     shinyjs::reset("UploadSampleDataSet")
+    shinyjs::reset("UploadFilesTabset")
     shinyjs::reset("UploadManifestName")
     shinyjs::reset("UploadLocationRoot")
     shinyjs::reset("UploadLocationLevelI")
