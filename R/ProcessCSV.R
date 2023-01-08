@@ -1,5 +1,7 @@
 #' @import lubridate
 #' @import dplyr
+#' @import glue
+#' @import rlang
 #' @export
 
 
@@ -21,8 +23,10 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
   user_file <- read.csv(file = user_csv, header = FALSE)
 
   valid_actions = c("upload", "move")
-  errmsg <- paste("Action is not valid. Valid actions are: ", paste(valid_actions, collapse = ", "))
-  stopifnot(errmsg = (user_action %in% valid_actions))
+  if (!user_action %in% valid_actions) {
+    errmsg <- paste("Action is not valid. Valid actions are:", paste(valid_actions, collapse = ", "))
+    stop_usage_error(errmsg)
+  }
 
   ## Depending on the csv tool, there may be empty strings or other special characters
   user_file[user_file == ""] <- NA
@@ -94,7 +98,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
   }
 
   if (is.null(required_user_column_names)) {
-    stop(paste("The expected column names for sample type", sample_storage_type, "and file type", file_type, "are not implemented (yet)."))
+    stop_formatting_error(paste("The expected column names for sample type", sample_storage_type, "and file type", file_type, "are not implemented (yet)."))
   }
 
 
@@ -148,7 +152,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
 
   if (!header_ridx %in% valid_header_rows) {
     errmsg <- paste("Valid header rows could not be found in your file. Please check that the following column names are present:", paste(required_user_column_names, collapse = ", "))
-    stop(errmsg)
+    stop_formatting_error(errmsg)
   }
 
   ## format the file
@@ -171,29 +175,29 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
 
     # collection date must exist for all samples that are part of a longitudinal study
     if (!"CollectionDate" %in% colnames(user_file) && nrow(filter(tmp, is_longitudinal == 1)) > 0) {
-      stop("Collection date is required for samples of longitudinal studies.")
+      stop_formatting_error("Collection date is required for samples of longitudinal studies.")
     } else if ("CollectionDate" %in% colnames(user_file)) {
       df_invalid <- filter(tmp, is_longitudinal == 1 & is.na(CollectionDate))
       if (nrow(df_invalid) > 0) {
-        stop("Missing collection date found for sample in longitudinal study")
+        stop_validation_error("Missing collection date found for sample in longitudinal study", 1)
       }
     }
 
     # XOR logic is used for location parameters to prevent accidental overwriting
     if (all(location_parameters %in% colnames(user_file)) && !is.null(freezer_address)) {
-      stop("Conflict: sample location cannot be set in both the csv file and as a function parameter. Please choose one or the other.")
+      stop_usage_error("Conflict: sample location cannot be set in both the csv file and as a function parameter. Please choose one or the other.")
     }
 
     else if (!all(location_parameters %in% colnames(user_file)) && is.null(freezer_address)) {
       errmsg <- paste("Missing location parameters. Please provide all freezer address locations to the csv or provide them as a function argument. Valid parameters are", paste(location_parameters, collapse = ", "))
-      stop(errmsg)
+      stop_formatting_error(errmsg)
     }
 
     else if ((!all(location_parameters %in% colnames(user_file)) && !is.null(freezer_address)) || (all(location_parameters %in% colnames(user_file)) && is.null(freezer_address))) {
       # this is a valid situation, continue...
     }
     else {
-      stop("Invalid sample location specification. Please add locations to the csv or as a function argument.")
+      stop_usage_error("Invalid sample location specification. Please add locations to the csv or as a function argument.")
     }
 
     # XOR logic is used for container names to prevent accidental overwriting
@@ -202,7 +206,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
     } else if (!manifest_name %in% colnames(user_file) && !is.null(container_name)) {
       # this is a valid situation
     } else {
-      stop("Conflict: container name cannot be set in both the csv file and as a function parameter. Please choose one or the other.")
+      stop_usage_error("Container name cannot be set in both the csv file and as a function parameter. Please choose one or the other.")
     }
   }
 
@@ -340,7 +344,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
   )
 
   bError <- FALSE
-  errmsg <- NULL
+  values <- errmsg <- NULL
 
   if (user_action %in% c("upload", "move")) {
 
@@ -364,13 +368,13 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
       matched_columns <- match(required_names, names(formatted_csv))
       if (any(is.na(matched_columns))) {
         errmsg <- paste("Required database column is missing:", paste(required_names[is.na(matched_columns)], collapse = ", "))
-        stop(errmsg)
+        stop_validation_error(errmsg, 1)
       }
 
       missing_data <- is.na(formatted_csv[, requires_data])
       if (any(missing_data)) {
         errmsg <- paste("The upload file is missing data in required columns. Please check that your file contains the following column names and have data entries for each sample.", paste(requires_data, collapse = ", "))
-        stop(errmsg)
+        stop_validation_error(errmsg, 1)
       }
 
       ## Deeper validation using database
@@ -390,7 +394,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
       # note: potentially could increase speed by using copy_to if upload files are large
 
       con <- DBI::dbConnect(RSQLite::SQLite(), database)
-      stopifnot("Uploading sample to well location that already has an active sample" = tbl(con, "storage_container") %>%
+      if (tbl(con, "storage_container") %>%
         select(status_id, id) %>%
         filter(status_id == 1) %>%
         inner_join(tbl(con, container_tables[["container_class"]]), by = c("id" = "id")) %>%
@@ -398,20 +402,24 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
         collect() %>%
         filter(name %in% formatted_csv$manifest_name) %>%
         select(manifest_id, position, status_id) %>%
-        nrow(.) == 0)
+        nrow(.) == 0
+      ) {
+        stop_validation_error("Uploading sample to well location that already has an active sample", 1)
+      }
 
       if ("upload" == user_action) {
-        study_codes <- formatted_csv %>% pull(study_short_code) %>% unique(.)
-        specimen_types <- formatted_csv %>% pull(specimen_type) %>% unique(.)
-        stopifnot("Study code not found" = tbl(con, "study") %>%
-          filter(short_code %in% study_codes) %>%
-          collect() %>%
-          nrow(.) == length(study_codes))
+        file_study_codes <- formatted_csv %>% pull(study_short_code) %>% unique(.)
+        db_study_codes <- dbReadTable(con, "study") %>% pull(short_code)
+        if (!all(file_study_codes %in% db_study_codes)) {
+          stop_validation_error("Study not found", file_study_codes[!file_study_codes %in% db_study_codes])
+        }
 
-        stopifnot("Specimen type not found" = tbl(con, "specimen_type") %>%
-          filter(name %in% specimen_types) %>%
-          collect() %>%
-          nrow(.) == length(specimen_types))
+        file_specimen_types <- formatted_csv %>% pull(specimen_type) %>% unique(.)
+        db_specimen_types <- dbReadTable(con, "specimen_type") %>% pull(name)
+
+        if (!all(file_specimen_types %in% db_specimen_types)) {
+          stop_validation_error("Study not found", file_specimen_types[!file_specimen_types %in% db_specimen_types])
+        }
 
         stopifnot("Location does not exist" = formatted_csv %>%
           left_join(DBI::dbReadTable(con, "location") %>%
@@ -422,9 +430,10 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
 
       message("Validation complete.")
     },
-    error = function(e) {
+    error_validation = function(e) {
       bError <<- TRUE
       errmsg <<- e$message
+      values <<- e$values
     },
     finally = {
       if (!is.null(con)) {
@@ -432,7 +441,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
       }
       if (bError) {
         formatted_csv <- NULL
-        stop(errmsg)
+        stop_validation_error(errmsg, values)
       }
     }) # end tryCatch
   }
@@ -503,4 +512,16 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
     }
     return(out)
   }
+}
+
+stop_usage_error <- function(message) {
+  abort("error_usage", message = message)
+}
+
+stop_formatting_error <- function(message) {
+  abort("error_formatting", message = message)
+}
+
+stop_validation_error <- function(message, values) {
+  abort("error_validation", message = message, values = values)
 }

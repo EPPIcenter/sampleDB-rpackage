@@ -10,11 +10,10 @@ library(shinyjs)
 
 AppUploadSamples <- function(session, output, input, database) {
 
-  rv <- reactiveValues(user_file = NULL, console_verbatim = FALSE)
+  rv <- reactiveValues(user_files = NULL, console_verbatim = FALSE, )
 
   observeEvent(input$UploadSampleDataSet, ignoreInit = TRUE, {
     dataset <- input$UploadSampleDataSet
-
     rv$user_file <- NULL
 
     tryCatch({
@@ -28,7 +27,6 @@ AppUploadSamples <- function(session, output, input, database) {
             "1" = "micronix",
             "2" = "cryovial"
           ),
-          validate = FALSE,
           container_name = NULL,
           freezer_address = NULL
         )
@@ -40,7 +38,8 @@ AppUploadSamples <- function(session, output, input, database) {
       })
     },
     error = function(e) {
-      rv$user_file <- NULL
+      print(e)
+      rv$user_files <- NULL
       html<-paste0("<font color='red'>", e$message, "</font>")
       shinyjs::html(id = "UploadOutputConsole", html = html, add = rv$console_verbatim)
     },
@@ -50,7 +49,7 @@ AppUploadSamples <- function(session, output, input, database) {
   })
 
   observeEvent(input$UploadAction, ignoreInit = TRUE, {
-    if (!is.null(rv$user_file)) {
+    if (!is.null(rv$user_files)) {
       return()
     }
 
@@ -71,7 +70,7 @@ AppUploadSamples <- function(session, output, input, database) {
         #check colnames of user provided file
 
         # simple way to add a dialog or not
-        b_use_wait_dialog <- nrow(rv$user_file) > 5
+        b_use_wait_dialog <- nrow(rv$user_files) > 5
 
         if (b_use_wait_dialog) {
           show_modal_spinner(
@@ -82,15 +81,15 @@ AppUploadSamples <- function(session, output, input, database) {
         }
 
         shinyjs::reset("UploadAction")
-        sampleDB::UploadSamples(sample_type_id = as.integer(input$UploadSampleType), upload_data = rv$user_file)                                  
+        sampleDB::UploadSamples(sample_type_id = as.integer(input$UploadSampleType), upload_data = rv$user_files)                                
       },
       error = function(e) {
-        rv$user_file <- NULL
+        rv$user_files <- NULL
         message(e)
         e$message
       },
       finally = {
-        rv$user_file <- NULL
+        rv$user_files <- NULL
         if (b_use_wait_dialog) {
           remove_modal_spinner()
         }
@@ -198,6 +197,6 @@ AppUploadSamples <- function(session, output, input, database) {
     shinyjs::reset("UploadLocationRoot")
     shinyjs::reset("UploadLocationLevelI")
     shinyjs::reset("UploadLocationLevelII")
-    rv$user_file <- NULL
+    rv$user_files <- NULL
   })
 }
