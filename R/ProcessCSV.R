@@ -17,6 +17,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
     freezer_address <- NULL
   }
 
+  browser()
   user_file <- read.csv(file = user_csv, header = FALSE)
 
   valid_actions = c("upload", "move")
