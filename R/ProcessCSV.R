@@ -479,7 +479,9 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
         filter(n() > 1)
     }
 
-    stopifnot("Invalid micronix position" = all(row_letter_check) && length(col_number_indices) == length(positions) && nrow(duplicates) == 0)
+    stopifnot("Invalid row letter detected" = all(row_letter_check))
+    stopifnot("Invalid col number detected" = length(col_number_indices) == length(positions))
+    stopifnot("Duplicated position detected" = nrow(duplicates) == 0)
   } else {
     stop("Index validation for sample_storage_type is not implemented.")
   }
