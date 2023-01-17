@@ -277,20 +277,25 @@ UploadSamples <- function(sample_type_id, upload_data) {
 
 .SaveUploadCSV <- function(upload_data){
 
-  manifests <- paste(unique(upload_data$manifest_name), collapse = "-")
+  manifests <- unique(upload_data$manifest_name)
 
   path <- normalizePath(
       file.path(dirname(Sys.getenv("SDB_PATH")), "upload_files"))
 
+  manifests <- stringr::str_replace(manifests, "/", "_")
+  print(manifests)
+
   if(dir.exists(path)) {
-    write.csv(upload_data,
-      suppressWarnings(
-        normalizePath(
-          file.path(path,
-                 paste0(gsub("[T:]", "_",
-                    lubridate::format_ISO8601(lubridate::now())),
-                 "_", manifests, "_",
-                 "UPLOAD.csv")))),
-          row.names = FALSE)
+    lapply(manifests, function(manifest) {
+      write.csv(upload_data %>% filter(manifest_name == manifest),
+        suppressWarnings(
+          normalizePath(
+            file.path(path,
+                   paste0(gsub("[T:]", "_",
+                      lubridate::format_ISO8601(lubridate::now())),
+                   "_", manifest, "_",
+                   "UPLOAD.csv")))),
+            row.names = FALSE)
+    })
   }
 }

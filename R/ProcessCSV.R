@@ -156,7 +156,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
   ## grab the columns of interest
   if (user_action %in% c("upload")) {
     # todo: make this less ugly
-    user_file <- select(user_file, all_of(required_user_column_names), contains(unlist(conditional_user_column_names)), contains(optional_user_column_names), contains(c(manifest_name, manifest_barcode_name)))
+    user_file <- select(user_file, all_of(required_user_column_names), contains(unname(unlist(conditional_user_column_names))), contains(optional_user_column_names), contains(c(manifest_name, manifest_barcode_name)))
   } else if (user_action %in% c("move")) {
     user_file <- select(user_file, all_of(required_user_column_names))
   }
