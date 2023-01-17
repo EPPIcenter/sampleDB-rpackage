@@ -20,7 +20,6 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
     freezer_address <- NULL
   }
 
-  browser()
   user_file <- read.csv(file = user_csv, header = FALSE)
 
   valid_actions = c("upload", "move")
@@ -52,22 +51,25 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
   )
 
   ## Required Column Names
-  browser()
-  
   file_index <- which(lapply(user_inputs$file_types, function(x) x$id) == file_type)
   actions <- user_inputs$file_types[[file_index]]$actions[[user_action]]
-  required_user_column_names <- actions['required']
-  conditional_user_column_names <- actions['conditional']
-  optional_user_column_names <- actions['optional']
+  required_user_column_names <- actions[['required']]
+  conditional_user_column_names <- actions[['conditional']]
+  optional_user_column_names <- actions[['optional']]
+
+  sample_type_index <- which(lapply(user_inputs$shared$sample_type, function(x) x$id) == sample_storage_type)
+
+  required_user_column_names <- c(required_user_column_names, user_inputs$shared$upload[['required']])
+  conditional_user_column_names <- c(conditional_user_column_names, user_inputs$shared$upload[['conditional']])
+  optional_user_column_names <- c(optional_user_column_names, user_inputs$shared$upload[['optional']])
+
+  manifest_name <- user_inputs$shared$sample_type[[sample_type_index]]$manifest$name
+  manifest_barcode_name <- user_inputs$shared$sample_type[[sample_type_index]]$manifest$barcode
+  location_parameters <- user_inputs$shared$sample_type[[sample_type_index]]$location
 
   if (is.null(required_user_column_names)) {
     stop_formatting_error(paste("The expected column names for sample type", sample_storage_type, "and file type", file_type, "are not implemented (yet)."))
   }
-
-  sample_type_index <- which(lapply(user_inputs$shared$sample_type, function(x) x$id) == sample_storage_type)
-  manifest_name <- user_inputs$shared$sample_type[[sample_type_index]]$manifest$name
-  manifest_barcode_name <- user_inputs$shared$sample_type[[sample_type_index]]$manifest$barcode
-  location_parameters <- user_inputs$shared$sample_type[[sample_type_index]]$location
 
   ## second row is valid because traxcer will have "plate_label:" in the first row
   valid_header_rows <- 1:2
@@ -85,7 +87,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
   ## grab the columns of interest
   if (user_action %in% c("upload")) {
     # todo: make this less ugly
-    user_file <- select(user_file, all_of(required_user_column_names), contains(unname(unlist(conditional_user_column_names))), contains(optional_user_column_names), contains(c(manifest_name, manifest_barcode_name)))
+    user_file <- select(user_file, all_of(required_user_column_names), contains(conditional_user_column_names), contains(optional_user_column_names), contains(c(manifest_name, manifest_barcode_name)))
   } else if (user_action %in% c("move")) {
     user_file <- select(user_file, all_of(required_user_column_names))
   }

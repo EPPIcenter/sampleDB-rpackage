@@ -1,0 +1,130 @@
+{
+  "version": "1.0.0",
+  "actions": [
+    {
+      "id": "upload",
+      "name": "Upload"
+    },
+    {
+      "id": "move",
+      "name": "Move"
+    },
+    {
+      "id": "search",
+      "name": "Search"
+    }
+  ],
+  "file_types": [
+    {
+      "id": "na",
+      "name": "NA",
+      "description": "Custom file that is user-created and not output by any software packages.",
+      "actions": {
+        "upload": {
+          "required": [
+            "Barcode",
+            "Row",
+            "Column"
+          ],
+          "optional": null,
+          "conditional": null
+        },
+        "move": {
+          "required": [
+            "Barcode",
+            "Position"
+          ]
+        }
+      }
+    },
+    {
+      "id": "traxcer",
+      "name": "Traxcer",
+      "description": null,
+      "actions": {
+        "upload": {
+          "required": [
+            "Position",
+            "Tube ID"
+          ],
+          "optional": null,
+          "conditional": null
+        },
+        "move": {
+          "required": [
+            "Position",
+            "Tube ID"
+          ]
+        }
+      }
+    },
+    {
+      "id": "visionmate",
+      "name": "VisionMate",
+      "description": null,
+      "actions": {
+        "upload": {
+          "required": [
+            "LocationRow",
+            "LocationColumn",
+            "TubeCode"
+          ],
+          "optional": null,
+          "conditional": null
+        },
+        "move": {
+          "required": [
+            "Location",
+            "TubeCode"
+          ]
+        }
+      }
+    }
+  ],
+  "shared": {
+    "upload": {
+      "optional" : [
+        "Comment"
+      ],
+      "required": [
+        "StudyCode",
+        "StudySubject",
+        "SpecimenType"
+      ],
+      "conditional": [
+        "CollectionDate"
+      ]
+    },
+    "sample_type": [
+      {
+        "id": "micronix",
+        "location": {
+          "description": "Micronix sample location column names",
+          "name": "FreezerName",
+          "level_I": "ShelfName",
+          "level_II": "BasketName"
+        },
+        "manifest": {
+          "name": "PlateName",
+          "barcode": "PlateBarcode"
+        }
+      },
+      {
+        "id": "cryovial",
+        "location": {
+          "description": "Cryovial sample location column names",
+          "name": "FreezerName",
+          "level_I": "RackNumber",
+          "level_II": "RackPosition"
+        },
+        "manifest": {
+          "name": "BoxName",
+          "barcode": "Rack ID"
+        }
+      }
+    ]
+  }
+}
+
+
+
