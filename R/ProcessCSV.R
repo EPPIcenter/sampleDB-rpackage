@@ -401,18 +401,18 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
         stopifnot("Study code not found" = tbl(con, "study") %>%
           filter(short_code %in% study_codes) %>%
           collect() %>%
-          nrow(.) > 0)
+          nrow(.) == length(study_codes))
 
         stopifnot("Specimen type not found" = tbl(con, "specimen_type") %>%
           filter(name %in% specimen_types) %>%
           collect() %>%
-          nrow(.) > 0)
+          nrow(.) == length(specimen_types))
 
-        db_locations <- tbl(con, "location") %>%
-          collect() %>%
-          pull(name)
-
-        stopifnot("Location does not exist" = all(unique(formatted_csv$name) %in% db_locations))
+        stopifnot("Location does not exist" = formatted_csv %>%
+          left_join(DBI::dbReadTable(con, "location") %>%
+                      rename(location_id = id), by = c('name', 'level_I', 'level_II')) %>%
+          filter(is.na(location_id)) %>%
+          nrow(.) == 0)
       }
 
       message("Validation complete.")
