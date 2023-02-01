@@ -14,71 +14,116 @@
       "name": "Search"
     }
   ],
+  "sample_type": [
+    {
+      "id": 1,
+      "name": "Micronix"
+    },
+    {
+      "id": 2,
+      "name": "Cryovial"
+    }
+  ],
   "file_types": [
     {
       "id": "na",
       "name": "NA",
       "description": "Custom file that is user-created and not output by any software packages.",
-      "actions": {
-        "upload": {
-          "required": [
-            "Barcode",
-            "Row",
-            "Column"
-          ],
-          "optional": null,
-          "conditional": null
+      "sample_type": [
+        {
+          "id": 1,
+          "actions": {
+            "upload": {
+              "required": [
+                "Barcode",
+                "Row",
+                "Column"
+              ],
+              "optional": null,
+              "conditional": null
+            },
+            "move": {
+              "required": [
+                "Barcode",
+                "Position"
+              ]
+            }
+          }
         },
-        "move": {
-          "required": [
-            "Barcode",
-            "Position"
-          ]
+        {
+          "id": 2,
+          "actions": {
+            "upload": {
+              "required": [
+                "Barcode",
+                "BoxRow",
+                "BoxColumn"
+              ],
+              "optional": null,
+              "conditional": null
+            },
+            "move": {
+              "required": [
+                "Barcode",
+                "Position"
+              ]
+            }
+          }
         }
-      }
+      ]
     },
     {
       "id": "traxcer",
       "name": "Traxcer",
       "description": null,
-      "actions": {
-        "upload": {
-          "required": [
-            "Position",
-            "Tube ID"
-          ],
-          "optional": null,
-          "conditional": null
-        },
-        "move": {
-          "required": [
-            "Position",
-            "Tube ID"
-          ]
+      "sample_type": [
+        {
+          "id": 1,
+          "actions": {
+            "upload": {
+              "required": [
+                "Position",
+                "Tube ID"
+              ],
+              "optional": null,
+              "conditional": null
+            },
+            "move": {
+              "required": [
+                "Position",
+                "Tube ID"
+              ]
+            }
+          }
         }
-      }
+      ]
     },
     {
       "id": "visionmate",
       "name": "VisionMate",
       "description": null,
-      "actions": {
-        "upload": {
-          "required": [
-            "LocationRow",
-            "LocationColumn",
-            "TubeCode"
-          ],
-          "optional": null,
-          "conditional": null
-        },
-        "move": {
-          "required": [
-            "Location",
-            "TubeCode"
-          ]
+      "sample_type": [
+        {
+          "id": 1,
+          "actions": {
+            "upload": {
+              "required": [
+                "LocationRow",
+                "LocationColumn",
+                "TubeCode"
+              ],
+              "optional": null,
+              "conditional": null
+            },
+            "move": {
+              "required": [
+                "Location",
+                "TubeCode"
+              ]
+            }
+          }
         }
-      }
+      ]
     }
   ],
   "shared": {
@@ -97,7 +142,7 @@
     },
     "sample_type": [
       {
-        "id": "micronix",
+        "id": 1,
         "location": {
           "description": "Micronix sample location column names",
           "name": "FreezerName",
@@ -110,7 +155,7 @@
         }
       },
       {
-        "id": "cryovial",
+        "id": 2,
         "location": {
           "description": "Cryovial sample location column names",
           "name": "FreezerName",
@@ -124,7 +169,4 @@
       }
     ]
   }
-}
-
-
-
+} 

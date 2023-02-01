@@ -39,7 +39,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
   user_file <- user_file[!empty_rows, !empty_cols]
 
   ## Read File Specification File
-  user_inputs <- rjson::fromJSON(file = system.file(
+  file_specs_json <- rjson::fromJSON(file = system.file(
     "extdata", "file_specifications.json", package = .sampleDB$pkgname))
 
   ## Read Configuration File
@@ -51,21 +51,26 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
   )
 
   ## Required Column Names
-  file_index <- which(lapply(user_inputs$file_types, function(x) x$id) == file_type)
-  actions <- user_inputs$file_types[[file_index]]$actions[[user_action]]
+
+  file_index <- which(lapply(file_specs_json$file_types, function(x) x$id) == file_type)
+  sample_storage_type_index <- which(lapply(file_specs_json$file_types[[file_index]]$sample_type, function(x) x$id) == sample_storage_type)
+  actions <- file_specs_json$file_types[[file_index]]$sample_type[[sample_storage_type_index]]$actions[[user_action]]
   required_user_column_names <- actions[['required']]
   conditional_user_column_names <- actions[['conditional']]
   optional_user_column_names <- actions[['optional']]
 
-  sample_type_index <- which(lapply(user_inputs$shared$sample_type, function(x) x$id) == sample_storage_type)
+  ## Shared fields 
 
-  required_user_column_names <- c(required_user_column_names, user_inputs$shared$upload[['required']])
-  conditional_user_column_names <- c(conditional_user_column_names, user_inputs$shared$upload[['conditional']])
-  optional_user_column_names <- c(optional_user_column_names, user_inputs$shared$upload[['optional']])
+  sample_type_index <- which(lapply(file_specs_json$shared$sample_type, function(x) x$id) == sample_storage_type)
 
-  manifest_name <- user_inputs$shared$sample_type[[sample_type_index]]$manifest$name
-  manifest_barcode_name <- user_inputs$shared$sample_type[[sample_type_index]]$manifest$barcode
-  location_parameters <- user_inputs$shared$sample_type[[sample_type_index]]$location
+  required_user_column_names <- c(required_user_column_names, file_specs_json$shared$upload[['required']])
+  conditional_user_column_names <- c(conditional_user_column_names, file_specs_json$shared$upload[['conditional']])
+  optional_user_column_names <- c(optional_user_column_names, file_specs_json$shared$upload[['optional']])
+
+  manifest_name <- file_specs_json$shared$sample_type[[sample_type_index]]$manifest$name
+  manifest_barcode_name <- file_specs_json$shared$sample_type[[sample_type_index]]$manifest$barcode
+  location_parameters <- file_specs_json$shared$sample_type[[sample_type_index]]$location
+  location_parameters <- unlist(location_parameters[c("name", "level_I", "level_II")])
 
   if (is.null(required_user_column_names)) {
     stop_formatting_error(paste("The expected column names for sample type", sample_storage_type, "and file type", file_type, "are not implemented (yet)."))
@@ -85,12 +90,14 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
   user_file <- user_file %>% setNames(.[header_ridx, ]) %>% .[-c(1, header_ridx), ]
 
   ## grab the columns of interest
-  if (user_action %in% c("upload")) {
-    # todo: make this less ugly
-    user_file <- select(user_file, all_of(required_user_column_names), contains(conditional_user_column_names), contains(optional_user_column_names), contains(c(manifest_name, manifest_barcode_name)))
-  } else if (user_action %in% c("move")) {
-    user_file <- select(user_file, all_of(required_user_column_names))
-  }
+  user_file <- select(user_file, all_of(required_user_column_names), contains(conditional_user_column_names), contains(optional_user_column_names), contains(c(manifest_name, manifest_barcode_name, location_parameters)))
+
+  # if (user_action %in% c("upload")) {
+  #   # todo: make this less ugly
+  #   user_file <- select(user_file, all_of(required_user_column_names), contains(conditional_user_column_names), contains(optional_user_column_names), contains(c(manifest_name, manifest_barcode_name)))
+  # } else if (user_action %in% c("move")) {
+  #   user_file <- select(user_file, all_of(required_user_column_names))
+  # }
 
   ## use this chunk to validate conditional parameters
   if ("upload" == user_action) {
@@ -142,20 +149,21 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
   processed_file <- NULL
 
   if (user_action %in% c("upload", "move")) {
+
     ## Micronix
-    if (sample_storage_type == "micronix" && file_type == "na") {
+    if (sample_storage_type == 1 && file_type == "na") {
       processed_file$barcode <- user_file$Barcode
       processed_file$position <- paste0(user_file$Row, user_file$Column)
-    } else if (sample_storage_type == "micronix" && file_type == "traxcer") {
+    } else if (sample_storage_type == 1 && file_type == "traxcer") {
       processed_file$barcode <- user_file$`Tube ID`
       processed_file$position <- user_file %>% pull(all_of(traxcer_position))
-    } else if (sample_storage_type == "micronix" && file_type == "visionmate") {
+    } else if (sample_storage_type == 1 && file_type == "visionmate") {
       processed_file$barcode = user_file$TubeCode
       processed_file$position  = paste0(user_file$LocationRow, user_file$LocationColumn)
     }
 
     ## Cryovial
-    else if (sample_storage_type == "cryovial") {
+    else if (sample_storage_type == 2) {
       processed_file$barcode <- user_file$Barcode
       processed_file$position <-  paste0(user_file$BoxRow, user_file$BoxColumn)
     }
@@ -232,11 +240,11 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
   required_names <- requires_data <- container_metadata <- NULL
   if (user_action %in% c("upload", "move")) {
     required_names <- switch(sample_storage_type,
-        "micronix" = c(
+        "1" = c(
           "position",
           "barcode"
         ),
-        "cryovial" = c(
+        "2" = c(
           "position",
           "barcode"
         )
@@ -265,8 +273,8 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
   }
 
   barcode_length_constraint <- switch(sample_storage_type,
-    "micronix" = 10,
-    "cryovial" = 6
+    "1" = 10,
+    "2" = 6
   )
 
   bError <- FALSE
@@ -307,12 +315,12 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
 
       container_tables <- list(
         "manifest" = switch(sample_storage_type,
-          "micronix" = "micronix_plate",
-          "cryovial" = "cryovial_box",
+          "1" = "micronix_plate",
+          "2" = "cryovial_box",
         ),
         "container_class" = switch(sample_storage_type,
-          "micronix" = "micronix_tube",
-          "cryovial" = "cryovial_tube"
+          "1" = "micronix_tube",
+          "2" = "cryovial_tube"
         )
       )
 
@@ -320,16 +328,16 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
       # note: potentially could increase speed by using copy_to if upload files are large
 
       con <- DBI::dbConnect(RSQLite::SQLite(), database)
-      if (tbl(con, "storage_container") %>%
+      active_positions <- tbl(con, "storage_container") %>%
         select(status_id, id) %>%
         filter(status_id == 1) %>%
         inner_join(tbl(con, container_tables[["container_class"]]), by = c("id" = "id")) %>%
-        inner_join(tbl(con, container_tables[["manifest"]]), by = c("manifest_id" = "id")) %>%
+        inner_join(tbl(con, container_tables[["manifest"]]) %>% rename(manifest_name = name), by = c("manifest_id" = "id")) %>%
         collect() %>%
-        filter(name %in% formatted_csv$manifest_name) %>%
-        select(manifest_id, position, status_id) %>%
-        nrow(.) == 0
-      ) {
+        select(position, manifest_name) %>%
+        inner_join(formatted_csv, by = c("manifest_name", "position")) %>%
+        nrow(.)
+      if (active_positions > 0) {
         stop_validation_error("Uploading sample to well location that already has an active sample", 1)
       }
 
@@ -344,7 +352,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
         db_specimen_types <- dbReadTable(con, "specimen_type") %>% pull(name)
 
         if (!all(file_specimen_types %in% db_specimen_types)) {
-          stop_validation_error("Study not found", file_specimen_types[!file_specimen_types %in% db_specimen_types])
+          stop_validation_error("Specimen Type not found", file_specimen_types[!file_specimen_types %in% db_specimen_types])
         }
 
         stopifnot("Location does not exist" = formatted_csv %>%
@@ -396,7 +404,8 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
 .CheckPositionIsValid <- function(formatted_csv, sample_storage_type, user_action) {
 
   positions <- formatted_csv %>% pull(position)
-  if (any(c("micronix", "cryovial") %in% sample_storage_type)) {
+
+  if (any(c(1, 2) %in% sample_storage_type)) { # micronix, cryovial
 
     # check row letters
     row_letter_check <- substr(positions, 1, 1) %in% LETTERS
@@ -408,7 +417,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
       suppressWarnings() > 0)
 
 
-    if ("micronix" %in% sample_storage_type && !all(nchar(col_numbers) == 2)) {
+    if ("1" %in% sample_storage_type && !all(nchar(col_numbers) == 2)) {
       stop("Numbers should be in ## format. Fill with zero if less than 10 (e.g \"05\")")
     }
 

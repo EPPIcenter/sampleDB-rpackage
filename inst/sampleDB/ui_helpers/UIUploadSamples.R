@@ -12,7 +12,7 @@ UIUploadSamples <- function() {
       hr(),
       radioButtons("UploadFileType", "Choose a file type", choices = c("NA" = "na", "Traxcer" = "traxcer", "VisionMate" = "visionmate"), inline = TRUE),
       #upload data
-      fileInput("UploadSampleDataSet", "Upload Samples File", multiple = TRUE, accept = c("text/csv", "text/comma-separated-values,text/plain", ".csv")),
+      fileInput("UploadSampleDataSet", "Upload Samples File", accept = c("text/csv", "text/comma-separated-values,text/plain", ".csv")),
       #add freezer infor
       # selectizeInput("UploadManifestName", label = "Plate Name", choices = c(),  options = list(create = TRUE)),
       # selectInput("UploadLocationRoot", label = "Upload Location", choices = c()),        

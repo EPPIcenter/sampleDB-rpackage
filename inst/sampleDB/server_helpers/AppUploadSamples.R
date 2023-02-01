@@ -11,75 +11,53 @@ library(purrr)
 
 AppUploadSamples <- function(session, output, input, database) {
 
-  rv <- reactiveValues(user_files = NULL, console_verbatim = FALSE)
+  rv <- reactiveValues(user_file = NULL, console_verbatim = FALSE, b_use_wait_dialog = FALSE, cleanup = FALSE)
 
   observeEvent(input$UploadSampleDataSet, ignoreInit = TRUE, {
     dataset <- input$UploadSampleDataSet
-    rv$user_files <- NULL
 
-    for (i in 1:nrow(dataset)) {
-      tryCatch({
-        withCallingHandlers({
-          processed_file <- sampleDB::ProcessCSV(
-            user_csv = dataset[i, ]$datapath,
-            user_action = "upload",
-            file_type = input$UploadFileType,
-            sample_storage_type = switch(
-              input$UploadSampleType,
-              "1" = "micronix",
-              "2" = "cryovial"
-            )
-          )
-
-          rv$user_files <- append(rv$user_files, processed_file)
-          names(rv$user_files[length(rv$user_files)]) <- dataset[i, ]$name
-
-          # output$UploadFilesTabset <- renderUI({
-          #   map(col_names(), ~ textInput(.x, NULL))
-          # })
-        },
-        message = function(m) {
-          message(m$message)
-          shinyjs::html(id = "UploadOutputConsole", html = paste0(dataset[i, ]$name, ": ", m$message, "\n"), add = rv$console_verbatim)
-          rv$console_verbatim <- TRUE
-        })
+    tryCatch({
+      withCallingHandlers({
+        rv$user_file <- sampleDB::ProcessCSV(
+          user_csv = dataset$datapath,
+          user_action = "upload",
+          file_type = input$UploadFileType,
+          sample_storage_type = input$UploadSampleType
+        )
       },
-      error = function(e) {
-        print(e)
-        html<-paste0("<font color='red'>", paste0(dataset[i, ]$name, ": ", e$message, "\n"), "</font>")
-        shinyjs::html(id = "UploadOutputConsole", html = html, add = rv$console_verbatim)
+      message = function(m) {
+        shinyjs::html(id = "UploadOutputConsole", html = paste0(dataset$name, ": ", m$message), add = rv$console_verbatim)
+        rv$console_verbatim <- TRUE
       })
-    }
+    },
+    error = function(e) {
+      print(e)
+      html<-paste0("<font color='red'>", paste0(dataset$name, ": ", e$message), "</font>")
+      shinyjs::html(id = "UploadOutputConsole", html = html, add = rv$console_verbatim)
+    })
 
     rv$console_verbatim <- FALSE
   })
 
 
   observeEvent(input$UploadAction, ignoreInit = TRUE, {
-    if (!is.null(rv$user_files)) {
+    if (is.null(rv$user_file)) {
+      message("Upload action halted - no file uploaded")
       return()
     }
 
     file_type <- input$UploadFileType
     container_name <- input$UploadManifestName
 
-    # todo: this should be mapped somewhere else
-    sample_storage_type <- switch(input$UploadSampleType,
-      "1" = "micronix",
-      "2" = "cryovial"
-    )
-
     formatted_file <- NULL
-    b_use_wait_dialog <- FALSE
-
+    rv$b_use_wait_dialog <- FALSE
     output$UploadOutputConsole <- renderText({
       tryCatch({
-        #check colnames of user provided file
 
         # simple way to add a dialog or not
-        b_use_wait_dialog <- nrow(rv$user_files) > 5
+        rv$b_use_wait_dialog <- nrow(rv$user_file) > 5
 
-        if (b_use_wait_dialog) {
+        if (rv$b_use_wait_dialog) {
           show_modal_spinner(
             spin = "double-bounce",
             color = "#00bfff",
@@ -88,20 +66,22 @@ AppUploadSamples <- function(session, output, input, database) {
         }
 
         shinyjs::reset("UploadAction")
-        sampleDB::UploadSamples(sample_type_id = as.integer(input$UploadSampleType), upload_data = rv$user_files)                                
+        sampleDB::UploadSamples(sample_type_id = as.integer(input$UploadSampleType), upload_data = rv$user_file)       
       },
       error = function(e) {
-        rv$user_files <- NULL
         message(e)
         e$message
       },
       finally = {
-        rv$user_files <- NULL
-        if (b_use_wait_dialog) {
-          remove_modal_spinner()
-        }
+        rv$cleanup <- TRUE
       })
     })
+  })
+
+  observeEvent(rv$cleanup, ignoreInit = TRUE, {
+    remove_modal_spinner()
+    rv$user_file <- NULL
+    rv$b_use_wait_dialog <- FALSE
   })
 
   observeEvent(input$UploadSampleType, {
@@ -205,6 +185,6 @@ AppUploadSamples <- function(session, output, input, database) {
     shinyjs::reset("UploadLocationRoot")
     shinyjs::reset("UploadLocationLevelI")
     shinyjs::reset("UploadLocationLevelII")
-    rv$user_files <- NULL
+    rv$user_file <- NULL
   })
 }
