@@ -4,17 +4,9 @@
 \alias{UploadSamples}
 \title{Upload EPPIcenter Wetlab Samples to the SampleDB database}
 \usage{
-UploadSamples(
-  sample_type,
-  upload_data,
-  container_name,
-  container_barcode = NULL,
-  freezer_address
-)
+UploadSamples(sample_type_id, upload_data)
 }
 \arguments{
-\item{sample_type}{A string specifying the type of samples that are being uploaded Options include: \code{micronix}, \code{cryovial}, \code{rdt} and \code{paper}}
-
 \item{upload_data}{A dataframe of SampleDB Upload data.\cr
 Required \code{upload_data} columns are:\cr
 \code{position}: the row and column of the sample in the storage housing
@@ -37,6 +29,8 @@ Required \code{upload_data} columns are:\cr
    A1 \tab xxx2 \tab subject_2 \tab PLASMA \tab KAM06 \tab 2022-04-11 \cr
 }}
 
+\item{sample_type}{A string specifying the type of samples that are being uploaded Options include: \code{micronix}, \code{cryovial}, \code{rdt} and \code{paper}}
+
 \item{container_name}{A string specifying the name of the container the samples are in. Names must be unique within each sample type.}
 
 \item{container_barcode}{A string specifying the barcode for the container the samples are in. Container barcodes are optional. Barcodes must be unique within each sample type.}
@@ -48,7 +42,7 @@ If the freezer_address type is \verb{minus twenty} then \code{level_I} and \code
 }
 \description{
 \code{UploadSamples()} can be used to upload wetlab samples to the sampleDB database.
-Currently the type of wetlab samples supported is only \code{micronix}. <!---cryovial`, `rdt` and `paper` sample uploads will appear in the next version.-->
+Currently the type of wetlab samples supported is only \code{micronix}. \if{html}{\out{<!---cryovial`, `rdt` and `paper` sample uploads will appear in the next version.-->}}
 }
 \examples{
 \dontrun{

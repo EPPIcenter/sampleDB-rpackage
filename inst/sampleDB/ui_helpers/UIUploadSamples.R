@@ -3,6 +3,12 @@ UIUploadSamples <- function() {
   
   con <- DBI::dbConnect(RSQLite::SQLite(), Sys.getenv("SDB_PATH"))
 
+  file_specs_json <- rjson::fromJSON(file = system.file(
+    "extdata", "file_specifications.json", package = .sampleDB$pkgname))
+
+  file_type_ids <- lapply(file_specs_json$file_types, function(x) x$id)
+  names(file_type_ids) <- lapply(file_specs_json$file_types, function(x) x$name)
+
   ui <- sidebarLayout(
     sidebarPanel(
       shinyjs::useShinyjs(),
@@ -10,14 +16,14 @@ UIUploadSamples <- function() {
       h4("Upload Samples"),
       radioButtons("UploadSampleType","Sample Storage Type", choices = DBI::dbReadTable(con, "sample_type") %>% pull(id, name = "name"), inline = TRUE),
       hr(),
-      radioButtons("UploadFileType", "Choose a file type", choices = c("NA" = "na", "Traxcer" = "traxcer", "VisionMate" = "visionmate"), inline = TRUE),
+      radioButtons("UploadFileType", "Choose a file type", choices = file_type_ids, inline = TRUE),
       #upload data
       fileInput("UploadSampleDataSet", "Upload Samples File", accept = c("text/csv", "text/comma-separated-values,text/plain", ".csv")),
       #add freezer infor
-      # selectizeInput("UploadManifestName", label = "Plate Name", choices = c(),  options = list(create = TRUE)),
-      # selectInput("UploadLocationRoot", label = "Upload Location", choices = c()),        
-      # selectInput("UploadLocationLevelI", label = "Shelf Name", choices = c()),
-      # selectInput("UploadLocationLevelII", label = "Basket Name", choices = c()),
+      selectizeInput("UploadManifestName", label = "Plate Name", choices = c(),  options = list(create = TRUE)),
+      selectInput("UploadLocationRoot", label = "Upload Location", choices = c()),        
+      selectInput("UploadLocationLevelI", label = "Shelf Name", choices = c()),
+      selectInput("UploadLocationLevelII", label = "Basket Name", choices = c()),
       #output messages
       hr(),
       #action buttons

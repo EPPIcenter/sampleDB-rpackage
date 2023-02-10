@@ -22,6 +22,10 @@
     {
       "id": 2,
       "name": "Cryovial"
+    },
+    {
+      "id": 3,
+      "name": "DBS"
     }
   ],
   "file_types": [
@@ -66,6 +70,37 @@
               "required": [
                 "Barcode",
                 "Position"
+              ]
+            }
+          }
+        },
+        {
+          "id": 3,
+          "actions": {
+            "upload": {
+              "required": [
+                "Strain",
+                "0.05",
+                "0.1",
+                "1",
+                "10",
+                "100",
+                "1k",
+                "10k"
+              ],
+              "optional": null,
+              "conditional": null
+            },
+            "move": {
+              "required": [
+                "Strain",
+                "0.05",
+                "0.1",
+                "1",
+                "10",
+                "100",
+                "1k",
+                "10k"
               ]
             }
           }
@@ -164,7 +199,20 @@
         },
         "manifest": {
           "name": "BoxName",
-          "barcode": "Rack ID"
+          "barcode": "BoxBarcode"
+        }
+      },
+      {
+        "id": 3,
+        "location": {
+          "description": "DBS sample location column names",
+          "name": "FreezerName",
+          "level_I": "RackNumber",
+          "level_II": "RackPosition"
+        },
+        "manifest": {
+          "name": "PaperName",
+          "barcode": "PaperBarcode"
         }
       }
     ]

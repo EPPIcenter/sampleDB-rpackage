@@ -2,6 +2,8 @@ library(shiny)
 library(shinybusy)
 library(shinyjs)
 library(purrr)
+library(RSQLite)
+library(dbplyr)
 
 # App Function for Uploading Samples
 
@@ -92,6 +94,7 @@ AppUploadSamples <- function(session, output, input, database) {
 
     con <- dbConnect(SQLite(), Sys.getenv("SDB_PATH"))
     sample_type_id <- as(local(input$UploadSampleType), "integer")
+
     sample_type_name <- DBI::dbReadTable(con, "sample_type") %>%
       filter(id == sample_type_id) %>%
       pull(name)
@@ -107,17 +110,22 @@ AppUploadSamples <- function(session, output, input, database) {
       )
     )
 
-    manifest <- switch(sample_type_name,
+    manifest <- switch(
+      sample_type_name,
       "Micronix" = "micronix_plate",
-      "Cryovial" = "cryovial_box")
+      "Cryovial" = "cryovial_box",
+      "DBS" = "dbs_paper"
+    )
 
 
     updateSelectizeInput(
       session,
       "UploadManifestName",
-      label = switch(sample_type_name,
+      label = switch(
+        sample_type_name,
         "Micronix" = "Plate Name",
-        "Cryovial" = "Box Name"
+        "Cryovial" = "Box Name",
+        "DBS" = "Paper Name"
       ),
       selected = "",
       choices = c("", DBI::dbReadTable(con, manifest) %>% pull(name)),
@@ -127,18 +135,22 @@ AppUploadSamples <- function(session, output, input, database) {
     updateSelectInput(
       session,
       "UploadLocationLevelI",
-      label = switch(sample_type_name,
+      label = switch(
+        sample_type_name,
         "Micronix" = "Shelf Name", 
-        "Cryovial" = "Rack Number"
+        "Cryovial" = "Rack Number",
+        "DBS" = "To Be Implemented"
       )
     )
 
     updateSelectInput(
       session,
       "UploadLocationLevelII",
-      label = switch(sample_type_name,
+      label = switch(
+        sample_type_name,
         "Micronix" = "Basket Name",
-        "Cryovial" = "Rack Position" 
+        "Cryovial" = "Rack Position",
+        "DBS" = "To Be Implemented"
       )
     )
 
