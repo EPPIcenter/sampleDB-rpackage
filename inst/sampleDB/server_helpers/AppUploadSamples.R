@@ -4,6 +4,8 @@ library(shinyjs)
 library(purrr)
 library(RSQLite)
 library(dbplyr)
+library(shinyBS)
+library(reactable)
 
 # App Function for Uploading Samples
 
@@ -13,13 +15,55 @@ library(dbplyr)
 
 AppUploadSamples <- function(session, output, input, database) {
 
-  rv <- reactiveValues(user_file = NULL, console_verbatim = FALSE, b_use_wait_dialog = FALSE, cleanup = FALSE)
+  rv <- reactiveValues(user_file = NULL, console_verbatim = FALSE, b_use_wait_dialog = FALSE, cleanup = FALSE, error = FALSE)
+  error <- reactiveValues(
+    title = "",
+    message = "",
+    caption = "",
+    table = NULL
+  )
+
+  observeEvent(rv$error, ignoreInit = TRUE, {
+    message("Running error workflow")
+
+    df <- error$table %>%
+      rename(
+        Column = column, 
+        Reason = reason,
+        Trigger = trigger
+      ) %>%
+      reactable(.)
+
+    showModal(
+      modalDialog(
+        title = error$title,
+        error$message,
+        error$caption,
+        renderReactable({ df }),
+        footer = modalButton("Exit")
+      )
+    )
+    rv$error <- NULL
+  })
+
+  observeEvent(input$Exit, ignoreInit = TRUE, {
+    error$title = ""
+    error$message = ""
+    error$caption = ""
+    error$table = NULL
+    rv$error <- NULL
+    removeModal()
+  })
 
   observeEvent(input$UploadSampleDataSet, ignoreInit = TRUE, {
     dataset <- input$UploadSampleDataSet
 
+    message(paste("Loaded", dataset$name))
+
     tryCatch({
       withCallingHandlers({
+
+        ## format the file
         rv$user_file <- sampleDB::ProcessCSV(
           user_csv = dataset$datapath,
           user_action = "upload",
@@ -31,6 +75,45 @@ AppUploadSamples <- function(session, output, input, database) {
         shinyjs::html(id = "UploadOutputConsole", html = paste0(dataset$name, ": ", m$message), add = rv$console_verbatim)
         rv$console_verbatim <- TRUE
       })
+    },
+    formatting_error = function(e) {
+      message("Caught formatting error")
+      print(e$df)
+
+      ## Read File Specification File
+      file_specs_json <- rjson::fromJSON(file = system.file(
+        "extdata", "file_specifications.json", package = .sampleDB$pkgname))
+
+      sample_type_index <- which(lapply(file_specs_json$shared$sample_type, function(x) x$id) == input$UploadSampleType)
+
+      manifest_name <- file_specs_json$shared$sample_type[[sample_type_index]]$manifest$name
+      location_parameters <- file_specs_json$shared$sample_type[[sample_type_index]]$location
+      location_parameters <- unlist(location_parameters[c("name", "level_I", "level_II")])
+
+      columns <- e$df$column
+      if (manifest_name %in% columns) {
+        shinyjs::show("UploadManifestName")
+      }
+
+      # should be all or none
+      if (all(location_parameters %in% columns)) {
+        shinyjs::show("UploadLocationRoot")
+        shinyjs::show("UploadLocationLevelI")
+        shinyjs::show("UploadLocationLevelII")
+      }
+
+      shinyjs::disable("UploadSampleType")
+      shinyjs::disable("UploadFileType")
+    },
+    validation_error = function(e) {
+      message("Caught validation error")
+      
+      rv$error <- TRUE
+      error$title <- "Validation error"
+      error$message <- e$message
+      error$caption <- "Please see the table below."
+
+      print(e$df)
     },
     error = function(e) {
       print(e)
@@ -75,15 +158,11 @@ AppUploadSamples <- function(session, output, input, database) {
         e$message
       },
       finally = {
-        rv$cleanup <- TRUE
+        remove_modal_spinner()
+        rv$user_file <- NULL
+        rv$b_use_wait_dialog <- FALSE
       })
     })
-  })
-
-  observeEvent(rv$cleanup, ignoreInit = TRUE, {
-    remove_modal_spinner()
-    rv$user_file <- NULL
-    rv$b_use_wait_dialog <- FALSE
   })
 
   observeEvent(input$UploadSampleType, {
@@ -98,6 +177,23 @@ AppUploadSamples <- function(session, output, input, database) {
     sample_type_name <- DBI::dbReadTable(con, "sample_type") %>%
       filter(id == sample_type_id) %>%
       pull(name)
+
+    ## Read File Specification File
+    file_specs_json <- rjson::fromJSON(file = system.file(
+      "extdata", "file_specifications.json", package = .sampleDB$pkgname))
+
+    sample_type_index <- which(lapply(file_specs_json$sample_type, function(x) x$id) == input$UploadSampleType)
+    sample_file_types <- file_specs_json$sample_type[[sample_type_index]]$file_types
+    file_type_indexes <- which(lapply(file_specs_json$file_types, function(x) x$id) %in% sample_file_types)
+    file_type_names <- lapply(file_type_indexes, function(x) file_specs_json$file_types[[x]]$name)
+    names(sample_file_types) <- file_type_names
+
+    updateRadioButtons(
+      session,
+      "UploadFileType",
+      choices = sample_file_types,
+      inline = TRUE
+    )
 
     updateSelectInput(
       session, 
@@ -191,12 +287,20 @@ AppUploadSamples <- function(session, output, input, database) {
   })
 
   observeEvent(input$ClearUploadForm, {
+    shinyjs::enable("UploadSampleType")
+    shinyjs::enable("UploadFileType")
     shinyjs::reset("UploadSampleDataSet")
-    shinyjs::reset("UploadFilesTabset")
+    
+    shinyjs::hide("UploadManifestName")
+    shinyjs::hide("UploadLocationRoot")
+    shinyjs::hide("UploadLocationLevelI")
+    shinyjs::hide("UploadLocationLevelII")
+
     shinyjs::reset("UploadManifestName")
     shinyjs::reset("UploadLocationRoot")
     shinyjs::reset("UploadLocationLevelI")
     shinyjs::reset("UploadLocationLevelII")
+
     rv$user_file <- NULL
   })
 }

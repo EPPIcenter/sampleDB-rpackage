@@ -17,15 +17,26 @@
   "sample_type": [
     {
       "id": 1,
-      "name": "Micronix"
+      "name": "Micronix",
+      "file_types": [
+        "na",
+        "traxcer",
+        "visionmate"
+      ]
     },
     {
       "id": 2,
-      "name": "Cryovial"
+      "name": "Cryovial",
+      "file_types": [
+        "na"
+      ]
     },
     {
       "id": 3,
-      "name": "DBS"
+      "name": "DBS",
+      "file_types": [
+        "na"
+      ]
     }
   ],
   "file_types": [

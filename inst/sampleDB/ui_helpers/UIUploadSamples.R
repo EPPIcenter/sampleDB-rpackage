@@ -1,4 +1,5 @@
 library(DBI)
+library(shinyBS)
 UIUploadSamples <- function() {
   
   con <- DBI::dbConnect(RSQLite::SQLite(), Sys.getenv("SDB_PATH"))
@@ -20,10 +21,10 @@ UIUploadSamples <- function() {
       #upload data
       fileInput("UploadSampleDataSet", "Upload Samples File", accept = c("text/csv", "text/comma-separated-values,text/plain", ".csv")),
       #add freezer infor
-      selectizeInput("UploadManifestName", label = "Plate Name", choices = c(),  options = list(create = TRUE)),
-      selectInput("UploadLocationRoot", label = "Upload Location", choices = c()),        
-      selectInput("UploadLocationLevelI", label = "Shelf Name", choices = c()),
-      selectInput("UploadLocationLevelII", label = "Basket Name", choices = c()),
+      shinyjs::hidden(selectizeInput("UploadManifestName", label = "Plate Name", choices = c(),  options = list(create = TRUE))),
+      shinyjs::hidden(selectInput("UploadLocationRoot", label = "Upload Location", choices = c())),        
+      shinyjs::hidden(selectInput("UploadLocationLevelI", label = "Shelf Name", choices = c())),
+      shinyjs::hidden(selectInput("UploadLocationLevelII", label = "Basket Name", choices = c())),
       #output messages
       hr(),
       #action buttons
@@ -78,7 +79,7 @@ UIUploadSamples <- function() {
       HTML("<h4><code>4. Select Freezer Address for Sample Storage</code></h4>"),
       hr(),
       HTML("<p>Use the <b>Freezer Address</b> section to select the freezer address that the samples will be stored in.</p>"),
-      br(),
+      br()
     ))
 
     DBI::dbDisconnect(con)

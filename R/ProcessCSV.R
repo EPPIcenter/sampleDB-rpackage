@@ -7,6 +7,7 @@
 
 
 ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_name = NULL, freezer_address = NULL, file_type = "na", validate = TRUE, database = Sys.getenv("SDB_PATH"), config_yml = Sys.getenv("SDB_CONFIG")) {
+  df.error.formatting <- data.frame(column = NULL, reason = NULL, trigger = NULL)
 
   if (!require(dplyr)) {
     stop("Function requires dplyr for database access!")
@@ -54,6 +55,11 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
 
   file_index <- which(lapply(file_specs_json$file_types, function(x) x$id) == file_type)
   sample_storage_type_index <- which(lapply(file_specs_json$file_types[[file_index]]$sample_type, function(x) x$id) == sample_storage_type)
+
+  if (purrr::is_empty(sample_storage_type_index)) {
+    stop("Unimplemented file specifications for this sample storage type")
+  }
+
   actions <- file_specs_json$file_types[[file_index]]$sample_type[[sample_storage_type_index]]$actions[[user_action]]
   required_user_column_names <- actions[['required']]
   conditional_user_column_names <- actions[['conditional']]
@@ -72,44 +78,69 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
   location_parameters <- file_specs_json$shared$sample_type[[sample_type_index]]$location
   location_parameters <- unlist(location_parameters[c("name", "level_I", "level_II")])
 
+  required_user_column_names <- c(required_user_column_names, c(manifest_name, manifest_barcode_name, location_parameters))
+
   if (is.null(required_user_column_names)) {
-    stop_formatting_error(paste("The expected column names for sample type", sample_storage_type, "and file type", file_type, "are not implemented (yet)."))
+    stop(paste("The expected column names for sample type", sample_storage_type, "and file type", file_type, "are not implemented (yet)."))
   }
 
   ## second row is valid because traxcer will have "plate_label:" in the first row
   valid_header_rows <- 1:2
 
-  header_ridx <- .FindValidHeader(user_file = user_file, required_user_column_names = required_user_column_names, valid_header_rows = valid_header_rows)
+  header_row <- .FindHeader(user_file = user_file, required_user_column_names = required_user_column_names, valid_header_rows = valid_header_rows)
 
-  if (!header_ridx %in% valid_header_rows) {
-    errmsg <- paste("Valid header rows could not be found in your file. Please check that the following column names are present:", paste(required_user_column_names, collapse = ", "))
-    stop_formatting_error(errmsg)
+  if (is.null(header_row)) {
+    errmsg <- paste("Valid header rows could not be found in your file. Please check that the following required column names are present:", paste(required_user_column_names, collapse = ", "))
+    stop(errmsg) 
   }
 
-  ## format the file
-  user_file <- user_file %>% setNames(.[header_ridx, ]) %>% .[-c(1, header_ridx), ]
+  user_file <- user_file %>% setNames(.[header_row, ]) %>% .[-c(1, header_row), ]
 
-  ## grab the columns of interest
-  user_file <- select(user_file, all_of(required_user_column_names), contains(conditional_user_column_names), contains(optional_user_column_names), contains(c(manifest_name, manifest_barcode_name, location_parameters)))
+  missing_columns <- required_user_column_names[!required_user_column_names %in% colnames(user_file)]
+  if (!purrr::is_empty(missing_columns)) {
+    df.error.formatting <- rbind(
+      df.error.formatting, 
+      data.frame(
+            column = missing_columns,
+            reason = "Always Required",
+            trigger = c(NA)
+          )
+      )
+  }
 
-  # if (user_action %in% c("upload")) {
-  #   # todo: make this less ugly
-  #   user_file <- select(user_file, all_of(required_user_column_names), contains(conditional_user_column_names), contains(optional_user_column_names), contains(c(manifest_name, manifest_barcode_name)))
-  # } else if (user_action %in% c("move")) {
-  #   user_file <- select(user_file, all_of(required_user_column_names))
-  # }
-
-  ## use this chunk to validate conditional parameters
-  if ("upload" == user_action) {
-
+  if ("StudyCode" %in% colnames(user_file) && "upload" %in% user_action) {
     tmp <- sampleDB:::CheckTable("study") %>%
       filter(short_code %in% user_file$StudyCode) %>%
       inner_join(user_file, by = c("short_code" = "StudyCode"))
 
     # collection date must exist for all samples that are part of a longitudinal study
     if (!"CollectionDate" %in% colnames(user_file) && nrow(filter(tmp, is_longitudinal == 1)) > 0) {
-      stop_formatting_error("Collection date is required for samples of longitudinal studies.")
-    } else if ("CollectionDate" %in% colnames(user_file)) {
+      df.error.formatting <- rbind(
+        df.error.formatting,
+        data.frame(
+          column = "CollectionDate",
+          reason = "Collection date is required for samples of longitudinal studies.",
+          trigger = data.frame(
+            name = filter(tmp, is_longitudinal) %>% pull(name)
+          )
+        )
+      )
+    }
+  }
+
+  if (nrow(df.error.formatting)) {
+    stop_formatting_error(df = df.error.formatting)
+  }
+
+
+  ## grab the columns of interest
+  user_file <- select(user_file, all_of(required_user_column_names), contains(conditional_user_column_names), contains(optional_user_column_names))
+
+  ## use this chunk to validate conditional parameters
+  
+  if ("upload" %in% user_action) {
+
+   if ("CollectionDate" %in% colnames(user_file)) {
       df_invalid <- filter(tmp, is_longitudinal == 1 & is.na(CollectionDate))
       if (nrow(df_invalid) > 0) {
         stop_validation_error("Missing collection date found for sample in longitudinal study", 1)
@@ -382,23 +413,21 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
 }
 
 # Logistical Checks
-.FindValidHeader <- function(user_file, required_user_column_names, valid_header_rows = valid_header_rows) {
+.FindHeader <- function(user_file, required_user_column_names, valid_header_rows = valid_header_rows) {
 
   # sanity check
   stopifnot("File is empty" = nrow(user_file) > 1)
 
   # this variable will be set with the valid header row position (if it exists)
-  header_ridx <- 0
 
   for (colname_ridx in valid_header_rows) {
     row <- user_file[colname_ridx, ]
-    if(all(required_user_column_names %in% row)) {
-      header_ridx <- colname_ridx
-      break
+    if (any(required_user_column_names %in% row)) {
+      return(colname_ridx)
     }
   }
 
-  return(header_ridx)
+  return(NULL)
 }
 
 .CheckPositionIsValid <- function(formatted_csv, sample_storage_type, user_action) {
@@ -450,13 +479,14 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
 }
 
 stop_usage_error <- function(message) {
-  rlang::abort("error_usage", message = message)
+  rlang::abort("usage_error", message = message)
 }
 
-stop_formatting_error <- function(message) {
-  rlang::abort("error_formatting", message = message)
+stop_formatting_error <- function(df) {
+  message <- "There was an issue with the format of the file."
+  rlang::abort("formatting_error", message = message, df = df)
 }
 
 stop_validation_error <- function(message, values) {
-  rlang::abort("error_validation", message = message, values = values)
+  rlang::abort("validation_error", message = message, values = values)
 }
