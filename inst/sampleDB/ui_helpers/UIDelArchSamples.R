@@ -1,7 +1,4 @@
 UIDelArchSamples <- function(){
-
-  con <- DBI::dbConnect(RSQLite::SQLite(), Sys.getenv("SDB_PATH"))
-
   sidebarLayout(
     sidebarPanel(
       width = 2,
@@ -9,7 +6,7 @@ UIDelArchSamples <- function(){
       HTML("<h4>Delete and Archive Samples</h4>"),
       hr(),
       # fileInput("SearchByLabel", label = HTML("Barcode <h6>Single column named \"barcode\"</h6>")), actionButton("ClearSearchBarcodes", label = "Clear Barcodes"), textOutput("WarnSubjectBarcodeFileColnames"), textOutput("WarnSubjectBarcodeFileColnames2"),
-      radioButtons("DelArchSearchBySampleType","Sample Type", choices = c("All" = "all", DBI::dbReadTable(con, "sample_type") %>% pull(id, name = "name")), selected = "all", inline = T),
+      radioButtons("DelArchSearchBySampleType","Sample Type", c("All" = "all", "Micronix" = "micronix", "Cryovial" = "cryovial", "RDT" = "rdt", "Paper" = "paper"), select = "micronix", inline = T),
       hr(),
       actionButton("DelArchSearchReset", width = '100%', label = "Reset Search Criteria", style="color: #fff; background-color: #337ab7; border-color: #2e6da4"),
       hr(),
@@ -55,7 +52,4 @@ UIDelArchSamples <- function(){
       #                  actionButton("yes1", label = "Enter"),
       #                  verbatimTextOutput("yesout")),
     ))
-
-    DBI::dbDisconnect(con)
-
 }

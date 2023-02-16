@@ -211,7 +211,6 @@ ArchiveAndDeleteSamples <- function(operation, data, comment, status, verificati
 .DeleteExternalData <- function(eval.id, database.tables, conn){
 
   # DELETE EXTERNAL DATA -- micronix_tube & micronix_plate if deletion empties plate
-
   #if eval.id is not in matrix id, cryovial id, rdt id or paper id, skip over
   ids <- c(database.tables$table.micronix_tube$id,
            database.tables$table.cryovial_tube$id,
@@ -223,7 +222,7 @@ ArchiveAndDeleteSamples <- function(operation, data, comment, status, verificati
     if(eval.id %in% database.tables$table.micronix_tube$id){
 
       # get container id before sample deletion
-      matrix_plate_id <- filter(database.tables$table.micronix_tube, id %in% eval.id)$plate_id
+      matrix_plate_id <- filter(database.tables$table.micronix_tube, id %in% eval.id)$manifest_id
 
       # delete sample
       sampleDB::DeleteFromTable(conn = conn,
@@ -231,7 +230,7 @@ ArchiveAndDeleteSamples <- function(operation, data, comment, status, verificati
                                 id = as.character(eval.id))
 
       # delete container if container id is no longer in micronix table
-      if(!matrix_plate_id %in% sampleDB::CheckTableTx(conn = conn, "micronix_tube")$plate_id){
+      if(!matrix_plate_id %in% sampleDB::CheckTableTx(conn = conn, "micronix_tube")$manifest_id){
         sampleDB::DeleteFromTable(conn = conn,
                                   table_name = "micronix_plate",
                                   id = as.character(matrix_plate_id))

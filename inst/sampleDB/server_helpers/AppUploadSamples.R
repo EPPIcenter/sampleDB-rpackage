@@ -18,7 +18,6 @@ AppUploadSamples <- function(session, output, input, database) {
   rv <- reactiveValues(
     user_file = NULL, # this holds a file that is ready for upload
     console_verbatim = FALSE, # whether to print mulitple lines to the console
-    b_use_wait_dialog = FALSE, # whether to show an in progress dialog for uploads
     error = FALSE, # whether to start an error workflow
     user_action_required = FALSE, # whether the user needs to add additional inputs
     required_elements = NULL # elements on form that need user attention
@@ -101,26 +100,36 @@ AppUploadSamples <- function(session, output, input, database) {
       required_elements <- c()
 
       columns <- e$df$column
-      if (manifest_name %in% columns) {
-        shinyjs::show("UploadManifestName")
-        required_elements <- c(required_elements, "UploadManifestName")
+
+      missing <- columns[!columns %in% c(location_parameters, manifest_name)]
+      if (length(missing) > 0) {
+        rv$error <- TRUE
+        error$title = "Invalid File Detected"
+        error$message = e$message
+        error$caption = "Please see the table below"
+        error$table = e$df
+      } else {
+        if (manifest_name %in% columns) {
+          shinyjs::show("UploadManifestName")
+          required_elements <- c(required_elements, "UploadManifestName")
+        }
+
+        # should be all or none
+        if (all(location_parameters %in% columns)) {
+          shinyjs::show("UploadLocationRoot")
+          shinyjs::show("UploadLocationLevelI")
+          shinyjs::show("UploadLocationLevelII")
+          required_elements <- c(required_elements, c("UploadManifestName", "UploadLocationLevelI", "UploadLocationLevelII"))
+
+        }
+
+        shinyjs::disable("UploadSampleType")
+        shinyjs::disable("UploadFileType")
+
+        rv$required_elements <- required_elements
+        rv$user_action_required <- FALSE
+        rv$user_file <- NULL # sanity check
       }
-
-      # should be all or none
-      if (all(location_parameters %in% columns)) {
-        shinyjs::show("UploadLocationRoot")
-        shinyjs::show("UploadLocationLevelI")
-        shinyjs::show("UploadLocationLevelII")
-        required_elements <- c(required_elements, c("UploadManifestName", "UploadLocationLevelI", "UploadLocationLevelII"))
-
-      }
-
-      shinyjs::disable("UploadSampleType")
-      shinyjs::disable("UploadFileType")
-
-      rv$required_elements <- required_elements
-      rv$user_action_required <- FALSE
-      rv$user_file <- NULL # sanity check
     },
     validation_error = function(e) {
       message("Caught validation error")
@@ -220,12 +229,15 @@ AppUploadSamples <- function(session, output, input, database) {
 
     if (early_stop) { return() }
 
+    message("Starting Upload...")
+
     b_use_wait_dialog <- FALSE
-    output$UploadOutputConsole <- renderText({
-      tryCatch({
+
+    tryCatch({
+      withCallingHandlers({
 
         # simple way to add a dialog or not
-        rv$b_use_wait_dialog <- nrow(rv$user_file) > 5
+        b_use_wait_dialog <- nrow(rv$user_file) > 5
 
         if (b_use_wait_dialog) {
           show_modal_spinner(
@@ -236,17 +248,25 @@ AppUploadSamples <- function(session, output, input, database) {
         }
 
         shinyjs::reset("UploadAction")
-        sampleDB::UploadSamples(sample_type_id = as.integer(input$UploadSampleType), upload_data = rv$user_file)       
+        sampleDB::UploadSamples(sample_type_id = as.integer(input$UploadSampleType), upload_data = rv$user_file)
       },
-      error = function(e) {
-        message(e)
-        e$message
-      },
-      finally = {
-        remove_modal_spinner()
-        # rv$user_file <- NULL
+      message = function(m) {
+        shinyjs::html(id = "UploadOutputConsole", html = paste0(dataset$name, ": ", m$message), add = rv$console_verbatim)
       })
+    },
+    error = function(e) {
+      message(e)
+      html<-paste0("<font color='red'>", paste0(dataset$name, ": ", e$message), "</font>")
+      shinyjs::html(id = "UploadOutputConsole", html = html, add = rv$console_verbatim)
+    },
+    finally = {
+      if (b_use_wait_dialog)
+        remove_modal_spinner()
+
+      rv$user_file <- NULL
+      rv$console_verbatim <- FALSE
     })
+
   })
 
   observeEvent(input$UploadSampleType, {

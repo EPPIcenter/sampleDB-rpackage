@@ -102,6 +102,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
   # as a side note: formatting error should probably be renamed.
 
   missing_columns <- required_user_column_names[!required_user_column_names %in% colnames(user_file)]
+
   if (!is.null(container_name) && manifest_name %in% missing_columns) {
     missing_columns <- missing_columns[missing_columns != manifest_name]
     user_file[manifest_name] <- container_name
@@ -150,7 +151,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
     stop_formatting_error(df = df.error.formatting)
   }
 
-  ## grab the columns of interest
+
   user_file <- select(user_file, all_of(required_user_column_names), contains(conditional_user_column_names), contains(optional_user_column_names))
 
   ## use this chunk to validate conditional parameters
