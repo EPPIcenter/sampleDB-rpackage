@@ -231,6 +231,8 @@ UploadSamples <- function(sample_type_id, upload_data) {
                                             position = eval.position,
                                             barcode = eval.barcode),
                            conn = conn) %>% suppressWarnings()
+    } else if (sample_type_id == 3) {
+      dbAppendTable()
     }
   }
 

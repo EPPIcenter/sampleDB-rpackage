@@ -97,7 +97,8 @@
                 "10",
                 "100",
                 "1k",
-                "10k"
+                "10k",
+                "ContainerLabel"
               ],
               "optional": null,
               "conditional": null

@@ -1,7 +1,7 @@
 #' @import lubridate
 #' @import dplyr
 #' @import glue
-#' @import rlang
+#' @importFrom rlang abort
 #' @import rjson
 #' @export
 
@@ -56,7 +56,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
   file_index <- which(lapply(file_specs_json$file_types, function(x) x$id) == file_type)
   sample_storage_type_index <- which(lapply(file_specs_json$file_types[[file_index]]$sample_type, function(x) x$id) == sample_storage_type)
 
-  if (purrr::is_empty(sample_storage_type_index)) {
+  if (length(sample_storage_type_index) == 0) {
     stop("Unimplemented file specifications for this sample storage type")
   }
 
@@ -65,7 +65,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
   conditional_user_column_names <- actions[['conditional']]
   optional_user_column_names <- actions[['optional']]
 
-  ## Shared fields 
+  ## Shared fields
 
   sample_type_index <- which(lapply(file_specs_json$shared$sample_type, function(x) x$id) == sample_storage_type)
 
@@ -78,7 +78,8 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
   location_parameters <- file_specs_json$shared$sample_type[[sample_type_index]]$location
   location_parameters <- unlist(location_parameters[c("name", "level_I", "level_II")])
 
-  required_user_column_names <- c(required_user_column_names, c(manifest_name, manifest_barcode_name, location_parameters))
+  required_user_column_names <- c(required_user_column_names, c(manifest_name, unname(location_parameters)))
+  optional_user_column_names <- c(optional_user_column_names, c(manifest_barcode_name))
 
   if (is.null(required_user_column_names)) {
     stop(paste("The expected column names for sample type", sample_storage_type, "and file type", file_type, "are not implemented (yet)."))
@@ -91,15 +92,29 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
 
   if (is.null(header_row)) {
     errmsg <- paste("Valid header rows could not be found in your file. Please check that the following required column names are present:", paste(required_user_column_names, collapse = ", "))
-    stop(errmsg) 
+    stop(errmsg)
   }
 
   user_file <- user_file %>% setNames(.[header_row, ]) %>% .[-c(1, header_row), ]
 
+  # todo: check the parameters of the function and see if some of the data points are there (in case called from R package)
+  # then, filter out the columns that could not be resolved, and add to the data frame. This will be a usage error.
+  # as a side note: formatting error should probably be renamed.
+
   missing_columns <- required_user_column_names[!required_user_column_names %in% colnames(user_file)]
-  if (!purrr::is_empty(missing_columns)) {
+  if (!is.null(container_name) && manifest_name %in% missing_columns) {
+    missing_columns <- missing_columns[missing_columns != manifest_name]
+    user_file[manifest_name] <- container_name
+  }
+  if (!is.null(freezer_address) && all(location_parameters %in% missing_columns)) {
+    missing_columns <- missing_columns[!location_parameters %in% missing_columns]
+    user_file[location_parameters] <- freezer_address
+  }
+
+  if (length(missing_columns) > 0) {
+
     df.error.formatting <- rbind(
-      df.error.formatting, 
+      df.error.formatting,
       data.frame(
             column = missing_columns,
             reason = "Always Required",
@@ -128,16 +143,18 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
     }
   }
 
+  ## Throw if any of the required columns are missing
+  # since the application is geared towards the shiny application, there is only a subset of fields checked. This
+  # should be expanded upon.
   if (nrow(df.error.formatting)) {
     stop_formatting_error(df = df.error.formatting)
   }
-
 
   ## grab the columns of interest
   user_file <- select(user_file, all_of(required_user_column_names), contains(conditional_user_column_names), contains(optional_user_column_names))
 
   ## use this chunk to validate conditional parameters
-  
+
   if ("upload" %in% user_action) {
 
    if ("CollectionDate" %in% colnames(user_file)) {
@@ -145,32 +162,6 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
       if (nrow(df_invalid) > 0) {
         stop_validation_error("Missing collection date found for sample in longitudinal study", 1)
       }
-    }
-
-    # XOR logic is used for location parameters to prevent accidental overwriting
-    if (all(location_parameters %in% colnames(user_file)) && !is.null(freezer_address)) {
-      stop_usage_error("Conflict: sample location cannot be set in both the csv file and as a function parameter. Please choose one or the other.")
-    }
-
-    else if (!all(location_parameters %in% colnames(user_file)) && is.null(freezer_address)) {
-      errmsg <- paste("Missing location parameters. Please provide all freezer address locations to the csv or provide them as a function argument. Valid parameters are", paste(location_parameters, collapse = ", "))
-      stop_formatting_error(errmsg)
-    }
-
-    else if ((!all(location_parameters %in% colnames(user_file)) && !is.null(freezer_address)) || (all(location_parameters %in% colnames(user_file)) && is.null(freezer_address))) {
-      # this is a valid situation, continue...
-    }
-    else {
-      stop_usage_error("Invalid sample location specification. Please add locations to the csv or as a function argument.")
-    }
-
-    # XOR logic is used for container names to prevent accidental overwriting
-    if (manifest_name %in% colnames(user_file) && is.null(container_name)) {
-      # this is a valid situation
-    } else if (!manifest_name %in% colnames(user_file) && !is.null(container_name)) {
-      # this is a valid situation
-    } else {
-      stop_usage_error("Container name cannot be set in both the csv file and as a function parameter. Please choose one or the other.")
     }
   }
 
@@ -239,10 +230,14 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
 
     if (manifest_name %in% colnames(user_file) && is.null(container_name)) {
       processed_file$manifest_name <- user_file %>% pull(all_of(manifest_name))
-    } else if (!manifest_name %in% colnames(user_file) && !is.null(container_name)) {
+    } else {
       processed_file$manifest_name <- rep(container_name, nrow(user_file))
     }
   }
+
+  # if ("upload" %in% c(user_action) && sample_storage_type == 3) {
+  #
+  # }
 
   processed_file <- as.data.frame(processed_file)
   ### Quality check the data now
@@ -363,7 +358,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
         select(status_id, id) %>%
         filter(status_id == 1) %>%
         inner_join(tbl(con, container_tables[["container_class"]]), by = c("id" = "id")) %>%
-        inner_join(tbl(con, container_tables[["manifest"]]) %>% rename(manifest_name = name), by = c("manifest_id" = "id")) %>%
+        inner_join(tbl(con, container_tables[["manifest"]]) %>% dplyr::rename(manifest_name = name), by = c("manifest_id" = "id")) %>%
         collect() %>%
         select(position, manifest_name) %>%
         inner_join(formatted_csv, by = c("manifest_name", "position")) %>%
@@ -388,7 +383,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
 
         stopifnot("Location does not exist" = formatted_csv %>%
           left_join(DBI::dbReadTable(con, "location") %>%
-                      rename(location_id = id), by = c('name', 'level_I', 'level_II')) %>%
+                      dplyr::rename(location_id = id), by = c('name', 'level_I', 'level_II')) %>%
           filter(is.na(location_id)) %>%
           nrow(.) == 0)
       }
@@ -431,6 +426,11 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
 }
 
 .CheckPositionIsValid <- function(formatted_csv, sample_storage_type, user_action) {
+
+  # exit for now
+  if (3 %in% sample_storage_type) {
+    return()
+  }
 
   positions <- formatted_csv %>% pull(position)
 

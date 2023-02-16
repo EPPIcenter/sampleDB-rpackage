@@ -15,7 +15,14 @@ library(reactable)
 
 AppUploadSamples <- function(session, output, input, database) {
 
-  rv <- reactiveValues(user_file = NULL, console_verbatim = FALSE, b_use_wait_dialog = FALSE, cleanup = FALSE, error = FALSE)
+  rv <- reactiveValues(
+    user_file = NULL, # this holds a file that is ready for upload
+    console_verbatim = FALSE, # whether to print mulitple lines to the console
+    b_use_wait_dialog = FALSE, # whether to show an in progress dialog for uploads
+    error = FALSE, # whether to start an error workflow
+    user_action_required = FALSE, # whether the user needs to add additional inputs
+    required_elements = NULL # elements on form that need user attention
+  )
   error <- reactiveValues(
     title = "",
     message = "",
@@ -27,7 +34,7 @@ AppUploadSamples <- function(session, output, input, database) {
     message("Running error workflow")
 
     df <- error$table %>%
-      rename(
+      dplyr::rename(
         Column = column, 
         Reason = reason,
         Trigger = trigger
@@ -86,13 +93,17 @@ AppUploadSamples <- function(session, output, input, database) {
 
       sample_type_index <- which(lapply(file_specs_json$shared$sample_type, function(x) x$id) == input$UploadSampleType)
 
+      ## UI components that are put in place to fill missing data go here
+
       manifest_name <- file_specs_json$shared$sample_type[[sample_type_index]]$manifest$name
       location_parameters <- file_specs_json$shared$sample_type[[sample_type_index]]$location
       location_parameters <- unlist(location_parameters[c("name", "level_I", "level_II")])
+      required_elements <- c()
 
       columns <- e$df$column
       if (manifest_name %in% columns) {
         shinyjs::show("UploadManifestName")
+        required_elements <- c(required_elements, "UploadManifestName")
       }
 
       # should be all or none
@@ -100,18 +111,27 @@ AppUploadSamples <- function(session, output, input, database) {
         shinyjs::show("UploadLocationRoot")
         shinyjs::show("UploadLocationLevelI")
         shinyjs::show("UploadLocationLevelII")
+        required_elements <- c(required_elements, c("UploadManifestName", "UploadLocationLevelI", "UploadLocationLevelII"))
+
       }
 
       shinyjs::disable("UploadSampleType")
       shinyjs::disable("UploadFileType")
+
+      rv$required_elements <- required_elements
+      rv$user_action_required <- FALSE
+      rv$user_file <- NULL # sanity check
     },
     validation_error = function(e) {
       message("Caught validation error")
       
-      rv$error <- TRUE
-      error$title <- "Validation error"
-      error$message <- e$message
-      error$caption <- "Please see the table below."
+      html<-paste0("<font color='red'>", paste0(dataset$name, ": ", e$message), "</font>")
+      shinyjs::html(id = "UploadOutputConsole", html = html, add = rv$console_verbatim)
+
+      # rv$error <- TRUE
+      # error$title <- "Validation error"
+      # error$message <- e$message
+      # error$caption <- "Please see the table below."
 
       print(e$df)
     },
@@ -124,29 +144,94 @@ AppUploadSamples <- function(session, output, input, database) {
     rv$console_verbatim <- FALSE
   })
 
-
   observeEvent(input$UploadAction, ignoreInit = TRUE, {
-    if (is.null(rv$user_file)) {
-      message("Upload action halted - no file uploaded")
+
+    if (isTRUE(rv$user_action_required)) {
+      message("Upload action halted - user action required")
       return()
     }
 
-    file_type <- input$UploadFileType
-    container_name <- input$UploadManifestName
+    early_stop <- FALSE
+    if (is.null(rv$user_file)) {
+      dataset <- input$UploadSampleDataSet
+      message(paste("Loaded", dataset$name))
 
-    formatted_file <- NULL
-    rv$b_use_wait_dialog <- FALSE
+      tryCatch({
+        withCallingHandlers({
+
+          container_name <- NULL
+          if (typeof(input$UploadManifestName) == "character" && input$UploadManifestName != "") {
+            container_name <- input$UploadManifestName 
+          }
+
+          location_parameters <- NULL
+          if (typeof(input$UploadLocationRoot) == "character" && input$UploadLocationRoot != "") {
+            location_parameters <- c(location_parameters, list(name = input$UploadManifestName))
+          }
+          if (typeof(input$UploadLocationLevelI) == "character" && input$UploadLocationLevelI != "") {
+            location_parameters <- c(location_parameters, list(level_I = input$UploadLocationLevelI))
+          }
+          if (typeof(input$UploadLocationLevelII) == "character" && input$UploadLocationLevelII != "") {
+            location_parameters <- c(location_parameters, list(level_II = input$UploadLocationLevelII))
+          }
+
+          if (!is.null(location_parameters) && !all(c("name", "level_I", "level_II") %in% names(location_parameters))) {
+            stop("Missing location parameter")
+          }
+
+          ## format the file
+          rv$user_file <- sampleDB::ProcessCSV(
+            user_csv = dataset$datapath,
+            user_action = "upload",
+            file_type = input$UploadFileType,
+            sample_storage_type = input$UploadSampleType,
+            container_name = container_name,
+            freezer_address = location_parameters
+          )
+        },
+        message = function(m) {
+          shinyjs::html(id = "UploadOutputConsole", html = paste0(dataset$name, ": ", m$message), add = rv$console_verbatim)
+          rv$console_verbatim <- TRUE
+        })
+      },
+      validation_error = function(e) {
+        message("Caught validation error")
+        early_stop <<- TRUE
+        html<-paste0("<font color='red'>", paste0(dataset$name, ": ", e$message), "</font>")
+        shinyjs::html(id = "UploadOutputConsole", html = html, add = rv$console_verbatim)
+        rv$console_verbatim <- FALSE
+
+        # rv$error <- TRUE
+        # error$title <- "Validation error"
+        # error$message <- e$message
+        # error$caption <- "Please see the table below."
+
+        print(e$df)
+
+      },
+      error = function(e) {
+        early_stop <<- TRUE
+        html<-paste0("<font color='red'>", paste0(dataset$name, ": ", e$message), "</font>")
+        shinyjs::html(id = "UploadOutputConsole", html = html, add = rv$console_verbatim)
+        rv$console_verbatim <- FALSE
+      })
+
+    }
+
+    if (early_stop) { return() }
+
+    b_use_wait_dialog <- FALSE
     output$UploadOutputConsole <- renderText({
       tryCatch({
 
         # simple way to add a dialog or not
         rv$b_use_wait_dialog <- nrow(rv$user_file) > 5
 
-        if (rv$b_use_wait_dialog) {
+        if (b_use_wait_dialog) {
           show_modal_spinner(
             spin = "double-bounce",
             color = "#00bfff",
-            text = paste("Uploading", nrow(formatted_file), "samples, please be patient...")
+            text = paste("Uploading", nrow(rv$user_file), "samples, please be patient...")
           )
         }
 
@@ -159,8 +244,7 @@ AppUploadSamples <- function(session, output, input, database) {
       },
       finally = {
         remove_modal_spinner()
-        rv$user_file <- NULL
-        rv$b_use_wait_dialog <- FALSE
+        # rv$user_file <- NULL
       })
     })
   })

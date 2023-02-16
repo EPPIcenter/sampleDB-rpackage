@@ -167,8 +167,10 @@ SearchFunction <- function(input, output, ui_elements){
   #set default list.search_results
   list.search_results <- NULL
 
+  browser()
+
   # get user ui input
-  if(!is.na(input[[ui_elements$ui.input$dateRange]][1]) & !is.na(input[[ui_elements$ui.input$dateRange]][2])){
+  if(!is.null(input[[ui_elements$ui.input$dateRange]]) && !is.na(input[[ui_elements$ui.input$dateRange]][1]) && !is.na(input[[ui_elements$ui.input$dateRange]][2])){
     eval.search.date <- list(date.from = input[[ui_elements$ui.input$dateRange]][1], date.to = input[[ui_elements$ui.input$dateRange]][2])
   }else{
     eval.search.date <- ""
