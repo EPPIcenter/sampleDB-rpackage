@@ -175,7 +175,7 @@ AppUploadSamples <- function(session, output, input, database) {
 
           location_parameters <- NULL
           if (typeof(input$UploadLocationRoot) == "character" && input$UploadLocationRoot != "") {
-            location_parameters <- c(location_parameters, list(name = input$UploadManifestName))
+            location_parameters <- c(location_parameters, list(name = input$UploadLocationRoot))
           }
           if (typeof(input$UploadLocationLevelI) == "character" && input$UploadLocationLevelI != "") {
             location_parameters <- c(location_parameters, list(level_I = input$UploadLocationLevelI))
