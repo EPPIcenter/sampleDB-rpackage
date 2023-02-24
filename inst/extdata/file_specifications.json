@@ -99,23 +99,10 @@
                 "10",
                 "100",
                 "1k",
-                "10k",
-                "ContainerLabel"
+                "10k"
               ],
               "optional": null,
               "conditional": null
-            },
-            "move": {
-              "required": [
-                "Strain",
-                "0.05",
-                "0.1",
-                "1",
-                "10",
-                "100",
-                "1k",
-                "10k"
-              ]
             }
           }
         }
@@ -225,7 +212,7 @@
           "level_II": "RackPosition"
         },
         "manifest": {
-          "name": "PaperName",
+          "name": "ContainerLabel",
           "barcode": "PaperBarcode"
         }
       }

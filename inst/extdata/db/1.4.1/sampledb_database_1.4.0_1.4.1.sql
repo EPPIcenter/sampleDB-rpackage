@@ -19,7 +19,6 @@ CREATE TABLE IF NOT EXISTS  "dbs_paper"  (
 CREATE TABLE IF NOT EXISTS "dbs_spot" (
 	"id"			INTEGER NOT NULL,
 	"manifest_id"	INTEGER NOT NULL,
-	"barcode"		VARCHAR NOT NULL UNIQUE,
 	"position"		VARCHAR CHECK(length("position") > 1 OR "position" IS NULL),
     "strain"		VARCHAR NOT NULL,
     "0.05"			INTEGER NOT NULL DEFAULT 0 CHECK("0.05" >= 0),

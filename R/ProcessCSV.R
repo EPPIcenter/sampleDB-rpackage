@@ -270,7 +270,6 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
 .CheckFormattedFileData <- function(database, formatted_csv, sample_storage_type, user_action, required_user_column_names, conditional_user_column_names, optional_user_column_names) {
 
 
-  browser()
   # this is an internal mapping to the database that should not be exposed to the user
   required_names <- requires_data <- container_metadata <- NULL
   if (user_action %in% c("upload", "move")) {

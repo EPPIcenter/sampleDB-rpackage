@@ -231,9 +231,30 @@ UploadSamples <- function(sample_type_id, upload_data) {
                                             position = eval.position,
                                             barcode = eval.barcode),
                            conn = conn) %>% suppressWarnings()
+
     } else if (sample_type_id == 3) {
-      dbAppendTable()
-    }
+     # create a new housing (if it does not already exist)
+      if(!eval.container_name %in% CheckTableTx(conn = conn, "dbs_paper")$name){
+        eval.plate_id <- sampleDB:::.UploadPlate(conn = conn, container_name = eval.container_name, container_barcode = eval.plate_barcode, freezer_address = eval.freezer_address, table = "dbs_paper")
+      }else{
+        eval.plate_id <- filter(CheckTableTx(conn = conn, "dbs_paper"), name == eval.container_name)$id
+      }
+
+      # 7. upload micronix sample
+      AddToTable(table_name = "dbs_spot",
+                           info_list = list(id = eval.id,
+                                            manifest_id = eval.plate_id,
+                                            position = upload_data[i,]$position %>% as.character(),
+                                            strain = upload_data[i,]$strain %>% as.character(),
+                                            `0.05` = upload_data[i,]$`0.05` %>% as.character(),
+                                            `0.1` = upload_data[i,]$`0.10` %>% as.character(),
+                                            `1` = upload_data[i,]$`1` %>% as.character(),
+                                            `10` = upload_data[i,]$`10` %>% as.character(),
+                                            `100` = upload_data[i,]$`100` %>% as.character(),
+                                            `1k` = upload_data[i,]$`1k` %>% as.character(),
+                                            `10k` = upload_data[i,]$`10k` %>% as.character()
+                                          ),
+                           conn = conn) %>% suppressWarnings()
   }
 
   RSQLite::dbCommit(conn)
