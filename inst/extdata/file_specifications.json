@@ -90,6 +90,8 @@
           "actions": {
             "upload": {
               "required": [
+                "Row",
+                "Column",
                 "Strain",
                 "0.05",
                 "0.1",

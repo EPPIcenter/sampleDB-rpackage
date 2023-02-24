@@ -189,6 +189,12 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
     else if (sample_storage_type == 2) {
       processed_file$barcode <- user_file$Barcode
       processed_file$position <-  paste0(user_file$BoxRow, user_file$BoxColumn)
+
+    ## DBS
+    } else if (sample_storage_type == 3) {
+      processed_file$position <-  paste0(user_file$Row, user_file$Column)
+    } else {
+      stop("Unimplemented position formatting code for this sample type.")
     }
   }
 
@@ -263,6 +269,8 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
 
 .CheckFormattedFileData <- function(database, formatted_csv, sample_storage_type, user_action, required_user_column_names, conditional_user_column_names, optional_user_column_names) {
 
+
+  browser()
   # this is an internal mapping to the database that should not be exposed to the user
   required_names <- requires_data <- container_metadata <- NULL
   if (user_action %in% c("upload", "move")) {
@@ -344,10 +352,12 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
         "manifest" = switch(sample_storage_type,
           "1" = "micronix_plate",
           "2" = "cryovial_box",
+          "3" = "dbs_paper"
         ),
         "container_class" = switch(sample_storage_type,
           "1" = "micronix_tube",
-          "2" = "cryovial_tube"
+          "2" = "cryovial_tube",
+          "3" = "dbs_spot"
         )
       )
 
