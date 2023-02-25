@@ -145,7 +145,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
   }
 
   ## Throw if any of the required columns are missing
-  # since the application is geared towards the shiny application, there is only a subset of fields checked. This
+  # since the application is retrofitting the already released shiny application, there is only a subset of fields checked. This
   # should be expanded upon.
   if (nrow(df.error.formatting)) {
     stop_formatting_error(df = df.error.formatting)
@@ -242,11 +242,19 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
     }
   }
 
-  # if ("upload" %in% c(user_action) && sample_storage_type == 3) {
-  #
-  # }
+  if ("upload" %in% c(user_action) && sample_storage_type == 3) {
+    processed_file$`0.05` <- user_file$`0.05`
+    processed_file$`0.1` <- user_file$`0.1`
+    processed_file$`1` <- user_file$`1`
+    processed_file$`10` <- user_file$`10`
+    processed_file$`100` <- user_file$`100`
+    processed_file$`1k` <- user_file$`1k`
+    processed_file$`10k` <- user_file$`10k`
+    processed_file$strain <- user_file$Strain
+  }
 
-  processed_file <- as.data.frame(processed_file)
+  # need check.names FALSE to prevent prepending `X` to numeric colnames
+  processed_file <- as.data.frame(processed_file, check.names=FALSE)
   ### Quality check the data now
 
   message("Formatting complete.")

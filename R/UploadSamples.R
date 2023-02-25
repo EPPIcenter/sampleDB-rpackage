@@ -63,7 +63,7 @@ UploadSamples <- function(sample_type_id, upload_data) {
   conn <-  RSQLite::dbConnect(RSQLite::SQLite(), database)
 
   # save a copy of the upload data as a csv
-  .SaveUploadCSV(upload_data)
+  # .SaveUploadCSV(upload_data)
 
   # upload data
   .UploadSamples(upload_data = upload_data, sample_type_id = sample_type_id, conn = conn)
@@ -240,21 +240,26 @@ UploadSamples <- function(sample_type_id, upload_data) {
         eval.plate_id <- filter(CheckTableTx(conn = conn, "dbs_paper"), name == eval.container_name)$id
       }
 
+      browser()
       # 7. upload micronix sample
-      AddToTable(table_name = "dbs_spot",
-                           info_list = list(id = eval.id,
-                                            manifest_id = eval.plate_id,
-                                            position = upload_data[i,]$position %>% as.character(),
-                                            strain = upload_data[i,]$strain %>% as.character(),
-                                            `0.05` = upload_data[i,]$`0.05` %>% as.character(),
-                                            `0.1` = upload_data[i,]$`0.10` %>% as.character(),
-                                            `1` = upload_data[i,]$`1` %>% as.character(),
-                                            `10` = upload_data[i,]$`10` %>% as.character(),
-                                            `100` = upload_data[i,]$`100` %>% as.character(),
-                                            `1k` = upload_data[i,]$`1k` %>% as.character(),
-                                            `10k` = upload_data[i,]$`10k` %>% as.character()
-                                          ),
-                           conn = conn) %>% suppressWarnings()
+
+      df.payload <- data.frame(
+        id = eval.id,
+        manifest_id = eval.plate_id,
+        position = upload_data[i,]$position %>% as.character(),
+        strain = upload_data[i,]$strain %>% as.character(),
+        `0.05` = upload_data[i,]$`0.05` %>% as.character(),
+        `0.1` = upload_data[i,]$`0.1` %>% as.character(),
+        `1` = upload_data[i,]$`1` %>% as.character(),
+        `10` = upload_data[i,]$`10` %>% as.character(),
+        `100` = upload_data[i,]$`100` %>% as.character(),
+        `1k` = upload_data[i,]$`1k` %>% as.character(),
+        `10k` = upload_data[i,]$`10k` %>% as.character(),
+        check.names = FALSE
+      )
+
+      DBI::dbAppendTable(conn, "dbs_spot", df.payload)
+    }
   }
 
   RSQLite::dbCommit(conn)
@@ -305,7 +310,8 @@ UploadSamples <- function(sample_type_id, upload_data) {
   path <- normalizePath(
       file.path(dirname(Sys.getenv("SDB_PATH")), "upload_files"))
 
-  manifests <- stringr::str_replace(manifests, "/", "_")
+  manifests <- stringr::str_replace_all(manifests, "/", "_")
+  manifests <- stringr::str_replace_all(manifests, " ", "_")
   print(manifests)
 
   if(dir.exists(path)) {
