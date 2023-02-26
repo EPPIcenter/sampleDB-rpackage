@@ -1,7 +1,8 @@
+library(RSQLite)
 UIDelArchSamples <- function(){
   con <- DBI::dbConnect(RSQLite::SQLite(), Sys.getenv("SDB_PATH"))
 
-  sidebarLayout(
+  ui <- sidebarLayout(
     sidebarPanel(
       width = 2,
       # actionButton("verify_delarch", label = NULL),
@@ -57,4 +58,6 @@ UIDelArchSamples <- function(){
     ))
 
   DBI::dbDisconnect(con)
+
+  return (ui)
 }
