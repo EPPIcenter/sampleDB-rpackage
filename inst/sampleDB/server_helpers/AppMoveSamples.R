@@ -1,173 +1,249 @@
+library(shiny)
+library(shinybusy)
+library(shinyjs)
+library(purrr)
+library(RSQLite)
+library(dbplyr)
+library(reactable)
 
-# App Function for Moving Samples
+# App Function for Uploading Samples
 
 # Overview
 # perform various checks of "user provided" file, reformat "user provided" file, and print user messages if file does not pass checks
 # checks in ui can unfortunately be ignored by the user
 
-MoveSamples <- function(session, input, database, output) {
-  
-  # 1. create variable for storing formatted_move_file_list once it is created
-  rv <- reactiveValues(users_move_file = NULL)
+AppMoveSamples <- function(session, output, input, database) {
 
-  observe({
-    req(input$MoveDataSet)
-    rv$users_move_file <- input[["MoveDataSet"]]
-  })  
+  rv <- shiny::reactiveValues(
+    user_file = NULL, # this holds a file that is ready for upload
+    console_verbatim = FALSE, # whether to print mulitple lines to the console
+    error = FALSE, # whether to start an error workflow
+    user_action_required = FALSE, # whether the user needs to add additional inputs
+    required_elements = NULL # elements on form that need user attention
+  )
+  error <- shiny::reactiveValues(
+    title = "",
+    message = "",
+    caption = "",
+    table = NULL
+  )
 
-  # 2. get path to user provided file(s), if path exists perform checks and reformat items in list
-  
-  observeEvent(input$MoveAction, {
+  observeEvent(rv$error, ignoreInit = TRUE, {
+
+    message("Running error workflow")
+
+    df <- error$table %>%
+      dplyr::rename(
+        Column = column, 
+        Reason = reason,
+        Trigger = trigger
+      ) %>%
+      reactable(.)
+
+    showModal(
+      modalDialog(
+        title = error$title,
+        error$message,
+        error$caption,
+        renderReactable({ df }),
+        footer = modalButton("Exit")
+      )
+    )
+    rv$error = NULL
+  })
+
+  observeEvent(input$Exit, ignoreInit = TRUE, {
+    error$title = ""
+    error$message = ""
+    error$caption = ""
+    error$table = NULL
+    rv$error = NULL
+    removeModal()
+  })
+
+  observeEvent(input$MoveSampleDataSet, ignoreInit = TRUE, {
+    dataset <- input$MoveSampleDataSet
+
+    message(paste("Loaded", dataset$name))
+
+    tryCatch({
+      withCallingHandlers({
+
+        ## format the file
+        rv$user_file <- sampleDB::ProcessCSV(
+          user_csv = dataset$datapath,
+          user_action = "move",
+          file_type = input$MoveFileType,
+          sample_storage_type = input$MoveSampleType,
+          container_name = dataset$name
+        )
+      },
+      message = function(m) {
+        shinyjs::html(id = "MoveOutputConsole", html = paste0(dataset$name, ": ", m$message), add = rv$console_verbatim)
+        rv$console_verbatim <- TRUE
+      })
+    },
+    formatting_error = function(e) {
+      message("Caught formatting error")
+      print(e$df)
+
+      rv$error <- TRUE
+      error$title = "Invalid File Detected"
+      error$message = e$message
+      error$caption = "Please see the table below"
+      error$table = e$df
+    },
+    validation_error = function(e) {
+      message("Caught validation error")
+      
+      html<-paste0("<font color='red'>", paste0(dataset$name, ": ", e$message), "</font>")
+      shinyjs::html(id = "UploadOutputConsole", html = html, add = rv$console_verbatim)
+
+      # rv$error <- TRUE
+      # error$title <- "Validation error"
+      # error$message <- e$message
+      # error$caption <- "Please see the table below."
+
+      print(e$df)
+    },
+    error = function(e) {
+      print(e)
+      html<-paste0("<font color='red'>", paste0(dataset$name, ": ", e$message), "</font>")
+      shinyjs::html(id = "UploadOutputConsole", html = html, add = rv$console_verbatim)
+    })
+
+    rv$console_verbatim <- FALSE
+  })
+
+  observeEvent(input$MoveAction, ignoreInit = TRUE, {
+
+    if (isTRUE(rv$user_action_required)) {
+      message("Upload action halted - user action required")
+      return()
+    }
+
+    early_stop <- FALSE
+    if (is.null(rv$user_file)) {
+      dataset <- input$MoveSampleDataSet
+      message(paste("Loaded", dataset$name))
+
+      tryCatch({
+        withCallingHandlers({
+
+          ## format the file
+          rv$user_file <- sampleDB::ProcessCSV(
+            user_csv = dataset$datapath,
+            user_action = "move",
+            file_type = input$MoveFileType,
+            sample_storage_type = input$MoveSampleType,
+            container_name = dataset$name
+          )
+        },
+        message = function(m) {
+          shinyjs::html(id = "MoveOutputConsole", html = paste0(dataset$name, ": ", m$message), add = rv$console_verbatim)
+          rv$console_verbatim <- TRUE
+        })
+      },
+      validation_error = function(e) {
+        message("Caught validation error")
+        early_stop <<- TRUE
+        html<-paste0("<font color='red'>", paste0(dataset$name, ": ", e$message), "</font>")
+        shinyjs::html(id = "MoveOutputConsole", html = html, add = rv$console_verbatim)
+        rv$console_verbatim <- FALSE
+
+        # rv$error <- TRUE
+        # error$title <- "Validation error"
+        # error$message <- e$message
+        # error$caption <- "Please see the table below."
+
+        print(e$df)
+
+      },
+      error = function(e) {
+        early_stop <<- TRUE
+        html<-paste0("<font color='red'>", paste0(dataset$name, ": ", e$message), "</font>")
+        shinyjs::html(id = "MoveOutputConsole", html = html, add = rv$console_verbatim)
+        rv$console_verbatim <- FALSE
+      })
+
+    }
+
+    if (early_stop) { return() }
+
+    message("Starting Move...")
 
     b_use_wait_dialog <- FALSE
-    output$MoveReturnMessage2  <- renderText({
-      tryCatch({
-          users_move_file <- isolate({ rv$users_move_file })
-          move_data_list <- list()
-          for(i in 1:length(users_move_file[,1])) {
-            container_name <- users_move_file[[i, 'name']] %>% gsub("\\.csv","",.)
-            formatted_move_file <- ProcessCSV(users_move_file[[i, "datapath"]], user_action = "move", sample_storage_type = input$MoveSampleType, file_type = input$MoveFileType, container_name = container_name)
-            move_data_list[[container_name]] <- formatted_move_file
-          }
-          
-          # always be true for now
-          b_use_wait_dialog <- TRUE
-          rv$users_move_file <- NULL
-          shinyjs::reset("MoveAction")
 
-          if (b_use_wait_dialog) {
-            show_modal_spinner(
-              spin = "double-bounce",
-              color = "#00bfff",
-              text = paste("Moving samples from", length(move_data_list), "file, please be patient...")
-            )
-          }
+    tryCatch({
+      withCallingHandlers({
 
-          sampleDB::MoveSamples(sample_type = input$MoveSampleType,
-                                move_data = move_data_list)
-          
-        },
-        warning = function(w) {
-          message(w)
-          w$message
-        },
-        error = function(e) {
-          message(e)
-          e$message
-        },
-        finally = {
-          if (b_use_wait_dialog) {
-            remove_modal_spinner()
-          }
+        # simple way to add a dialog or not
+        b_use_wait_dialog <- nrow(rv$user_file) > 5
+
+        if (b_use_wait_dialog) {
+          show_modal_spinner(
+            spin = "double-bounce",
+            color = "#00bfff",
+            text = paste("Moving", nrow(rv$user_file), "samples, please be patient...")
+          )
         }
-      )
-    }) # rendertext
-  }) # observe
-  
-  # allow user to reset ui
-  MoveReset(input, output)
-  
-  # present move examples
-  MoveUploadExamples(database = database, output = output, sample_type = "micronix")
-  
-  # add blank plate to database
-  CreateEmptyManifest(input = input, output = output, database = database)
 
-  # auto-filter freezer addresses in dropdown
-  SmartFreezerDropdownFilter(database = database, session = session,
-                             input = input,
-                             location_ui = "CreateEmptyManifestLocation", 
-                             levelI_ui = "CreateEmptyManifestLevelI", 
-                             levelII_ui = "CreateEmptyManifestLevelII")
-}
-
-MoveUploadExamples <- function(database, output, sample_type){
-  
-  if(sample_type == "micronix"){
-    ui.output <- list(
-      InDatabasePlateOne = "InDatabasePlateOne",
-      InDatabasePlateTwo = "InDatabasePlateTwo",
-      PlateOneMove = "PlateOneMove",
-      PlateTwoMove = "PlateTwoMove")
-  }
-  
-  output[[ui.output$PlateOneMove]] <- renderTable({.ExamplePlateOneMove()}, striped = T, bordered = T)
-  output[[ui.output$PlateTwoMove]] <- renderTable({.ExamplePlateTwoMove()}, striped = T, bordered = T)
-  output[[ui.output$InDatabasePlateOne]] <- renderTable({.ExampleInDatabasePlateOne()}, striped = T, bordered = T)
-  output[[ui.output$InDatabasePlateTwo]] <- renderTable({.ExampleInDatabasePlateTwo()}, striped = T, bordered = T)
-}
-
-CreateEmptyManifest <- function(input, output, database){
-
-  vals <- reactiveValues(data = NULL)
-  
-  # Show modal when button is clicked.
-  observeEvent(input$CreateEmptyManifest, {
-    showModal(dataModal(database = database))
-  })
-  
-  observeEvent(input$CreateEmptyManifestFormOk, {
-    # create empty micronix plate using user input
-    # use a "req" to require "CreateEmptyManifestID", "CreateEmptyManifestLocation", etc
-    # throw error if user uses name that is already in the database
-    req(
-      input$CreateEmptyManifestID,
-      input$CreateEmptyManifestLocation,
-      input$CreateEmptyManifestLevelI,
-      input$CreateEmptyManifestLevelII
-    )
-
-    manifest_table <- switch(input$MoveSampleType,
-      "cryovial" = "cryovial_box",
-      "micronix" = "micronix_plate"
-    )
-      
-    if (CheckTable(database = database, table = manifest_table) %>%
-      filter(input$CreateEmptyManifestID == name | barcode == input$CreateEmptyManifestBarcode) %>%
-      nrow(.) > 0) {
-      showNotification("Value would have created a duplicate!", id = "MoveNotification", type = "error", action = NULL, duration = 3, closeButton = TRUE)
-    } else if (nchar(input$CreateEmptyManifestBarcode) > 0 && nchar(input$CreateEmptyManifestBarcode) != 10) {
-      showNotification("Barcode must be 10 digits!", id = "MoveNotification", type = "error", action = NULL, duration = 3, closeButton = TRUE)
-    } else {
-      sampleDB:::.UploadEmptyManifest(manifest_table = manifest_table,
-                                      database = Sys.getenv("SDB_PATH"),
-                                      container_name = input[["CreateEmptyManifestID"]],
-                                      container_barcode = input[["CreateEmptyManifestBarcode"]],
-                                      freezer_address = list(name = input[["CreateEmptyManifestLocation"]],
-                                                             level_I = input[["CreateEmptyManifestLevelI"]],
-                                                             level_II = input[["CreateEmptyManifestLevelII"]]))
-    
-      vals$data <- ""
-      removeModal()
-    }
-
-  })
-  
-  output$CreateEmptyMicronixPlateMessage <- renderPrint({
-    if(!is.null(vals$data)){
-      "Created Empty Matrix Plate"
-    }
-  })
-}
-
-dataModal <- function(failed = FALSE, database) {
-  modalDialog(
-    HTML("<h2>Create a Blank Micronix Plate</h2>"),
-    HTML("<h4>Fill out the section below</h4>"),
-    br(),
-    fluidRow(column(width = 6, HTML("<p>Human Readable Name</p>"), textInput("CreateEmptyManifestID", label = NULL, placeholder = "PRISM-2022-001")),
-             column(width = 6,  HTML("<p>Barcode (Optional)</p>"), textInput("CreateEmptyManifestBarcode", label = NULL))),
-    HTML("<p>Freezer Name</p>"), selectInput("CreateEmptyManifestLocation", label = NULL, width = '47%', choices = c("", sampleDB::CheckTable(database = database, "location")$name) %>% sort()),
-    HTML("<p>Shelf Name</p>"), selectInput("CreateEmptyManifestLevelI", label = NULL, width = '47%', choices = NULL),
-    HTML("<p>Basket Name</p>"), selectInput("CreateEmptyManifestLevelII", label = NULL, width = '47%', choices = NULL),
-    if(failed){
-      div(tags$b("ERROR", style = "color: red;")) 
+        shinyjs::reset("MoveAction")
+        sampleDB::UploadSamples(sample_type_id = as.integer(input$MoveSampleType), upload_data = rv$user_file)
+      },
+      message = function(m) {
+        shinyjs::html(id = "MoveOutputConsole", html = paste0(dataset$name, ": ", m$message), add = rv$console_verbatim)
+      })
     },
-    
-    footer = tagList(
-      modalButton("Cancel"),
-      actionButton("CreateEmptyManifestFormOk", "OK")
+    error = function(e) {
+      message(e)
+      html<-paste0("<font color='red'>", paste0(dataset$name, ": ", e$message), "</font>")
+      shinyjs::html(id = "MoveOutputConsole", html = html, add = rv$console_verbatim)
+    },
+    finally = {
+      if (b_use_wait_dialog)
+        remove_modal_spinner()
+
+      rv$user_file <- NULL
+      rv$console_verbatim <- FALSE
+    })
+
+  })
+
+  observeEvent(input$MoveSampleType, {
+
+    con <- dbConnect(SQLite(), Sys.getenv("SDB_PATH"))
+    sample_type_id <- as(local(input$MoveSampleType), "integer")
+
+    sample_type_name <- DBI::dbReadTable(con, "sample_type") %>%
+      filter(id == sample_type_id) %>%
+      pull(name)
+
+    ## Read File Specification File
+    file_specs_json <- rjson::fromJSON(file = system.file(
+      "extdata", "file_specifications.json", package = .sampleDB$pkgname))
+
+    sample_type_index <- which(lapply(file_specs_json$sample_type, function(x) x$id) == input$MoveSampleType)
+    sample_file_types <- file_specs_json$sample_type[[sample_type_index]]$file_types
+    file_type_indexes <- which(lapply(file_specs_json$file_types, function(x) x$id) %in% sample_file_types)
+    file_type_names <- lapply(file_type_indexes, function(x) file_specs_json$file_types[[x]]$name)
+    names(sample_file_types) <- file_type_names
+
+    updateRadioButtons(
+      session,
+      "MoveFileType",
+      choices = sample_file_types,
+      inline = TRUE
     )
-    
-  )
+
+    DBI::dbDisconnect(con)
+  })
+
+  observeEvent(input$ClearMoveForm, ignoreInit = TRUE, {
+    shinyjs::enable("MoveSampleType")
+    shinyjs::enable("MoveFileType")
+    shinyjs::reset("MoveDataSet")
+
+    rv$user_file <- NULL
+  })
 }

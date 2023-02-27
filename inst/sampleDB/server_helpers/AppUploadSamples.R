@@ -357,6 +357,54 @@ AppUploadSamples <- function(session, output, input, database) {
     DBI::dbDisconnect(con)
   })
 
+  example_data <- reactiveValues(
+    required = NULL,
+    user_input = NULL,
+    conditional = NULL,
+    optional = NULL
+  )
+
+  observe({
+    ## Read File Specification File
+    file_specs_json <- rjson::fromJSON(file = system.file(
+      "extdata", "file_specifications.json", package = .sampleDB$pkgname))
+
+    ## Required Column Names
+
+    file_index <- which(lapply(file_specs_json$file_types, function(x) x$id) == input$UploadFileType)
+    sample_storage_type_index <- which(lapply(file_specs_json$file_types[[file_index]]$sample_type, function(x) x$id) == input$UploadSampleType)
+
+    if (length(sample_storage_type_index) == 0) {
+      stop("Unimplemented file specifications for this sample storage type")
+    }
+
+    actions <- file_specs_json$file_types[[file_index]]$sample_type[[sample_storage_type_index]]$actions[['upload']]
+    required_user_column_names <- actions[['required']]
+    conditional_user_column_names <- actions[['conditional']]
+    optional_user_column_names <- actions[['optional']]
+
+    ## Shared fields
+    sample_type_index <- which(lapply(file_specs_json$shared$sample_type, function(x) x$id) == input$UploadSampleType)
+
+    example_data$required  <- c(required_user_column_names, file_specs_json$shared$upload[['required']])
+    example_data$conditional <- conditional_user_column_names <- c(conditional_user_column_names, file_specs_json$shared$upload[['conditional']])
+    optional_user_column_names <- c(optional_user_column_names, file_specs_json$shared$upload[['optional']])
+
+    manifest_name <- file_specs_json$shared$sample_type[[sample_type_index]]$manifest$name
+    manifest_barcode_name <- file_specs_json$shared$sample_type[[sample_type_index]]$manifest$barcode
+    location_parameters <- file_specs_json$shared$sample_type[[sample_type_index]]$location
+    location_parameters <- unlist(location_parameters[c("name", "level_I", "level_II")])
+
+    example_data$user_input <- c(manifest_name, unname(location_parameters))
+    example_data$optional <- c(optional_user_column_names, c(manifest_barcode_name))
+
+    # ## todo: could break this down further - either split optional and required columns into separate tables, or color code
+    # columns <- c(required_user_column_names, optional_user_column_names)
+    # mat <- matrix(nrow = 0, ncol = length(columns))
+    # colnames(mat) <- c(required_user_column_names, optional_user_column_names)
+    # return(reactable(mat, defaultColDef = colDef(minWidth = 120)))
+  })
+
   observeEvent(input$UploadLocationRoot, {
     con <- dbConnect(SQLite(), Sys.getenv("SDB_PATH"))
     updateSelectInput(

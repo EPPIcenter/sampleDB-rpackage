@@ -49,7 +49,7 @@ function(input, output, session) {
     
     # -------- Move Samples -------------
 
-    MoveSamples(session, input, database, output)
+    # AppMoveSamples(session, input, database, output)
 
     # -------- Edit Containers --------
     

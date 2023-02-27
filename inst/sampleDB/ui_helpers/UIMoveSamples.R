@@ -1,17 +1,26 @@
+library(DBI)
+library(shinyBS)
+
 UIMoveSamples <- function(){
-  sidebarLayout(
+
+  con <- DBI::dbConnect(RSQLite::SQLite(), Sys.getenv("SDB_PATH"))
+
+  file_specs_json <- rjson::fromJSON(file = system.file(
+    "extdata", "file_specifications.json", package = .sampleDB$pkgname))
+
+  file_type_ids <- lapply(file_specs_json$file_types, function(x) x$id)
+  names(file_type_ids) <- lapply(file_specs_json$file_types, function(x) x$name)
+
+  ui <- sidebarLayout(
     sidebarPanel(
       width = 4,
       HTML("<h4><b>Move Samples</b></h4>"),
       HTML("<p>To move samples please select a storage type and fill out the sections below.</p>"),
-      radioButtons("MoveSampleType","1. Sample Storage Type", c("Micronix" = "micronix", "Cryovial" = "cryovial", "RDT" = "rdt", "Paper" = "paper"), inline = T),
+      radioButtons("MoveSampleType","1. Sample Storage Type", DBI::dbReadTable(con, "sample_type") %>% pull(id, name = "name"), inline = T),
       hr(),
-      fileInput("MoveDataSet", "2. Move Samples File(s)", width = '47%', multiple = TRUE, accept = c("text/csv", "text/comma-separated-values,text/plain", ".csv")),
-      fluidRow(column(width = 6, radioButtons("MoveFileType", label = NULL, choices = c("VisionMate" = "visionmate", "Traxcer" = "traxcer", "NA" = "na"), inline = T)),
+      fluidRow(column(width = 6, radioButtons("MoveFileType", label = NULL, choices = file_type_ids, inline = T)),
                column(width = 6, tags$a(href='micronix_format_info.html', target='blank', 'More Info'))),
-      conditionalPanel(condition = "input.MoveFileType == \"traxcer\"",
-                       HTML("Strip Suffix From Filename"),
-                       radioButtons("MoveTraxcerStripFromFilename", label = NULL, choices = c("Yes" = "strip", "No" = "no_strip"), selected = "no_strip", inline = T)),
+      fileInput("MoveDataSet", "2. Move Samples File(s)", width = '47%', multiple = TRUE, accept = c("text/csv", "text/comma-separated-values,text/plain", ".csv")),
       hr(),
       #action buttons
       fluidRow(column(width = 6, actionButton("MoveAction", width = '100%', label = "Move Samples", style="color: #fff; background-color: #337ab7; border-color: #2e6da4")),
@@ -19,11 +28,7 @@ UIMoveSamples <- function(){
       
       br(),
       #output messages
-      textOutput("WarningMoveLogisticalColnames"),
-      textOutput("WarningMoveBarcodesExist"),
-      actionButton("CreateEmptyManifest", "Create Empty Manifest"),
-      verbatimTextOutput("CreateEmptyMicronixPlateMessage"),
-      verbatimTextOutput("MoveReturnMessage2"),
+      verbatimTextOutput("MoveConsoleOutput"),
     ),
     mainPanel(
       width = 7,
@@ -65,4 +70,8 @@ UIMoveSamples <- function(){
       br(),
       HTML("<b>Plate2 Move File -> </b><i>plate2.csv</i>")
     ))
+
+  dbDisconnect(con)
+
+  return(ui)
 }
