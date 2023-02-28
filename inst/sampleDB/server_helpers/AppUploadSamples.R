@@ -375,7 +375,7 @@ AppUploadSamples <- function(session, output, input, database) {
     sample_storage_type_index <- which(lapply(file_specs_json$file_types[[file_index]]$sample_type, function(x) x$id) == input$UploadSampleType)
 
     if (length(sample_storage_type_index) == 0) {
-      stop("Unimplemented file specifications for this sample storage type")
+      stop("Unimplemented file specifications for this sample storage type.")
     }
 
     actions <- file_specs_json$file_types[[file_index]]$sample_type[[sample_storage_type_index]]$actions[['upload']]
@@ -397,12 +397,32 @@ AppUploadSamples <- function(session, output, input, database) {
 
     example_data$user_input <- c(manifest_name, unname(location_parameters))
     example_data$optional <- c(optional_user_column_names, c(manifest_barcode_name))
+  })
 
-    # ## todo: could break this down further - either split optional and required columns into separate tables, or color code
-    # columns <- c(required_user_column_names, optional_user_column_names)
-    # mat <- matrix(nrow = 0, ncol = length(columns))
-    # colnames(mat) <- c(required_user_column_names, optional_user_column_names)
-    # return(reactable(mat, defaultColDef = colDef(minWidth = 120)))
+  observe({
+    output$UploadFileExampleRequired <- renderReactable({
+      mat <- matrix(nrow = 0, ncol = length(example_data$required))
+      colnames(mat) <- example_data$required
+      return(reactable(mat, defaultColDef = colDef(minWidth = 120, html = TRUE, sortable = FALSE, resizable = FALSE)))
+    })
+
+    output$UploadFileExampleUserInput <- renderReactable({
+      mat <- matrix(nrow = 0, ncol = length(example_data$user_input))
+      colnames(mat) <- example_data$user_input
+      return(reactable(mat, defaultColDef = colDef(minWidth = 120, html = TRUE, sortable = FALSE, resizable = FALSE)))
+    })
+
+    output$UploadFileExampleConditional <- renderReactable({
+      mat <- matrix(nrow = 0, ncol = length(example_data$conditional))
+      colnames(mat) <- example_data$conditional
+      return(reactable(mat, defaultColDef = colDef(minWidth = 120, html = TRUE, sortable = FALSE, resizable = FALSE)))
+    })
+
+    output$UploadFileExampleOptional <- renderReactable({
+      mat <- matrix(nrow = 0, ncol = length(example_data$optional))
+      colnames(mat) <- example_data$optional
+      return(reactable(mat, defaultColDef = colDef(minWidth = 120, html = TRUE, sortable = FALSE, resizable = FALSE)))
+    })
   })
 
   observeEvent(input$UploadLocationRoot, {

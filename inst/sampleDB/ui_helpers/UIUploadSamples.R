@@ -43,10 +43,17 @@ UIUploadSamples <- function() {
         tags$p("Use the", tags$strong("Sample Storage Type"), "section to select the storage type for uploading."),
         tags$h4("2. Create Data File"),   
         tags$p("Some sample storage types will accept multiple file formats, but the `NA` file format will always be available. To see what columns are required and optional, you can change the file type in the left hand panel and the table below will update accordingly."),
+        tags$h5("Required Fields"),
+        tags$p("Below are", tags$strong("required"), "columns that", tags$strong("must"), "be included in your file."),
         reactableOutput("UploadFileExampleRequired"),
-        reactableOutput("UploadFileExampleOptional"),
-        reactableOutput("UploadFileExampleUserInput")
-
+        tags$p("Some fields may be included in your file", tags$strong("or"), "can be entered after upload."),
+        reactableOutput("UploadFileExampleUserInput"),
+        tags$h5("Conditional Fields"),
+        tags$p("Some fields", tags$strong("may"), "be required depending on the contents of your upload."),
+        reactableOutput("UploadFileExampleConditional"),
+        tags$h5("Optional Fields"),
+        tags$p("The columns below do not need to be included in your upload."),
+        reactableOutput("UploadFileExampleOptional")
     )))
 
     DBI::dbDisconnect(con)
