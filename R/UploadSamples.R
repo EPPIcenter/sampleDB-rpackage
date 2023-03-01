@@ -57,7 +57,6 @@
 
 UploadSamples <- function(sample_type_id, upload_data) {
 
-
   # locate the database and connect to it
   database <- Sys.getenv("SDB_PATH")
   conn <-  RSQLite::dbConnect(RSQLite::SQLite(), database)

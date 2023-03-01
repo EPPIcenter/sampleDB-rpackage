@@ -162,7 +162,6 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
     stop_formatting_error(df = df.error.formatting)
   }
 
-
   if (user_action %in% "upload") {
     user_file <- select(user_file, all_of(required_user_column_names), contains(conditional_user_column_names), contains(optional_user_column_names))
   } else if (user_action %in% "move") {
@@ -391,21 +390,22 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
       # make sure not uploading to well positions with active samples
       # note: potentially could increase speed by using copy_to if upload files are large
 
-      con <- DBI::dbConnect(RSQLite::SQLite(), database)
-      active_positions <- tbl(con, "storage_container") %>%
-        select(status_id, id) %>%
-        filter(status_id == 1) %>%
-        inner_join(tbl(con, container_tables[["container_class"]]), by = c("id" = "id")) %>%
-        inner_join(tbl(con, container_tables[["manifest"]]) %>% dplyr::rename(manifest_name = name), by = c("manifest_id" = "id")) %>%
-        collect() %>%
-        select(position, manifest_name) %>%
-        inner_join(formatted_csv, by = c("manifest_name", "position")) %>%
-        nrow(.)
-      if (active_positions > 0) {
-        stop_validation_error("Uploading sample to well location that already has an active sample", 1)
-      }
-
       if ("upload" == user_action) {
+
+        con <- DBI::dbConnect(RSQLite::SQLite(), database)
+        active_positions <- tbl(con, "storage_container") %>%
+          select(status_id, id) %>%
+          filter(status_id == 1) %>%
+          inner_join(tbl(con, container_tables[["container_class"]]), by = c("id" = "id")) %>%
+          inner_join(tbl(con, container_tables[["manifest"]]) %>% dplyr::rename(manifest_name = name), by = c("manifest_id" = "id")) %>%
+          collect() %>%
+          select(position, manifest_name) %>%
+          inner_join(formatted_csv, by = c("manifest_name", "position")) %>%
+          nrow(.)
+        if (active_positions > 0) {
+          stop_validation_error("Uploading sample to well location that already has an active sample", 1)
+        }
+
         file_study_codes <- formatted_csv %>% pull(study_short_code) %>% unique(.)
         db_study_codes <- dbReadTable(con, "study") %>% pull(short_code)
         if (!all(file_study_codes %in% db_study_codes)) {

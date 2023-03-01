@@ -79,7 +79,7 @@ MoveSamples <- function(sample_type, move_data){
   }
 }
 
-.CheckForOrphans <- function(move_data_list, database, sample_type){
+.CheckForOrphans <- function(move_data_list, database, sample_type) {
 
   message("Checking for orphaned samples...")
 

@@ -160,9 +160,10 @@ AppUploadSamples <- function(session, input, output, database) {
       return()
     }
 
+    dataset <- input$UploadSampleDataSet
     early_stop <- FALSE
     if (is.null(rv$user_file)) {
-      dataset <- input$UploadSampleDataSet
+      # dataset <- input$UploadSampleDataSet
       message(paste("Loaded", dataset$name))
 
       tryCatch({
