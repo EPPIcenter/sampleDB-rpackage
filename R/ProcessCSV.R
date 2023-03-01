@@ -7,6 +7,7 @@
 
 
 ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_name = NULL, freezer_address = NULL, file_type = "na", validate = TRUE, database = Sys.getenv("SDB_PATH"), config_yml = Sys.getenv("SDB_CONFIG")) {
+  
   df.error.formatting <- data.frame(column = NULL, reason = NULL, trigger = NULL)
 
   if (!require(dplyr)) {
@@ -19,6 +20,10 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
 
   if (!is.null(freezer_address) && all(freezer_address == "")) {
     freezer_address <- NULL
+  }
+
+  if (is.null(user_csv) || user_csv == "") {
+    stop("No csv file was provided.")
   }
 
   user_file <- read.csv(file = user_csv, header = FALSE)
@@ -69,17 +74,21 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
 
   sample_type_index <- which(lapply(file_specs_json$shared$sample_type, function(x) x$id) == sample_storage_type)
 
-  required_user_column_names <- c(required_user_column_names, file_specs_json$shared$upload[['required']])
-  conditional_user_column_names <- c(conditional_user_column_names, file_specs_json$shared$upload[['conditional']])
-  optional_user_column_names <- c(optional_user_column_names, file_specs_json$shared$upload[['optional']])
+  if (user_action %in% "upload") {
+    required_user_column_names <- c(required_user_column_names, file_specs_json$shared$upload[['required']])
+    conditional_user_column_names <- c(conditional_user_column_names, file_specs_json$shared$upload[['conditional']])
+    optional_user_column_names <- c(optional_user_column_names, file_specs_json$shared$upload[['optional']])
 
-  manifest_name <- file_specs_json$shared$sample_type[[sample_type_index]]$manifest$name
-  manifest_barcode_name <- file_specs_json$shared$sample_type[[sample_type_index]]$manifest$barcode
-  location_parameters <- file_specs_json$shared$sample_type[[sample_type_index]]$location
-  location_parameters <- unlist(location_parameters[c("name", "level_I", "level_II")])
+    manifest_name <- file_specs_json$shared$sample_type[[sample_type_index]]$manifest$name
+    manifest_barcode_name <- file_specs_json$shared$sample_type[[sample_type_index]]$manifest$barcode
+    location_parameters <- file_specs_json$shared$sample_type[[sample_type_index]]$location
+    location_parameters <- unlist(location_parameters[c("name", "level_I", "level_II")])
 
-  required_user_column_names <- c(required_user_column_names, c(manifest_name, unname(location_parameters)))
-  optional_user_column_names <- c(optional_user_column_names, c(manifest_barcode_name))
+    required_user_column_names <- c(required_user_column_names, c(manifest_name, unname(location_parameters)))
+    optional_user_column_names <- c(optional_user_column_names, c(manifest_barcode_name))
+  } else if (user_action %in% "move") {
+    manifest_name <- file_specs_json$shared$sample_type[[sample_type_index]]$manifest$name
+  }
 
   if (is.null(required_user_column_names)) {
     stop(paste("The expected column names for sample type", sample_storage_type, "and file type", file_type, "are not implemented (yet)."))
@@ -103,44 +112,46 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
 
   missing_columns <- required_user_column_names[!required_user_column_names %in% colnames(user_file)]
 
-  if (!is.null(container_name) && manifest_name %in% missing_columns) {
-    missing_columns <- missing_columns[missing_columns != manifest_name]
-    user_file[manifest_name] <- container_name
-  }
-  if (!is.null(freezer_address) && all(location_parameters %in% missing_columns)) {
-    missing_columns <- missing_columns[!location_parameters %in% missing_columns]
-    user_file[location_parameters] <- freezer_address
-  }
+  if (user_action %in% "upload") {
+    if (!is.null(container_name) && manifest_name %in% missing_columns) {
+      missing_columns <- missing_columns[missing_columns != manifest_name]
+      user_file[manifest_name] <- container_name
+    }
+    if (!is.null(freezer_address) && all(location_parameters %in% missing_columns)) {
+      missing_columns <- missing_columns[!location_parameters %in% missing_columns]
+      user_file[location_parameters] <- freezer_address
+    }
 
-  if (length(missing_columns) > 0) {
+    if (length(missing_columns) > 0) {
 
-    df.error.formatting <- rbind(
-      df.error.formatting,
-      data.frame(
-            column = missing_columns,
-            reason = "Always Required",
-            trigger = c(NA)
-          )
-      )
-  }
-
-  if ("StudyCode" %in% colnames(user_file) && "upload" %in% user_action) {
-    tmp <- sampleDB:::CheckTable("study") %>%
-      filter(short_code %in% user_file$StudyCode) %>%
-      inner_join(user_file, by = c("short_code" = "StudyCode"))
-
-    # collection date must exist for all samples that are part of a longitudinal study
-    if (!"CollectionDate" %in% colnames(user_file) && nrow(filter(tmp, is_longitudinal == 1)) > 0) {
       df.error.formatting <- rbind(
         df.error.formatting,
         data.frame(
-          column = "CollectionDate",
-          reason = "Collection date is required for samples of longitudinal studies.",
-          trigger = data.frame(
-            name = filter(tmp, is_longitudinal) %>% pull(name)
+              column = missing_columns,
+              reason = "Always Required",
+              trigger = c(NA)
+            )
+        )
+    }
+
+    if ("StudyCode" %in% colnames(user_file) && "upload" %in% user_action) {
+      tmp <- sampleDB:::CheckTable("study") %>%
+        filter(short_code %in% user_file$StudyCode) %>%
+        inner_join(user_file, by = c("short_code" = "StudyCode"))
+
+      # collection date must exist for all samples that are part of a longitudinal study
+      if (!"CollectionDate" %in% colnames(user_file) && nrow(filter(tmp, is_longitudinal == 1)) > 0) {
+        df.error.formatting <- rbind(
+          df.error.formatting,
+          data.frame(
+            column = "CollectionDate",
+            reason = "Collection date is required for samples of longitudinal studies.",
+            trigger = data.frame(
+              name = filter(tmp, is_longitudinal) %>% pull(name)
+            )
           )
         )
-      )
+      }
     }
   }
 
@@ -152,8 +163,11 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
   }
 
 
-  user_file <- select(user_file, all_of(required_user_column_names), contains(conditional_user_column_names), contains(optional_user_column_names))
-
+  if (user_action %in% "upload") {
+    user_file <- select(user_file, all_of(required_user_column_names), contains(conditional_user_column_names), contains(optional_user_column_names))
+  } else if (user_action %in% "move") {
+    user_file <- select(user_file, all_of(required_user_column_names))
+  }
   ## use this chunk to validate conditional parameters
 
   if ("upload" %in% user_action) {
@@ -234,7 +248,9 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
     } else {
       processed_file$manifest_barcode <- rep(NA, nrow(user_file))
     }
+  }
 
+  if (user_action %in% c("upload", "move")) {
     if (manifest_name %in% colnames(user_file) && is.null(container_name)) {
       processed_file$manifest_name <- user_file %>% pull(all_of(manifest_name))
     } else {
@@ -277,18 +293,19 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
 
 .CheckFormattedFileData <- function(database, formatted_csv, sample_storage_type, user_action, required_user_column_names, conditional_user_column_names, optional_user_column_names) {
 
-
   # this is an internal mapping to the database that should not be exposed to the user
   required_names <- requires_data <- container_metadata <- NULL
   if (user_action %in% c("upload", "move")) {
     required_names <- switch(sample_storage_type,
         "1" = c(
           "position",
-          "barcode"
+          "barcode",
+          "manifest_name"
         ),
         "2" = c(
           "position",
-          "barcode"
+          "barcode",
+          "manifest_name"
         )
       )
 
@@ -329,7 +346,10 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
 
       stopifnot("Required database column names not implemented" = !is.null(required_names))
 
-      stopifnot("All collection dates are not in YMD format" = .CheckDateFormat(formatted_csv))
+
+      if (user_action %in% c("upload")) {
+        stopifnot("All collection dates are not in YMD format" = .CheckDateFormat(formatted_csv))
+      }
 
       .CheckPositionIsValid(formatted_csv, sample_storage_type, user_action)
 

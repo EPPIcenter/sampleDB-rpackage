@@ -60,7 +60,8 @@
             "move": {
               "required": [
                 "Barcode",
-                "Position"
+                "Row",
+                "Column"
               ]
             }
           }
@@ -80,7 +81,8 @@
             "move": {
               "required": [
                 "Barcode",
-                "Position"
+                "BoxRow",
+                "BoxColumn"
               ]
             }
           }

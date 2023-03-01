@@ -32,7 +32,7 @@ function(input, output, session) {
     # --------- Upload Samples -------------
 
     # Upload Micronix Samples
-    AppUploadSamples(session, output, input, database)
+    AppUploadSamples(session, input, output, database)
     
     # Upload Cryo Samples
     # CryoUpload(session, output, input, database)
@@ -49,7 +49,7 @@ function(input, output, session) {
     
     # -------- Move Samples -------------
 
-    # AppMoveSamples(session, input, database, output)
+    AppMoveSamples(session, input, output, database)
 
     # -------- Edit Containers --------
     

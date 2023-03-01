@@ -240,7 +240,6 @@ UploadSamples <- function(sample_type_id, upload_data) {
         eval.plate_id <- filter(CheckTableTx(conn = conn, "dbs_paper"), name == eval.container_name)$id
       }
 
-      browser()
       # 7. upload micronix sample
 
       df.payload <- data.frame(

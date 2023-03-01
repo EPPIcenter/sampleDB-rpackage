@@ -13,7 +13,7 @@ library(reactable)
 # perform various checks of "user provided" file, reformat "user provided" file, and print user messages if file does not pass checks
 # checks in ui can unfortunately be ignored by the user
 
-AppUploadSamples <- function(session, output, input, database) {
+AppUploadSamples <- function(session, input, output, database) {
 
   rv <- reactiveValues(
     user_file = NULL, # this holds a file that is ready for upload
