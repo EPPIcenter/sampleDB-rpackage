@@ -83,6 +83,7 @@ SearchSamples <- function(sample_type = NULL, sample_barcode = NULL, container_n
   # search system down. The previous search terms were
   # already there, renaming for ease of use and because
   # short on time.
+
   filters <- list(type = sample_type,
                   barcode = sample_barcode,
                   container_name = container_name,
@@ -92,7 +93,9 @@ SearchSamples <- function(sample_type = NULL, sample_barcode = NULL, container_n
                   collection_date = collection_dates,
                   status = status,
                   state = state,
-                  freezer = freezer) %>% discard(., function(x) is.null(x) | "" %in% x | length(x) == 0)
+                  freezer = freezer$name,
+                  freezer_l1 = freezer$level_I,
+                  freezer_l2 = freezer$level_II) %>% discard(., function(x) is.null(x) | "" %in% x | length(x) == 0)
 
 
   # FILTER THE AGGREGATED TABLE BY FILTER TERMS
@@ -110,6 +113,7 @@ SearchSamples <- function(sample_type = NULL, sample_barcode = NULL, container_n
   if(return_sample_ids == TRUE){
     results <- list(id.wetlab_samples = id.wetlab_samples,
                     results = results)}
+
   return(results)
 }
 
@@ -134,12 +138,8 @@ SearchSamples <- function(sample_type = NULL, sample_barcode = NULL, container_n
 
   # USE TYPE TO GET STORAGE CONTAINER ID
   if(term.search == "search.type"){
-    if(length(filters$search.type) == 1){
-      if(filters$search.type == "all"){
+    if(filters$search.type == "all"){
       storage_container_id <- tables.database$table.storage_container$id
-      }else{
-        storage_container_id <- filter(tables.database$table.storage_container, sample_type_id %in% as(filters$search.type, "integer"))$id
-      }
     }else{
       storage_container_id <- filter(tables.database$table.storage_container, sample_type_id %in% as(filters$search.type, "integer"))$id
     }

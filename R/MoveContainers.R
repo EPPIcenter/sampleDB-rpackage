@@ -8,7 +8,7 @@
 
 MoveContainers <- function(sample_type, container_name, freezer, conn){
   
-  stopifnot("Sample Type is not valid" = sample_type %in% c("micronix", "cryovile", "rdt", "paper"))
+  stopifnot("Sample Type is not valid" = sample_type %in% c(1,2,3))
   eval.location <- filter(sampleDB::CheckTableTx(conn = conn, table = "location"), 
                           name == freezer$freezer.name & level_I == freezer$freezer.levelI & level_II == freezer$freezer.levelII)
   if (nrow(eval.location) == 0) {
@@ -16,7 +16,7 @@ MoveContainers <- function(sample_type, container_name, freezer, conn){
   }
   eval.location_id <- eval.location$id
   
-  if(sample_type == "micronix"){
+  if(sample_type == "1"){
     container_id <- filter(sampleDB::CheckTableTx(conn = conn, "micronix_plate"), name == container_name)$id
     if (is_empty(container_id)) {
       warning("Attempt to move plate that does not exist (was it deleted after deleting all of it's samples?)")
@@ -28,7 +28,7 @@ MoveContainers <- function(sample_type, container_name, freezer, conn){
                           id = container_id)
     return_message <- paste0("Successfully Moved Container: \n", container_name)
   }
-  else if(sample_type == "cryovile"){
+  else if(sample_type == "2"){
     container_id <- filter(sampleDB::CheckTableTx(conn = conn, "cryovial_box"), name == container_name)$id
     if (is_empty(container_id)) {
       warning("Attempt to move cryovial_box that does not exist (was it deleted after deleting all of it's samples?)")

@@ -23,10 +23,10 @@ GetUISearchElements <- function(){
                    SearchByPaperLabels = "SearchByPaperLabels",
                    SearchByPlate = "SearchByPlate",
                    SearchByBox = "SearchByBox",
+                   SearchByManifest = "SearchByManifest",
                    SearchByRDTBag = "SearchByRDTBag",
                    SearchByPaperBag = "SearchByPaperBag",
-                   SearchBySingleBarcode = "SearchBySingleBarcode",
-                   SearchByBarcodeType = "SearchByBarcodeType")
+                   SearchBySingleBarcode = "SearchBySingleBarcode")
   ui.output <- list(SearchResultsTable = "SearchResultsTable",
                     downloadData = "downloadData")
 
@@ -147,13 +147,13 @@ GetUIDelArchElements <- function(){
                    SearchByBox = "DelArchSearchByBox",
                    SearchByRDTBag = "DelArchSearchByRDTBag",
                    SearchByPaperBag = "DelArchSearchByPaperBag",
+                   SearchByManifest = "DelArchSearchByManifest",
                    ArchiveAction = "ArchiveAction",
                    DeleteAction = "DeleteAction",
                    DelArchComment = "DelArchComment",
                    DelArchStatus = "DelArchStatus",
                    DelArchVerification = "DelArchVerification",
-                   SearchBySingleBarcode = "DelArchSearchBySingleBarcode",
-                   SearchByBarcodeType = "DelArchSearchByBarcodeType")
+                   SearchBySingleBarcode = "DelArchSearchBySingleBarcode")
   ui.output <- list(SearchResultsTable = "DelArchSearchResultsTable",
                     SelectedRowsTable = "DelArchSearchResultsTable",
                     DelArchMessage = "DelArchMessage")
@@ -162,7 +162,7 @@ GetUIDelArchElements <- function(){
   return(ui_elements)
 }
 
-SearchFunction <- function(input, output, ui_elements){
+SearchFunction <- function(input, output, ui_elements, user_file){
 
   #set default list.search_results
   list.search_results <- NULL
@@ -175,32 +175,13 @@ SearchFunction <- function(input, output, ui_elements){
   }
 
   search.type <- input[[ui_elements$ui.input$SearchBySampleType]]
-  barcode.search_method <- input[[ui_elements$ui.input$SearchByBarcodeType]]
-  if(barcode.search_method == "multiple_barcodes"){
-    search.label <- list(input[[ui_elements$ui.input$SearchByBarcode]]$datapath,
-                         input[[ui_elements$ui.input$SearchByCryovialLabels]]$datapath,
-                         input[[ui_elements$ui.input$SearchByRDTLabels]]$datapath,
-                         input[[ui_elements$ui.input$SearchByPaperLabels]]$datapath) %>%
-      discard(., function(x) is.null(x) | "" %in% x) %>%
-      map(., function(x){if(length(x > 0)){read.csv(x)$Barcode}}) %>%
-      unlist()
-  }else{
-    individual_barcode <- NULL
-    if(ui_elements$ui.input$SearchBySingleBarcode != ""){
-      individual_barcode <- input[[ui_elements$ui.input$SearchBySingleBarcode]]
-    }
-    search.label <- list(individual_barcode)
+  search.label <- ""
+  if (!is.null(user_file)) {
+    search.label <- user_file$barcode
   }
 
-  # search.container <- list(micronix.container_name = input[[ui_elements$ui.input$SearchByPlate]],
-  #                          cryovial.container_name = input[[ui_elements$ui.input$SearchByBox]],
-  #                          rdt.container_name = input[[ui_elements$ui.input$SearchByRDTBag]],
-  #                          paper.container_name = input[[ui_elements$ui.input$SearchByPaperBag]]) %>%
-  #   discard(., function(x) is.null(x) | "" %in% x)
-
-
   # TODO
-  search.container <- input[[ui_elements$ui.input$SearchByPlate]]
+  search.container <- input[[ui_elements$ui.input$SearchByManifest]]
 
   search.date <- eval.search.date
   search.status <- input[[ui_elements$ui.input$SearchByStatus]]
@@ -339,7 +320,7 @@ SmartFreezerDropdownFilter <- function(database, session, input = input, locatio
   observe({
     if(!is.null(input[[location_ui]]) && input[[location_ui]] != ""){
       tmp_table.location <- filter(sampleDB::CheckTable(database = database, "location"), name == input[[location_ui]])
-      updateSelectInput(session, levelI_ui, label = NULL, choices = c(tmp_table.location$level_I) %>% sort())
+      updateSelectInput(session, levelI_ui, label = NULL, choices = c("", tmp_table.location$level_I) %>% sort())
       levelII_choices <- list(`working baskets` = grep("working", tmp_table.location$level_II, value = T) %>% sort(),
                               `non-working baskets` = grep("working", tmp_table.location$level_II, value = T, invert = T) %>% sort())
       updateSelectInput(session, levelII_ui, label = NULL, choices = c("", levelII_choices))
@@ -357,7 +338,7 @@ DataTableRenderOptions <- function(){
     paging = T,
     pageLength = 10,
     lengthMenu = c(10, 20, 50, 100),
-    language = list(zeroRecords = "There are no EPPIcenter Wetlab Samples that match this search."),
+    language = list(zeroRecords = "There are no wetlab samples that match this search."),
     rowCallback = JS(
       rowCallback <- c(
         "function(row, data){",

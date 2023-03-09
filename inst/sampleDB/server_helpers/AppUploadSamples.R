@@ -20,12 +20,12 @@ AppUploadSamples <- function(session, input, output, database) {
     console_verbatim = FALSE, # whether to print mulitple lines to the console
     error = FALSE, # whether to start an error workflow
     user_action_required = FALSE, # whether the user needs to add additional inputs
-    required_elements = NULL # elements on form that need user attention
+    required_elements = NULL, # elements on form that need user attention
+    upload_template = NULL # template file to download
   )
   error <- reactiveValues(
     title = "",
     message = "",
-    caption = "",
     table = NULL
   )
 
@@ -36,7 +36,7 @@ AppUploadSamples <- function(session, input, output, database) {
       dplyr::rename(
         Column = column, 
         Reason = reason,
-        Trigger = trigger
+        `Triggered By` = trigger
       ) %>%
       reactable(.)
 
@@ -44,7 +44,7 @@ AppUploadSamples <- function(session, input, output, database) {
       modalDialog(
         title = error$title,
         error$message,
-        error$caption,
+        tags$hr(),
         renderReactable({ df }),
         footer = modalButton("Exit")
       )
@@ -55,10 +55,29 @@ AppUploadSamples <- function(session, input, output, database) {
   observeEvent(input$Exit, ignoreInit = TRUE, {
     error$title = ""
     error$message = ""
-    error$caption = ""
     error$table = NULL
     rv$error <- NULL
     removeModal()
+  })
+
+
+  # Download a complete upload template
+  observe({
+
+    storage_type <- switch(
+      input$UploadSampleType,
+      "1" = "micronix",
+      "2" = "cryovial"
+    )
+
+    output$UploadFileTemplate <- downloadHandler(
+        filename = function() {
+          paste(paste(c(storage_type, input$UploadFileType, "upload", "template"), collapse="_"), '.csv', sep='')
+        },
+        content = function(con) {
+          write.csv(rv$upload_template, con, row.names = FALSE, quote=FALSE)
+        }
+    )
   })
 
   observeEvent(input$UploadSampleDataSet, ignoreInit = TRUE, {
@@ -106,7 +125,6 @@ AppUploadSamples <- function(session, input, output, database) {
         rv$error <- TRUE
         error$title = "Invalid File Detected"
         error$message = e$message
-        error$caption = "Please see the table below"
         error$table = e$df
       } else {
         if (manifest_name %in% columns) {
@@ -140,7 +158,6 @@ AppUploadSamples <- function(session, input, output, database) {
       # rv$error <- TRUE
       # error$title <- "Validation error"
       # error$message <- e$message
-      # error$caption <- "Please see the table below."
 
       print(e$df)
     },
@@ -214,7 +231,6 @@ AppUploadSamples <- function(session, input, output, database) {
         # rv$error <- TRUE
         # error$title <- "Validation error"
         # error$message <- e$message
-        # error$caption <- "Please see the table below."
 
         print(e$df)
 
@@ -303,7 +319,7 @@ AppUploadSamples <- function(session, input, output, database) {
     updateSelectInput(
       session, 
       "UploadLocationRoot",
-      selected = "",
+      selected = character(0),
       choices = c("", tbl(con, "location") %>%
         collect() %>% 
         pull(name) %>%
@@ -328,7 +344,7 @@ AppUploadSamples <- function(session, input, output, database) {
         "Cryovial" = "Box Name",
         "DBS" = "Paper Name"
       ),
-      selected = "",
+      selected = character(0),
       choices = c("", DBI::dbReadTable(con, manifest) %>% pull(name)),
       options = list(create = TRUE)
     )
@@ -365,6 +381,7 @@ AppUploadSamples <- function(session, input, output, database) {
     optional = NULL
   )
 
+  ## create the example data to display and to download
   observe({
     ## Read File Specification File
     file_specs_json <- rjson::fromJSON(file = system.file(
@@ -376,28 +393,28 @@ AppUploadSamples <- function(session, input, output, database) {
     sample_storage_type_index <- which(lapply(file_specs_json$file_types[[file_index]]$sample_type, function(x) x$id) == input$UploadSampleType)
 
     if (length(sample_storage_type_index) == 0) {
-      stop("Unimplemented file specifications for this sample storage type.")
+      message("Unimplemented file specifications for this sample storage type.")
+    } else {
+      actions <- file_specs_json$file_types[[file_index]]$sample_type[[sample_storage_type_index]]$actions[['upload']]
+      required_user_column_names <- actions[['required']]
+      conditional_user_column_names <- actions[['conditional']]
+      optional_user_column_names <- actions[['optional']]
+
+      ## Shared fields
+      sample_type_index <- which(lapply(file_specs_json$shared$sample_type, function(x) x$id) == input$UploadSampleType)
+
+      example_data$required  <- c(required_user_column_names, file_specs_json$shared$upload[['required']])
+      example_data$conditional <- conditional_user_column_names <- c(conditional_user_column_names, file_specs_json$shared$upload[['conditional']])
+      optional_user_column_names <- c(optional_user_column_names, file_specs_json$shared$upload[['optional']])
+
+      manifest_name <- file_specs_json$shared$sample_type[[sample_type_index]]$manifest$name
+      manifest_barcode_name <- file_specs_json$shared$sample_type[[sample_type_index]]$manifest$barcode
+      location_parameters <- file_specs_json$shared$sample_type[[sample_type_index]]$location
+      location_parameters <- unlist(location_parameters[c("name", "level_I", "level_II")])
+
+      example_data$user_input <- c(manifest_name, unname(location_parameters))
+      example_data$optional <- c(optional_user_column_names, c(manifest_barcode_name))
     }
-
-    actions <- file_specs_json$file_types[[file_index]]$sample_type[[sample_storage_type_index]]$actions[['upload']]
-    required_user_column_names <- actions[['required']]
-    conditional_user_column_names <- actions[['conditional']]
-    optional_user_column_names <- actions[['optional']]
-
-    ## Shared fields
-    sample_type_index <- which(lapply(file_specs_json$shared$sample_type, function(x) x$id) == input$UploadSampleType)
-
-    example_data$required  <- c(required_user_column_names, file_specs_json$shared$upload[['required']])
-    example_data$conditional <- conditional_user_column_names <- c(conditional_user_column_names, file_specs_json$shared$upload[['conditional']])
-    optional_user_column_names <- c(optional_user_column_names, file_specs_json$shared$upload[['optional']])
-
-    manifest_name <- file_specs_json$shared$sample_type[[sample_type_index]]$manifest$name
-    manifest_barcode_name <- file_specs_json$shared$sample_type[[sample_type_index]]$manifest$barcode
-    location_parameters <- file_specs_json$shared$sample_type[[sample_type_index]]$location
-    location_parameters <- unlist(location_parameters[c("name", "level_I", "level_II")])
-
-    example_data$user_input <- c(manifest_name, unname(location_parameters))
-    example_data$optional <- c(optional_user_column_names, c(manifest_barcode_name))
   })
 
   observe({
@@ -424,6 +441,16 @@ AppUploadSamples <- function(session, input, output, database) {
       colnames(mat) <- example_data$optional
       return(reactable(mat, defaultColDef = colDef(minWidth = 120, html = TRUE, sortable = FALSE, resizable = FALSE)))
     })
+
+    cols <- c(
+      example_data$required, 
+      example_data$user_input,
+      example_data$conditional,
+      example_data$optional
+    )
+    template <- matrix(ncol = length(cols), nrow = 0)
+    colnames(template) <- cols
+    rv$upload_template <- template
   })
 
   observeEvent(input$UploadLocationRoot, {

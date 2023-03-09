@@ -190,6 +190,10 @@ SampleDB_Setup <- function() {
             system2("sqlite3", paste(new_database, "<", base_db_sql))
             Sys.chmod(new_database, mode = "0777", use_umask = FALSE)
           } else {
+            
+            ## backup the database 
+            Backup_SampleDB()
+
             old_db_con <- DBI::dbConnect(SQLite(), database)
 
             lapply(c("PRAGMA locking_mode = EXCLUSIVE;", "BEGIN EXCLUSIVE;"), function(s) { DBI::dbExecute(old_db_con, s) })

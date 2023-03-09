@@ -90,7 +90,7 @@ MoveSamples <- function(sample_type, move_data){
   stacked_orphaned_sample_data <- .ClearSpaceForTests(sample_data = sample_data, sample_type = sample_type)
 
   # Use move data to assign containers to samples
-  for(container_name in names(move_data_list)){
+  for(container_name in names(move_data_list)) {
 
     # Get samples in container
     samples <- move_data_list[[container_name]]
@@ -301,9 +301,9 @@ MoveSamples <- function(sample_type, move_data){
       plate_name_matches := names(move_data_list) %in% get(colname.container_name)
     )
 
-  validate(need(
-      all(tbl.plate_names$plate_name_matches),
-      message = paste("*** ERROR: Plate Name not found in database:", names(move_data_list[ ! tbl.plate_names$plate_name_matches ]), sep=' ')))
+  if (!all(tbl.plate_names$plate_name_matches)) {
+    stop("Container name not found in database") 
+  }
 
   sample_data <- list()
   for(container.name in names(move_data_list)) {

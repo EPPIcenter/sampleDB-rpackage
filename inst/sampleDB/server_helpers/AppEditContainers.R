@@ -1,42 +1,254 @@
+library(RSQLite)
+library(dplyr)
 
 EditWetlabContainers <- function(session, input, database, output){
-  
-  observeEvent(
-    input$MoveContainerAction,({
-      #get user info
-      container.type <- input$EditContainerSampleType
-      container.name <- input$EditContainerName
-      freezer.name <- input$MoveContainerLocation
-      freezer.levelI <- input$MoveContainerLocationLevelI
-      freezer.levelII <- input$MoveContainerLocationLevelII
+
+  rv <- reactiveValues(user_action_required = FALSE, error = NULL)
+
+  error <- reactiveValues(
+    title = "",
+    message = ""
+  )
+
+  observeEvent(rv$error, ignoreInit = TRUE, {
+    message("Running error workflow")
+
+
+    showModal(
+      modalDialog(
+        title = error$title,
+        error$message,
+        footer = modalButton("Exit")
+      )
+    )
+    rv$error <- NULL
+  })
+
+  observeEvent(input$Exit, ignoreInit = TRUE, {
+    error$title = ""
+    error$message = ""
+    rv$error <- NULL
+    removeModal()
+  })
+
+  observeEvent(input$ContainerSampleType, {
+
+    shinyjs::reset("ContainerLocationRoot")
+    shinyjs::reset("ContainerLocationLevelI")
+    shinyjs::reset("ContainerLocationLevelII")
+
+    manifest <- switch(
+      input$ContainerSampleType,
+      "1" = "micronix_plate",
+      "2" = "cryovial_box",
+      "3" = "dbs_paper"
+    )
+
+    database <- Sys.getenv("SDB_PATH")
+    con <-  RSQLite::dbConnect(RSQLite::SQLite(), database)
+
+    updateSelectInput(
+      session,
+      "ContainerManifestID",
+      label = switch(
+        input$ContainerSampleType,
+        "1" = "Plate Name",
+        "2" = "Box Name",
+        "3" = "Paper Name"
+      ),
+      choices = c("", DBI::dbReadTable(con, manifest) %>% pull(name)),
+      selected = character(0)
+    )
+
+    updateSelectInput(
+      session, 
+      "ContainerLocationRoot",
+      choices = c("", tbl(con, "location") %>%
+        collect() %>% 
+        pull(name) %>%
+        unique(.)
+      ),
+      selected = character(0)
+    )
+
+    updateSelectInput(
+      session,
+      "ContainerLocationLevelI",
+      label = switch(
+        input$ContainerSampleType,
+        "1" = "Shelf Name", 
+        "2" = "Rack Number",
+        "3" = "To Be Implemented"
+      )
+    )
+
+    updateSelectInput(
+      session,
+      "ContainerLocationLevelII",
+      label = switch(
+        input$ContainerSampleType,
+        "1" = "Basket Name",
+        "2" = "Rack Position",
+        "3" = "To Be Implemented"
+      )
+    )
+
+    DBI::dbDisconnect(con)
+  })
+
+  observeEvent(input$ContainerLocationRoot, {
+    con <- dbConnect(SQLite(), Sys.getenv("SDB_PATH"))
+    updateSelectInput(
+      session,
+      "ContainerLocationLevelI",
+      selected = "",
+      choices = c("", tbl(con, "location") %>%
+        filter(name == local(input$ContainerLocationRoot)) %>%
+        collect() %>% 
+        pull(level_I)
+      )
+    )
+    DBI::dbDisconnect(con)
+
+    shinyjs::reset("ContainerLocationLevelI")
+    shinyjs::reset("ContainerLocationLevelII")
+  })
+
+  observeEvent(input$ContainerLocationLevelI, {
+    con <- dbConnect(SQLite(), Sys.getenv("SDB_PATH"))
+    updateSelectInput(
+      session,
+      "ContainerLocationLevelII",
+      selected = "",
+      choices = c("", tbl(con, "location") %>%
+        filter(name == local(input$ContainerLocationRoot) && level_I == local(input$ContainerLocationLevelI)) %>%
+        collect() %>% 
+        pull(level_II)
+      )
+    )
+    DBI::dbDisconnect(con)
+  })
+
+  observeEvent(input$ContainerAction, ignoreInit = FALSE, {
+
+    if (input$ContainerAction == "move") {
+      shinyjs::show("ContainerLocationRoot")
+      shinyjs::show("ContainerLocationLevelI")
+      shinyjs::show("ContainerLocationLevelII")
+
+      shinyjs::hide("ContainerManifestNewID")
+      shinyjs::hide("ContainerManifestIDCheck")
+
+      output$ContainerAction <- renderUI({
+        actionButton("MoveContainerAction", label = "Move Container")
+      })
+
+    }
+    else if (input$ContainerAction == "rename") {
+      shinyjs::hide("ContainerLocationRoot")
+      shinyjs::hide("ContainerLocationLevelI")
+      shinyjs::hide("ContainerLocationLevelII")
+      
+      shinyjs::show("ContainerManifestNewID")
+      shinyjs::show("ContainerManifestIDCheck")
+
+      output$ContainerAction <- renderUI({
+        actionButton("RenameContainerAction", label = "Rename Container")
+      })
+
+    } else {
+      shinyjs::hide("ContainerLocationRoot")
+      shinyjs::hide("ContainerLocationLevelI")
+      shinyjs::hide("ContainerLocationLevelII")   
+
+      shinyjs::hide("ContainerManifestNewID")
+      shinyjs::hide("ContainerManifestIDCheck")
+
+      output$ContainerAction <- renderUI({
+        actionButton("DeleteContainerAction", label = "Delete Container")
+      })
+    } 
+  })
+
+  # Input validation occurs here
+  observe({
+    if (input$ContainerAction == "move") {
+      rv$user_action_required <- any(c(input$ContainerManifestID, input$ContainerLocationRoot, input$ContainerLocationLevelI, input$ContainerLocationLevelII) == "")
+    } else if (input$ContainerAction == "rename") {
+      output$ContainerManifestIDCheck <- renderUI({
+
+        html <- paste0("<span></span>")
+
+        if (dbCanConnect(RSQLite::SQLite(), Sys.getenv("SDB_PATH"))) {
+
+          con <- dbConnect(SQLite(), Sys.getenv("SDB_PATH"))
+
+          if (input$ContainerManifestNewID != "") {
+            manifest <- switch(
+              input$ContainerSampleType,
+              "1" = "micronix_plate",
+              "2" = "cryovial_box",
+              "3" = "dbs_paper"
+            )
+
+            result <- tbl(con, manifest) %>%
+              filter(name %in% local(input$ContainerManifestNewID)) %>%
+              count() %>%
+              pull(n)
+
+            if (result > 0) {
+              html <- paste0("<span style=color:#0000ff>", "Name is in use!", "</span>")
+              rv$user_action_required <- TRUE
+            } else {
+              rv$user_action_required <- input$ContainerManifestID == ""
+            }
+          }
+
+          dbDisconnect(con)
+        }
+
+        HTML(html)
+      })  
+    } else {
+      rv$user_action_required <- input$ContainerManifestID == ""
+    }
+  })
+
+  observeEvent(input$MoveContainerAction, ignoreInit = FALSE, {
+
+      if (rv$user_action_required) {
+        error$title <- "User action required"
+        error$message <- "There are invalid inputs that need to be addressed."
+        rv$error <- TRUE
+        return()
+      }
 
       database <- Sys.getenv("SDB_PATH")
       conn <-  RSQLite::dbConnect(RSQLite::SQLite(), database)
       RSQLite::dbBegin(conn)
-
 
       tryCatch(
         expr = {
 
           #move container
           return_message <- sampleDB::MoveContainers(
-            sample_type = container.type,
-            container_name = container.name,
+            sample_type = input$ContainerSampleType,
+            container_name = input$ContainerManifestID,
             freezer = list(
-              freezer.name = freezer.name,
-              freezer.levelI = freezer.levelI,
-              freezer.levelII = freezer.levelII
+              freezer.name = input$ContainerLocationRoot,
+              freezer.levelI = input$ContainerLocationLevelI,
+              freezer.levelII = input$ContainerLocationLevelII
             ),
             conn = conn)
 
-          output$RenameContainerMessage <- renderText(return_message)
+          output$ContainerOutputConsole <- renderText(return_message)
         },
         warning = function(w) {
-          output$RenameContainerMessage <- renderText({ paste("ERROR:", w$message) })
+          output$ContainerOutputConsole <- renderText({ paste("ERROR:", w$message) })
           message(w)
         },
         error = function(e) {
-          output$RenameContainerMessage <- renderText({ paste("ABORT:", e$message) })
+          output$ContainerOutputConsole <- renderText({ paste("ABORT:", e$message) })
           message(e)
         },
         finally = {
@@ -44,111 +256,78 @@ EditWetlabContainers <- function(session, input, database, output){
           RSQLite::dbDisconnect(conn)
         }
       )
-    }))
+    })
   
-  observeEvent(
-    input$RenameContainerAction,
-    ({
-      #get user info
-      container.type <- input$EditContainerSampleType
-      current_container.name <- input$EditContainerName
-      new_container.name <- input$RenameContainerPlateName
+  observeEvent(input$RenameContainerAction, ignoreInit = FALSE, {
 
-      database <- Sys.getenv("SDB_PATH")
-      conn <-  RSQLite::dbConnect(RSQLite::SQLite(), database)
-      RSQLite::dbBegin(conn)
-      
-      tryCatch(
-        expr = {
+    if (rv$user_action_required) {
+      error$title <- "User action required"
+      error$message <- "There are invalid inputs that need to be addressed."
+      rv$error <- TRUE
+      return()
+    }
 
-          #rename container
-          return_message <- sampleDB::RenameContainers(sample_type = container.type, 
-                                                       new_container_name = new_container.name, 
-                                                       current_container_name = current_container.name,
-                                                       conn = conn)
+    database <- Sys.getenv("SDB_PATH")
+    conn <-  RSQLite::dbConnect(RSQLite::SQLite(), database)
+    RSQLite::dbBegin(conn)
+    
+    tryCatch(
+      expr = {
 
-          output$RenameContainerMessage <- renderText(return_message)
-        },
-        warning = function(w) {
-          output$RenameContainerMessage <- renderText({ paste("ERROR:", w$message) })
-          message(w)
-        },
-        error = function(e) {
-          output$RenameContainerMessage <- renderText({ paste("ABORT:", e$message) })
-          message(e)
-        },
-        finally = {
-          RSQLite::dbCommit(conn)
-          RSQLite::dbDisconnect(conn)
-        }
-      )
-    }))
-  
-  observeEvent(
-    input$DeleteContainerAction,
-    ({
-      
-      # set requirements
-      # DeleteEmptyPlateRequirement(input, database)
-      
-      # get user information
-      container.type <- input$EditContainerSampleType
-      container.name <- input$EditContainerName
+        #rename container
+        return_message <- sampleDB::RenameContainers(sample_type = input$ContainerSampleType, 
+                                                     new_container_name = input$ContainerManifestNewID, 
+                                                     current_container_name = input$ContainerManifestID,
+                                                     conn = conn)
 
-      database <- Sys.getenv("SDB_PATH")
-      conn <-  RSQLite::dbConnect(RSQLite::SQLite(), database)
-      RSQLite::dbBegin(conn)
-      
-      # delete plate
-      tryCatch(
-        expr = {
-          return_message <- sampleDB::DeleteEmptyContainer(type = container.type, container_name = container.name, conn = conn)
-          output$RenameContainerMessage <- renderText({return_message})
-        },
-        warning = function(w) {
-          output$RenameContainerMessage <- renderText({ paste("ERROR:", w$message) })
-          message(w)
-        },
-        error = function(e) {
-          output$RenameContainerMessage <- renderText({ paste("ABORT:", e$message) })
-          message(e)
-        },
-        finally = {
-          RSQLite::dbCommit(conn)
-          RSQLite::dbDisconnect(conn)
-        }
-      )
-    }))
-  
-  observe({
-    updateSelectInput(session, selected = input$MoveContainerLocation, "MoveContainerLocation", choices = dbUpdateEvent()$location %>% sort())
-    updateSelectizeInput(session, selected = input$EditContainerName, "EditContainerName", choices = dbUpdateEvent()$micronix_plate_name %>% sort())
+        output$ContainerOutputConsole <- renderText(return_message)
+      },
+      warning = function(w) {
+        output$ContainerOutputConsole <- renderText({ paste("ERROR:", w$message) })
+        message(w)
+      },
+      error = function(e) {
+        output$ContainerOutputConsole <- renderText({ paste("ABORT:", e$message) })
+        message(e)
+      },
+      finally = {
+        RSQLite::dbCommit(conn)
+        RSQLite::dbDisconnect(conn)
+      }
+    )
   })
   
-  # smart dropdown
-  SmartFreezerDropdownFilter(database = database, session = session,
-                             input = input,
-                             location_ui = "MoveContainerLocation", 
-                             levelI_ui = "MoveContainerLocationLevelI", 
-                             levelII_ui = "MoveContainerLocationLevelII")
-  
-  # user selected storage type
-  observe({
-    if(input$EditContainerSampleType == "micronix"){
-      updateSelectizeInput(session, "EditContainerName", label = NULL, choices = c("", sampleDB::CheckTable("micronix_plate")$name))
-    }
-    else if(input$EditContainerSampleType == "cryovial"){
-      updateSelectizeInput(session, "EditContainerName", label = NULL, choices = c("", sampleDB::CheckTable("cryovial_box")$name))
-    }
-  })
+  observeEvent(input$DeleteContainerAction, ignoreInit = FALSE, {
 
-  observe({
-    if(input$EditContainerSampleType == "micronix"){
-      updateSelectizeInput(session, "EditContainerName", label = NULL, choices = c("", sampleDB::CheckTable("micronix_plate")$name))
+    if (rv$user_action_required) {
+      error$title <- "User action required"
+      error$message <- "There are invalid inputs that need to be addressed."
+      rv$error <- TRUE
+      return()
     }
-    else if(input$EditContainerSampleType == "cryovial"){
-      updateSelectizeInput(session, "EditContainerName", label = NULL, choices = c("", sampleDB::CheckTable("cryovial_box")$name))
-    }
+    
+    database <- Sys.getenv("SDB_PATH")
+    conn <-  RSQLite::dbConnect(RSQLite::SQLite(), database)
+    RSQLite::dbBegin(conn)
+    
+    # delete plate
+    tryCatch(
+      expr = {
+        return_message <- sampleDB::DeleteEmptyContainer(type = input$ContainerSampleType, container_name = input$ContainerManifestID, conn = conn)
+        output$ContainerOutputConsole <- renderText({return_message})
+      },
+      warning = function(w) {
+        output$ContainerOutputConsole <- renderText({ paste("ERROR:", w$message) })
+        message(w)
+      },
+      error = function(e) {
+        output$ContainerOutputConsole <- renderText({ paste("ABORT:", e$message) })
+        message(e)
+      },
+      finally = {
+        RSQLite::dbCommit(conn)
+        RSQLite::dbDisconnect(conn)
+      }
+    )
   })
-  
 }

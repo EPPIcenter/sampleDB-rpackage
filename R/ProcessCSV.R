@@ -28,7 +28,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
 
   user_file <- read.csv(file = user_csv, header = FALSE)
 
-  valid_actions = c("upload", "move")
+  valid_actions = c("upload", "move", "search")
   if (!user_action %in% valid_actions) {
     errmsg <- paste("Action is not valid. Valid actions are:", paste(valid_actions, collapse = ", "))
     stop_usage_error(errmsg)
@@ -40,9 +40,13 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
 
   ## remove empty rows and columns
   ## we do select columns below, so removing columns is technically duplicate work
-  empty_rows <- rowSums(user_file == "" | is.na(user_file) | is.null(user_file)) == ncol(user_file)
-  empty_cols <- colSums(user_file == "" | is.na(user_file) | is.null(user_file)) == nrow(user_file)
-  user_file <- user_file[!empty_rows, !empty_cols]
+
+  # note: strange bug with search files, ignore for now
+  if (user_action %in% c("move", "upload")) {
+    empty_rows <- rowSums(user_file == "" | is.na(user_file) | is.null(user_file)) == ncol(user_file)
+    empty_cols <- colSums(user_file == "" | is.na(user_file) | is.null(user_file)) == nrow(user_file)
+    user_file <- user_file[!empty_rows, !empty_cols]
+  }
 
   ## Read File Specification File
   file_specs_json <- rjson::fromJSON(file = system.file(
@@ -57,37 +61,42 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
   )
 
   ## Required Column Names
+  required_user_column_names <- conditional_user_column_names <- optional_user_column_names <- NULL
+  if (user_action %in% c("move", "upload")) {
 
-  file_index <- which(lapply(file_specs_json$file_types, function(x) x$id) == file_type)
-  sample_storage_type_index <- which(lapply(file_specs_json$file_types[[file_index]]$sample_type, function(x) x$id) == sample_storage_type)
+    file_index <- which(lapply(file_specs_json$file_types, function(x) x$id) == file_type)
+    sample_storage_type_index <- which(lapply(file_specs_json$file_types[[file_index]]$sample_type, function(x) x$id) == sample_storage_type)
 
-  if (length(sample_storage_type_index) == 0) {
-    stop("Unimplemented file specifications for this sample storage type")
-  }
+    if (length(sample_storage_type_index) == 0) {
+      stop("Unimplemented file specifications for this sample storage type")
+    }
 
-  actions <- file_specs_json$file_types[[file_index]]$sample_type[[sample_storage_type_index]]$actions[[user_action]]
-  required_user_column_names <- actions[['required']]
-  conditional_user_column_names <- actions[['conditional']]
-  optional_user_column_names <- actions[['optional']]
+    actions <- file_specs_json$file_types[[file_index]]$sample_type[[sample_storage_type_index]]$actions[[user_action]]
+    required_user_column_names <- actions[['required']]
+    conditional_user_column_names <- actions[['conditional']]
+    optional_user_column_names <- actions[['optional']]
 
-  ## Shared fields
+    ## Shared fields
 
-  sample_type_index <- which(lapply(file_specs_json$shared$sample_type, function(x) x$id) == sample_storage_type)
+    sample_type_index <- which(lapply(file_specs_json$shared$sample_type, function(x) x$id) == sample_storage_type)
 
-  if (user_action %in% "upload") {
-    required_user_column_names <- c(required_user_column_names, file_specs_json$shared$upload[['required']])
-    conditional_user_column_names <- c(conditional_user_column_names, file_specs_json$shared$upload[['conditional']])
-    optional_user_column_names <- c(optional_user_column_names, file_specs_json$shared$upload[['optional']])
+    if (user_action %in% "upload") {
+      required_user_column_names <- c(required_user_column_names, file_specs_json$shared$upload[['required']])
+      conditional_user_column_names <- c(conditional_user_column_names, file_specs_json$shared$upload[['conditional']])
+      optional_user_column_names <- c(optional_user_column_names, file_specs_json$shared$upload[['optional']])
 
-    manifest_name <- file_specs_json$shared$sample_type[[sample_type_index]]$manifest$name
-    manifest_barcode_name <- file_specs_json$shared$sample_type[[sample_type_index]]$manifest$barcode
-    location_parameters <- file_specs_json$shared$sample_type[[sample_type_index]]$location
-    location_parameters <- unlist(location_parameters[c("name", "level_I", "level_II")])
+      manifest_name <- file_specs_json$shared$sample_type[[sample_type_index]]$manifest$name
+      manifest_barcode_name <- file_specs_json$shared$sample_type[[sample_type_index]]$manifest$barcode
+      location_parameters <- file_specs_json$shared$sample_type[[sample_type_index]]$location
+      location_parameters <- unlist(location_parameters[c("name", "level_I", "level_II")])
 
-    required_user_column_names <- c(required_user_column_names, c(manifest_name, unname(location_parameters)))
-    optional_user_column_names <- c(optional_user_column_names, c(manifest_barcode_name))
-  } else if (user_action %in% "move") {
-    manifest_name <- file_specs_json$shared$sample_type[[sample_type_index]]$manifest$name
+      required_user_column_names <- c(required_user_column_names, c(manifest_name, unname(location_parameters)))
+      optional_user_column_names <- c(optional_user_column_names, c(manifest_barcode_name))
+    } else if (user_action %in% "move") {
+      manifest_name <- file_specs_json$shared$sample_type[[sample_type_index]]$manifest$name
+    }
+  } else { ## Search
+    required_user_column_names <- file_specs_json$shared[[user_action]]$required 
   }
 
   if (is.null(required_user_column_names)) {
@@ -100,11 +109,24 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
   header_row <- .FindHeader(user_file = user_file, required_user_column_names = required_user_column_names, valid_header_rows = valid_header_rows)
 
   if (is.null(header_row)) {
-    errmsg <- paste("Valid header rows could not be found in your file. Please check that the following required column names are present:", paste(required_user_column_names, collapse = ", "))
-    stop(errmsg)
+    df.error.formatting <- data.frame(
+      column = required_user_column_names,
+      reason = "Always Required",
+      trigger = "Not detected in file"
+    )
+
+    stop_formatting_error(df.error.formatting)
   }
 
-  user_file <- user_file %>% setNames(.[header_row, ]) %>% .[-c(1, header_row), ]
+  if (user_action %in% c("upload", "move")) {
+    user_file <- user_file %>% setNames(.[header_row, ]) %>% .[-c(1, header_row), ]
+  } else {
+    x <- user_file %>% setNames(.[header_row, ]) %>% .[-c(1, header_row), ]
+    user_file <- NULL
+    user_file <- data.frame(
+      Barcodes = x
+    )
+  }
 
   # todo: check the parameters of the function and see if some of the data points are there (in case called from R package)
   # then, filter out the columns that could not be resolved, and add to the data frame. This will be a usage error.
@@ -129,7 +151,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
         data.frame(
               column = missing_columns,
               reason = "Always Required",
-              trigger = c(NA)
+              trigger = "Not detected in file"
             )
         )
     }
@@ -268,6 +290,9 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
     processed_file$strain <- user_file$Strain
   }
 
+  if (user_action == "search") {
+    processed_file$barcode <- user_file %>% pull(all_of(required_user_column_names))
+  }
   # need check.names FALSE to prevent prepending `X` to numeric colnames
   processed_file <- as.data.frame(processed_file, check.names=FALSE)
   ### Quality check the data now
@@ -390,9 +415,23 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
       # make sure not uploading to well positions with active samples
       # note: potentially could increase speed by using copy_to if upload files are large
 
-      if ("upload" == user_action) {
+      con <- DBI::dbConnect(RSQLite::SQLite(), database)
 
-        con <- DBI::dbConnect(RSQLite::SQLite(), database)
+      browser()
+      if (user_action == "move") {
+        df <- formatted_csv %>%
+          left_join(dbReadTable(con, container_tables[["manifest"]]) %>% dplyr::rename(manifest_barcode = barcode), by = c("manifest_name" = "name")) %>%
+          filter(is.na(id)) %>%
+          select(manifest_name) %>%
+          distinct()
+
+        if (nrow(df) > 0) {
+          stop_validation_error("Container not found", df)
+        }
+      }
+
+      if (user_action %in% c("upload", "move")) {
+
         active_positions <- tbl(con, "storage_container") %>%
           select(status_id, id) %>%
           filter(status_id == 1) %>%
@@ -405,6 +444,9 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
         if (active_positions > 0) {
           stop_validation_error("Uploading sample to well location that already has an active sample", 1)
         }
+      }
+
+      if (user_action == "upload") {
 
         file_study_codes <- formatted_csv %>% pull(study_short_code) %>% unique(.)
         db_study_codes <- dbReadTable(con, "study") %>% pull(short_code)

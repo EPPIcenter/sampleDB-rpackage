@@ -29,6 +29,13 @@ AppMoveSamples <- function(session, input, output, database) {
     table = NULL
   )
 
+  example_data <- reactiveValues(
+    required = NULL,
+    user_input = NULL,
+    conditional = NULL,
+    optional = NULL
+  )
+
   observeEvent(input$CreateNewManifest, ignoreInit = TRUE, {
 
     con <- dbConnect(SQLite(), Sys.getenv("SDB_PATH"))
@@ -296,11 +303,11 @@ AppMoveSamples <- function(session, input, output, database) {
     validation_error = function(e) {
       message("Caught validation error")
       early_stop <<- TRUE
-      html<-paste0("<font color='red'>", paste0(dataset$name, ": ", e$message), "</font>")
+      html<-paste0("<font color='red'>", paste(c(dataset$name, e$message, e$values), collapse=": "), "</font>")
       shinyjs::html(id = "MoveOutputConsole", html = html, add = rv$console_verbatim)
       rv$console_verbatim <- FALSE
 
-      print(e$df)
+      print(e$values)
 
     },
     error = function(e) {
@@ -317,8 +324,6 @@ AppMoveSamples <- function(session, input, output, database) {
     b_use_wait_dialog <- FALSE
 
     tryCatch({
-      withCallingHandlers({
-
         # simple way to add a dialog or not
         b_use_wait_dialog <- nrow(rv$user_file) > 5
 
@@ -337,10 +342,6 @@ AppMoveSamples <- function(session, input, output, database) {
         names(move_file_list) <- unique(rv$user_file$manifest_name)
 
         sampleDB::MoveSamples(sample_type = as.integer(input$MoveSampleType), move_data = move_file_list)
-      },
-      message = function(m) {
-        shinyjs::html(id = "MoveOutputConsole", html = paste0(dataset$name, ": ", m$message), add = rv$console_verbatim)
-      })
     },
     error = function(e) {
       message(e)
@@ -354,7 +355,6 @@ AppMoveSamples <- function(session, input, output, database) {
       rv$user_file <- NULL
       rv$console_verbatim <- FALSE
     })
-
   })
 
   observeEvent(input$MoveSampleType, {
@@ -389,5 +389,55 @@ AppMoveSamples <- function(session, input, output, database) {
     shinyjs::reset("MoveOutputConsole")
 
     rv$user_file <- NULL
+  })
+
+
+  ## create the example data to display and to download
+  observe({
+    ## Read File Specification File
+    file_specs_json <- rjson::fromJSON(file = system.file(
+      "extdata", "file_specifications.json", package = .sampleDB$pkgname))
+
+    ## Required Column Names
+
+    file_index <- which(lapply(file_specs_json$file_types, function(x) x$id) == input$MoveFileType)
+    sample_storage_type_index <- which(lapply(file_specs_json$file_types[[file_index]]$sample_type, function(x) x$id) == input$MoveSampleType)
+
+    if (length(sample_storage_type_index) == 0) {
+      message("Unimplemented file specifications for this sample storage type.")
+    } else {
+      actions <- file_specs_json$file_types[[file_index]]$sample_type[[sample_storage_type_index]]$actions[['move']]
+      example_data$required <- actions[['required']]
+    }
+  })
+
+  observe({
+    output$MoveFileExampleRequired <- renderReactable({
+      mat <- matrix(nrow = 0, ncol = length(example_data$required))
+      colnames(mat) <- example_data$required
+      return(reactable(mat, defaultColDef = colDef(minWidth = 120, html = TRUE, sortable = FALSE, resizable = FALSE)))
+    })
+
+    template <- matrix(ncol = length(example_data$required), nrow = 0)
+    colnames(template) <- example_data$required
+    rv$template <- template
+  })
+
+  # Download a complete move template
+  observe({
+    storage_type <- switch(
+      input$MoveSampleType,
+      "1" = "micronix",
+      "2" = "cryovial"
+    )
+
+    output$MoveFileTemplate <- downloadHandler(
+      filename = function() {
+        paste(paste(c(storage_type, input$MoveFileType, "move", "template"), collapse="_"), '.csv', sep='')
+      },
+      content = function(con) {
+        write.csv(rv$template, con, row.names = FALSE, quote=FALSE)
+      }
+    )
   })
 }
