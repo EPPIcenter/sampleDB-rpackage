@@ -17,53 +17,100 @@ AppUploadSamples <- function(session, input, output, database) {
 
   rv <- reactiveValues(
     user_file = NULL, # this holds a file that is ready for upload
+    user_file_error_annotated = NULL,
     console_verbatim = FALSE, # whether to print mulitple lines to the console
     error = FALSE, # whether to start an error workflow
     user_action_required = FALSE, # whether the user needs to add additional inputs
     required_elements = NULL, # elements on form that need user attention
     upload_template = NULL # template file to download
   )
+
   error <- reactiveValues(
     title = "",
+    type = "",
     message = "",
     table = NULL
   )
 
+  observe({
+    output$ErrorFileDownload <- downloadHandler(
+      filename = function() {
+        paste(paste(c(input$UploadSampleDataSet$name, "annotated"), collapse="_"), '.csv', sep='')
+      },
+      content = function(con) {
+        write.csv(rv$user_file_error_annotated, con, row.names = FALSE, quote=FALSE)
+      }
+    )
+  })
+
   observeEvent(rv$error, ignoreInit = TRUE, {
     message("Running error workflow")
 
-    df <- error$table %>%
-      dplyr::rename(
-        Column = column, 
-        Reason = reason,
-        `Triggered By` = trigger
-      ) %>%
-      reactable(.)
+    df <- error$table
+    modal_size <- "m"
+    if (error$type == "formatting") {
+      df <- error$table %>%
+        dplyr::rename(
+          Column = column, 
+          Reason = reason,
+          `Triggered By` = trigger
+        ) %>%
+        reactable(.)
 
-    showModal(
-      modalDialog(
-        title = error$title,
-        error$message,
-        tags$hr(),
-        renderReactable({ df }),
-        footer = modalButton("Exit")
+      showModal(
+        modalDialog(
+          size = "m",
+          title = error$title,
+          error$message,
+          tags$hr(),
+          renderReactable({ df }),
+          footer = modalButton("Exit")
+        )
       )
-    )
+    } else if (error$type == "validation") {
+
+      errors <- unique(error$table[, c("Error")])
+      errors <- data.frame(errors)
+      colnames(errors) <- "Error"
+      df <- reactable(errors, details = function(index) {
+        data <- error$table[error$table$Error == errors$Error[index], ]
+        data <- data %>% select(-c(Error))
+        rownames(data) <- data$ID
+        data$ID <- NULL
+        htmltools::div(style = "padding: 1rem",
+          reactable(data, outlined = TRUE, defaultColDef = colDef(minWidth = 120, html = TRUE, sortable = FALSE, resizable = FALSE, na = "-"), rownames = TRUE)
+        )
+      })
+
+      showModal(
+        modalDialog(
+          size = "xl",
+          title = error$title,
+          tags$p("One or more rows had invalid or missing data. See the errors below and expand them to see which rows caused this error."),
+          tags$p("Press the button below to download your file with annotations"),
+          downloadButton("ErrorFileDownload"),
+          tags$hr(),
+          renderReactable({ df }),
+          footer = modalButton("Exit")
+        )
+      )
+    }
+
     rv$error <- NULL
   })
 
   observeEvent(input$Exit, ignoreInit = TRUE, {
-    error$title = ""
-    error$message = ""
-    error$table = NULL
+    error$title <- ""
+    error$message <- ""
+    error$type <- ""
+    error$table <- NULL
     rv$error <- NULL
+    rv$user_file_error_annotated <- NULL
     removeModal()
   })
 
-
   # Download a complete upload template
   observe({
-
     storage_type <- switch(
       input$UploadSampleType,
       "1" = "micronix",
@@ -104,6 +151,8 @@ AppUploadSamples <- function(session, input, output, database) {
     formatting_error = function(e) {
       message("Caught formatting error")
       print(e$df)
+
+      error$type <- "formatting"
 
       ## Read File Specification File
       file_specs_json <- rjson::fromJSON(file = system.file(
@@ -150,16 +199,31 @@ AppUploadSamples <- function(session, input, output, database) {
       }
     },
     validation_error = function(e) {
+
       message("Caught validation error")
       
       html<-paste0("<font color='red'>", paste0(dataset$name, ": ", e$message), "</font>")
       shinyjs::html(id = "UploadOutputConsole", html = html, add = rv$console_verbatim)
 
-      # rv$error <- TRUE
-      # error$title <- "Validation error"
-      # error$message <- e$message
+      rv$error <- TRUE
+      error$type <- "validation"
+      error$title <- e$message
+      error$table <- e$df
 
       print(e$df)
+
+      # TODO: breakup process csv into three stages(but keep calls in global process csv).
+      # Just download the error data frame for now.
+      rv$user_file_error_annotated <- e$df %>%
+        group_by(ID) %>%
+        mutate(Error = paste(Error, collapse=";")) %>%
+        distinct() %>%
+        dplyr::rename(
+          RowNumber = ID,
+          Errors = Error
+        )
+
+      rv$barcodes <- e$df %>% select()
     },
     error = function(e) {
       print(e)
@@ -228,9 +292,21 @@ AppUploadSamples <- function(session, input, output, database) {
         shinyjs::html(id = "UploadOutputConsole", html = html, add = rv$console_verbatim)
         rv$console_verbatim <- FALSE
 
-        # rv$error <- TRUE
-        # error$title <- "Validation error"
-        # error$message <- e$message
+        rv$error <- TRUE
+        error$type <- "validation"
+        error$title <- e$message
+        error$table <- e$df
+
+        # TODO: just download the error data frame for now
+
+        rv$user_file_error_annotated <- e$df %>%
+          group_by(ID) %>%
+          mutate(Error = paste(Error, collapse=";")) %>%
+          distinct() %>%
+          dplyr::rename(
+            RowNumber = ID,
+            Errors = Error
+          )
 
         print(e$df)
 
@@ -403,7 +479,15 @@ AppUploadSamples <- function(session, input, output, database) {
       ## Shared fields
       sample_type_index <- which(lapply(file_specs_json$shared$sample_type, function(x) x$id) == input$UploadSampleType)
 
-      example_data$required  <- c(required_user_column_names, file_specs_json$shared$upload[['required']])
+      required_user_column_names <- c(required_user_column_names, file_specs_json$shared$upload[['required']])
+      if (input$UploadFileType == "traxcer") {
+        ## Read Configuration File and replace with user override from user preferences
+        config <- yaml::read_yaml(Sys.getenv("SDB_CONFIG"))
+        if (!is.na(config$traxcer_position$override)) {
+          required_user_column_names <- stringr::str_replace(required_user_column_names, config$traxcer_position$default, config$traxcer_position$override)
+        }
+      }
+      example_data$required <- required_user_column_names
       example_data$conditional <- conditional_user_column_names <- c(conditional_user_column_names, file_specs_json$shared$upload[['conditional']])
       optional_user_column_names <- c(optional_user_column_names, file_specs_json$shared$upload[['optional']])
 

@@ -324,6 +324,7 @@ AppMoveSamples <- function(session, input, output, database) {
     b_use_wait_dialog <- FALSE
 
     tryCatch({
+      withCallingHandlers({
         # simple way to add a dialog or not
         b_use_wait_dialog <- nrow(rv$user_file) > 5
 
@@ -342,6 +343,10 @@ AppMoveSamples <- function(session, input, output, database) {
         names(move_file_list) <- unique(rv$user_file$manifest_name)
 
         sampleDB::MoveSamples(sample_type = as.integer(input$MoveSampleType), move_data = move_file_list)
+      },
+      message = function(m) {
+        shinyjs::html(id = "MoveOutputConsole", html = paste0(dataset$name, ": ", m$message), add = rv$console_verbatim)
+      })
     },
     error = function(e) {
       message(e)
@@ -407,7 +412,19 @@ AppMoveSamples <- function(session, input, output, database) {
       message("Unimplemented file specifications for this sample storage type.")
     } else {
       actions <- file_specs_json$file_types[[file_index]]$sample_type[[sample_storage_type_index]]$actions[['move']]
-      example_data$required <- actions[['required']]
+      required_user_column_names <- actions[['required']]
+      if (input$MoveFileType == "traxcer") {
+        ## Read Configuration File and replace with user override from user preferences
+        config <- yaml::read_yaml(Sys.getenv("SDB_CONFIG"))
+        if (!is.na(config$traxcer_position$override)) {
+          required_user_column_names <- stringr::str_replace(
+            required_user_column_names,
+            config$traxcer_position$default,
+            config$traxcer_position$override
+          )
+        }
+      }
+      example_data$required <- required_user_column_names
     }
   })
 

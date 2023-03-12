@@ -27,6 +27,7 @@ UIMoveSamples <- function(){
       
       br(),
       actionButton("CreateNewManifest", label = "Create Container"),
+      hr(),
       #output messages
       verbatimTextOutput("MoveOutputConsole"),
     ),
