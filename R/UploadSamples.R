@@ -1,9 +1,8 @@
-#' Upload EPPIcenter Wetlab Samples to the SampleDB database
+#' Upload Wetlab Samples 
 #'
 #' `UploadSamples()` can be used to upload wetlab samples to the sampleDB database.
-#' Currently the type of wetlab samples supported is only `micronix`. <!---cryovial`, `rdt` and `paper` sample uploads will appear in the next version.-->
 #'
-#' @param sample_type A string specifying the type of samples that are being uploaded Options include: `micronix`, `cryovial`, `rdt` and `paper`
+#' @param sample_type A string specifying the type of samples that are being uploaded Options include: `micronix`, `cryovial` and `dbs`
 #' @param upload_data A dataframe of SampleDB Upload data.\cr
 #' Required `upload_data` columns are:\cr
 #' `position`: the row and column of the sample in the storage housing

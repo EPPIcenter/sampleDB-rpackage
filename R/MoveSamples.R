@@ -1,4 +1,4 @@
-#' Move Wetlab Samples in the EPPIcenter sampleDB database
+#' Move Wetlab Samples
 #'
 #' `MoveSamples()` can be used to move existing wetlab samples from:
 #' 1. Between two (or more) existing containers
@@ -6,13 +6,6 @@
 #'
 #' @param sample_type A string specifying the type of samples that are being moved. Options include: `micronix`, `cryovial`, `rdt` and `paper`
 #' @param move_data A list of SampleDB move dataframes, where the name of each dataframe item is the container that the samples are in after the move.
-#'
-#' The structure of a move file is shown below.
-#'
-#' | position | label |
-#' | ------------- | ----- |
-#' | A0            | xxx1  |
-#' | A1            | xxx2  |
 #'
 #' @examples
 #' \dontrun{
