@@ -48,6 +48,7 @@ UIUploadSamples <- function() {
         tags$h5("Required Fields"),
         tags$p("Below are", tags$strong("required"), "columns that", tags$strong("must"), "be included in your file."),
         reactableOutput("UploadFileExampleRequired"),
+        tags$br(),
         tags$p("Some fields may be included in your file", tags$strong("or"), "can be entered after upload."),
         reactableOutput("UploadFileExampleUserInput"),
         tags$h5("Conditional Fields"),

@@ -515,27 +515,85 @@ AppUploadSamples <- function(session, input, output, database) {
 
   observe({
     output$UploadFileExampleRequired <- renderReactable({
-      mat <- matrix(nrow = 0, ncol = length(example_data$required))
-      colnames(mat) <- example_data$required
-      return(reactable(mat, defaultColDef = colDef(minWidth = 120, html = TRUE, sortable = FALSE, resizable = FALSE)))
+      rt <- NULL
+      if (input$UploadFileType == "na") {
+
+        sample_type_name <- switch(
+          input$UploadSampleType,
+          "1" = "micronix",
+          "2" = "cryovial",
+          "3" = "dbs"
+        )
+        example <- paste(c(sample_type_name, input$UploadFileType), collapse="_")
+        rt <- reactable(eval(as.symbol(example))[, example_data$required], defaultColDef = colDef(minWidth = 120, html = TRUE, sortable = FALSE, resizable = FALSE))
+      } else {
+        mat <- matrix(nrow = 0, ncol = length(example_data$required))
+        colnames(mat) <- example_data$required
+        rt <- reactable(mat, defaultColDef = colDef(minWidth = 120, html = TRUE, sortable = FALSE, resizable = FALSE))
+      }
+
+      return(rt)
     })
 
     output$UploadFileExampleUserInput <- renderReactable({
-      mat <- matrix(nrow = 0, ncol = length(example_data$user_input))
-      colnames(mat) <- example_data$user_input
-      return(reactable(mat, defaultColDef = colDef(minWidth = 120, html = TRUE, sortable = FALSE, resizable = FALSE)))
+      rt <- NULL
+      if (input$UploadFileType == "na") {
+
+        sample_type_name <- switch(
+          input$UploadSampleType,
+          "1" = "micronix",
+          "2" = "cryovial",
+          "3" = "dbs"
+        )
+
+        example <- paste(c(sample_type_name, input$UploadFileType), collapse="_")
+        rt <- reactable(eval(as.symbol(example)) %>% select(example_data$user_input), defaultColDef = colDef(minWidth = 120, html = TRUE, sortable = FALSE, resizable = FALSE))
+      } else {
+        mat <- matrix(nrow = 0, ncol = length(example_data$user_input))
+        colnames(mat) <- example_data$user_input
+        rt <- reactable(mat, defaultColDef = colDef(minWidth = 120, html = TRUE, sortable = FALSE, resizable = FALSE))
+      }
+      return(rt)
     })
 
     output$UploadFileExampleConditional <- renderReactable({
-      mat <- matrix(nrow = 0, ncol = length(example_data$conditional))
-      colnames(mat) <- example_data$conditional
-      return(reactable(mat, defaultColDef = colDef(minWidth = 120, html = TRUE, sortable = FALSE, resizable = FALSE)))
+      rt <- NULL
+      if (input$UploadFileType == "na") {
+
+        sample_type_name <- switch(
+          input$UploadSampleType,
+          "1" = "micronix",
+          "2" = "cryovial",
+          "3" = "dbs"
+        )
+        example <- paste(c(sample_type_name, input$UploadFileType), collapse="_")
+        rt <- reactable(eval(as.symbol(example)) %>% select(example_data$conditional), defaultColDef = colDef(minWidth = 120, html = TRUE, sortable = FALSE, resizable = FALSE))
+      } else {
+        mat <- matrix(nrow = 0, ncol = length(example_data$conditional))
+        colnames(mat) <- example_data$conditional
+        rt <- reactable(mat, defaultColDef = colDef(minWidth = 120, html = TRUE, sortable = FALSE, resizable = FALSE))
+      }
+      return(rt)
     })
 
     output$UploadFileExampleOptional <- renderReactable({
-      mat <- matrix(nrow = 0, ncol = length(example_data$optional))
-      colnames(mat) <- example_data$optional
-      return(reactable(mat, defaultColDef = colDef(minWidth = 120, html = TRUE, sortable = FALSE, resizable = FALSE)))
+      rt <- NULL
+      if (input$UploadFileType == "na") {
+
+        sample_type_name <- switch(
+          input$UploadSampleType,
+          "1" = "micronix",
+          "2" = "cryovial",
+          "3" = "dbs"
+        )
+        example <- paste(c(sample_type_name, input$UploadFileType), collapse="_")
+        rt <- reactable(eval(as.symbol(example)) %>% select(example_data$optional), defaultColDef = colDef(minWidth = 120, html = TRUE, sortable = FALSE, resizable = FALSE))
+      } else {
+        mat <- matrix(nrow = 0, ncol = length(example_data$optional))
+        colnames(mat) <- example_data$optional
+        rt <- reactable(mat, defaultColDef = colDef(minWidth = 120, html = TRUE, sortable = FALSE, resizable = FALSE))
+      }
+      return(rt)
     })
 
     cols <- c(
