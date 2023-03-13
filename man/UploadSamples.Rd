@@ -2,7 +2,7 @@
 % Please edit documentation in R/UploadSamples.R
 \name{UploadSamples}
 \alias{UploadSamples}
-\title{Upload EPPIcenter Wetlab Samples to the SampleDB database}
+\title{Upload Wetlab Samples}
 \usage{
 UploadSamples(sample_type_id, upload_data)
 }
@@ -29,7 +29,7 @@ Required \code{upload_data} columns are:\cr
    A1 \tab xxx2 \tab subject_2 \tab PLASMA \tab KAM06 \tab 2022-04-11 \cr
 }}
 
-\item{sample_type}{A string specifying the type of samples that are being uploaded Options include: \code{micronix}, \code{cryovial}, \code{rdt} and \code{paper}}
+\item{sample_type}{A string specifying the type of samples that are being uploaded Options include: \code{micronix}, \code{cryovial} and \code{dbs}}
 
 \item{container_name}{A string specifying the name of the container the samples are in. Names must be unique within each sample type.}
 
@@ -42,7 +42,6 @@ If the freezer_address type is \verb{minus twenty} then \code{level_I} and \code
 }
 \description{
 \code{UploadSamples()} can be used to upload wetlab samples to the sampleDB database.
-Currently the type of wetlab samples supported is only \code{micronix}. \if{html}{\out{<!---cryovial`, `rdt` and `paper` sample uploads will appear in the next version.-->}}
 }
 \examples{
 \dontrun{
