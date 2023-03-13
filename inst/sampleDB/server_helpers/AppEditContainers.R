@@ -78,7 +78,7 @@ EditWetlabContainers <- function(session, input, database, output){
         input$ContainerSampleType,
         "1" = "Shelf Name", 
         "2" = "Rack Number",
-        "3" = "To Be Implemented"
+        "3" = "Shelf Name"
       )
     )
 
@@ -89,7 +89,7 @@ EditWetlabContainers <- function(session, input, database, output){
         input$ContainerSampleType,
         "1" = "Basket Name",
         "2" = "Rack Position",
-        "3" = "To Be Implemented"
+        "3" = "Shelf Position"
       )
     )
 

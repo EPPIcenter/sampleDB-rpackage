@@ -69,18 +69,24 @@ AppUploadSamples <- function(session, input, output, database) {
       )
     } else if (error$type == "validation") {
 
-      errors <- unique(error$table[, c("Error")])
-      errors <- data.frame(errors)
-      colnames(errors) <- "Error"
-      df <- reactable(errors, details = function(index) {
-        data <- error$table[error$table$Error == errors$Error[index], ]
-        data <- data %>% select(-c(Error))
-        rownames(data) <- data$ID
-        data$ID <- NULL
-        htmltools::div(style = "padding: 1rem",
-          reactable(data, outlined = TRUE, defaultColDef = colDef(minWidth = 120, html = TRUE, sortable = FALSE, resizable = FALSE, na = "-"), rownames = TRUE)
+      df <- reactable(
+        error$table,
+        groupBy = "Error",
+        columns = list(
+          Error = colDef(sticky = "left", minWidth = 160),
+          RowNumber = colDef(sticky = "left")
+        ),
+        paginateSubRows = TRUE,
+        outlined = TRUE, 
+        defaultColDef = colDef(
+          align = "center",
+          minWidth = 120,
+          html = TRUE, 
+          sortable = FALSE, 
+          resizable = FALSE, 
+          na = "-"
         )
-      })
+      )
 
       showModal(
         modalDialog(
@@ -215,11 +221,10 @@ AppUploadSamples <- function(session, input, output, database) {
       # TODO: breakup process csv into three stages(but keep calls in global process csv).
       # Just download the error data frame for now.
       rv$user_file_error_annotated <- e$df %>%
-        group_by(ID) %>%
+        group_by(RowNumber) %>%
         mutate(Error = paste(Error, collapse=";")) %>%
         distinct() %>%
         dplyr::rename(
-          RowNumber = ID,
           Errors = Error
         )
 
@@ -300,16 +305,23 @@ AppUploadSamples <- function(session, input, output, database) {
         # TODO: just download the error data frame for now
 
         rv$user_file_error_annotated <- e$df %>%
-          group_by(ID) %>%
+          group_by(RowNumber) %>%
           mutate(Error = paste(Error, collapse=";")) %>%
           distinct() %>%
           dplyr::rename(
-            RowNumber = ID,
             Errors = Error
           )
 
         print(e$df)
 
+      },
+      formatting_error = function(e) {
+        message("Caught formatting error")
+        rv$error <- TRUE
+        early_stop <<- TRUE
+        error$title = "Invalid File Detected"
+        error$message = e$message
+        error$table = e$df
       },
       error = function(e) {
         early_stop <<- TRUE

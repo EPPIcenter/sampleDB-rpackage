@@ -212,11 +212,11 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
 
   # include a row number column to let users know where problems are occuring. this should be done here,
   # after the correct columns are found and chosen
-  user_file <- dplyr::mutate(user_file, ID = row_number())
+  user_file <- dplyr::mutate(user_file, RowNumber = row_number())
   if (user_action %in% "upload") {
-    user_file <- select(user_file, ID, all_of(required_user_column_names), contains(conditional_user_column_names), contains(optional_user_column_names))
+    user_file <- select(user_file, RowNumber, all_of(required_user_column_names), contains(conditional_user_column_names), contains(optional_user_column_names))
   } else if (user_action %in% "move") {
-    user_file <- select(user_file, ID, all_of(required_user_column_names))
+    user_file <- select(user_file, RowNumber, all_of(required_user_column_names))
   }
 
   ## use this chunk to validate conditional parameters
@@ -237,7 +237,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
 
   ## pass the row id to link back to the actual user file, so that
   # we can inform the user if there is an issue with one of their rows
-  processed_file$ID <- user_file$ID
+  processed_file$RowNumber <- user_file$RowNumber
 
   if (user_action %in% c("upload", "move")) {
 
@@ -246,7 +246,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
       processed_file$barcode <- user_file$Barcode
       processed_file$position <- sprintf("%s%02d", user_file$Row, as.integer(user_file$Column))
     } else if (sample_storage_type == 1 && file_type == "traxcer") {
-      processed_file$barcode <- user_file$`Tube ID`
+      processed_file$barcode <- user_file$`Tube RowNumber`
       processed_file$position <- user_file %>% pull(all_of(traxcer_position))
     } else if (sample_storage_type == 1 && file_type == "visionmate") {
       processed_file$barcode <- user_file$TubeCode
@@ -349,7 +349,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
       message("Validation complete.")
     },
     validation_error = function(e) {
-      df <- left_join(e$df, user_file, by = c("ID")) %>%
+      df <- left_join(e$df, user_file, by = c("RowNumber")) %>%
         select("error", colnames(user_file)) %>%
         dplyr::rename(Error = error)
 
@@ -374,6 +374,10 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
         "2" = c(
           "position",
           "barcode",
+          "manifest_name"
+        ),
+        "3" = c(
+          "position",
           "manifest_name"
         )
       )
@@ -421,7 +425,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
       }
 
       ## broad sweep check if missing any data in required fields
-      df <- formatted_csv[rowSums(is.na(formatted_csv[, requires_data])) > 0, ] %>% select(ID)
+      df <- formatted_csv[rowSums(is.na(formatted_csv[, requires_data])) > 0, ] %>% select(RowNumber)
       errdf <- .maybe_add_errdf(errdf, df, "Rows found with missing data")
 
       ## Deeper validation using database
@@ -451,43 +455,48 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
         df <- tbl(con, "formatted_csv") %>%
           left_join(tbl(con, container_tables[["manifest"]]) %>% dplyr::rename(manifest_barcode = barcode), by = c("manifest_name" = "name")) %>%
           filter(is.na(id)) %>%
-          select(ID) %>%
+          select(RowNumber) %>%
           distinct() %>%
           collect()
 
         errdf <- .maybe_add_errdf(errdf, df, "Container not found")
 
+        ## only micronix and cryovial have barcodes (right now)
+        if (sample_storage_type %in% c(1,2)) {
+          df <- tbl(con, "formatted_csv") %>%
+            inner_join(tbl(con, container_tables[["container_class"]]) %>%
+              dplyr::rename(container_position = position), by = c("barcode")) %>%
+            filter(is.na(id)) %>%
+            select(RowNumber) %>%
+            distinct() %>%
+            collect()
 
-        df <- tbl(con, "formatted_csv") %>%
-          inner_join(tbl(con, container_tables[["container_class"]]) %>%
-            dplyr::rename(container_position = position), by = c("barcode")) %>%
-          filter(is.na(id)) %>%
-          select(ID) %>%
-          distinct() %>%
-          collect()
-
-        errdf <- .maybe_add_errdf(errdf, df, "Barcodes not found in the database")
+          errdf <- .maybe_add_errdf(errdf, df, "Barcodes not found in the database")
+        }
       }
 
       if (user_action == "upload") {
 
         ## check if the barcodes already exist
-        df <- tbl(con, "formatted_csv") %>%
-          inner_join(tbl(con, container_tables[["container_class"]]) %>%
-            dplyr::rename(container_position = position), by = c("barcode")) %>%
-          filter(!is.na(id)) %>%
-          select(ID) %>%
-          distinct() %>%
-          collect()
+        ## only micronix and cryovial have barcodes (right now)
+        if (sample_storage_type %in% c(1,2)) {
+          df <- tbl(con, "formatted_csv") %>%
+            inner_join(tbl(con, container_tables[["container_class"]]) %>%
+              dplyr::rename(container_position = position), by = c("barcode")) %>%
+            filter(!is.na(id)) %>%
+            select(RowNumber) %>%
+            distinct() %>%
+            collect()
 
-        errdf <- .maybe_add_errdf(errdf, df, "Barcodes already exist in the database")
+          errdf <- .maybe_add_errdf(errdf, df, "Barcodes already exist in the database")
+        }
 
         ## Check the references
 
         df <- tbl(con, "formatted_csv") %>%
           left_join(tbl(con, "study"), by = c("study_short_code" = "short_code")) %>%
           filter(is.na(id)) %>%
-          select(ID) %>%
+          select(RowNumber) %>%
           distinct() %>%
           collect()
 
@@ -496,7 +505,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
         df <- tbl(con, "formatted_csv") %>%
           left_join(tbl(con, "specimen_type"), by = c("specimen_type" = "name")) %>%
           filter(is.na(id)) %>%
-          select(ID) %>%
+          select(RowNumber) %>%
           distinct() %>%
           collect()
 
@@ -506,7 +515,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
           left_join(tbl(con, "location") %>%
             dplyr::rename(location_id = id), by = c('name', 'level_I', 'level_II')) %>%
           filter(is.na(location_id)) %>%
-          select(ID) %>%
+          select(RowNumber) %>%
           distinct() %>%
           collect()
 
@@ -517,26 +526,29 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
       ## Validation shared by more than one action
       if (user_action %in% c("upload", "move")) {
 
-        df <- tbl(con, "storage_container") %>%
-          select(status_id, id) %>%
-          filter(status_id == 1) %>%
-          inner_join(tbl(con, container_tables[["container_class"]]) %>% dplyr::rename(container_class_barcode = barcode), by = c("id" = "id")) %>%
-          inner_join(tbl(con, container_tables[["manifest"]]) %>%
-                         dplyr::rename(
-                             manifest_name = name,
-                             manifest_barcode = barcode
-                         ), by = c("manifest_id" = "id")) %>%
-          collect() %>%
-          inner_join(formatted_csv, by = c("manifest_name", "position", "manifest_barcode")) %>%
-          select(ID)
+        ## only micronix and cryovial have barcodes (right now)
+        if (sample_storage_type %in% c(1,2)) {
+          df <- tbl(con, "storage_container") %>%
+            select(status_id, id) %>%
+            filter(status_id == 1) %>%
+            inner_join(tbl(con, container_tables[["container_class"]]) %>% dplyr::rename(container_class_barcode = barcode), by = c("id" = "id")) %>%
+            inner_join(tbl(con, container_tables[["manifest"]]) %>%
+                           dplyr::rename(
+                               manifest_name = name,
+                               manifest_barcode = barcode
+                           ), by = c("manifest_id" = "id")) %>%
+            collect() %>%
+            inner_join(formatted_csv, by = c("manifest_name", "position", "manifest_barcode")) %>%
+            select(RowNumber)
 
-        action <- switch(
-          user_action,
-          "move" = "Moving",
-          "upload" = "Uploading"
-        )
+          action <- switch(
+            user_action,
+            "move" = "Moving",
+            "upload" = "Uploading"
+          )
 
-        errdf <- .maybe_add_errdf(errdf, df, paste0(action, " sample to well location that already has an active sample"))
+          errdf <- .maybe_add_errdf(errdf, df, paste0(action, " sample to well location that already has an active sample"))
+        }
       }
     },
     warning = function(w) {

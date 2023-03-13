@@ -55,7 +55,7 @@ SearchWetlabSamples <- function(session, input, database, output, DelArch = FALS
       input$SearchBySampleType,
       "1" = "micronix_plate",
       "2" = "cryovial_box",
-      # "3" = "dbs_paper",
+      "3" = "dbs_paper",
       "all" = "All"
     )
 
@@ -64,7 +64,7 @@ SearchWetlabSamples <- function(session, input, database, output, DelArch = FALS
     if (manifest == "All") {
       manifest_names <- c(manifest_names, DBI::dbReadTable(con, "micronix_plate") %>% pull(name))
       manifest_names <- c(manifest_names, DBI::dbReadTable(con, "cryovial_box") %>% pull(name))
-      # manifest_names <- c(manifest_names, DBI::dbReadTable(con, "dbs_paper"))
+      manifest_names <- c(manifest_names, DBI::dbReadTable(con, "dbs_paper"))
     } else {
       manifest_names <- c(manifest_names, DBI::dbReadTable(con, manifest) %>% pull(name))
     }
@@ -190,7 +190,7 @@ SearchWetlabSamples <- function(session, input, database, output, DelArch = FALS
       input$SearchBySampleType,
       "1" = "micronix_plate",
       "2" = "cryovial_box",
-      # "3" = "dbs_paper",
+      "3" = "dbs_paper",
       "all" = "All"
     )
 
@@ -199,7 +199,7 @@ SearchWetlabSamples <- function(session, input, database, output, DelArch = FALS
     if (manifest == "All") {
       manifest_names <- c(manifest_names, DBI::dbReadTable(con, "micronix_plate") %>% pull(name))
       manifest_names <- c(manifest_names, DBI::dbReadTable(con, "cryovial_box") %>% pull(name))
-      # manifest_names <- c(manifest_names, DBI::dbReadTable(con, "dbs_paper"))
+      manifest_names <- c(manifest_names, DBI::dbReadTable(con, "dbs_paper"))
     } else {
       manifest_names <- c(manifest_names, DBI::dbReadTable(con, manifest) %>% pull(name))
     }

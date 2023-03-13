@@ -72,11 +72,12 @@ SearchSamples <- function(sample_type = NULL, sample_barcode = NULL, container_n
                                                                       tables.database = tables.database)
 
   # RETRIEVE EXTERNAL DATA USING STORAGE CONTAINER IDS
-  aggregated.external_data <- .UseStorageContainerIDToGetExternalData(storage_container_id = aggregated.storage_container_id,
+  aggregated.external_data <- .UseStorageContainerIDToGetExternalData(search.type = sample_type,
+                                                                      storage_container_id = aggregated.storage_container_id,
                                                                       tables.database = tables.database)
 
   # COMBINE INTERNAL AND EXTERNAL DATA TO CREATE SEARCH RESULTS
-  aggregated.results <- .UseInternalAndExternalDataToGetResults(internal_data = aggregated.internal_data,
+  aggregated.results <- .UseInternalAndExternalDataToGetResults(search.type = sample_type, internal_data = aggregated.internal_data,
                                                                  external_data = aggregated.external_data)
 
   # TODO: this is temporary until we get a better
@@ -103,7 +104,7 @@ SearchSamples <- function(sample_type = NULL, sample_barcode = NULL, container_n
                                            results.search_term = aggregated.results)
 
   # BEAUTIFY RESULTS TABLE
-  results.cleaned_and_filtered <- .BeautifyResultsTable(results.filter_and_search = results.filtered)
+  results.cleaned_and_filtered <- .BeautifyResultsTable(search.type = sample_type, results.filter_and_search = results.filtered)
 
 
   # OUTPUT MESSAGE IF NO RESULTS ARE FOUND
@@ -126,6 +127,8 @@ SearchSamples <- function(sample_type = NULL, sample_barcode = NULL, container_n
                           table.specimen_type = sampleDB::CheckTable(database = database, "specimen_type"),
                           table.cryovial_box = sampleDB::CheckTable(database = database, "cryovial_box"),
                           table.cryovial_tube = sampleDB::CheckTable(database = database, "cryovial_tube"),
+                          table.dbs_spot = sampleDB::CheckTable(database = database, "dbs_spot"),
+                          table.dbs_paper = sampleDB::CheckTable(database = database, "dbs_paper"),
                           table.plate = sampleDB::CheckTable(database = database, "micronix_plate"),
                           table.micronix_tube = sampleDB::CheckTable(database = database, "micronix_tube"),
                           table.state = sampleDB::CheckTable(database = database, "state"),
@@ -134,7 +137,6 @@ SearchSamples <- function(sample_type = NULL, sample_barcode = NULL, container_n
 }
 
 .UseSearchTermToAggregateSamples <- function(filters, term.search, tables.database){
-
 
   # USE TYPE TO GET STORAGE CONTAINER ID
   if(term.search == "search.type"){
@@ -172,8 +174,9 @@ SearchSamples <- function(sample_type = NULL, sample_barcode = NULL, container_n
   if(term.search == "search.location"){
     location_ref_id <- .GetLocationID(filters = filters, tables.database = tables.database)
     tubes_id <- filter(tables.database$table.cryovial_tube, manifest_id %in% filter(tables.database$table.cryovial_box, location_id %in% location_ref_id)$id)$id
-    matrix_tubes_id <- filter(tables.database$table.micronix_tube, plate_id %in% filter(tables.database$table.plate, location_id %in% location_ref_id)$id)$id
-    storage_container_id <- filter(tables.database$table.storage_container, id %in% c(tubes_id, rdt_id, paper_id, matrix_tubes_id))$id
+    matrix_tubes_id <- filter(tables.database$table.micronix_tube, manifest_id %in% filter(tables.database$table.plate, location_id %in% location_ref_id)$id)$id
+    dbs_spot_id <- filter(tables.database$table.micronix_tube, manifest_id %in% filter(tables.database$table.dbs_paper, location_id %in% location_ref_id)$id)$id
+    storage_container_id <- filter(tables.database$table.storage_container, id %in% c(tubes_id, dbs_spot_id, matrix_tubes_id))$id
   }
   # USE DATE TO GET STORAGE CONTAINER ID
   if(term.search == "search.date"){
@@ -234,26 +237,42 @@ SearchSamples <- function(sample_type = NULL, sample_barcode = NULL, container_n
   return(internal_data)
 }
 
-.UseStorageContainerIDToGetExternalData <- function(storage_container_id, tables.database){
-  tube_dat <- inner_join(filter(tables.database$table.cryovial_tube, id %in% storage_container_id),
-                         tables.database$table.cryovial_box[, c("id","name", "location_id")],
-                         by = c("manifest_id" = "id")) %>%
-    select(-c(manifest_id)) %>%
-    rename(container_position = position,
-           container_name = name) %>%
-    mutate(type = "Cryovial")
+.UseStorageContainerIDToGetExternalData <- function(search.type, storage_container_id, tables.database){
 
-  micr_dat <- inner_join(filter(tables.database$table.micronix_tube, id %in% storage_container_id),
-                         tables.database$table.plate[, c("id","name", "location_id")],
-                         by = c("manifest_id" = "id")) %>%
-    select(-c(manifest_id)) %>%
-    rename(container_position = position,
-           container_name = name,
-           barcode = barcode) %>%
-    mutate(type = "Micronix")
+  external_data <- NULL
+  if (search.type %in% "3") {
+    dbs_dat <- inner_join(filter(tables.database$table.dbs_spot, id %in% storage_container_id),
+                           tables.database$table.dbs_paper[, c("id","name", "location_id")],
+                           by = c("manifest_id" = "id")) %>%
+      select(-c(manifest_id)) %>%
+      rename(container_position = position,
+             container_name = name) %>%
+      mutate(type = "DBS")
 
-  # add freezer data to external date
-  external_data <- rbind(tube_dat, micr_dat)
+    external_data <- dbs_dat
+  } else {
+
+    tube_dat <- inner_join(filter(tables.database$table.cryovial_tube, id %in% storage_container_id),
+                           tables.database$table.cryovial_box[, c("id","name", "location_id")],
+                           by = c("manifest_id" = "id")) %>%
+      select(-c(manifest_id)) %>%
+      rename(container_position = position,
+             container_name = name) %>%
+      mutate(type = "Cryovial")
+
+    micr_dat <- inner_join(filter(tables.database$table.micronix_tube, id %in% storage_container_id),
+                           tables.database$table.plate[, c("id","name", "location_id")],
+                           by = c("manifest_id" = "id")) %>%
+      select(-c(manifest_id)) %>%
+      rename(container_position = position,
+             container_name = name,
+             barcode = barcode) %>%
+      mutate(type = "Micronix")
+
+    # add freezer data to external date
+    external_data <- rbind(tube_dat, micr_dat)
+
+  }
 
   external_data <- inner_join(external_data, tables.database$table.location, by = c("location_id" = "id")) %>%
     select(-c("created", "last_updated"))
@@ -268,22 +287,42 @@ SearchSamples <- function(sample_type = NULL, sample_barcode = NULL, container_n
   return(external_data)
 }
 
-.UseInternalAndExternalDataToGetResults <- function(internal_data, external_data){
-  search_results <- tibble(storage_container_id = internal_data$storage_container_id,
-                           subject_uid = internal_data$subject_uids %>% as.factor(),
-                           study = internal_data$study_short_code %>% as.factor(),
-                           specimen_type = internal_data$specimen_type_labels %>% as.factor(),
-                           collection_date = lubridate::as_date(internal_data$collection_date),
-                           container_name = external_data$container_name %>% as.factor(),
-                           container_position = external_data$container_position %>% as.factor(),
-                           barcode = external_data$barcode,
-                           type = external_data$type %>% as.factor(),
-                           freezer = external_data$name %>% as.factor(),
-                           freezer_l1 = external_data$level_I %>% as.factor(),
-                           freezer_l2 = external_data$level_II %>% as.factor(),
-                           status = internal_data$status_info %>% as.factor(),
-                           state = internal_data$state_info %>% as.factor(),
-                           comment = internal_data$comment %>% as.character())
+.UseInternalAndExternalDataToGetResults <- function(search.type, internal_data, external_data){
+
+  search_results <- NULL
+  if (search.type == 3) { 
+    search_results <- tibble(storage_container_id = internal_data$storage_container_id,
+                             subject_uid = internal_data$subject_uids %>% as.factor(),
+                             study = internal_data$study_short_code %>% as.factor(),
+                             specimen_type = internal_data$specimen_type_labels %>% as.factor(),
+                             collection_date = lubridate::as_date(internal_data$collection_date),
+                             container_name = external_data$container_name %>% as.factor(),
+                             container_position = external_data$container_position %>% as.factor(),
+                             type = external_data$type %>% as.factor(),
+                             freezer = external_data$name %>% as.factor(),
+                             freezer_l1 = external_data$level_I %>% as.factor(),
+                             freezer_l2 = external_data$level_II %>% as.factor(),
+                             status = internal_data$status_info %>% as.factor(),
+                             state = internal_data$state_info %>% as.factor(),
+                             comment = internal_data$comment %>% as.character())
+  } else {
+
+    search_results <- tibble(storage_container_id = internal_data$storage_container_id,
+                             subject_uid = internal_data$subject_uids %>% as.factor(),
+                             study = internal_data$study_short_code %>% as.factor(),
+                             specimen_type = internal_data$specimen_type_labels %>% as.factor(),
+                             collection_date = lubridate::as_date(internal_data$collection_date),
+                             container_name = external_data$container_name %>% as.factor(),
+                             container_position = external_data$container_position %>% as.factor(),
+                             barcode = external_data$barcode,
+                             type = external_data$type %>% as.factor(),
+                             freezer = external_data$name %>% as.factor(),
+                             freezer_l1 = external_data$level_I %>% as.factor(),
+                             freezer_l2 = external_data$level_II %>% as.factor(),
+                             status = internal_data$status_info %>% as.factor(),
+                             state = internal_data$state_info %>% as.factor(),
+                             comment = internal_data$comment %>% as.character())
+  }
   return(search_results)
 }
 
@@ -345,22 +384,40 @@ SearchSamples <- function(sample_type = NULL, sample_barcode = NULL, container_n
   return(results.search_term[rowSums(search_mat) == ncol(search_mat),])
 }
 
-.BeautifyResultsTable <- function(results.filter_and_search){
-  usr_results <- results.filter_and_search %>%
-    rename(`Sample Type` = type,
-           `Container Name` = container_name,
-           `Container Position` = container_position,
-           `Barcode` = barcode,
-           `Study Subject` = subject_uid,
-           `Study Code` = study,
-           `Specimen Type` = specimen_type,
-           `Storage Location` = freezer,
-           `Storage Location.Level I` = freezer_l1,
-           `Storage Location.Level II` = freezer_l2,
-           `Collected Date` = collection_date,
-           `State` = state,
-           `Status` = status,
-           `Comment` = comment)
+.BeautifyResultsTable <- function(search.type, results.filter_and_search){
+
+  if (search.type == 3) {
+    usr_results <- results.filter_and_search %>%
+      rename(`Sample Type` = type,
+             `Container Name` = container_name,
+             `Container Position` = container_position,
+             `Study Subject` = subject_uid,
+             `Study Code` = study,
+             `Specimen Type` = specimen_type,
+             `Storage Location` = freezer,
+             `Storage Location.Level I` = freezer_l1,
+             `Storage Location.Level II` = freezer_l2,
+             `Collected Date` = collection_date,
+             `State` = state,
+             `Status` = status,
+             `Comment` = comment)
+    } else {
+      usr_results <- results.filter_and_search %>%
+      rename(`Sample Type` = type,
+             `Container Name` = container_name,
+             `Container Position` = container_position,
+             `Barcode` = barcode,
+             `Study Subject` = subject_uid,
+             `Study Code` = study,
+             `Specimen Type` = specimen_type,
+             `Storage Location` = freezer,
+             `Storage Location.Level I` = freezer_l1,
+             `Storage Location.Level II` = freezer_l2,
+             `Collected Date` = collection_date,
+             `State` = state,
+             `Status` = status,
+             `Comment` = comment)  
+    }
 
   return(usr_results)
 }
