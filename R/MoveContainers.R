@@ -39,17 +39,17 @@ MoveContainers <- function(sample_type, container_name, freezer, conn){
                           id = container_id)
     return_message <- paste0("Successfully Moved Container: \n", container_name)
   }
-  else if(sample_type == "3"){
-    container_id <- filter(sampleDB::CheckTableTx(conn = conn, "dbs_paper"), name == container_name)$id
-    if (is_empty(container_id)) {
-      warning("Attempt to move dbs_paper that does not exist (was it deleted after deleting all of it's samples?)")
-    }
-    ModifyTable(conn = conn,
-                          table_name = "dbs_paper",
-                          info_list = list(location_id = eval.location_id),
-                          id = container_id)
-    return_message <- paste0("Successfully Moved Container: \n", container_name)
-  }
+  # else{
+  #   container_id <- filter(sampleDB::CheckTableTx(conn = conn, "bag"), bag_name == container_name)$id
+  #   if (is_empty(container_id)) {
+  #     warning("Attempt to move bag that does not exist (was it deleted after deleting all of it's samples?)")
+  #   }
+  #   ModifyTable(conn = conn,
+  #                         table_name = "bag",
+  #                         info_list = list(location_id = eval.location_id),
+  #                         id = container_id)
+  #   return_message <- paste0("Successfully Moved Container: \n", container_name)
+  # }
 
   message(return_message)
   return(return_message)

@@ -53,27 +53,7 @@ RenameContainers <- function(sample_type, new_container_name, current_container_
                           id = container_id)
     return_message <- paste0("Successfully Renamed Container\nWas: ", current_container_name, "\nNow: ", new_container_name)
   } else if (sample_type == 3) {
-
-    if (new_container_name == "") {
-      warning("Container name cannot be empty!")
-    }
-
-    if (!current_container_name %in% CheckTable(database = database, table = "dbs_paper")$name) {
-      warning("plate matrix not found in the database!")
-    }
-    # stopifnot("ERROR: New Container name is not unique" = sampleDB:::.CheckUploadContainerNameDuplication(database = database, plate_name = new_container_name, only_active = T))
-    
-    if (new_container_name %in% CheckTable(database = database, table = "dbs_paper")$name) {
-      warning("Plate name already exists!")
-    }
-
-    # already check container existance above
-    container_id <- filter(sampleDB::CheckTable("dbs_paper"), name == current_container_name)$id
-    ModifyTable(conn = conn,
-                          table_name = "dbs_paper",
-                          info_list = list(name = new_container_name),
-                          id = container_id)
-    return_message <- paste0("Successfully Renamed Container\nWas: ", current_container_name, "\nNow: ", new_container_name)
+    # need to implement
   } else {
     return_message <- "ERROR: sample type is invalid"
   }
