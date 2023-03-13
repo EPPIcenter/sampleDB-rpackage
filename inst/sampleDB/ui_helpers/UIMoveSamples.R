@@ -36,15 +36,15 @@ UIMoveSamples <- function(){
         tags$h3("Guide to Moving Samples"),
         tags$h4("1. Select a Sample Storage Type"),
         tags$p("Use the", tags$strong("Sample Storage Type"), "section to select the storage type."),
-        tags$h4("2. Create a Sample Move File to Upload"),   
-        tags$p("Some sample storage types will accept multiple file formats, but the", tags$strong("NA"), "file format will always be available. To see what columns are required and optional, you can change the file type in the left hand panel and the tables below will update accordingly."),
+        tags$h4("2. Create a Sample Move File to Upload"),
+        tags$p("Create a file that follows the template below and", tags$strong("name the file the name of the container."), "For example, if you are creating a move file for container named", tags$em("LN2_XXXX"), ", your file should be named", tags$em("LN2_XXXX.csv")),
         tags$p("If you would like to download a template file, press the button below."),
         downloadButton("MoveFileTemplate"),
         tags$h5("Required Fields"),
         tags$p("Below are", tags$strong("required"), "columns that", tags$strong("must"), "be included in your file."),
         reactableOutput("MoveFileExampleRequired"),
         tags$h4(tags$strong("Important")),
-        tags$p("The destination container must exist in the database before moving the file. Use ", tags$strong("Create Container"), " to create an empty container."), 
+        tags$p("The destination container must exist in the database before moving the file. Use ", tags$strong("Create Container"), " to create an empty container.")
     )))
 
   dbDisconnect(con)

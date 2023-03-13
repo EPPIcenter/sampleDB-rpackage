@@ -171,18 +171,6 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
       user_file[location_parameters] <- freezer_address
     }
 
-    if (length(missing_columns) > 0) {
-
-      df.error.formatting <- rbind(
-        df.error.formatting,
-        data.frame(
-              column = missing_columns,
-              reason = "Always Required",
-              trigger = "Not detected in file"
-            )
-        )
-    }
-
     if ("StudyCode" %in% colnames(user_file) && "upload" %in% user_action) {
       tmp <- sampleDB:::CheckTable("study") %>%
         filter(short_code %in% user_file$StudyCode) %>%
@@ -201,6 +189,18 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
       }
     }
   }
+
+  if (length(missing_columns) > 0) {
+    df.error.formatting <- rbind(
+      df.error.formatting,
+      data.frame(
+            column = missing_columns,
+            reason = "Always Required",
+            trigger = "Not detected in file"
+          )
+      )
+  }
+
 
   ## Throw if any of the required columns are missing
   # since the application is retrofitting the already released shiny application, there is only a subset of fields checked. This
@@ -538,7 +538,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
                                manifest_barcode = barcode
                            ), by = c("manifest_id" = "id")) %>%
             collect() %>%
-            inner_join(formatted_csv, by = c("manifest_name", "position", "manifest_barcode")) %>%
+            inner_join(formatted_csv, by = c("manifest_name", "position")) %>%
             select(RowNumber)
 
           action <- switch(

@@ -25,7 +25,6 @@ AppMoveSamples <- function(session, input, output, database) {
   error <- reactiveValues(
     title = "",
     message = "",
-    caption = "",
     table = NULL
   )
 
@@ -133,7 +132,6 @@ AppMoveSamples <- function(session, input, output, database) {
         # note: this should be stale
         error$title = "Error"
         error$message = paste0("Cannot create the container ", input$ManifestID, " because it already exists.")
-        error$caption = ""
         error$table = NULL
     
         rv$error <- TRUE
@@ -160,8 +158,7 @@ AppMoveSamples <- function(session, input, output, database) {
       }
     }, error = function(e) {
       error$title = "Internal Error"
-      error$message = paste0("Cannot create the container ", input$ManifestID, " due to the following error:")
-      error$caption = e$message
+      error$message = e$message
       error$table = NULL
 
       rv$error <- TRUE
@@ -236,37 +233,82 @@ AppMoveSamples <- function(session, input, output, database) {
     DBI::dbDisconnect(con)
   })
 
-  observeEvent(rv$error, ignoreInit = TRUE, {
+  observe({
+    output$ErrorMoveFileDownload <- downloadHandler(
+      filename = function() {
+        paste(paste(c(input$MoveSampleDataSet$name, "annotated"), collapse="_"), '.csv', sep='')
+      },
+      content = function(con) {
+        write.csv(rv$user_move_file_error_annotated, con, row.names = FALSE, quote=FALSE)
+      }
+    )
+  })
 
+  observeEvent(rv$error, ignoreInit = TRUE, {
     message("Running error workflow")
 
-    df <- NULL
-    if (!is.null(error$table)) {
+    df <- error$table
+    modal_size <- "m"
+    if (error$type == "formatting") {
       df <- error$table %>%
         dplyr::rename(
           Column = column, 
           Reason = reason,
-          Trigger = trigger
+          `Triggered By` = trigger
         ) %>%
         reactable(.)
+
+      showModal(
+        modalDialog(
+          size = "m",
+          title = error$title,
+          error$message,
+          tags$hr(),
+          renderReactable({ df }),
+          footer = modalButton("Exit")
+        )
+      )
+    } else if (error$type == "validation") {
+
+      df <- reactable(
+        error$table,
+        groupBy = "Error",
+        columns = list(
+          Error = colDef(sticky = "left", minWidth = 160),
+          RowNumber = colDef(sticky = "left")
+        ),
+        paginateSubRows = TRUE,
+        outlined = TRUE, 
+        defaultColDef = colDef(
+          align = "center",
+          minWidth = 120,
+          html = TRUE, 
+          sortable = FALSE, 
+          resizable = FALSE, 
+          na = "-"
+        )
+      )
+
+      showModal(
+        modalDialog(
+          size = "xl",
+          title = error$title,
+          tags$p("One or more rows had invalid or missing data. See the errors below and expand them to see which rows caused this error."),
+          tags$p("Press the button below to download your file with annotations"),
+          downloadButton("ErrorMoveFileDownload"),
+          tags$hr(),
+          renderReactable({ df }),
+          footer = modalButton("Exit")
+        )
+      )
     }
 
-    showModal(
-      modalDialog(
-        title = error$title,
-        error$message,
-        error$caption,
-        renderReactable({ df }),
-        footer = modalButton("Exit")
-      )
-    )
-    rv$error = NULL
+    rv$error <- NULL
   })
 
   observeEvent(input$Exit, ignoreInit = TRUE, {
     error$title = ""
     error$message = ""
-    error$caption = ""
     error$table = NULL
     rv$error = NULL
     removeModal()
@@ -301,21 +343,46 @@ AppMoveSamples <- function(session, input, output, database) {
       })
     },
     validation_error = function(e) {
-      message("Caught validation error")
-      early_stop <<- TRUE
-      html<-paste0("<font color='red'>", paste(c(dataset$name, e$message, e$values), collapse=": "), "</font>")
-      shinyjs::html(id = "MoveOutputConsole", html = html, add = rv$console_verbatim)
-      rv$console_verbatim <- FALSE
+        message("Caught validation error")
+        early_stop <<- TRUE
+        html<-paste0("<font color='red'>", paste0(dataset$name, ": ", e$message), "</font>")
+        shinyjs::html(id = "MoveOutputConsole", html = html, add = rv$console_verbatim)
+        rv$console_verbatim <- FALSE
 
-      print(e$values)
+        rv$error <- TRUE
+        error$type <- "validation"
+        error$title <- e$message
+        error$table <- e$df
 
-    },
-    error = function(e) {
-      early_stop <<- TRUE
-      html<-paste0("<font color='red'>", paste0(dataset$name, ": ", e$message), "</font>")
-      shinyjs::html(id = "MoveOutputConsole", html = html, add = rv$console_verbatim)
-      rv$console_verbatim <- FALSE
-    })
+        # TODO: just download the error data frame for now
+
+        rv$user_move_file_error_annotated <- e$df %>%
+          group_by(RowNumber) %>%
+          mutate(Error = paste(Error, collapse=";")) %>%
+          distinct() %>%
+          dplyr::rename(
+            Errors = Error
+          )
+
+        print(e$df)
+
+      },
+      formatting_error = function(e) {
+        message("Caught formatting error")
+        rv$error <- TRUE
+        early_stop <<- TRUE
+        error$title = "Invalid File Detected"
+        error$type = "formatting"
+        error$message = e$message
+        error$table = e$df
+      },
+      error = function(e) {
+        early_stop <<- TRUE
+        html<-paste0("<font color='red'>", paste0(dataset$name, ": ", e$message), "</font>")
+        shinyjs::html(id = "MoveOutputConsole", html = html, add = rv$console_verbatim)
+        rv$console_verbatim <- FALSE
+      }
+    )
 
     if (early_stop) { return() }
 
