@@ -20,6 +20,9 @@ function(input, output, session) {
     # for (i in system("bash /sampleDB_backup_generator.sh", intern = TRUE)) message(i)
     Backup_SampleDB(checksum = TRUE) 
 
+    data("micronix_na")
+    data("cryovial_na")
+
     # Set path to .sqlite database
     database <- Sys.getenv("SDB_PATH")
     backups <- list.files(file.path(dirname(database), "backups"))
