@@ -6,7 +6,7 @@ DeleteFromTable <- function(table_name, id, conn) {
 
   #check and see if table is a reference table. if it is make sure the reference being deleted is not in use
   if(table_name == "location"){
-    if(!(id %in% sampleDB::CheckTableTx(conn = conn, "matrix_plate")$location_id)){
+    if(!(id %in% sampleDB::CheckTableTx(conn = conn, "micronix_plate")$location_id)){
       .delete_row(table_name, id, conn)
     }else{
       warning("Storage Location is in use, it cannot be deleted.")

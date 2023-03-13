@@ -13,7 +13,7 @@ UIDriedBloodSpotUpload <- function(){
       textOutput("WarningPaperSpecimenExists"),
       textInput("UploadPaperPlateID", label = "Bag Name"),
       textOutput("WarningPaperUploadContainer"),
-      selectInput("UploadLocationPaperFreezerName", label = "Storage Location", choices = c("", sampleDB::CheckTable(database = database, "location")$location_name)),
+      selectInput("UploadLocationPaperFreezerName", label = "Storage Location", choices = c("", sampleDB::CheckTable(database = database, "location")$name)),
       fluidRow(column(width = 1), column(width = 11, selectInput("UploadLocationPaperLevelI", label = HTML("<h5>Storage Location: Level I</h5>"), width = '100%', choices = NULL))),
       fluidRow(column(width = 1), column(width = 11, selectInput("UploadLocationPaperLevelII", label = HTML("<h5>Storage Location: Level II</h5>"), width = '100%', choices = NULL))),
       hr(),

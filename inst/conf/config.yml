@@ -1,3 +1,4 @@
+version: 1.0.0
 traxcer_position:
   name: "Traxcer Position Override"
   description: "Overrides traxcer column name"

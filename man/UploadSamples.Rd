@@ -4,20 +4,12 @@
 \alias{UploadSamples}
 \title{Upload EPPIcenter Wetlab Samples to the SampleDB database}
 \usage{
-UploadSamples(
-  sample_type,
-  upload_data,
-  container_name,
-  container_barcode = NULL,
-  freezer_address
-)
+UploadSamples(sample_type_id, upload_data)
 }
 \arguments{
-\item{sample_type}{A string specifying the type of samples that are being uploaded Options include: \code{micronix}, \code{cryovial}, \code{rdt} and \code{paper}}
-
 \item{upload_data}{A dataframe of SampleDB Upload data.\cr
 Required \code{upload_data} columns are:\cr
-\code{well_position}: the row and column of the sample in the storage housing
+\code{position}: the row and column of the sample in the storage housing
 \code{label}: the sample's label or barcode
 \code{study_subject_id}: the StudySubject id of for the subject in the cohort (ie study)
 \code{study_short_code}: the code of the study
@@ -25,42 +17,44 @@ Required \code{upload_data} columns are:\cr
 \code{collection_date}: (optional) the date the sample was first collected from the cohort StudySubject
 
 #' \strong{upload data example without collection_date}\tabular{lllll}{
-   well_position \tab label \tab study_subject_id \tab specimen_type \tab study_short_code \cr
+   position \tab label \tab study_subject_id \tab specimen_type \tab study_short_code \cr
    A0 \tab xxx1 \tab subject_1 \tab PLASMA \tab KAM06 \cr
    A1 \tab xxx2 \tab subject_2 \tab PLASMA \tab KAM06 \cr
 }
 
 
 \strong{upload data example with collection_date}\tabular{llllll}{
-   well_position \tab label \tab study_subject_id \tab specimen_type \tab study_short_code \tab collection_data \cr
+   position \tab label \tab study_subject_id \tab specimen_type \tab study_short_code \tab collection_data \cr
    A0 \tab xxx1 \tab subject_1 \tab PLASMA \tab KAM06 \tab 2022-04-11 \cr
    A1 \tab xxx2 \tab subject_2 \tab PLASMA \tab KAM06 \tab 2022-04-11 \cr
 }}
+
+\item{sample_type}{A string specifying the type of samples that are being uploaded Options include: \code{micronix}, \code{cryovial}, \code{rdt} and \code{paper}}
 
 \item{container_name}{A string specifying the name of the container the samples are in. Names must be unique within each sample type.}
 
 \item{container_barcode}{A string specifying the barcode for the container the samples are in. Container barcodes are optional. Barcodes must be unique within each sample type.}
 
 \item{freezer_address}{A list specifying the freezer address used to store samples. \cr
-Required items in the freezer_address list are \code{location_name}, \code{level_I} and \code{level_II}.
+Required items in the freezer_address list are \code{name}, \code{level_I} and \code{level_II}.
 If the freezer_address type is \verb{minus eighty} then \code{level_I} and \code{level_II} items specify the rack and position, respecively.
 If the freezer_address type is \verb{minus twenty} then \code{level_I} and \code{level_II} items specify the shelf and basket, respecively.}
 }
 \description{
 \code{UploadSamples()} can be used to upload wetlab samples to the sampleDB database.
-Currently the type of wetlab samples supported is only \code{micronix}. <!---cryovial`, `rdt` and `paper` sample uploads will appear in the next version.-->
+Currently the type of wetlab samples supported is only \code{micronix}. \if{html}{\out{<!---cryovial`, `rdt` and `paper` sample uploads will appear in the next version.-->}}
 }
 \examples{
 \dontrun{
 UploadSamples(sample_type = "micronix",
-              upload_data = tibble(well_position = c("A0"),
+              upload_data = tibble(position = c("A0"),
                                    label = c("XXX 1"),
                                    study_subject_id = c("1"),
                                    specimen_type = c("PLASMA"),
                                    study_short_code = c("KAM06"),
                                    collection_date = c("2021-04-10")),
                container_name = "test_container",
-               freezer_address = list(location_name = "TBD",
+               freezer_address = list(name = "TBD",
                                       level_I = "TBD",
                                       level_II = "seve's working basket"))
 }

@@ -11,7 +11,7 @@ MoveContainers(sample_type, container_name, freezer, conn)
 
 \item{container_name}{A vector specifying the name of the container being moved}
 
-\item{freezer}{A list specifying the vector \code{location_name}, \code{level_I}, and/or\code{level_II}}
+\item{freezer}{A list specifying the vector \code{name}, \code{level_I}, and/or\code{level_II}}
 }
 \description{
 Move Wetlab Containers in the EPPIcenter SampleDB database

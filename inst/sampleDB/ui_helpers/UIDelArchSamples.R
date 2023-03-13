@@ -1,31 +1,21 @@
+library(RSQLite)
 UIDelArchSamples <- function(){
-  sidebarLayout(
+  con <- DBI::dbConnect(RSQLite::SQLite(), Sys.getenv("SDB_PATH"))
+
+  ui <- sidebarLayout(
     sidebarPanel(
       width = 2,
       # actionButton("verify_delarch", label = NULL),
       HTML("<h4>Delete and Archive Samples</h4>"),
       hr(),
       # fileInput("SearchByLabel", label = HTML("Barcode <h6>Single column named \"barcode\"</h6>")), actionButton("ClearSearchBarcodes", label = "Clear Barcodes"), textOutput("WarnSubjectBarcodeFileColnames"), textOutput("WarnSubjectBarcodeFileColnames2"),
-      radioButtons("DelArchSearchBySampleType","Sample Type", c("All" = "all", "Micronix" = "micronix", "Cryovial" = "cryo", "RDT" = "rdt", "Paper" = "paper"), select = "micronix", inline = T),
+
+      radioButtons("DelArchSearchBySampleType","Sample Type", choices = c("All" = "all", DBI::dbReadTable(con, "sample_type") %>% pull(id, name = "name")), selected = "all", inline = T),
       hr(),
       actionButton("DelArchSearchReset", width = '100%', label = "Reset Search Criteria", style="color: #fff; background-color: #337ab7; border-color: #2e6da4"),
       hr(),
-      conditionalPanel(condition = "input.DelArchSearchBySampleType == \"micronix\"",
-                       conditionalPanel(condition = "input.DelArchSearchByBarcodeType == \"multiple_barcodes\"",
-                                        fileInput("DelArchSearchByBarcode", label = "Barcodes")),
-                       conditionalPanel(condition = "input.DelArchSearchByBarcodeType == \"single_barcode\"",
-                                        textInput("DelArchSearchBySingleBarcode", label = "Barcodes")),
-                       radioButtons("DelArchSearchByBarcodeType", label = NULL, choices = list("Multiple Barcodes" = "multiple_barcodes", "Single Barcode" = "single_barcode"), selected = "multiple_barcodes"),
-                       selectInput("DelArchSearchByPlate", label = "Plate Name", choices = c("", sampleDB::CheckTable(database = database, "matrix_plate")$plate_name))),
-      conditionalPanel(condition = "input.DelArchSearchBySampleType == \"cryo\"",
-                       fileInput("DelArchSearchByCryovialLabels", label = "Sample Labels"),
-                       selectInput("DelArchSearchByBox", label = "Box Name", choices = c("", sampleDB::CheckTable(database = database, "box")$box_name))),
-      conditionalPanel(condition = "input.DelArchSearchBySampleType == \"rdt\"",
-                       fileInput("DelArchSearchByRDTLabels", label = "Sample Labels"),
-                       selectInput("DelArchSearchByRDTBag", label = "Bag Name", choices = c("", sampleDB::CheckTable(database = database, "bag")$bag_name))),
-      conditionalPanel(condition = "input.DelArchSearchBySampleType == \"paper\"",
-                       fileInput("DelArchSearchByPaperLabels", label = "Sample Labels"),
-                       selectInput("DelArchSearchByPaperBag", label = "Bag Name", choices = c("", sampleDB::CheckTable(database = database, "bag")$bag_name))),
+      fileInput("DelArchSearchByBarcode", label = "Sample Barcodes"),
+      selectInput("DelArchSearchByManifest", label = NULL, choices = c()),
       hr(),
       selectizeInput("DelArchSearchByStudy", "Study", choices = c("", sampleDB::CheckTable(database = database, "study")$short_code)),
       conditionalPanel(condition = "input.DelArchSubjectUIDSearchType == \"individual\"",
@@ -33,9 +23,9 @@ UIDelArchSamples <- function(){
       conditionalPanel(condition = "input.DelArchSubjectUIDSearchType == \"multiple\"",
                        fileInput("DelArchSearchBySubjectUIDFile", label = NULL)),
       radioButtons("DelArchSubjectUIDSearchType", label = NULL, choices = list("Single Study Subject" = "individual", "Multiple Study Subjects" = "multiple"), selected = "individual"),
-      selectizeInput("DelArchSearchBySpecimenType", "Specimen Type", choices = c("", sampleDB::CheckTable(database = database, "specimen_type")$label)),
+      selectizeInput("DelArchSearchBySpecimenType", "Specimen Type", choices = c("", sampleDB::CheckTable(database = database, "specimen_type")$name)),
       dateRangeInput("DelArchdateRange", label = "Collection Dates", start = NA, end = NA) %>% suppressWarnings(),
-      selectizeInput("DelArchSearchByLocation", "Storage Location", choices = c("", sampleDB::CheckTable("location")$location_name)),
+      selectizeInput("DelArchSearchByLocation", "Storage Location", choices = c("", sampleDB::CheckTable("location")$name)),
       selectizeInput("DelArchSearchByLevelI", "Storage Location: Level I", choices = c("")),
       selectizeInput("DelArchSearchByLevelII", "Storage Location: Level II", choices = c("")),
       selectizeInput("DelArchSearchByState", "State", choices = c(Global$DefaultStateSearchTerm)),
@@ -58,4 +48,8 @@ UIDelArchSamples <- function(){
       #                  actionButton("yes1", label = "Enter"),
       #                  verbatimTextOutput("yesout")),
     ))
+
+  DBI::dbDisconnect(con)
+
+  return (ui)
 }

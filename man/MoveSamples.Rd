@@ -12,7 +12,7 @@ MoveSamples(sample_type, move_data)
 \item{move_data}{A list of SampleDB move dataframes, where the name of each dataframe item is the container that the samples are in after the move.
 
 The structure of a move file is shown below.\tabular{ll}{
-   well_position \tab label \cr
+   position \tab label \cr
    A0 \tab xxx1 \cr
    A1 \tab xxx2 \cr
 }}

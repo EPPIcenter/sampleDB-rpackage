@@ -10,6 +10,9 @@
 #'
 #' @import dplyr
 #' @import rappdirs
+#' @import yaml
+#' @import glue
+#' @import rjson
 #' @export
 #'
 
@@ -21,6 +24,9 @@ SampleDB_Setup <- function() {
 
   tryCatch(
     expr = {
+
+      expected_versions <- rjson::fromJSON(file = system.file("extdata",
+                                              "versions.json", package = pkgname))
 
       # Config Setup
 
@@ -50,7 +56,7 @@ SampleDB_Setup <- function() {
           x = matrix(data = c("SDB_CONFIG", paste0("\"", config, "\"")),
                               nrow = 1, ncol = 2),
           file = environ_file_path,
-          append = TRUE, 
+          append = TRUE,
           col.names = FALSE,
           sep = "=",
           quote = FALSE,
@@ -72,12 +78,23 @@ SampleDB_Setup <- function() {
       if (!file.exists(config)) {
           file.copy(system.file("conf",
               "config.yml", package = pkgname), config)
-          message(paste(crayon::green(cli::symbol$tick), paste0("Config file installed [", config, "]")))
+          message(paste(crayon::green(cli::symbol$tick), paste0("Configuration file installed [", config, "]")))
       } else {
-          message(paste(crayon::white(cli::symbol$info), paste0("Configuration file exists [", config, "]")))
+          new_config <- yaml::read_yaml(system.file("conf",
+                          "config.yml", package = pkgname))
+
+          current_config <- yaml::read_yaml(Sys.getenv("SDB_CONFIG"))
+
+          if (is.null(current_config$version) || current_config$version < expected_versions$config) {
+            current_config <- .recurse_update_config(current_config, new_config)
+            yaml::write_yaml(current_config, Sys.getenv("SDB_CONFIG"))
+            message(paste(crayon::green(cli::symbol$tick), paste0("Configuration file updated to version ", current_config$version, " [", config, "]")))
+          } else {
+            message(paste(crayon::white(cli::symbol$info), paste0("Configuration file exists [", config, "]")))
+          }
       }
 
-      # Database Setup 
+      # Database Setup
 
       database <- Sys.getenv("SDB_PATH")
 
@@ -111,11 +128,12 @@ SampleDB_Setup <- function() {
           x = matrix(data = c("SDB_PATH", paste0("\"", database, "\"")),
                               nrow = 1, ncol = 2),
           file = environ_file_path,
-          append = TRUE, 
+          append = TRUE,
           col.names = FALSE,
           sep = "=",
           quote = FALSE,
-          row.names = FALSE)
+          row.names = FALSE
+        )
 
         Sys.setenv("SDB_PATH" = database)
         message(paste(crayon::green(cli::symbol$tick),
@@ -130,14 +148,108 @@ SampleDB_Setup <- function() {
       if (!dir.exists(datadir))
         dir.create(datadir)
 
-      # install database file
-      if (!file.exists(database)) {
-          file.copy(system.file("extdata",
-              "sampledb_database.sqlite", package = pkgname), database)
-          Sys.chmod(database, mode = "0777", use_umask = FALSE)
-          message(paste(crayon::green(cli::symbol$tick), paste0("Database installed [", database, "]")))
+      db_directory <- system.file("extdata", "db", package = pkgname)
+      db_versions <- list.dirs(db_directory)
+      if (length(db_versions) < 2) {
+        stop("The upgrade file directory structure is incomplete.")
+      }
+
+      upgrade_scripts <- db_versions[2:length(db_versions)] # remove parent directory in list
+
+      db_versions <- basename(upgrade_scripts)
+
+      stopifnot("no upgrade could be found for the version specified" = expected_versions$database %in% db_versions)
+
+      current_version_idx <- NULL
+      current_db_version <- NA
+
+      # get the current database version
+      if (file.exists(database)) {
+        con <- DBI::dbConnect(SQLite(), database)
+        current_db_version <- DBI::dbGetQuery(con, "SELECT name FROM version ORDER BY name DESC LIMIT 1") %>% pull(name)
+        DBI::dbDisconnect(con)
+      }
+
+      # if the databases match, don't do anything
+      if (!is.na(current_db_version) && current_db_version == expected_versions$database) {
+        message(paste(crayon::white(cli::symbol$info), paste0("Database exists [version=", current_db_version, "]")))
       } else {
-          message(paste(crayon::white(cli::symbol$info), paste0("Database exists [", database, "]")))
+        message(paste(crayon::white(cli::symbol$info), paste0("Installing database [version=", expected_versions$database, "]")))
+
+        new_database <- tempfile()
+
+        tryCatch({
+
+          old_db_con <- NULL
+          # if the database does not exist, create base db in temporary location, otherwise copy the old database to the temp location
+          if (!file.exists(database)) {
+            base_db_sql <- system.file("extdata",
+                                        paste0(file.path("db", db_versions[1], paste(c("sampledb", "database", db_versions[1]), collapse = "_")), ".sql"),
+                                        package = pkgname)
+
+            system2("sqlite3", paste(new_database, "<", base_db_sql))
+            Sys.chmod(new_database, mode = "0777", use_umask = FALSE)
+          } else {
+            
+            ## backup the database 
+            Backup_SampleDB()
+
+            old_db_con <- DBI::dbConnect(SQLite(), database)
+
+            lapply(c("PRAGMA locking_mode = EXCLUSIVE;", "BEGIN EXCLUSIVE;"), function(s) { DBI::dbExecute(old_db_con, s) })
+
+            if (file.exists(database)) {
+              file.copy(database, new_database)
+            }
+          }
+
+          con <- DBI::dbConnect(SQLite(), new_database)
+
+          lapply(c("PRAGMA locking_mode = EXCLUSIVE;", "BEGIN EXCLUSIVE;"), function(s) { DBI::dbExecute(con, s) })
+
+          current_db_version <- DBI::dbGetQuery(con, "SELECT name FROM version ORDER BY name DESC LIMIT 1") %>% pull(name)
+          current_version_idx <- which(current_db_version == db_versions) 
+
+          while (current_db_version != expected_versions$database) {
+
+            upgrade_script <- system.file("extdata",
+              paste0(file.path("db", db_versions[current_version_idx + 1], paste(c("sampledb", "database", db_versions[current_version_idx], db_versions[current_version_idx + 1]), collapse = "_")), ".sql"),
+              package = pkgname)
+
+            sql <- readr::read_lines(upgrade_script) %>%
+              glue::glue_collapse(sep = "\n") %>%
+              glue::glue_sql(.con = con) %>%
+              strsplit(., ';')
+
+            lapply(sql[[1]], function(s) { DBI::dbExecute(con, s) })
+
+            current_version_idx <- current_version_idx + 1
+            current_db_version <- db_versions[current_version_idx]
+          }
+
+          # commit 
+          DBI::dbCommit(con)
+
+          # remove unused pages and close connection to the new database
+          DBI::dbExecute(con, "VACUUM")
+          DBI::dbDisconnect(con)
+
+          # close lock on the old database
+          if (!is.null(old_db_con)) {
+            DBI::dbDisconnect(old_db_con)
+            file.remove(database)
+          }
+          file.copy(new_database, Sys.getenv("SDB_PATH"))
+          message(paste(crayon::green(cli::symbol$tick), paste0("Database upgraded to ", expected_versions$database, " [", database, "]")))
+          Sys.chmod(Sys.getenv("SDB_PATH"), mode = "0777", use_umask = FALSE)
+        },
+        error = function(e) {
+          if (file.exists(new_database))
+            file.remove(new_database)
+
+          DBI::dbDisconnect(con)
+          stop(e$message)
+        })
       }
 
       # create subdirectories
@@ -222,4 +334,35 @@ SampleDB_Setup <- function() {
       message(e)
     }
   )
+}
+
+
+.recurse_update_config <- function(current_config, new_config) {
+
+  for (name in names(new_config)) {
+    new_config[[name]] <- .recurse_update_config(current_config[[name]], new_config[[name]])
+
+    if (is.list(current_config[[name]])) {
+      next
+    }
+
+    if (is.null(current_config[[name]]) || is.null(new_config[[name]])) {
+      next
+    }
+
+    if (is.na(current_config[[name]]) & is.na(new_config[[name]])) {
+      next
+    }
+
+    if (is.na(new_config[[name]]) & !is.na(current_config[[name]])) {
+      new_config[[name]] <- current_config[[name]]
+      next
+    }
+
+    if (new_config[[name]] != current_config[[name]]) {
+      new_config[[name]] <- current_config[[name]]
+    }
+  }
+
+  return(new_config)
 }

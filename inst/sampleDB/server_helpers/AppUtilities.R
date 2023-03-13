@@ -1,38 +1,10 @@
 library(yaml)
 
-# Utility Functions for Main Shiny Functions (e.g. MicronixUpload, MoveWetlabSamples, etc.)
+# Utility Functions for Main Shiny Functions (e.g. MicronixUpload, MoveSamples, etc.)
 
 # Get UI Elements
-GetUIUploadElements <- function(sample_type, msg = NULL){
-  
-  if(sample_type == "micronix"){
-    ui.input <- list(UploadPlateID = "UploadMicronixPlateID",
-                     UploadDataSet = "UploadMicronixDataSet",
-                     MicronixFileType = "MicronixFileType",
-                     ClearForm = "ClearMicronixUploadForm",
-                     UploadFreezerName = "UploadMicronixLocation",
-                     UploadFreezerNameLevelI = "UploadLocationMicronixLevelI",
-                     UploadFreezerNameLevelII = "UploadLocationMicronixLevelII",
-                     UploadReturnMessage1 = "UploadMicronixReturnMessage1",
-                     UploadReturnMessage2 = "UploadMicronixReturnMessage2")
-    ui.output = list(WarningUploadSampleID = "WarningMicronixUploadSampleID",
-                     WarningLogisticalColnames = "WarningMicronixUploadLogisticalColnames",
-                     WarningMetadataColnames = "WarningMicronixUploadMetadataColnames",
-                     WarningUploadSpecimenTypes = "WarningUploadMicronixSpecimenTypes",
-                     WarningUploadInvalidData = "WarningUploadInvalidData",
-                     WarningUploadDateFormat = "WarningMicronixUploadDateFormat",
-                     WarningUploadStudyShortCodes = "WarningUploadMicronixStudyShortCodes",
-                     WarningSpecimenExists = "WarningMicronixSpecimenExists",
-                     WarningUploadContainerName = "WarningMicronixUploadContainerName",
-                     WarningUploadBarcodeRepeats = "WarningMicronixUploadBarcodeRepeats")
-  }
-
-  ui_elements <- list(ui.input = ui.input, ui.output = ui.output)
-  return(ui_elements)
-}
-
 GetUISearchElements <- function(){
-  
+
   ui.input <- list(SearchByLocation = "SearchByLocation",
                    SearchByLevelI = "SearchByLevelI",
                    SearchByLevelII = "SearchByLevelII",
@@ -51,37 +23,38 @@ GetUISearchElements <- function(){
                    SearchByPaperLabels = "SearchByPaperLabels",
                    SearchByPlate = "SearchByPlate",
                    SearchByBox = "SearchByBox",
+                   SearchByManifest = "SearchByManifest",
                    SearchByRDTBag = "SearchByRDTBag",
                    SearchByPaperBag = "SearchByPaperBag",
-                   SearchBySingleBarcode = "SearchBySingleBarcode",
-                   SearchByBarcodeType = "SearchByBarcodeType")
+                   SearchBySingleBarcode = "SearchBySingleBarcode")
   ui.output <- list(SearchResultsTable = "SearchResultsTable",
                     downloadData = "downloadData")
-  
+
   ui_elements <- list(ui.input = ui.input, ui.output = ui.output)
   return(ui_elements)
 }
 
 GetUIMoveElements <- function(sample_type, msg = NULL){
-  
+
   if(sample_type == "micronix"){
     ui.input <-  list(MicronixFileType = "MoveFileType",
                       MoveDataSet = "MoveDataSet",
-                      CreateEmptyMicronixPlateLocation = "CreateEmptyMicronixPlateLocation",
-                      CreateEmptyMicronixPlateLevelI = "CreateEmptyMicronixPlateLevelI",
-                      CreateEmptyMicronixPlateLevelII = "CreateEmptyMicronixPlateLevelII")
+                      CreateEmptyManifestLocation = "CreateEmptyManifestLocation",
+                      CreateEmptyManifestLevelI = "CreateEmptyManifestLevelI",
+                      CreateEmptyManifestLevelII = "CreateEmptyManifestLevelII")
     ui.output <- list(WarningLogisticalColnames = "WarningMoveLogisticalColnames",
                       WarningMoveBarcodesExist = "WarningMoveBarcodesExist")
   }
-  
+
   ui_elements <- list(ui.input = ui.input, ui.output = ui.output)
   return(ui_elements)
 }
 
 GetUIFreezerElements <- function(msg = NULL){
-  
+
   ui.input <- list(AddFreezerName = "AddFreezerName",
                    AddFreezerType = "AddFreezerType",
+                   AddFreezerDesc = "AddFreezerDesc",
                    AddFreezerLevel_I = "AddFreezerLevel_I",
                    AddFreezerLevel_II = "AddFreezerLevel_II",
                    AddFreezerAction = "AddFreezerAction",
@@ -101,13 +74,13 @@ GetUIFreezerElements <- function(msg = NULL){
                    WarningFreezerNameChangeUnique = "WarningFreezerNameChangeUnique",
                    WarningFreezerDeletion = "WarningFreezerDeletion",
                    FreezerReturnMessage = "FreezerReturnMessage")
-  
+
   ui_elements <- list(ui.input = ui.input, ui.output = ui.output)
   return(ui_elements)
 }
 
 GetUISpecimenTypeElements <- function(msg = NULL){
-  
+
   ui.input <- list(AddSpecimenType = "AddSpecimenType",
                    AddSpecimenTypeAction = "AddSpecimenTypeAction",
                    RenameSpecimenType1 = "RenameSpecimenType1",
@@ -119,13 +92,13 @@ GetUISpecimenTypeElements <- function(msg = NULL){
                    WarningChangeSpecimenTypeUnique = "WarningChangeSpecimenTypeUnique",
                    WarningSpecimenTypeDeletion = "WarningSpecimenTypeDeletion",
                    SpecimenReturnMessage = "SpecimenReturnMessage")
-  
+
   ui_elements <- list(ui.input = ui.input, ui.output = ui.output)
   return(ui_elements)
 }
 
 GetUIStudiesElements <- function(msg = NULL){
-  
+
   ui.input <-  list(AddStudyTitle = "AddStudyTitle",
                     AddStudyDescription = "AddStudyDescription",
                     AddStudyLeadPerson = "AddStudyLeadPerson",
@@ -147,13 +120,13 @@ GetUIStudiesElements <- function(msg = NULL){
                     WarningStudyChangeShortCodeUnique = "WarningStudyChangeShortCodeUnique",
                     WarnStudyDeletion = "WarnStudyDeletion",
                     StudyReturnMessage = "StudyReturnMessage")
-  
+
   ui_elements <- list(ui.input = ui.input, ui.output = ui.output)
   return(ui_elements)
 }
 
 GetUIDelArchElements <- function(){
-  
+
   ui.input <- list(SearchByLocation = "DelArchSearchByLocation",
                    SearchByLevelI = "DelArchSearchByLevelI",
                    SearchByLevelII = "DelArchSearchByLevelII",
@@ -174,80 +147,61 @@ GetUIDelArchElements <- function(){
                    SearchByBox = "DelArchSearchByBox",
                    SearchByRDTBag = "DelArchSearchByRDTBag",
                    SearchByPaperBag = "DelArchSearchByPaperBag",
+                   SearchByManifest = "DelArchSearchByManifest",
                    ArchiveAction = "ArchiveAction",
                    DeleteAction = "DeleteAction",
                    DelArchComment = "DelArchComment",
                    DelArchStatus = "DelArchStatus",
                    DelArchVerification = "DelArchVerification",
-                   SearchBySingleBarcode = "DelArchSearchBySingleBarcode",
-                   SearchByBarcodeType = "DelArchSearchByBarcodeType")
+                   SearchBySingleBarcode = "DelArchSearchBySingleBarcode")
   ui.output <- list(SearchResultsTable = "DelArchSearchResultsTable",
                     SelectedRowsTable = "DelArchSearchResultsTable",
                     DelArchMessage = "DelArchMessage")
-  
+
   ui_elements <- list(ui.input = ui.input, ui.output = ui.output)
   return(ui_elements)
 }
 
-SearchFunction <- function(input, output, ui_elements){
-  
+SearchFunction <- function(input, output, ui_elements, user_file){
+
   #set default list.search_results
   list.search_results <- NULL
-  
+
   # get user ui input
-  if(!is.na(input[[ui_elements$ui.input$dateRange]][1]) & !is.na(input[[ui_elements$ui.input$dateRange]][2])){
+  if(!is.null(input[[ui_elements$ui.input$dateRange]]) && !is.na(input[[ui_elements$ui.input$dateRange]][1]) && !is.na(input[[ui_elements$ui.input$dateRange]][2])){
     eval.search.date <- list(date.from = input[[ui_elements$ui.input$dateRange]][1], date.to = input[[ui_elements$ui.input$dateRange]][2])
   }else{
     eval.search.date <- ""
   }
-  
-  search.type <- input[[ui_elements$ui.input$SearchBySampleType]]
-  barcode.search_method <- input[[ui_elements$ui.input$SearchByBarcodeType]]
-  if(barcode.search_method == "multiple_barcodes"){
-    search.label <- list(input[[ui_elements$ui.input$SearchByBarcode]]$datapath, 
-                         input[[ui_elements$ui.input$SearchByCryovialLabels]]$datapath,
-                         input[[ui_elements$ui.input$SearchByRDTLabels]]$datapath,
-                         input[[ui_elements$ui.input$SearchByPaperLabels]]$datapath) %>% 
-      discard(., function(x) is.null(x) | "" %in% x) %>%
-      map(., function(x){if(length(x > 0)){read.csv(x)$Barcode}}) %>%
-      unlist() 
-  }else{
-    individual_barcode <- NULL
-    if(ui_elements$ui.input$SearchBySingleBarcode != ""){
-      individual_barcode <- input[[ui_elements$ui.input$SearchBySingleBarcode]] 
-    }
-    search.label <- list(individual_barcode)
-  }
-  
-  # search.container <- list(micronix.container_name = input[[ui_elements$ui.input$SearchByPlate]],
-  #                          cryovial.container_name = input[[ui_elements$ui.input$SearchByBox]],
-  #                          rdt.container_name = input[[ui_elements$ui.input$SearchByRDTBag]],
-  #                          paper.container_name = input[[ui_elements$ui.input$SearchByPaperBag]]) %>% 
-  #   discard(., function(x) is.null(x) | "" %in% x)
 
+  search.type <- input[[ui_elements$ui.input$SearchBySampleType]]
+  search.label <- ""
+  if (!is.null(user_file)) {
+    search.label <- user_file$barcode
+  }
 
   # TODO
-  search.container <- input[[ui_elements$ui.input$SearchByPlate]]
+  search.container <- input[[ui_elements$ui.input$SearchByManifest]]
 
   search.date <- eval.search.date
   search.status <- input[[ui_elements$ui.input$SearchByStatus]]
   search.state <- input[[ui_elements$ui.input$SearchByState]]
-  search.location <- list(location_name = input[[ui_elements$ui.input$SearchByLocation]],
+  search.location <- list(name = input[[ui_elements$ui.input$SearchByLocation]],
                           level_I = input[[ui_elements$ui.input$SearchByLevelI]],
                           level_II = input[[ui_elements$ui.input$SearchByLevelII]])
   search.specimen_type <- input[[ui_elements$ui.input$SearchBySpecimenType]]
   search.study <- input[[ui_elements$ui.input$SearchByStudy]]
-  
+
   tryCatch(
-    
+
     # search (if a single StudySubject is searched for)
     if(input[[ui_elements$ui.input$SubjectUIDSearchType]] == "individual"){
       search.study_subject <- input[[ui_elements$ui.input$SearchBySubjectUID]]
-      list.search_results <- sampleDB::SearchSamples(sample_type = search.type, sample_label = search.label, container_name = search.container, study_subject = search.study_subject,
+      list.search_results <- sampleDB::SearchSamples(sample_type = search.type, sample_barcode = search.label, container_name = search.container, study_subject = search.study_subject,
                                                      specimen_type = search.specimen_type, study = search.study, collection_dates = search.date, status = search.status,
                                                      state = search.state, freezer = search.location, return_sample_ids = T) %>% suppressWarnings()
     }else{
-      
+
       # search (if a file of StudySubjects is searched for)
       search_multiple_file <- read.csv(input[[ui_elements$ui.input$SearchBySubjectUIDFile]]$datapath)
 
@@ -255,7 +209,7 @@ SearchFunction <- function(input, output, ui_elements){
       if (typeof(search_multiple_file) != "list") {
         empty_columns <- colSums(is.na(search_multiple_file) | search_multiple_file == "") == nrow(search_multiple_file)
         search_multiple_file <- search_multiple_file[, !empty_columns]
-        search_multiple_file <- search_multiple_file[!apply(search_multiple_file, 1, function(row) all(row == "")), ] 
+        search_multiple_file <- search_multiple_file[!apply(search_multiple_file, 1, function(row) all(row == "")), ]
       }
 
       search.study_subject <- search_multiple_file$StudySubject
@@ -268,10 +222,10 @@ SearchFunction <- function(input, output, ui_elements){
       }
 
 
-      list.search_results <- sampleDB::SearchSamples(sample_type = search.type, sample_label = search.label, container_name = search.container, study_subject = search.study_subject,
+      list.search_results <- sampleDB::SearchSamples(sample_type = search.type, sample_barcode = search.label, container_name = search.container, study_subject = search.study_subject,
                                                      specimen_type = search.specimen_type, study = search.study, collection_dates = search.date, status = search.status,
                                                      state = search.state, freezer = search.location, return_sample_ids = T) %>% suppressWarnings()
-      
+
     },
     error=function(e){}
   )
@@ -279,148 +233,16 @@ SearchFunction <- function(input, output, ui_elements){
   return(list.search_results)
 }
 
-# Perform Checks
-CheckLogisticalColnamesOfUserProvidedMicronixFile <- function(input, output, users_upload_file, ui_elements){
-  
-  #read in user uploaded data file
-  message("Checking colnames of user provided file...")
-  
-  #validate colnames of user provided file format and print user messages if file is not valid
-  upload_file_type <- input[[ui_elements$ui.input$MicronixFileType]]
-  out <- sampleDB:::.CheckLogisticalColnamesOfUserProvidedMicronixFile(upload_file_type = upload_file_type, users_upload_file = users_upload_file)
-
-  if(upload_file_type == "visionmate"){
-    validate(need(out, "Malformed Logistical Colnames in Uploaded File (Valid VisionMate Column Names: LocationRow, LocationColumn, TubeCode)"))
-  }
-  else if(upload_file_type == "traxcer"){
-
-    config <- yaml::read_yaml(Sys.getenv("SDB_CONFIG"))
-    traxcer_position <- ifelse(
-      is.na(config$traxcer_position$override),
-      config$traxcer_position$default,
-      config$traxcer_position$override
-    )
-
-    validate(need(out, paste0("Malformed Logistical Colnames in Uploaded File (Valid Traxcer Column Names: ", traxcer_position, ", Tube ID, [Rack ID]")))
-  }
-  else{
-    validate(need(out, "Malformed Logistical Colnames in Uploaded File (Valid Column Names: Barcode, Row, Column)"))
-  }
-
-  return(out)
-}
-
-CheckMetadataColnamesOfUserProvidedMicronixFile <- function(input, output, users_upload_file, ui_elements){
-  
-  #read in user uploaded data file
-  message("Checking colnames of user provided file...")
-  
-  #validate colnames of user provided file format and print user messages if file is not valid
-  upload_file_type <- input[[ui_elements$ui.input$MicronixFileType]]
-  out <- sampleDB:::.CheckMetadataColnamesOfUserProvidedMicronixFile(users_upload_file = users_upload_file, upload_file_type = upload_file_type)
-
-  validate(need(out, "ERROR:\nMalformed Metadata Colnames (Valid Metadata Column Names: StudyCode, StudySubject, SpecimenType, [CollectionDate])"))
-  return(out)
-}
-
-CheckFormattedUploadFile <- function(output, database, formatted_upload_file, ui_elements){
-  
-  message("Checking formatted data in file...")
-  # check valid specimen type
-
-  # check that there are no empty cells besides collection_date (checked later) and comment (may or may not exist)
-  df_invalid <- formatted_upload_file[rowSums(is.na(formatted_upload_file[!colnames(formatted_upload_file) %in% c("collection_date", "comment")])) > 0, ]
-
-  if (nrow(df_invalid) > 0) {
-    errmsg <- paste("Missing data for following sample barcode(s):", paste(df_invalid$Barcode, collapse = " "))
-    warning(errmsg)
-  }
-
-  out <- sampleDB:::.CheckUploadSpecimenTypes(database = database, formatted_upload_file = formatted_upload_file)
-  if (!out) {
-    warning("Specimen Type Not found... Consider creating a new specimen type")
-  }
-  
-  # check study short codes
-  out <- sampleDB:::.CheckUploadStudyShortCodes(database = database, formatted_upload_file = formatted_upload_file)
-  if (!out) {
-    warning("Study Short Code Not found... Consider creating a new study")
-  }
-  
-  # check date format
-  out <- sampleDB:::.CheckUploadDateFormat(database = database, formatted_upload_file = formatted_upload_file)
-  if (!out) {
-    warning("All Collection Dates are Not in YMD format")
-  }
-  
-  # check unique barcodes
-  out <- sampleDB:::.CheckBarcodeIsntInDB(database = database, formatted_upload_file = formatted_upload_file)
-  if (!out$out1) {
-    errmsg <- paste("Unique Barcode Constraint Failed:", paste(out$out2, collapse = " "))
-    warning(errmsg)
-  }    
-
-  # check unique barcodes
-
-  out <- sampleDB:::.CheckBarcodeArentRepeated(database = database, formatted_upload_file = formatted_upload_file)
-  if (!out$out1) {
-    errmsg <- paste("Unique Barcode Constraint Failed:", paste(out$out2, collapse = " "))
-    warning(errmsg)
-  }
-
-  study <- filter(sampleDB::CheckTable(database = database, "study"), short_code %in% formatted_upload_file$study_short_code)
-  tmp <- formatted_upload_file %>%
-    inner_join(study, by = c("study_short_code" = "short_code"))
-
-  # check this first
-  if (!"collection_date" %in% colnames(formatted_upload_file) && nrow(filter(tmp, is_longitudinal == 1)) > 0) {
-    warning("Collection date is required for samples of longitudinal studies.")
-  } else if ("collection_date" %in% colnames(formatted_upload_file)) {
-    df_invalid <- filter(tmp, is_longitudinal == 1 & is.na(collection_date))
-    if (nrow(df_invalid) > 0) {
-      errmsg <- paste("Missing collection date for following sample barcode(s):", paste(df_invalid$label, collapse = " "))
-      warning(errmsg)
-    }    
-  }
-}
-
-CheckFormattedMoveFile <- function(output, database, sample_type, formatted_move_file_list){
-  #get ui elements
-  ui_elements <- GetUIMoveElements(sample_type)
-  message("Checking formatted data in file...")
-  
-  # check valid specimen type
-  output[[ui_elements$ui.output$WarningMoveBarcodesExist]] <- renderText({
-    out <- sampleDB:::.CheckBarcodesInDatabase(database = database, formatted_move_file_list = formatted_move_file_list)
-    validate(need(out$out1, c("ERROR:\nAll barcodes are not in the database\n", paste("Plate name:", names(out$out2), 
-                                                                                      "\nBarcode not in database:", "\n", gsub("\\,", "\n", out$out2) %>% gsub("[\"\\(\\c\\)]","", .), "\n"))))
-  })
-}
-
-CheckPlates <- function(database, sample_type, input, output){
-  
-  #get ui elements
-  ui_elements <- GetUIUploadElements(sample_type)
-  message("Checking user provided plate names...")
-  
-  # check unique plate names
-  # output[[ui_elements$ui.output$WarningUploadContainerName]] <- renderText({
-  #   plate_name <- input[[ui_elements$ui.input$UploadPlateID]]
-  #   out <- sampleDB:::.CheckUploadContainerNameDuplication(database = database,plate_name = plate_name, only_active = T)
-  #   validate(need(out, "ERROR:\nPlate name is not unique"))
-  # })
-}
-
 FreezerChangesChecks <- function(input, database, output, ui_elements){
   # warn if freezer name is redundant
   output[[ui_elements$ui.output$WarningFreezerNameAddUnique]] <- renderText({
-    out <- sampleDB:::.CheckFreezerNameIsUnique(input, database, 
+    out <- sampleDB:::.CheckFreezerNameIsUnique(input, database,
                                      freezer_address = list(freezer_name = input[[ui_elements$ui.input$AddFreezerName]],
                                                             freezer_levelI = input[[ui_elements$ui.input$AddFreezerLevel_I]],
                                                             freezer_levelII = input[[ui_elements$ui.input$AddFreezerLevel_II]]))
     validate(need(out, "ERROR:\nFreezer address must be unique"))
   })
-  
+
   # warn if freezer name is redundant
   output[[ui_elements$ui.output$WarningFreezerNameChangeUnique]] <- renderText({
     out <- sampleDB:::.CheckFreezerNameIsUnique(input, database,
@@ -429,7 +251,7 @@ FreezerChangesChecks <- function(input, database, output, ui_elements){
                                                         freezer_levelII = input[[ui_elements$ui.input$RenameFreezerLevelII2]]))
     validate(need(out, "ERROR:\nFreezer address must be unique"))
   })
-  
+
   #warn deletion of freezer in use
   output$WarningFreezerDeletion <- renderText({
     out <- sampleDB:::.CheckFreezerDeletion(input, database,
@@ -446,13 +268,13 @@ SpecimenTypeChangesChecks <- function(input, database, output, ui_elements){
     out <- sampleDB:::.CheckSpecimenTypeUnique(input, database, specimen_type = input[[ui_elements$ui.input$AddSpecimenType]])
     validate(need(out, "ERROR:\nSpecimen type is not unique"))
   })
-  
+
   # warn if specimen type is redundant
   output[[ui_elements$ui.output$WarningChangeSpecimenTypeUnique]] <- renderText({
     out <- sampleDB:::.CheckSpecimenTypeUnique(input, database, specimen_type = input[[ui_elements$ui.input$RenameSpecimenType2]])
     validate(need(out, "ERROR:\nSpecimen type is not unique"))
   })
-  
+
   #warn deletion of specimen type in use
   output[[ui_elements$ui.output$WarningSpecimenTypeDeletion]] <- renderText({
     out <- sampleDB:::.CheckSpecimenTypeDeletion(input, database , specimen_type = input[[ui_elements$ui.input$DeleteSpecimenType]])
@@ -460,31 +282,31 @@ SpecimenTypeChangesChecks <- function(input, database, output, ui_elements){
   })
 }
 
-StudyChangesChecks <- function(input, database, output, ui_elements){
+StudyChangesChecks <- function(input, database, output, ui_elements) {
   #warn against study title duplication
   output[[ui_elements$ui.output$WarningStudyAddTitleUnique]] <- renderText({
     out <- sampleDB:::.CheckStudyTitleIsUnique(study_title = input[[ui_elements$ui.input$AddStudyTitle]], input = input, database = database)
     validate(need(out, "ERROR:\nStudy title is not unique"))
   })
-  
+
   #warn against study title duplication
   output[[ui_elements$ui.output$WarningStudyChangeTitleUnique]] <- renderText({
     out <- sampleDB:::.CheckStudyTitleIsUnique(study_title = input[[ui_elements$ui.input$RenameStudyTitle]], input = input, database = database)
     validate(need(out, "ERROR:\nStudy title is not unique"))
   })
-  
+
   #warn against study code duplication
   output[[ui_elements$ui.output$WarningStudyAddShortCodeUnique]] <- renderText({
     out <- sampleDB:::.CheckStudyShortCodeIsUnique(study_short_code = input[[ui_elements$ui.input$AddStudyShortCode]], input = input, database = database)
     validate(need(out, "ERROR:\nStudy code is not unique"))
   })
-  
+
   #warn against study code duplication
   output[[ui_elements$ui.output$WarningStudyChangeShortCodeUnique]] <- renderText({
     out <- sampleDB:::.CheckStudyShortCodeIsUnique(study_short_code = input[[ui_elements$ui.input$RenameStudyShortCode]], input = input, database = database)
     validate(need(out, "ERROR:\nStudy code is not unique"))
   })
-  
+
   #warn against study code deletion
   output[[ui_elements$ui.output$WarnStudyDeletion]] <- renderText({
     out <- sampleDB:::.CheckStudyDeletion(study_ui = input[[ui_elements$ui.input$DeleteStudyShortCode]], input, database)
@@ -492,147 +314,14 @@ StudyChangesChecks <- function(input, database, output, ui_elements){
   })
 }
 
-# Format Files
-FormatMicronixUploadData <- function(database, input, users_upload_file, ui_elements){
-  
-  #read in validated user provided micronix data file
-  message("Formatting user provided file...")
-
-  upload_file_type <- input[[ui_elements$ui.input$MicronixFileType]]
-  formatted_logistics_upload_file <- .FormatMicronixLogisticalDataUpload(database, upload_file_type, users_upload_file)
-
-  # note: depending on the csv tool, there may be empty strings or other special characters here
-  formatted_logistics_upload_file[formatted_logistics_upload_file == ""] <- NA
-  formatted_logistics_upload_file[] <- lapply(formatted_logistics_upload_file, function(x) as.character(gsub("[\n\t,]", "", x)))
-
-  formatted_logistics_and_metadata_file <- .FormatMicronixMetaData(users_upload_file = formatted_logistics_upload_file)
-  return(formatted_logistics_and_metadata_file)
-}
-
-FormatMicronixMoveData <- function(ui_elements, micronix_move_data, input){
-  
-  #read in validated user provided micronix data file
-  message("Formatting user provided file...")
-  
-  upload_file_type <- input[[ui_elements$ui.input$MicronixFileType]]
-  formatted_move_file_list <- list()
-  for(item in names(micronix_move_data)){
-    formatted_move_file <- .FormatMicronixLogisticalDataMove(upload_file_type, micronix_move_data[[item]])
-    formatted_move_file_list[[item]] <- formatted_move_file
-  }
-  return(formatted_move_file_list)  
-}
-
-.FormatMicronixLogisticalData_Traxcer <- function(users_upload_file) {
-    config <- yaml::read_yaml(Sys.getenv("SDB_CONFIG"))
-    traxcer_position <- ifelse(
-      is.na(config$traxcer_position$override),
-      config$traxcer_position$default,
-      config$traxcer_position$override
-    )
-
-    formatted_upload_file <- users_upload_file %>% 
-      setNames(.[2,]) %>% .[-c(1,2),] 
-
-    # this is to get around an accessibility issue below
-    custom_position_col <- formatted_upload_file %>% pull(all_of(traxcer_position))
-    if (length(custom_position_col) == 0) {
-      warning("Traxcer position column not found in file.")
-    }
-
-    formatted_upload_file <- formatted_upload_file %>%
-      mutate(label = replace(`Tube ID`, nchar(`Tube ID`) != 10, NA),
-             well_position = all_of(custom_position_col)) %>%
-      select(-c(all_of(traxcer_position),"Tube ID"))
-
-  return(formatted_upload_file)
-}
-
-.FormatMicronixLogisticalData_VisionMate <- function(users_upload_file) {
-  formatted_upload_file <- users_upload_file %>%
-    setNames(.[1,]) %>% .[-1,] %>%
-    mutate(label = replace(TubeCode, nchar(TubeCode) != 10, NA),
-           well_position = paste0(LocationRow, LocationColumn)) %>%
-    select(-c("TubeCode","LocationRow", "LocationColumn"))
-
-  return(formatted_upload_file)
-}
-
-.FormatMicronixLogisticalDataUpload <- function(database, upload_file_type, users_upload_file){
-  formatted_upload_file <- NULL
-  if(upload_file_type == "traxcer"){
-    formatted_upload_file <- .FormatMicronixLogisticalData_Traxcer(users_upload_file)
-  }
-  else if(upload_file_type == "visionmate"){
-    formatted_upload_file <- .FormatMicronixLogisticalData_VisionMate(users_upload_file)
-  }
-  else{ # na
-      formatted_upload_file <- users_upload_file %>%
-        setNames(.[1,]) %>% .[-1,] %>%
-        mutate(label = replace(Barcode, nchar(Barcode) != 10, NA),
-          well_position = paste0(Row, Column))
-    }
-  
-  return(formatted_upload_file)
-}
-
-.FormatMicronixLogisticalDataMove <- function(upload_file_type, users_upload_file){
-  formatted_upload_file <- NULL
-  if(upload_file_type == "traxcer"){
-    formatted_upload_file <- .FormatMicronixLogisticalData_Traxcer(users_upload_file)
-  }
-  else if(upload_file_type == "visionmate"){
-    formatted_upload_file <- .FormatMicronixLogisticalData_VisionMate(users_upload_file)
-  }
-  else{ # na
-      #removing row if micronix barcode is not string len 10
-      formatted_upload_file <- users_upload_file %>%
-        setNames(.[1,]) %>% .[-1,] %>%
-        mutate(label = replace(Barcode, nchar(Barcode) != 10, NA),
-               well_position = paste0(Row, Column))
-    }
-  
-  return(formatted_upload_file)
-}
-
-.FormatMicronixMetaData <- function(upload_file_type, users_upload_file){
-  
-  formatted_upload_file <- users_upload_file %>% 
-    rename(specimen_type = SpecimenType,
-           study_short_code = StudyCode,
-           study_subject_id = StudySubject)
-
-  if("CollectionDate" %in% names(formatted_upload_file)){
-    formatted_upload_file <- formatted_upload_file %>% 
-      rename(collection_date = CollectionDate)
-  }
-
-  if ("Comment" %in% names(formatted_upload_file)){
-    formatted_upload_file <- formatted_upload_file %>% 
-      rename(comment = Comment)
-  }
-
-  if ("PlateBarcode" %in% names(formatted_upload_file)) {
-    formatted_upload_file <- formatted_upload_file %>%
-    rename(plate_barcode = PlateBarcode)
-  }
-
-  if ("Rack ID" %in% names(formatted_upload_file)) {
-    formatted_upload_file <- formatted_upload_file %>%
-      rename(plate_barcode = `Rack ID`)
-  }
-  
-  return(formatted_upload_file)
-}
-
 # General Operations
 SmartFreezerDropdownFilter <- function(database, session, input = input, location_ui, levelI_ui, levelII_ui){
-  
+
   observe({
     if(!is.null(input[[location_ui]]) && input[[location_ui]] != ""){
-      tmp_table.location <- filter(sampleDB::CheckTable(database = database, "location"), location_name == input[[location_ui]])
-      updateSelectInput(session, levelI_ui, label = NULL, choices = c(tmp_table.location$level_I) %>% sort())
-      levelII_choices <- list(`working baskets` = grep("working", tmp_table.location$level_II, value = T) %>% sort(), 
+      tmp_table.location <- filter(sampleDB::CheckTable(database = database, "location"), name == input[[location_ui]])
+      updateSelectInput(session, levelI_ui, label = NULL, choices = c("", tmp_table.location$level_I) %>% sort())
+      levelII_choices <- list(`working baskets` = grep("working", tmp_table.location$level_II, value = T) %>% sort(),
                               `non-working baskets` = grep("working", tmp_table.location$level_II, value = T, invert = T) %>% sort())
       updateSelectInput(session, levelII_ui, label = NULL, choices = c("", levelII_choices))
     }else{
@@ -649,7 +338,7 @@ DataTableRenderOptions <- function(){
     paging = T,
     pageLength = 10,
     lengthMenu = c(10, 20, 50, 100),
-    language = list(zeroRecords = "There are no EPPIcenter Wetlab Samples that match this search."),
+    language = list(zeroRecords = "There are no wetlab samples that match this search."),
     rowCallback = JS(
       rowCallback <- c(
         "function(row, data){",
@@ -659,37 +348,21 @@ DataTableRenderOptions <- function(){
         "        .css({'color': 'rgb(151,151,151)', 'font-style': 'italic'});",
         "    }",
         "  }",
-        "}"  
+        "}"
       )
     ))
   return(out)
 }
 
-#requirements
-SetUploadRequirements <- function(input, database, sample_type){  
-  #get ui elements
-  ui_elements <- GetUIUploadElements(sample_type)
-  
-  out <- req(
-    input[[ui_elements$ui.input$UploadDataSet]]$datapath,
-    input[[ui_elements$ui.input$UploadPlateID]],
-    input[[ui_elements$ui.input$UploadFreezerName]],
-    input[[ui_elements$ui.input$UploadFreezerNameLevelI]],
-    input[[ui_elements$ui.input$UploadFreezerNameLevelII]],
-  )
-  
-  return(out)
-}
-
 SetMoveRequirements <- function(input, sample_type){
-  
+
   #get ui elements
   ui_elements <- GetUIMoveElements(sample_type)
-  
+
   out <- req(
     input[[ui_elements$ui.input$MoveDataSet]] # user must supply move files
   )
-  
+
   return(out)
 }
 
@@ -698,7 +371,7 @@ SetFreezerAddRequirements <- function(input, database, ui_elements){
       input[[ui_elements$ui.input$AddFreezerType]],
       input[[ui_elements$ui.input$AddFreezerLevel_I]],
       input[[ui_elements$ui.input$AddFreezerLevel_II]],
-      sampleDB:::.CheckFreezerNameIsUnique(input, database, 
+      sampleDB:::.CheckFreezerNameIsUnique(input, database,
                                            freezer_address = list(freezer_name = input[[ui_elements$ui.input$AddFreezerName]],
                                                                   freezer_levelI = input[[ui_elements$ui.input$AddFreezerLevel_I]],
                                                                   freezer_levelII = input[[ui_elements$ui.input$AddFreezerLevel_II]])) == TRUE)
@@ -750,26 +423,6 @@ SetDeleteStudyRequirements <- function(input, database, ui_elements){
                                      study_ui = input[[ui_elements$ui.input$DeleteStudyShortCode]]) == TRUE)
 }
 
-# Resets
-UploadReset <- function(input, output, sample_type){
-  
-  #get ui elements
-  ui_elements <- GetUIUploadElements(sample_type)
-  
-  observeEvent(
-    input[[ui_elements$ui.input$ClearForm]],
-    ({
-      shinyjs::reset(ui_elements$ui.input$UploadPlateID)
-      shinyjs::reset(ui_elements$ui.input$UploadDataSet)
-      shinyjs::reset(ui_elements$ui.input$UploadFreezerName)
-      shinyjs::reset(ui_elements$ui.input$UploadFreezerNameLevelI)
-      shinyjs::reset(ui_elements$ui.input$UploadFreezerNameLevelII)
-      output[[ui_elements$ui.output$WarningUploadSampleID]] <- renderText({""})
-      output[[ui_elements$ui.input$UploadReturnMessage1]] <- renderText({""})
-      output[[ui_elements$ui.input$UploadReturnMessage2]] <- renderText({""})
-    }))  
-}
-
 MoveReset <- function(input, output){
   observeEvent(
     input$ClearMoveForm,
@@ -784,15 +437,15 @@ UpdateFreezerDropdowns <- function(database, session){
   shinyjs::reset("AddFreezerLevel_I")
   shinyjs::reset("AddFreezerLevel_II")
   shinyjs::reset("RenameFreezerName2")
-  updateSelectInput(session = session, inputId = "RenameFreezerName1", choices = c("", sampleDB::CheckTable(database = database, "location")$location_name))
-  updateSelectInput(session = session, inputId = "DeleteFreezerName", choices = c("", sampleDB::CheckTable(database = database, "location")$location_name))
+  updateSelectInput(session = session, inputId = "RenameFreezerName1", choices = c("", sampleDB::CheckTable(database = database, "location")$name))
+  updateSelectInput(session = session, inputId = "DeleteFreezerName", choices = c("", sampleDB::CheckTable(database = database, "location")$name))
 }
 
 UpdateSpecimenTypeDropdowns <- function(database, session){
   shinyjs::reset("AddSpecimenType")
   shinyjs::reset("RenameSpecimenType2")
-  updateSelectInput(session = session, inputId = "RenameSpecimenType1", choices = c("", sampleDB::CheckTable(database = database, "specimen_type")$label))
-  updateSelectInput(session = session, inputId = "DeleteSpecimenType", choices = c("", sampleDB::CheckTable(database = database, "specimen_type")$label))
+  updateSelectInput(session = session, inputId = "RenameSpecimenType1", choices = c("", sampleDB::CheckTable(database = database, "specimen_type")$name))
+  updateSelectInput(session = session, inputId = "DeleteSpecimenType", choices = c("", sampleDB::CheckTable(database = database, "specimen_type")$name))
 }
 
 UpdateStudyDropdowns <- function(database, session){

@@ -69,8 +69,8 @@ UpdateReferences <- function(reference, operation, identifier = NULL, update = N
                            table_name = "location",
                            list(created = as.character(lubridate::now()),
                                 last_updated = as.character(lubridate::now()),
-                                location_name = update$freezer_name,
-                                location_type = update$freezer_type,
+                                name = update$freezer_name,
+                                storage_type_id = update$freezer_type,
                                 level_I = update$freezer_levelI,
                                 level_II = update$freezer_levelII,
                                 level_III = NA))
@@ -86,15 +86,15 @@ UpdateReferences <- function(reference, operation, identifier = NULL, update = N
       stopifnot("identifier list must include: freezer_name, freezer_levelI and freezer_levelII"= 
                   all(c("freezer_name", "freezer_levelI", "freezer_levelII") %in% names(identifier)))
 
-      tmp_table.location <- filter(sampleDB::CheckTableTx(conn = conn, "location"), location_name == identifier$freezer_name & level_I == identifier$freezer_levelI & level_II == identifier$freezer_levelII)
+      tmp_table.location <- filter(sampleDB::CheckTableTx(conn = conn, "location"), name == identifier$freezer_name & level_I == identifier$freezer_levelI & level_II == identifier$freezer_levelII)
       stopifnot("freezer could not be identified" = nrow(tmp_table.location) != 0)
       id.ref_freezer_space <- as.character(tmp_table.location$id)
       eval.created <- as.character(tmp_table.location$created)
 
       eval.info_list <- list(created = eval.created,
                              last_updated = as.character(lubridate::now()),
-                             location_name = update$freezer_name,
-                             location_type = update$freezer_type,
+                             name = update$freezer_name,
+                             storage_type_id = update$freezer_type,
                              level_I = update$freezer_levelI,
                              level_II = update$freezer_levelII,
                              level_III = NA) %>% 
@@ -105,16 +105,16 @@ UpdateReferences <- function(reference, operation, identifier = NULL, update = N
                             info_list = eval.info_list,
                             id = id.ref_freezer_space)
       
-      tmp_table2.location <- filter(sampleDB::CheckTableTx(conn = conn, "location"), location_name == update$freezer_name & level_I == update$freezer_levelI & level_II == update$freezer_levelII)
+      tmp_table2.location <- filter(sampleDB::CheckTableTx(conn = conn, "location"), name == update$freezer_name & level_I == update$freezer_levelI & level_II == update$freezer_levelII)
 
       return_message <- paste0("Modified Freezer:\n",
-                               "\tPrevious Name: \"", tmp_table.location$location_name, "\"\n",
-                               "\tPrevious Type: \"", tmp_table.location$location_type, "\"\n",
+                               "\tPrevious Name: \"", tmp_table.location$name, "\"\n",
+                               "\tPrevious Type: \"", tmp_table.location$storage_type, "\"\n",
                                "\tPrevious Level I: \"", tmp_table.location$level_I, "\"\n",
                                "\tPrevious Level II: \"", tmp_table.location$level_II, "\"\n",
                                "New Freezer:\n",
-                               "\tCurrent Name: \"", tmp_table2.location$location_name, "\"\n",
-                               "\tCurrent Type: \"", tmp_table2.location$location_type, "\"\n",
+                               "\tCurrent Name: \"", tmp_table2.location$name, "\"\n",
+                               "\tCurrent Type: \"", tmp_table2.location$storage_type, "\"\n",
                                "\tCurrent Level I: \"", tmp_table2.location$level_I, "\"\n",
                                "\tCurrent Level II: \"", tmp_table2.location$level_II, "\"")
     }
@@ -123,7 +123,7 @@ UpdateReferences <- function(reference, operation, identifier = NULL, update = N
       
       stopifnot("identifier list must include: freezer_name, freezer_levelI and freezer_levelII" = 
                   all(c("freezer_name", "freezer_levelI", "freezer_levelII") %in% names(identifier)))
-      tmp_table.location <- filter(sampleDB::CheckTableTx(conn = conn, "location"), location_name == identifier$freezer_name & level_I == identifier$freezer_levelI & level_II == identifier$freezer_levelII)
+      tmp_table.location <- filter(sampleDB::CheckTableTx(conn = conn, "location"), name == identifier$freezer_name & level_I == identifier$freezer_levelI & level_II == identifier$freezer_levelII)
       stopifnot("freezer could not be identified" = nrow(tmp_table.location) != 0)
       id.ref_freezer_space <- as.character(tmp_table.location$id)
       sampleDB::DeleteFromTable(conn = conn, 
@@ -132,7 +132,7 @@ UpdateReferences <- function(reference, operation, identifier = NULL, update = N
       
       return_message <- paste0("Deleted Freezer:\n",
                                "\tName: \"",identifier$freezer_name, "\"\n",
-                               "\tType: \"", tmp_table.location$location_type, "\"\n",
+                               "\tType: \"", tmp_table.location$storage_type, "\"\n",
                                "\tLevel I: \"", tmp_table.location$level_I, "\"\n",
                                "\tLevel II: \"", tmp_table.location$level_II, "\"")
     }
@@ -146,7 +146,7 @@ UpdateReferences <- function(reference, operation, identifier = NULL, update = N
                            table_name = "specimen_type",
                            list(created = as.character(lubridate::now()),
                                 last_updated = as.character(lubridate::now()),
-                                label = update$specimen_type_name))
+                                name = update$specimen_type_name))
       return_message <- paste0("Added New Specimen Type:\n",
                                "\tName: \"", update$specimen_type_name, "\"")
     }
@@ -154,7 +154,7 @@ UpdateReferences <- function(reference, operation, identifier = NULL, update = N
       
       stopifnot("identifier list must include: specimen_type_name" = 
                   names(identifier) == "specimen_type_name")
-      tmp_table.specimen_type <- filter(sampleDB::CheckTable(database = database, "specimen_type"), label == identifier$specimen_type_name)
+      tmp_table.specimen_type <- filter(sampleDB::CheckTable(database = database, "specimen_type"), name == identifier$specimen_type_name)
       stopifnot("specimen type could not be identified" = nrow(tmp_table.specimen_type) != 0)
       id.ref_specimen_type <- as.character(tmp_table.specimen_type$id)
       eval.created <- as.character(tmp_table.specimen_type$created)
@@ -162,7 +162,7 @@ UpdateReferences <- function(reference, operation, identifier = NULL, update = N
                             table_name = "specimen_type",
                             info_list = list(created = eval.created,
                                              last_updated = as.character(lubridate::now()),
-                                             label = update$specimen_type_name),
+                                             name = update$specimen_type_name),
                             id = id.ref_specimen_type)
       
       return_message <- paste0("Modified Specimen Type with:\n",
@@ -174,7 +174,7 @@ UpdateReferences <- function(reference, operation, identifier = NULL, update = N
       
       stopifnot("identifier list must include: specimen_type_name" = 
                   names(identifier) == c("specimen_type_name"))
-      tmp_table.specimen_type <- filter(sampleDB::CheckTableTx(conn = conn, "specimen_type"), label == identifier$specimen_type_name)
+      tmp_table.specimen_type <- filter(sampleDB::CheckTableTx(conn = conn, "specimen_type"), name == identifier$specimen_type_name)
       stopifnot("specimen type could not be identified" = nrow(tmp_table.specimen_type) != 0)
       id.ref_specimen_type <- as.character(tmp_table.specimen_type$id)
       sampleDB::DeleteFromTable(conn = conn, 

@@ -16,7 +16,7 @@ After minimal installation and setup SampleDB can be accessed at the url:
 3. R >= 4.0
 4. [Rstudio Server](https://www.rstudio.com/products/rstudio/download-server/) or ![Rstudio Workbench](https://www.rstudio.com/products/workbench/)
 5. [Shiny Server](https://www.rstudio.com/products/shiny/download-server/)
-6. [sqlite3](https://www.sqlite.org/index.html)
+6. [sqlite3](https://www.sqlite.org/position.html)
 
 ## Installation
 
@@ -94,3 +94,16 @@ most recent 10 backups will be kept. The location of the backup folder can be fo
 
 One of the easiest ways to create a backup is through the `Backup_SampleDB()` function provided in the package. This function by default creates a backup in the default backup folder, although you may pass a filepath to `backup_dest` (e.g. /path/to/file.backup) to overwrite this default behavior.
 
+## FAQ 
+
+### MacOS Permission Issues
+If you are working on a Mac and run into permission issues, you may need to run SampleDB with elevated permissions. 
+
+To run Rstudio as an administrator: 
+- Go to Applications, then right click on RStudio and Select "Show Package Contents"
+- Navigate from Contents > MacOS, in this directory you will see the `RStudio.exec`
+- In Terminal, enter `sudo` and then the path to the `RStudio.exec` (alternatively you can drag and drop `RStudio.exec` into Terminal). And press enter. Example:
+```
+sudo /Applications/RStudio.app/Contents/MacOS/RStudio
+```
+- Now RStudio will launch with admin access

@@ -4,6 +4,87 @@ SearchWetlabSamples <- function(session, input, database, output, DelArch = FALS
   
   # get search ui elements
   ui_elements <- GetUISearchElements()
+
+  rv <- reactiveValues(user_file = NULL, error = NULL)
+
+  error <- reactiveValues(
+    title = "",
+    message = "",
+    table = NULL
+  )
+
+  observeEvent(rv$error, ignoreInit = TRUE, {
+    message("Running error workflow")
+
+    df <- NULL
+    if (!is.null(error$table)) {
+      df <- error$table %>%
+        dplyr::rename(
+          Column = column, 
+          Reason = reason,
+          `Triggered By` = trigger
+        ) %>%
+        reactable(.)
+    }
+
+    showModal(
+      modalDialog(
+        title = error$title,
+        error$message,
+        tags$hr(),
+        renderReactable({ df }),
+        footer = modalButton("Exit")
+      )
+    )
+    rv$error <- NULL
+  })
+
+  observeEvent(input$Exit, ignoreInit = TRUE, {
+    error$title = ""
+    error$message = ""
+    error$table = NULL
+    rv$error <- NULL
+    removeModal()
+  })
+
+  observeEvent(input$SearchBySampleType, ignoreInit = FALSE, {
+
+    con <- DBI::dbConnect(RSQLite::SQLite(), Sys.getenv("SDB_PATH"))
+
+    manifest <- switch(
+      input$SearchBySampleType,
+      "1" = "micronix_plate",
+      "2" = "cryovial_box",
+      # "3" = "dbs_paper",
+      "all" = "All"
+    )
+
+    manifest_names <- c()
+
+    if (manifest == "All") {
+      manifest_names <- c(manifest_names, DBI::dbReadTable(con, "micronix_plate") %>% pull(name))
+      manifest_names <- c(manifest_names, DBI::dbReadTable(con, "cryovial_box") %>% pull(name))
+      # manifest_names <- c(manifest_names, DBI::dbReadTable(con, "dbs_paper"))
+    } else {
+      manifest_names <- c(manifest_names, DBI::dbReadTable(con, manifest) %>% pull(name))
+    }
+
+    updateSelectInput(
+      session,
+      "SearchByManifest",
+      label = switch(
+          input$SearchBySampleType,
+          "1" = "Plate Name",
+          "2" = "Box Name",
+          "3" = "Paper Name",
+          "all" = "All Containers"
+      ),
+      selected = "",
+      choices = c("", manifest_names)
+    )
+
+    dbDisconnect(con)
+  })
   
   # create a null value to store the search results
   values <- reactiveValues(data = NULL)
@@ -11,7 +92,7 @@ SearchWetlabSamples <- function(session, input, database, output, DelArch = FALS
   observe({
     
     #search
-    list.search_results <- SearchFunction(input, output, ui_elements)
+    list.search_results <- SearchFunction(input, output, ui_elements, rv$user_file)
     
     if(!is.null(list.search_results)){
       values$data <- list.search_results$results
@@ -48,18 +129,46 @@ SearchWetlabSamples <- function(session, input, database, output, DelArch = FALS
   
   # load dropdown using the server -- saves time
   updateSelectizeInput(session, 'SearchBySubjectUID', 
-                       choices = c("", sampleDB::CheckTable(database = database, "study_subject")$subject %>% 
+                       choices = c("", sampleDB::CheckTable(database = database, "study_subject")$name %>% 
                                      unique()), 
                        server = TRUE)
   
   # clear files
   .SearchReset(input)
 
+  observeEvent(input$SearchByBarcode, ignoreInit = FALSE, {
+    dataset <- input$SearchByBarcode
+
+    message(paste("Loaded", dataset$name))
+
+    tryCatch({
+      ## format the file
+      rv$user_file <- sampleDB::ProcessCSV(
+        user_csv = dataset$datapath,
+        user_action = "search",
+        validate = FALSE
+      )
+    },
+    formatting_error = function(e) {
+      message("Caught formatting error")
+      error$title <- "Invalid File Detected"
+      error$message <- e$message
+      error$table <- e$df
+
+      rv$error <- TRUE
+    },
+    error = function(e) {
+      message(e)
+      error$title <- "Error Detected"
+      error$message <- e$message
+      error$table <- NULL
+      rv$error <- TRUE
+    })
+  })
+
   observe({
-    updateSelectInput(session, selected = input$SearchByPlate, "SearchByPlate", label = "Plate Name", choices = c("", dbUpdateEvent()$plate_name))
-    updateSelectInput(session, selected = input$SearchByBox, "SearchByBox", label = "Box Name", choices = c("", dbUpdateEvent()$box_name))
-    updateSelectInput(session, selected = input$SearchByRDTBag, "SearchByRDTBag", label = "Bag Name", choices = c("", dbUpdateEvent()$rdt_bag_name))
-    updateSelectInput(session, selected = input$SearchByPaperBag, "SearchByPaperBag", label = "Bag Name", choices = c("", dbUpdateEvent()$paper_bag_name))
+    updateSelectInput(session, selected = input$SearchByPlate, "SearchByPlate", label = "Plate Name", choices = c("", dbUpdateEvent()$micronix_plate_name))
+    updateSelectInput(session, selected = input$SearchByBox, "SearchByBox", label = "Box Name", choices = c("", dbUpdateEvent()$cryovial_box_name))
 
     updateSelectizeInput(session, selected = input$SearchByStudy, "SearchByStudy", "Study", choices = c("", names(dbUpdateEvent()$study)))
     updateSelectizeInput(session, selected = input$SearchBySpecimenType, "SearchBySpecimenType", "Specimen Type", choices = c("", dbUpdateEvent()$specimen_type))
@@ -67,18 +176,42 @@ SearchWetlabSamples <- function(session, input, database, output, DelArch = FALS
 
     updateSelectizeInput(session, selected = input$SearchByState, "SearchByState", "State", choices = c(dbUpdateEvent()$state))
     
-    # subject uid should be updated when db updates + when studies are selected
+    # name uid should be updated when db updates + when studies are selected
     .SearchSubjectUID(session, input)
   })
 
   observeEvent(input$SearchReset, {
-    updateRadioButtons(session, selected = "multiple_barcodes", "SearchByBarcodeType", label = NULL, choices = list("Multiple Barcodes" = "multiple_barcodes", "Single Barcode" = "single_barcode"))
+
+    con <- DBI::dbConnect(RSQLite::SQLite(), Sys.getenv("SDB_PATH"))
+
     updateRadioButtons(session, selected = "individual", "SubjectUIDSearchType", label = NULL, choices = list("Single Study Subject" = "individual", "Multiple Study Subjects" = "multiple"))
     
-    updateSelectInput(session, selected = NULL, "SearchByPlate", label = "Plate Name", choices = c("", dbUpdateEvent()$plate_name))
-    updateSelectInput(session, selected = NULL, "SearchByBox", label = "Box Name", choices = c("", dbUpdateEvent()$box_name))
-    updateSelectInput(session, selected = NULL, "SearchByRDTBag", label = "Bag Name", choices = c("", dbUpdateEvent()$rdt_bag_name))
-    updateSelectInput(session, selected = NULL, "SearchByPaperBag", label = "Bag Name", choices = c("", dbUpdateEvent()$paper_bag_name))
+    manifest <- switch(
+      input$SearchBySampleType,
+      "1" = "micronix_plate",
+      "2" = "cryovial_box",
+      # "3" = "dbs_paper",
+      "all" = "All"
+    )
+
+    manifest_names <- c()
+
+    if (manifest == "All") {
+      manifest_names <- c(manifest_names, DBI::dbReadTable(con, "micronix_plate") %>% pull(name))
+      manifest_names <- c(manifest_names, DBI::dbReadTable(con, "cryovial_box") %>% pull(name))
+      # manifest_names <- c(manifest_names, DBI::dbReadTable(con, "dbs_paper"))
+    } else {
+      manifest_names <- c(manifest_names, DBI::dbReadTable(con, manifest) %>% pull(name))
+    }
+
+    manifest_label <- switch(
+      input$SearchBySampleType,
+      "1" = "Plate Name",
+      "2" = "Box Name",
+      "3" = "Paper Name",
+      "all" = "All"
+    )
+    updateSelectInput(session, selected = NULL, "SearchByManifest", label = manifest_label, choices = c("", manifest_names))
 
     updateSelectizeInput(session, selected = NULL, "SearchByStudy", "Study", choices = c("", names(dbUpdateEvent()$study)))
     updateSelectizeInput(session, selected = NULL, "SearchBySpecimenType", "Specimen Type", choices = c("", dbUpdateEvent()$specimen_type))
@@ -86,6 +219,14 @@ SearchWetlabSamples <- function(session, input, database, output, DelArch = FALS
 
     updateSelectizeInput(session, selected = Global$DefaultStateSearchTerm, "SearchByState", "State", choices = c(dbUpdateEvent()$state))
     updateDateRangeInput(session, "dateRange", start = NA, end = NA) %>% suppressWarnings()
+
+    shinyjs::reset("SearchByBarcode")
+    shinyjs::reset("SearchBySubjectUIDFile")
+
+    # search file
+    rv$user_file <- NULL
+
+    dbDisconnect(con)
   })
 
 
@@ -135,10 +276,10 @@ SearchWetlabSamples <- function(session, input, database, output, DelArch = FALS
 #    study_subject_ref_id <- filter(sampleDB::CheckTable(database = database, "study_subject"), study_id %in% study_ref_id)$id
 #    specimen_ref_id <- filter(sampleDB::CheckTable(database = database, "specimen"), study_subject_id %in% study_subject_ref_id)$id
 #    storage_container_id <- filter(sampleDB::CheckTable(database = database, "storage_container"), specimen_id %in% specimen_ref_id)$id
-#    matrix_tube_ids <- filter(sampleDB::CheckTable(database = database, "matrix_tube"), id %in% storage_container_id)$id
+#    matrix_tube_ids <- filter(sampleDB::CheckTable(database = database, "micronix_tube"), id %in% storage_container_id)$id
 #    
-#    plate_ids <- filter(sampleDB::CheckTable(database = database, "matrix_tube"), id %in% matrix_tube_ids)$plate_id %>% unique()
-#    plate_names <- filter(sampleDB::CheckTable(database = database, "matrix_plate"), id %in% plate_ids)$uid
+#    plate_ids <- filter(sampleDB::CheckTable(database = database, "micronix_tube"), id %in% matrix_tube_ids)$plate_id %>% unique()
+#    plate_names <- filter(sampleDB::CheckTable(database = database, "micronix_plate"), id %in% plate_ids)$uid
 #    return(plate_names)
 #  }
 
