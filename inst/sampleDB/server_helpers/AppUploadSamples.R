@@ -114,14 +114,13 @@ AppUploadSamples <- function(session, input, output, database) {
 
   # Download a complete upload template
   observe({
-    storage_type <- switch(
-      input$UploadSampleType,
-      "1" = "micronix",
-      "2" = "cryovial"
-    )
-
     output$UploadFileTemplate <- downloadHandler(
         filename = function() {
+          storage_type <- switch(
+            input$UploadSampleType,
+            "1" = "micronix",
+            "2" = "cryovial"
+          )
           paste(paste(c(storage_type, input$UploadFileType, "upload", "template"), collapse="_"), '.csv', sep='')
         },
         content = function(con) {
