@@ -30,6 +30,7 @@ Imports:
     rlang (>= 1.0.6),
     RSQLite (>= 2.3.0),
     shinyjs (>= 2.1.0),
+    tools (>= 3.6.2),
     yaml (>= 2.3.7)
 Suggests: 
     shiny (>= 1.7.4)
