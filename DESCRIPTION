@@ -1,38 +1,32 @@
 Package: sampleDB
-Title: Organization for EPPIcenter Wetlab Samples
-Version: 0.0.0.9000
-Authors@R: 
+Title: Organize your Wetlab Samples with sampleDB
+Version: 2.0.0
+Authors@R: c(
+    person("Brian", "Palmer", , "brian.palmer@ucsf.edu", role = c("aut", "cre")),
     person(given = "Severiano",
            family = "Villarruel",
-           role = c("aut", "cre"),
-           email = "Severiano.Villarruel@ucsf.edu",
-           comment = c(ORCID = "YOUR-ORCID-ID"))
-Description: Functions to imterface with EPPIcenter SampleDB database
-Imports:
-    dplyr,
-    shiny,
-    RSQLite,
-    lubridate,
-    magrittr,
-    emojifont,
-    fastmap,
-    shinyFeedback,
-    shinyWidgets,
-    purrr,
-    readr,
-    tidyr,
-    markdown,
-    shinyjs,
-    DT,
-    rappdirs,
-    shinybusy,
-    config,
-    yaml
+           role = c("aut"),
+           email = "Severiano.Villarruel@ucsf.edu",),
+    person("EPPIcenter", role = c("fnd")))
+Description: An R package to store and view wetlab samples.
 License: MIT + file LICENSE
 Encoding: UTF-8
-LazyData: true
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.2.3
-URL: https://eppicenter.github.io/sampleDB-rpackage/
-Depends: 
-    R (>= 2.10)
+Depends:
+    R (>= 4.1)
+Imports: 
+    bslib (>= 0.4.2),
+    dplyr (>= 1.1.0),
+    DT (>= 0.27),
+    glue (>= 1.6.2),
+    lubridate (>= 1.9.2),
+    purrr (>= 1.0.1),
+    reactable (>= 0.4.3),
+    readr (>= 2.1.4),
+    rjson (>= 0.2.21),
+    RSQLite (>= 2.3.0),
+    shinyjs (>= 2.1.0),
+    yaml (>= 2.3.7)
+Suggests: 
+    shiny (>= 1.7.4)

@@ -1,4 +1,5 @@
 library(RSQLite)
+library(shinyjs)
 UISearchSamples <- function(){
   con <- DBI::dbConnect(RSQLite::SQLite(), Sys.getenv("SDB_PATH"))
   ui <- sidebarLayout(

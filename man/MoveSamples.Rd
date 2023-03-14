@@ -2,20 +2,14 @@
 % Please edit documentation in R/MoveSamples.R
 \name{MoveSamples}
 \alias{MoveSamples}
-\title{Move Wetlab Samples in the EPPIcenter sampleDB database}
+\title{Move Wetlab Samples}
 \usage{
 MoveSamples(sample_type, move_data)
 }
 \arguments{
 \item{sample_type}{A string specifying the type of samples that are being moved. Options include: \code{micronix}, \code{cryovial}, \code{rdt} and \code{paper}}
 
-\item{move_data}{A list of SampleDB move dataframes, where the name of each dataframe item is the container that the samples are in after the move.
-
-The structure of a move file is shown below.\tabular{ll}{
-   position \tab label \cr
-   A0 \tab xxx1 \cr
-   A1 \tab xxx2 \cr
-}}
+\item{move_data}{A list of SampleDB move dataframes, where the name of each dataframe item is the container that the samples are in after the move.}
 }
 \description{
 \code{MoveSamples()} can be used to move existing wetlab samples from:
@@ -27,6 +21,6 @@ The structure of a move file is shown below.\tabular{ll}{
 \examples{
 \dontrun{
 move_data <- list("move_csv1_container_name" = dataframe(), "move_csv2_container_name" = dataframe())
-MoveSamples(sample_type = "micronix", move_data = move_data)
+MoveSamples(sample_type = 1, move_data = move_data)
 }
 }

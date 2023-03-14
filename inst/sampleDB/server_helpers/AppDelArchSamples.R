@@ -1,4 +1,4 @@
-
+library(shinyjs)
 
 DelArchSamples <- function(session, input, database, output, inputs, outputs){
   

@@ -11,8 +11,9 @@
 #' @import dplyr
 #' @import rappdirs
 #' @import yaml
-#' @import glue
+#' @import glue 
 #' @import rjson
+#' @import readr
 #' @export
 #'
 

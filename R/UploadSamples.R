@@ -48,8 +48,6 @@
 #' }
 #' @import dplyr
 #' @import RSQLite
-#' @import emojifont
-#' @import readr
 #' @import tidyr
 #' @import lubridate
 #' @export

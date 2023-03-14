@@ -1,6 +1,7 @@
 library(DBI)
 library(shinyBS)
 library(reactable)
+library(shinyjs)
 
 UIUploadSamples <- function() {
   

@@ -1,5 +1,6 @@
 library(DBI)
 library(RSQLite)
+library(shinyjs)
 
 UIMoveContainerOfSamples <- function(){
 

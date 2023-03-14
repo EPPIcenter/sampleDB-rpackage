@@ -1,5 +1,4 @@
 #' @import dplyr
-#' @import emojifont
 #' @import RSQLite
 #' @import purrr
 #' @export

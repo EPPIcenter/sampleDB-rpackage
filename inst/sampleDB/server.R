@@ -1,11 +1,8 @@
 library(dplyr)
 library(sampleDB)
-library(shinyFeedback)
 library(shiny)
-library(readr)
 library(markdown)
 library(lubridate)
-library(emojifont)
 library(DT)
 library(purrr)
 
