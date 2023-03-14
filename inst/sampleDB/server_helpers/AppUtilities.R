@@ -1,5 +1,5 @@
 library(yaml)
-
+library(shinyjs)
 # Utility Functions for Main Shiny Functions (e.g. MicronixUpload, MoveSamples, etc.)
 
 # Get UI Elements

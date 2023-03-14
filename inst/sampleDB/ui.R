@@ -1,10 +1,7 @@
 library(dplyr)
 library(sampleDB)
-library(shinyFeedback)
 library(shiny)
-library(markdown)
 library(DT)
-library(shinyWidgets)
 library(bslib)
 
 #load helper files

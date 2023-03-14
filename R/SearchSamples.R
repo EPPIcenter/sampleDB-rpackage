@@ -1,6 +1,6 @@
 #' Search for Wetlab Samples in the EPPIcenter SampleDB database
 #'
-#' @description
+#' @description Search for wetlab samples.
 #'
 #' @param sample_type A string specifying the type of EPPIcenter sample. (`micronix`, `cryovile`, `rdt` and/or `paper`)
 #' @param sample_label A list of vectors specifying the vector micronix, cryovile, rdt, and paper label names (`micronix.label_name`, `cryovile.label_name`, `rdt.label_name` and/or `paper.label_name`)
@@ -18,9 +18,7 @@
 #' }
 #' @import dplyr
 #' @import RSQLite
-#' @import emojifont
 #' @import purrr
-#' @import readr
 #' @import tidyr
 #' @export
 

@@ -1,5 +1,6 @@
 library(RSQLite)
 library(dplyr)
+library(shinyjs)
 
 EditWetlabContainers <- function(session, input, database, output){
 

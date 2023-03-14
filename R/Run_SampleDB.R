@@ -1,18 +1,11 @@
 #' Run sampleDB as a R Shiny App
 #' 
-#' @description
+#' @description Launch sampleDB as a R Shiny application.
 #' 
 #' @examples
 #' \dontrun{
 #' RunSampleDB()
 #' }
-#' @import dplyr
-#' @import shiny
-#' @import shinyFeedback
-#' @import markdown
-#' @import lubridate
-#' @import shinyWidgets
-#' @importFrom shinyjs hidden
 #' @export
 
 Run_SampleDB <- function(){

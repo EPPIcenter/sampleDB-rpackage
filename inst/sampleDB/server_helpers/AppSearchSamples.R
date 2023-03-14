@@ -1,4 +1,4 @@
-
+library(shinyjs)
 
 SearchWetlabSamples <- function(session, input, database, output, DelArch = FALSE){
   

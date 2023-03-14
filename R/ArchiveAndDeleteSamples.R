@@ -1,6 +1,6 @@
 #' Archive and Delete Wetlab EPPIcenter Samples
 #'
-#' @description
+#' @description Archive and delete wetlab samples.
 #'
 #' @param operation A string specifying the type of operation to perform. Valid operations are `archive` and `delete`.
 #'
@@ -21,8 +21,6 @@
 #' }
 #' @import dplyr
 #' @import RSQLite
-#' @import emojifont
-#' @import readr
 #' @import tidyr
 #' @import lubridate
 #' @export
