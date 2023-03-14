@@ -497,9 +497,25 @@ AppMoveSamples <- function(session, input, output, database) {
 
   observe({
     output$MoveFileExampleRequired <- renderReactable({
-      mat <- matrix(nrow = 0, ncol = length(example_data$required))
-      colnames(mat) <- example_data$required
-      return(reactable(mat, defaultColDef = colDef(minWidth = 120, html = TRUE, sortable = FALSE, resizable = FALSE)))
+      rt <- NULL
+
+      if (input$MoveFileType == "na") {
+
+        sample_type_name <- switch(
+          input$MoveSampleType,
+          "1" = "micronix",
+          "2" = "cryovial",
+          "3" = "dbs"
+        )
+        example <- paste(c(sample_type_name, input$MoveFileType), collapse="_")
+        rt <- reactable(eval(as.symbol(example)) %>% select(example_data$required), defaultColDef = colDef(minWidth = 120, html = TRUE, sortable = FALSE, resizable = FALSE))
+      } else {
+        mat <- matrix(nrow = 0, ncol = length(example_data$required))
+        colnames(mat) <- example_data$required
+        rt <- reactable(mat, defaultColDef = colDef(minWidth = 120, html = TRUE, sortable = FALSE, resizable = FALSE))
+      }
+
+      return (rt)
     })
 
     template <- matrix(ncol = length(example_data$required), nrow = 0)
@@ -509,14 +525,13 @@ AppMoveSamples <- function(session, input, output, database) {
 
   # Download a complete move template
   observe({
-    storage_type <- switch(
-      input$MoveSampleType,
-      "1" = "micronix",
-      "2" = "cryovial"
-    )
-
     output$MoveFileTemplate <- downloadHandler(
       filename = function() {
+        storage_type <- switch(
+          input$MoveSampleType,
+          "1" = "micronix",
+          "2" = "cryovial"
+        )
         paste(paste(c(storage_type, input$MoveFileType, "move", "template"), collapse="_"), '.csv', sep='')
       },
       content = function(con) {
