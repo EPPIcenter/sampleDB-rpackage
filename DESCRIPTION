@@ -22,9 +22,11 @@ Imports:
     glue (>= 1.6.2),
     lubridate (>= 1.9.2),
     purrr (>= 1.0.1),
+    rappdirs (>= 0.3.3),
     reactable (>= 0.4.3),
     readr (>= 2.1.4),
     rjson (>= 0.2.21),
+    rlang (>= 1.0.6),
     RSQLite (>= 2.3.0),
     shinyjs (>= 2.1.0),
     yaml (>= 2.3.7)
