@@ -2,7 +2,6 @@ library(shiny)
 library(shinyjs)
 library(purrr)
 library(RSQLite)
-library(dbplyr)
 library(reactable)
 
 # App Function for Uploading Samples
