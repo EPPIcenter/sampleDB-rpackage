@@ -41,10 +41,10 @@ uses the application.
 To install sampleDB at the site level, you can run the command below using an R process with elevated privileges:
 
 ```R
-devtools::install_github(
+remotes::install_github(
     "https://github.com/EPPIcenter/sampleDB-rpackage", 
-    ref = "v1.2.0",
-    lib = .Library[1]
+    ref = "v2.0.0",
+    lib = .libPaths()[1]
 )
 ```
 
@@ -55,22 +55,21 @@ To run an elevated R process, you can run `sudo R` in your terminal. You can als
 For a local install, the below command is sufficient within a regular RStudio or terminal launch:
 
 ```R
-devtools::install_github(
+remotes::install_github(
     "https://github.com/EPPIcenter/sampleDB-rpackage", 
-    ref = "v1.2.0"
+    ref = "v2.0.0"
 )
 ```
 
-## Set Up
+## Set Up and Upgrades
 
-To set up sampleDB, run the command below. 
+To set up or upgrade sampleDB, run the command below. 
 
 ```R
-library(sampleDB)
 SampleDB_Setup()
 ```
 
-As previously mentioned, there are a variety of ways to install the application. Below is example output from `SampleDB_Setup()` from site install that does **NOT** have shiny server installed:
+As previously mentioned, there are a variety of ways to install the application. Below is example output from `SampleDB_Setup()` from a site install that does **NOT** have shiny server installed:
 
 ```bash
 ── Deploying sampleDB Environment ──────────────────────────────────────────────
