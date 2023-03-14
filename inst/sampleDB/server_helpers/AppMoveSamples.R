@@ -1,5 +1,4 @@
 library(shiny)
-library(shinybusy)
 library(shinyjs)
 library(purrr)
 library(RSQLite)

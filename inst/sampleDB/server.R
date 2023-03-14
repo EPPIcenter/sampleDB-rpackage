@@ -1,7 +1,6 @@
 library(dplyr)
 library(sampleDB)
 library(shiny)
-library(markdown)
 library(lubridate)
 library(DT)
 library(purrr)
