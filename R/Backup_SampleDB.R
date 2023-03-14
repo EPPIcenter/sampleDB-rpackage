@@ -33,7 +33,7 @@ Backup_SampleDB <- function(
     }
 
     list.files <- c(current = temp_current_db, latest = temp_eval_backup)
-    df.checksums <- data.frame(checksum = md5sum(list.files))
+    df.checksums <- data.frame(checksum = tools::md5sum(list.files))
 
     if (0 == anyDuplicated(df.checksums)) {
       sampleDB:::.Compress(temp_current_db, backup_dest)
