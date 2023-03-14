@@ -19,7 +19,6 @@
 #' @import dplyr
 #' @import RSQLite
 #' @import purrr
-#' @import tidyr
 #' @export
 
 

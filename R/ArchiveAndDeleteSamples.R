@@ -21,7 +21,6 @@
 #' }
 #' @import dplyr
 #' @import RSQLite
-#' @import tidyr
 #' @import lubridate
 #' @export
 #'
