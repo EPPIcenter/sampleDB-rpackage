@@ -41,7 +41,7 @@ ProcessCSV(
 \examples{
 \dontrun{
  # Format a sample datasheet with micronix samples using the 'na' micronix format that will be added to sampleDB. Add the container name and container location as parameters.
- formatted_csv <- sampleDB::ProcessCSV(
+ formatted_csv <- ProcessCSV(
    user_csv = "/path/to/sample_data.csv",
    user_action = "upload",
    file_type = "na",

@@ -95,7 +95,7 @@ MoveSamples <- function(sample_type, move_data){
         m <- which(stacked_orphaned_sample_data$barcode == eval.barcode)
 
         # Use move data to place sample into proper container
-        stacked_orphaned_sample_data[m, "manifest_id"] <- filter(sampleDB::CheckTable(database = database, "micronix_plate"), name == container_name)$id
+        stacked_orphaned_sample_data[m, "manifest_id"] <- filter(CheckTable(database = database, "micronix_plate"), name == container_name)$id
 
         # Use move data to place sample into proper container position
         stacked_orphaned_sample_data[m, "position"] <- eval.well_pos
@@ -109,7 +109,7 @@ MoveSamples <- function(sample_type, move_data){
         m <- which(stacked_orphaned_sample_data$barcode == eval.barcode)
 
         # Use move data to place sample into proper container
-        stacked_orphaned_sample_data[m, "manifest_id"] <- filter(sampleDB::CheckTable(database = database, "cryovial_box"), name == container_name)$id
+        stacked_orphaned_sample_data[m, "manifest_id"] <- filter(CheckTable(database = database, "cryovial_box"), name == container_name)$id
 
         # Use move data to place sample into proper container position
         stacked_orphaned_sample_data[m, "position"] <- eval.well_pos
@@ -141,11 +141,11 @@ MoveSamples <- function(sample_type, move_data){
     if(sample_type == 1){
 
       # Get sample's container id
-      existing.container <- filter(sampleDB::CheckTableTx(conn = conn, "micronix_plate"), name == container.name)$id
+      existing.container <- filter(CheckTableTx(conn = conn, "micronix_plate"), name == container.name)$id
 
       # Make a reference df with all samples in container
-      sample_data.existing_container <- filter(sampleDB::CheckTableTx(conn = conn, "micronix_tube"), manifest_id == existing.container) %>%
-        inner_join(sampleDB::CheckTableTx(conn = conn, "storage_container"), by = c("id" = "id"))
+      sample_data.existing_container <- filter(CheckTableTx(conn = conn, "micronix_tube"), manifest_id == existing.container) %>%
+        inner_join(CheckTableTx(conn = conn, "storage_container"), by = c("id" = "id"))
 
       # Put samples into container with negative id number
       for(i in 1:nrow(sample_data.existing_container)) {
@@ -163,11 +163,11 @@ MoveSamples <- function(sample_type, move_data){
     else if(sample_type == 2){
 
       # Get sample's container id
-      existing.container <- filter(sampleDB::CheckTableTx(conn = conn, "cryovial_box"), name == container.name)$id
+      existing.container <- filter(CheckTableTx(conn = conn, "cryovial_box"), name == container.name)$id
 
       # Make a reference df with all samples in container
-      sample_data.existing_container <- filter(sampleDB::CheckTableTx(conn = conn, "cryovial_tube"), manifest_id == existing.container) %>%
-        inner_join(sampleDB::CheckTableTx(conn = conn, "storage_container"), by = c("id" = "id"))
+      sample_data.existing_container <- filter(CheckTableTx(conn = conn, "cryovial_tube"), manifest_id == existing.container) %>%
+        inner_join(CheckTableTx(conn = conn, "storage_container"), by = c("id" = "id"))
 
       # Put samples into container with negative id number
       for(i in 1:nrow(sample_data.existing_container)) {
@@ -205,10 +205,10 @@ MoveSamples <- function(sample_type, move_data){
           eval.well_pos <- move_data[i,]$position
 
           # get sample id
-          id <- filter(sampleDB::CheckTable(database = database, "micronix_tube"), barcode == eval.barcode)$id
+          id <- filter(CheckTable(database = database, "micronix_tube"), barcode == eval.barcode)$id
 
           # get container id
-          eval.container_id <- filter(sampleDB::CheckTable(database = database, "micronix_plate"), name == container_name)$id
+          eval.container_id <- filter(CheckTable(database = database, "micronix_plate"), name == container_name)$id
           # link sample with container id, if there is a sample id (which is not the case if an empty csv was intentionally uploaded)
           ModifyTable(conn = conn,
                       "micronix_tube",
@@ -220,10 +220,10 @@ MoveSamples <- function(sample_type, move_data){
           eval.well_pos <- move_data[i,]$position
 
           # get sample id
-          id <- filter(sampleDB::CheckTable(database = database, "cryovial_tube"), barcode == eval.barcode)$id
+          id <- filter(CheckTable(database = database, "cryovial_tube"), barcode == eval.barcode)$id
 
           # get container id
-          eval.container_id <- filter(sampleDB::CheckTable(database = database, "cryovial_box"), name == container_name)$id
+          eval.container_id <- filter(CheckTable(database = database, "cryovial_box"), name == container_name)$id
           # link sample with container id, if there is a sample id (which is not the case if an empty csv was intentionally uploaded)
           ModifyTable(conn = conn,
                       "cryovial_tube",
@@ -286,7 +286,7 @@ MoveSamples <- function(sample_type, move_data){
     colname.container_id <- "manifest_id" 
   }
 
-  tbl.plate_names <- sampleDB::CheckTable(database = database, container_type) %>%
+  tbl.plate_names <- CheckTable(database = database, container_type) %>%
     reframe(
       plate_name_matches := names(move_data_list) %in% get(colname.container_name)
     )
@@ -297,12 +297,12 @@ MoveSamples <- function(sample_type, move_data){
 
   sample_data <- list()
   for(container.name in names(move_data_list)) {
-    tmp.container <- filter(sampleDB::CheckTable(database = database, container_type), !!as.name(colname.container_name) == container.name)
+    tmp.container <- filter(CheckTable(database = database, container_type), !!as.name(colname.container_name) == container.name)
     stopifnot("CONTAINER IS NOT FOUND IN THE DATABASE" = nrow(tmp.container) != 0)
     eval.container_id <- tmp.container$id
-    # sample_data[[as.character(eval.container_id)]] <- filter(sampleDB::CheckTable(database = database, sample_type), !!as.name(colname.container_id) == eval.container_id)
-    sample_data[[as.character(eval.container_id)]] <- sampleDB::CheckTable(database = database, sample_type) %>%
-      inner_join(sampleDB::CheckTable(database = database, "storage_container"), by = c("id" = "id")) %>%
+    # sample_data[[as.character(eval.container_id)]] <- filter(CheckTable(database = database, sample_type), !!as.name(colname.container_id) == eval.container_id)
+    sample_data[[as.character(eval.container_id)]] <- CheckTable(database = database, sample_type) %>%
+      inner_join(CheckTable(database = database, "storage_container"), by = c("id" = "id")) %>%
       filter(!!as.name(colname.container_id) == eval.container_id) # For moves, all containers retured (even inactives)
   }
   return(sample_data)

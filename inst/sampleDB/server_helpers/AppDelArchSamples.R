@@ -93,7 +93,7 @@ DelArchSamples <- function(session, input, database, output, inputs, outputs){
 
     tryCatch({
       ## format the file
-      rv$user_file <- sampleDB::ProcessCSV(
+      rv$user_file <- ProcessCSV(
         user_csv = dataset$datapath,
         user_action = "search",
         validate = FALSE
@@ -167,7 +167,7 @@ DelArchSamples <- function(session, input, database, output, inputs, outputs){
   observeEvent(input[[ui_elements$ui.input$DelArchVerification]], {
     shinyjs::disable("DelArchVerification")
     showNotification("Working...", id = "ArchDelNotification", type = "message", action = NULL, duration = 5, closeButton = FALSE)
-    return_message <- sampleDB::ArchiveAndDeleteSamples(operation = values$operation,
+    return_message <- ArchiveAndDeleteSamples(operation = values$operation,
                                                         data = values$selected(),
                                                         comment = input$DelArchComment,
                                                         status = input$DelArchStatus,
@@ -273,7 +273,7 @@ DelArchSamples <- function(session, input, database, output, inputs, outputs){
   observeEvent(input$DelArchSearchByState, {
     choices <- NULL
     if (input$DelArchSearchByState %in% "Archived") {
-      choices <- sampleDB:::.ViewArchiveStatuses(database = database)$name
+      choices <- :.ViewArchiveStatuses(database = database)$name
     } else {
       choices <- "In Use"
     }

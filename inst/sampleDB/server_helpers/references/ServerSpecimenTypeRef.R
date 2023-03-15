@@ -16,9 +16,9 @@ UpdateSpecimenTypes <- function(session, input, output, database){
       
       #set requirements
       req(input[[ui_elements$ui.input$AddSpecimenType]],
-          sampleDB:::.CheckSpecimenTypeUnique(input, database, specimen_type = input[[ui_elements$ui.input$AddSpecimenType]]) == TRUE)
+          :.CheckSpecimenTypeUnique(input, database, specimen_type = input[[ui_elements$ui.input$AddSpecimenType]]) == TRUE)
       
-      return_message <- sampleDB::UpdateReferences(reference = "specimen_type",
+      return_message <- UpdateReferences(reference = "specimen_type",
                                                    operation = "add",
                                                    update = list(specimen_type_name = new.specimen_type))
       # print user message
@@ -43,9 +43,9 @@ UpdateSpecimenTypes <- function(session, input, output, database){
       #set requirements
       req(input$RenameSpecimenType1,
           input$RenameSpecimenType2,
-          sampleDB:::.CheckSpecimenTypeUnique(input, database, specimen_type = input[[ui_elements$ui.input$RenameSpecimenType2]]) == TRUE)
+          :.CheckSpecimenTypeUnique(input, database, specimen_type = input[[ui_elements$ui.input$RenameSpecimenType2]]) == TRUE)
       
-      return_message <- sampleDB::UpdateReferences(reference = "specimen_type",
+      return_message <- UpdateReferences(reference = "specimen_type",
                                                    operation = "modify",
                                                    identifier = list(specimen_type_name = old.name),
                                                    update = list(specimen_type_name = new.name))
@@ -70,9 +70,9 @@ UpdateSpecimenTypes <- function(session, input, output, database){
       
       #set requirements
       req(input$DeleteSpecimenTypeAction,
-          sampleDB:::.CheckSpecimenTypeDeletion(input, database , specimen_type = input[[ui_elements$ui.input$DeleteSpecimenType]]) == TRUE)
+          :.CheckSpecimenTypeDeletion(input, database , specimen_type = input[[ui_elements$ui.input$DeleteSpecimenType]]) == TRUE)
       
-      return_message <- sampleDB::UpdateReferences(reference = "specimen_type",
+      return_message <- UpdateReferences(reference = "specimen_type",
                                                    operation = "delete",
                                                    identifier = list(specimen_type_name = delete.specimen_type))
       
@@ -92,7 +92,7 @@ UpdateSpecimenTypes <- function(session, input, output, database){
 
 ShowSpecimenTypes <- function(output, database){
   output$TableSpecimenType <- DT::renderDataTable({
-    sampleDB::CheckTable(database = database, "specimen_type") %>%
+    CheckTable(database = database, "specimen_type") %>%
       dplyr::select(-c(`created`:id)) %>%
       rename(`Specimen Type` = name)})
 }

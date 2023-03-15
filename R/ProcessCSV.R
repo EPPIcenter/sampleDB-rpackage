@@ -15,7 +15,7 @@
 #' @examples
 #' \dontrun{
 #'  # Format a sample datasheet with micronix samples using the 'na' micronix format that will be added to sampleDB. Add the container name and container location as parameters.
-#'  formatted_csv <- sampleDB::ProcessCSV(
+#'  formatted_csv <- ProcessCSV(
 #'    user_csv = "/path/to/sample_data.csv",
 #'    user_action = "upload",
 #'    file_type = "na",
@@ -172,7 +172,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
     }
 
     if ("StudyCode" %in% colnames(user_file) && "upload" %in% user_action) {
-      tmp <- sampleDB:::CheckTable("study") %>%
+      tmp <- :CheckTable("study") %>%
         filter(short_code %in% user_file$StudyCode) %>%
         inner_join(user_file, by = c("short_code" = "StudyCode"))
 

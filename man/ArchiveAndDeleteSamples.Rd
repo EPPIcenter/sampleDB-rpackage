@@ -17,7 +17,7 @@ Deletions are recursive in the sense that they if sample ids associated with sam
 
 \item{verification}{A logical value. If set to TRUE user verification of the operation is required. If set to false user verification is bypassed. Default is set to TRUE.}
 
-\item{sample_id}{A numeric vector of a one or more sample IDs (also referred to as storage container IDs). Can be accessed using sampleDB::SearchSamples().}
+\item{sample_id}{A numeric vector of a one or more sample IDs (also referred to as storage container IDs). Can be accessed using SearchSamples().}
 }
 \description{
 Archive and delete wetlab samples.

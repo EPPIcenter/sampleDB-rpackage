@@ -115,18 +115,18 @@ SearchSamples <- function(sample_type = NULL, sample_barcode = NULL, container_n
 }
 
 .GetDatabaseTables <- function(database){
-  database.tables <- list(table.storage_container = sampleDB::CheckTable(database = database, "storage_container"),
-                          table.study_subject = sampleDB::CheckTable(database = database, "study_subject"),
-                          table.specimen = sampleDB::CheckTable(database = database, "specimen"),
-                          table.study = sampleDB::CheckTable(database = database, "study"),
-                          table.location = sampleDB::CheckTable(database = database, "location"),
-                          table.specimen_type = sampleDB::CheckTable(database = database, "specimen_type"),
-                          table.cryovial_box = sampleDB::CheckTable(database = database, "cryovial_box"),
-                          table.cryovial_tube = sampleDB::CheckTable(database = database, "cryovial_tube"),
-                          table.plate = sampleDB::CheckTable(database = database, "micronix_plate"),
-                          table.micronix_tube = sampleDB::CheckTable(database = database, "micronix_tube"),
-                          table.state = sampleDB::CheckTable(database = database, "state"),
-                          table.status = sampleDB::CheckTable(database = database, "status"))
+  database.tables <- list(table.storage_container = CheckTable(database = database, "storage_container"),
+                          table.study_subject = CheckTable(database = database, "study_subject"),
+                          table.specimen = CheckTable(database = database, "specimen"),
+                          table.study = CheckTable(database = database, "study"),
+                          table.location = CheckTable(database = database, "location"),
+                          table.specimen_type = CheckTable(database = database, "specimen_type"),
+                          table.cryovial_box = CheckTable(database = database, "cryovial_box"),
+                          table.cryovial_tube = CheckTable(database = database, "cryovial_tube"),
+                          table.plate = CheckTable(database = database, "micronix_plate"),
+                          table.micronix_tube = CheckTable(database = database, "micronix_tube"),
+                          table.state = CheckTable(database = database, "state"),
+                          table.status = CheckTable(database = database, "status"))
   return(database.tables)
 }
 

@@ -232,7 +232,7 @@ EditWetlabContainers <- function(session, input, database, output){
         expr = {
 
           #move container
-          return_message <- sampleDB::MoveContainers(
+          return_message <- MoveContainers(
             sample_type = input$ContainerSampleType,
             container_name = input$ContainerManifestID,
             freezer = list(
@@ -276,7 +276,7 @@ EditWetlabContainers <- function(session, input, database, output){
       expr = {
 
         #rename container
-        return_message <- sampleDB::RenameContainers(sample_type = input$ContainerSampleType, 
+        return_message <- RenameContainers(sample_type = input$ContainerSampleType, 
                                                      new_container_name = input$ContainerManifestNewID, 
                                                      current_container_name = input$ContainerManifestID,
                                                      conn = conn)
@@ -314,7 +314,7 @@ EditWetlabContainers <- function(session, input, database, output){
     # delete plate
     tryCatch(
       expr = {
-        return_message <- sampleDB::DeleteEmptyContainer(type = input$ContainerSampleType, container_name = input$ContainerManifestID, conn = conn)
+        return_message <- DeleteEmptyContainer(type = input$ContainerSampleType, container_name = input$ContainerManifestID, conn = conn)
         output$ContainerOutputConsole <- renderText({return_message})
       },
       warning = function(w) {

@@ -16,7 +16,7 @@ UpdateLabStudies <- function(session, input, output, database){
       # set requirements
       SetAddStudyRequirements(input, database, ui_elements)
       
-      return_message <- sampleDB::UpdateReferences(reference = "study",
+      return_message <- UpdateReferences(reference = "study",
                                                    operation = "add",
                                                    update = list(study_title = input[[ui_elements$ui.input$AddStudyTitle]],
                                                                  study_description = input[[ui_elements$ui.input$AddStudyDescription]],
@@ -43,7 +43,7 @@ UpdateLabStudies <- function(session, input, output, database){
       # set requirements
       SetChangeStudyRequirements(input, database, ui_elements)
       
-      return_message <- sampleDB::UpdateReferences(reference = "study",
+      return_message <- UpdateReferences(reference = "study",
                                                    operation = "modify",
                                                    identifier = list(study_short_code = input[[ui_elements$ui.input$ChangeStudyShortCode]]),
                                                    update = list(study_title = input[[ui_elements$ui.input$RenameStudyTitle]],
@@ -69,7 +69,7 @@ UpdateLabStudies <- function(session, input, output, database){
       # set requirements
       SetDeleteStudyRequirements(input, database, ui_elements)
       
-      return_message <- sampleDB::UpdateReferences(reference = "study",
+      return_message <- UpdateReferences(reference = "study",
                                                    operation = "delete",
                                                    identifier = list(study_short_code = input[[ui_elements$ui.input$DeleteStudyShortCode]]))
       
@@ -90,7 +90,7 @@ UpdateLabStudies <- function(session, input, output, database){
 
 ShowStudies <- function(output, database){
   output$TableStudy <- DT::renderDataTable({
-    sampleDB::CheckTable(database = database, "study") %>%
+    CheckTable(database = database, "study") %>%
       dplyr::select(-c(id, last_updated)) %>%
       mutate(is_longitudinal = as.logical(is_longitudinal)) %>%
       rename(Title = title,
