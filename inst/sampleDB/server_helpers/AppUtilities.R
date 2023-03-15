@@ -236,7 +236,7 @@ SearchFunction <- function(input, output, ui_elements, user_file){
 FreezerChangesChecks <- function(input, database, output, ui_elements){
   # warn if freezer name is redundant
   output[[ui_elements$ui.output$WarningFreezerNameAddUnique]] <- renderText({
-    out <- :.CheckFreezerNameIsUnique(input, database,
+    out <- CheckFreezerNameIsUnique(input, database,
                                      freezer_address = list(freezer_name = input[[ui_elements$ui.input$AddFreezerName]],
                                                             freezer_levelI = input[[ui_elements$ui.input$AddFreezerLevel_I]],
                                                             freezer_levelII = input[[ui_elements$ui.input$AddFreezerLevel_II]]))
@@ -245,7 +245,7 @@ FreezerChangesChecks <- function(input, database, output, ui_elements){
 
   # warn if freezer name is redundant
   output[[ui_elements$ui.output$WarningFreezerNameChangeUnique]] <- renderText({
-    out <- :.CheckFreezerNameIsUnique(input, database,
+    out <- CheckFreezerNameIsUnique(input, database,
                               freezer_address = list(freezer_name = input[[ui_elements$ui.input$RenameFreezerName2]],
                                                         freezer_levelI = input[[ui_elements$ui.input$RenameFreezerLevelI2]],
                                                         freezer_levelII = input[[ui_elements$ui.input$RenameFreezerLevelII2]]))
@@ -254,7 +254,7 @@ FreezerChangesChecks <- function(input, database, output, ui_elements){
 
   #warn deletion of freezer in use
   output$WarningFreezerDeletion <- renderText({
-    out <- :.CheckFreezerDeletion(input, database,
+    out <- CheckFreezerDeletion(input, database,
                           freezer_address = list(freezer_name = input[[ui_elements$ui.input$DeleteFreezerName]],
                                                     freezer_levelI = input[[ui_elements$ui.input$DeleteFreezerLevelI]],
                                                     freezer_levelII = input[[ui_elements$ui.input$DeleteFreezerLevelII]]))
@@ -265,19 +265,19 @@ FreezerChangesChecks <- function(input, database, output, ui_elements){
 SpecimenTypeChangesChecks <- function(input, database, output, ui_elements){
   # warn if specimen type is redundant
   output[[ui_elements$ui.output$WaringAddSpecimenTypeUnique]] <- renderText({
-    out <- :.CheckSpecimenTypeUnique(input, database, specimen_type = input[[ui_elements$ui.input$AddSpecimenType]])
+    out <- CheckSpecimenTypeUnique(input, database, specimen_type = input[[ui_elements$ui.input$AddSpecimenType]])
     validate(need(out, "ERROR:\nSpecimen type is not unique"))
   })
 
   # warn if specimen type is redundant
   output[[ui_elements$ui.output$WarningChangeSpecimenTypeUnique]] <- renderText({
-    out <- :.CheckSpecimenTypeUnique(input, database, specimen_type = input[[ui_elements$ui.input$RenameSpecimenType2]])
+    out <- CheckSpecimenTypeUnique(input, database, specimen_type = input[[ui_elements$ui.input$RenameSpecimenType2]])
     validate(need(out, "ERROR:\nSpecimen type is not unique"))
   })
 
   #warn deletion of specimen type in use
   output[[ui_elements$ui.output$WarningSpecimenTypeDeletion]] <- renderText({
-    out <- :.CheckSpecimenTypeDeletion(input, database , specimen_type = input[[ui_elements$ui.input$DeleteSpecimenType]])
+    out <- CheckSpecimenTypeDeletion(input, database , specimen_type = input[[ui_elements$ui.input$DeleteSpecimenType]])
     validate(need(out, "ERROR:\nSpecimen type is currently in use"))
   })
 }
@@ -285,31 +285,31 @@ SpecimenTypeChangesChecks <- function(input, database, output, ui_elements){
 StudyChangesChecks <- function(input, database, output, ui_elements) {
   #warn against study title duplication
   output[[ui_elements$ui.output$WarningStudyAddTitleUnique]] <- renderText({
-    out <- :.CheckStudyTitleIsUnique(study_title = input[[ui_elements$ui.input$AddStudyTitle]], input = input, database = database)
+    out <- CheckStudyTitleIsUnique(study_title = input[[ui_elements$ui.input$AddStudyTitle]], input = input, database = database)
     validate(need(out, "ERROR:\nStudy title is not unique"))
   })
 
   #warn against study title duplication
   output[[ui_elements$ui.output$WarningStudyChangeTitleUnique]] <- renderText({
-    out <- :.CheckStudyTitleIsUnique(study_title = input[[ui_elements$ui.input$RenameStudyTitle]], input = input, database = database)
+    out <- CheckStudyTitleIsUnique(study_title = input[[ui_elements$ui.input$RenameStudyTitle]], input = input, database = database)
     validate(need(out, "ERROR:\nStudy title is not unique"))
   })
 
   #warn against study code duplication
   output[[ui_elements$ui.output$WarningStudyAddShortCodeUnique]] <- renderText({
-    out <- :.CheckStudyShortCodeIsUnique(study_short_code = input[[ui_elements$ui.input$AddStudyShortCode]], input = input, database = database)
+    out <- CheckStudyShortCodeIsUnique(study_short_code = input[[ui_elements$ui.input$AddStudyShortCode]], input = input, database = database)
     validate(need(out, "ERROR:\nStudy code is not unique"))
   })
 
   #warn against study code duplication
   output[[ui_elements$ui.output$WarningStudyChangeShortCodeUnique]] <- renderText({
-    out <- :.CheckStudyShortCodeIsUnique(study_short_code = input[[ui_elements$ui.input$RenameStudyShortCode]], input = input, database = database)
+    out <- CheckStudyShortCodeIsUnique(study_short_code = input[[ui_elements$ui.input$RenameStudyShortCode]], input = input, database = database)
     validate(need(out, "ERROR:\nStudy code is not unique"))
   })
 
   #warn against study code deletion
   output[[ui_elements$ui.output$WarnStudyDeletion]] <- renderText({
-    out <- :.CheckStudyDeletion(study_ui = input[[ui_elements$ui.input$DeleteStudyShortCode]], input, database)
+    out <- CheckStudyDeletion(study_ui = input[[ui_elements$ui.input$DeleteStudyShortCode]], input, database)
     validate(need(out, "ERROR:\nStudy is currently in use"))
   })
 }
@@ -371,7 +371,7 @@ SetFreezerAddRequirements <- function(input, database, ui_elements){
       input[[ui_elements$ui.input$AddFreezerType]],
       input[[ui_elements$ui.input$AddFreezerLevel_I]],
       input[[ui_elements$ui.input$AddFreezerLevel_II]],
-      :.CheckFreezerNameIsUnique(input, database,
+      CheckFreezerNameIsUnique(input, database,
                                            freezer_address = list(freezer_name = input[[ui_elements$ui.input$AddFreezerName]],
                                                                   freezer_levelI = input[[ui_elements$ui.input$AddFreezerLevel_I]],
                                                                   freezer_levelII = input[[ui_elements$ui.input$AddFreezerLevel_II]])) == TRUE)
@@ -380,7 +380,7 @@ SetFreezerAddRequirements <- function(input, database, ui_elements){
 SetFreezerChangeRequirements <- function(input, database, ui_elements){
   req(sum(c(input[[ui_elements$ui.input$RenameFreezerName1]], input[[ui_elements$ui.input$RenameFreezerLevelI1]], input[[ui_elements$ui.input$RenameFreezerLevelII1]]) != "") > 0,
       sum(c(input[[ui_elements$ui.input$RenameFreezerName2]], input[[ui_elements$ui.input$RenameFreezerType2]], input[[ui_elements$ui.input$RenameFreezerLevelI2]], input[[ui_elements$ui.input$RenameFreezerLevelI2]]) != "") > 0,
-      :.CheckFreezerNameIsUnique(input, database,
+      CheckFreezerNameIsUnique(input, database,
                                            freezer_address = list(freezer_name = input[[ui_elements$ui.input$RenameFreezerName2]],
                                                                   freezer_levelI = input[[ui_elements$ui.input$RenameFreezerLevelI2]],
                                                                   freezer_levelII = input[[ui_elements$ui.input$RenameFreezerLevelII2]])) == TRUE)
@@ -390,7 +390,7 @@ SetFreezerDeleteRequirements <- function(input, database, ui_elements){
   req(input[[ui_elements$ui.input$DeleteFreezerName]],
       input[[ui_elements$ui.input$DeleteFreezerLevelI]],
       input[[ui_elements$ui.input$DeleteFreezerLevelII]],
-      :.CheckFreezerDeletion(input, database,
+      CheckFreezerDeletion(input, database,
                                        freezer_address = list(freezer_name = input[[ui_elements$ui.input$DeleteFreezerName]],
                                                               freezer_levelI = input[[ui_elements$ui.input$DeleteFreezerLevelI]],
                                                               freezer_levelII = input[[ui_elements$ui.input$DeleteFreezerLevelII]])) == TRUE)
@@ -401,9 +401,9 @@ SetAddStudyRequirements <- function(input, database, ui_elements){
       input[[ui_elements$ui.input$AddStudyDescription]],
       input[[ui_elements$ui.input$AddStudyShortCode]],
       input[[ui_elements$ui.input$AddStudyLeadPerson]],
-      :.CheckStudyTitleIsUnique(input = input, database = database,
+      CheckStudyTitleIsUnique(input = input, database = database,
                                           study_title = input[[ui_elements$ui.input$AddStudyTitle]]) == TRUE,
-      :.CheckStudyShortCodeIsUnique(input = input, database = database,
+      CheckStudyShortCodeIsUnique(input = input, database = database,
                                               study_short_code = input[[ui_elements$ui.input$AddStudyShortCode]]) == TRUE)
 }
 
@@ -413,13 +413,13 @@ SetChangeStudyRequirements <- function(input, database, ui_elements){
       input[[ui_elements$ui.input$RenameStudyDescription]],
       input[[ui_elements$ui.input$RenameStudyShortCode]],
       input[[ui_elements$ui.input$RenameStudyLeadPerson]],
-      :.CheckStudyTitleIsUnique(input = input, database = database,
+      CheckStudyTitleIsUnique(input = input, database = database,
                                           study_title = input[[ui_elements$ui.input$RenameStudyTitle]]) == TRUE)
 }
 
 SetDeleteStudyRequirements <- function(input, database, ui_elements){
   req(input[[ui_elements$ui.input$DeleteStudyShortCode]],
-      :.CheckStudyDeletion(input, database,
+      CheckStudyDeletion(input, database,
                                      study_ui = input[[ui_elements$ui.input$DeleteStudyShortCode]]) == TRUE)
 }
 

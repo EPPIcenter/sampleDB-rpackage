@@ -172,7 +172,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
     }
 
     if ("StudyCode" %in% colnames(user_file) && "upload" %in% user_action) {
-      tmp <- :CheckTable("study") %>%
+      tmp <- CheckTable("study") %>%
         filter(short_code %in% user_file$StudyCode) %>%
         inner_join(user_file, by = c("short_code" = "StudyCode"))
 

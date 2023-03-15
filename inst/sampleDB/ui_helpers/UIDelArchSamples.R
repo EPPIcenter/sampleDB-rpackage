@@ -35,7 +35,7 @@ UIDelArchSamples <- function(){
       width = 10,
       DT::dataTableOutput("DelArchSearchResultsTable"),
       hr(),
-      selectizeInput("DelArchStatus", "Status", choices = c("", :.ViewArchiveStatuses(database = database)$name)),
+      selectizeInput("DelArchStatus", "Status", choices = c("", RSQLite::dbGetQuery(con, "SELECT * FROM view_archive_statuses") %>% pull(name))),
       textInput(label = "Comment", inputId = "DelArchComment"),
       actionButton("ArchiveAction", width = '10.75%', label = "Archive Samples", style="color: #fff; background-color: #337ab7; border-color: #2e6da4"),
       hr(),

@@ -273,7 +273,9 @@ DelArchSamples <- function(session, input, database, output, inputs, outputs){
   observeEvent(input$DelArchSearchByState, {
     choices <- NULL
     if (input$DelArchSearchByState %in% "Archived") {
-      choices <- :.ViewArchiveStatuses(database = database)$name
+      con <- RSQLite::dbConnect(RSQLite::SQLite(), database)
+      choices <- RSQLite::dbGetQuery(con, "SELECT * FROM view_archive_statuses") %>% pull(name)
+      RSQLite::dbDisconnect(con)
     } else {
       choices <- "In Use"
     }

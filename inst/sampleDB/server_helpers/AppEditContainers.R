@@ -58,7 +58,7 @@ EditWetlabContainers <- function(session, input, database, output){
         "3" = "Paper Name"
       ),
       choices = c("", DBI::dbReadTable(con, manifest) %>% pull(name)),
-      selected = character(0)
+      selected = ""
     )
 
     updateSelectInput(
@@ -69,7 +69,7 @@ EditWetlabContainers <- function(session, input, database, output){
         pull(name) %>%
         unique(.)
       ),
-      selected = character(0)
+      selected = ""
     )
 
     updateSelectInput(

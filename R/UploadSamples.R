@@ -197,7 +197,7 @@ UploadSamples <- function(sample_type_id, upload_data) {
     if(sample_type_id == 1){
       # create a new housing (if it does not already exist)
       if(!eval.container_name %in% CheckTableTx(conn = conn, "micronix_plate")$name){
-        eval.plate_id <- :.UploadPlate(conn = conn, container_name = eval.container_name, container_barcode = eval.plate_barcode, freezer_address = eval.freezer_address, table = "micronix_plate")
+        eval.plate_id <- .UploadPlate(conn = conn, container_name = eval.container_name, container_barcode = eval.plate_barcode, freezer_address = eval.freezer_address, table = "micronix_plate")
       }else{
         eval.plate_id <- filter(CheckTableTx(conn = conn, "micronix_plate"), name == eval.container_name)$id
       }
@@ -214,7 +214,7 @@ UploadSamples <- function(sample_type_id, upload_data) {
     else if (sample_type_id == 2) {
      # create a new housing (if it does not already exist)
       if(!eval.container_name %in% CheckTableTx(conn = conn, "cryovial_box")$name){
-        eval.plate_id <- :.UploadPlate(conn = conn, container_name = eval.container_name, container_barcode = eval.plate_barcode, freezer_address = eval.freezer_address, table = "cryovial_box")
+        eval.plate_id <- UploadPlate(conn = conn, container_name = eval.container_name, container_barcode = eval.plate_barcode, freezer_address = eval.freezer_address, table = "cryovial_box")
       }else{
         eval.plate_id <- filter(CheckTableTx(conn = conn, "cryovial_box"), name == eval.container_name)$id
       }
@@ -230,7 +230,7 @@ UploadSamples <- function(sample_type_id, upload_data) {
     } else if (sample_type_id == 3) {
      # create a new housing (if it does not already exist)
       if(!eval.container_name %in% CheckTableTx(conn = conn, "dbs_paper")$name){
-        eval.plate_id <- :.UploadPlate(conn = conn, container_name = eval.container_name, container_barcode = eval.plate_barcode, freezer_address = eval.freezer_address, table = "dbs_paper")
+        eval.plate_id <- UploadPlate(conn = conn, container_name = eval.container_name, container_barcode = eval.plate_barcode, freezer_address = eval.freezer_address, table = "dbs_paper")
       }else{
         eval.plate_id <- filter(CheckTableTx(conn = conn, "dbs_paper"), name == eval.container_name)$id
       }

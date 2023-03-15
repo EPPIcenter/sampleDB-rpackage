@@ -403,7 +403,7 @@ AppUploadSamples <- function(session, input, output, database) {
     updateSelectInput(
       session, 
       "UploadLocationRoot",
-      selected = character(0),
+      selected = "",
       choices = c("", tbl(con, "location") %>%
         collect() %>% 
         pull(name) %>%
@@ -428,7 +428,7 @@ AppUploadSamples <- function(session, input, output, database) {
         "Cryovial" = "Box Name",
         "DBS" = "Paper Name"
       ),
-      selected = character(0),
+      selected = "",
       choices = c("", DBI::dbReadTable(con, manifest) %>% pull(name)),
       options = list(create = TRUE)
     )

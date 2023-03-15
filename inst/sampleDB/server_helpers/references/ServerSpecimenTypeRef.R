@@ -16,7 +16,7 @@ UpdateSpecimenTypes <- function(session, input, output, database){
       
       #set requirements
       req(input[[ui_elements$ui.input$AddSpecimenType]],
-          :.CheckSpecimenTypeUnique(input, database, specimen_type = input[[ui_elements$ui.input$AddSpecimenType]]) == TRUE)
+          CheckSpecimenTypeUnique(input, database, specimen_type = input[[ui_elements$ui.input$AddSpecimenType]]) == TRUE)
       
       return_message <- UpdateReferences(reference = "specimen_type",
                                                    operation = "add",
@@ -43,7 +43,7 @@ UpdateSpecimenTypes <- function(session, input, output, database){
       #set requirements
       req(input$RenameSpecimenType1,
           input$RenameSpecimenType2,
-          :.CheckSpecimenTypeUnique(input, database, specimen_type = input[[ui_elements$ui.input$RenameSpecimenType2]]) == TRUE)
+          CheckSpecimenTypeUnique(input, database, specimen_type = input[[ui_elements$ui.input$RenameSpecimenType2]]) == TRUE)
       
       return_message <- UpdateReferences(reference = "specimen_type",
                                                    operation = "modify",
@@ -70,7 +70,7 @@ UpdateSpecimenTypes <- function(session, input, output, database){
       
       #set requirements
       req(input$DeleteSpecimenTypeAction,
-          :.CheckSpecimenTypeDeletion(input, database , specimen_type = input[[ui_elements$ui.input$DeleteSpecimenType]]) == TRUE)
+          CheckSpecimenTypeDeletion(input, database , specimen_type = input[[ui_elements$ui.input$DeleteSpecimenType]]) == TRUE)
       
       return_message <- UpdateReferences(reference = "specimen_type",
                                                    operation = "delete",

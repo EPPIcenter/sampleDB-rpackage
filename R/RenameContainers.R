@@ -18,7 +18,7 @@ RenameContainers <- function(sample_type, new_container_name, current_container_
     if (!current_container_name %in% CheckTable(database = database, table = "micronix_plate")$name) {
       warning("plate matrix not found in the database!")
     }
-    # stopifnot("ERROR: New Container name is not unique" = :.CheckUploadContainerNameDuplication(database = database, plate_name = new_container_name, only_active = T))
+    # stopifnot("ERROR: New Container name is not unique" = CheckUploadContainerNameDuplication(database = database, plate_name = new_container_name, only_active = T))
     
     if (new_container_name %in% CheckTable(database = database, table = "micronix_plate")$name) {
       warning("Plate name already exists!")
@@ -39,7 +39,7 @@ RenameContainers <- function(sample_type, new_container_name, current_container_
     if (!current_container_name %in% CheckTable(database = database, table = "cryovial_box")$name) {
       warning("plate matrix not found in the database!")
     }
-    # stopifnot("ERROR: New Container name is not unique" = :.CheckUploadContainerNameDuplication(database = database, plate_name = new_container_name, only_active = T))
+    # stopifnot("ERROR: New Container name is not unique" = CheckUploadContainerNameDuplication(database = database, plate_name = new_container_name, only_active = T))
     
     if (new_container_name %in% CheckTable(database = database, table = "cryovial_box")$name) {
       warning("Plate name already exists!")

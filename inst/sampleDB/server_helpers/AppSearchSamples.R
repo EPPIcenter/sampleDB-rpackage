@@ -234,7 +234,9 @@ SearchWetlabSamples <- function(session, input, database, output, DelArch = FALS
   observeEvent(input$SearchByState, {
     choices <- NULL
     if (input$SearchByState %in% "Archived") {
-      choices <- :.ViewArchiveStatuses(database = database)$name
+      con <- RSQLite::dbConnect(RSQLite::SQLite(), database)
+      choices <- RSQLite::dbGetQuery(con, "SELECT * FROM view_archive_statuses") %>% pull(name)
+      RSQLite::dbDisconnect(con)
     } else {
       choices <- "In Use"
     }
