@@ -25,7 +25,7 @@ UpdateLabFreezers <- function(session, input, output, database){
       SetFreezerAddRequirements(input = input, database = database, ui_elements = ui_elements)
       
       tryCatch(
-        return_message <- sampleDB::UpdateReferences(reference = "freezer",
+        return_message <- UpdateReferences(reference = "freezer",
                                                      operation = "add",
                                                      update = list(freezer_name = new.freezer_name,
                                                                    freezer_type = new.freezer_type,
@@ -63,7 +63,7 @@ UpdateLabFreezers <- function(session, input, output, database){
       #set requirements
       SetFreezerChangeRequirements(input = input, database = database, ui_elements = ui_elements)
       
-      return_message <- sampleDB::UpdateReferences(reference = "freezer",
+      return_message <- UpdateReferences(reference = "freezer",
                                                    operation = "modify",
                                                    identifier = list(freezer_name = old.freezer_name,
                                                                      freezer_levelI = old.freezer_levelI,
@@ -103,7 +103,7 @@ UpdateLabFreezers <- function(session, input, output, database){
       # set requirements
       SetFreezerDeleteRequirements(input = input, database = database, ui_elements = ui_elements)
       
-      return_message <- sampleDB::UpdateReferences(reference = "freezer",
+      return_message <- UpdateReferences(reference = "freezer",
                                                    operation = "delete",
                                                    identifier = list(freezer_name = delete.freezer_name,
                                                                      freezer_levelI = delete.freezer_levelI,

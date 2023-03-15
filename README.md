@@ -26,7 +26,7 @@ Please take a second to review the below sections before installing the applicat
 
 The sampleDB shiny application can be hosted by a shiny server or can be run locally. If you would like to link the
 application to the server, you must install the application into any of the site library pathways. Otherwise, it is okay
-to install the package locally (or at the site level) and run the shiny application using `sampleDB::Run_SampleDB()`. 
+to install the package locally (or at the site level) and run the shiny application using `Run_SampleDB()`. 
 
 ### Data availability
 

@@ -86,7 +86,7 @@ library(yaml)
 .CheckUploadContainerBarcodeDuplication <- function(plate_barcode, database){
 
   if(plate_barcode != "" && !is.null(plate_barcode)){
-    out <- all(!(plate_barcode %in% c(sampleDB::CheckTable(database = database, "micronix_plate")$plate_barcode)))
+    out <- all(!(plate_barcode %in% c(CheckTable(database = database, "micronix_plate")$plate_barcode)))
   }else{
     out <- TRUE
   }
@@ -95,7 +95,7 @@ library(yaml)
 #Freezer Checks
 .CheckFreezerNameIsUnique <- function(input, database, freezer_address){
 
-  freezer_address_dup_test <- filter(sampleDB::CheckTable("location"),
+  freezer_address_dup_test <- filter(CheckTable("location"),
                                      name == freezer_address$freezer_name,
                                      level_I == freezer_address$freezer_levelI,
                                      level_II == freezer_address$freezer_levelII) %>% nrow()
@@ -111,12 +111,12 @@ library(yaml)
 .CheckFreezerDeletion <- function(input, database, freezer_address){
   num_items_at_address <- 0
 
-  freezer_address <- filter(sampleDB::CheckTable(database = database, "location"),
+  freezer_address <- filter(CheckTable(database = database, "location"),
                             name == freezer_address$freezer_name,
                             level_I == freezer_address$freezer_levelI,
                             level_II == freezer_address$freezer_levelII)
   if(length(freezer_address$id) > 0){
-    items_at_address <- filter(sampleDB::CheckTable(database = database, "micronix_plate"), location_id == freezer_address$id)
+    items_at_address <- filter(CheckTable(database = database, "micronix_plate"), location_id == freezer_address$id)
     num_items_at_address <- items_at_address %>% nrow()
   }
   if(num_items_at_address > 0){
@@ -129,7 +129,7 @@ library(yaml)
 
 #Specimen Type Check
 .CheckSpecimenTypeUnique <- function(input, database, specimen_type){
-  specimen_type_dup_test <- filter(sampleDB::CheckTable(database = database, "specimen_type"), name == specimen_type) %>% nrow()
+  specimen_type_dup_test <- filter(CheckTable(database = database, "specimen_type"), name == specimen_type) %>% nrow()
   if(specimen_type_dup_test > 0){
     out <- FALSE
   }else{
@@ -142,9 +142,9 @@ library(yaml)
 .CheckSpecimenTypeDeletion <- function(input, database, specimen_type){
 
   num_items_of_specimen_type <- 0
-  specimen_type <- filter(sampleDB::CheckTable(database = database, "specimen_type"), name == specimen_type)
+  specimen_type <- filter(CheckTable(database = database, "specimen_type"), name == specimen_type)
   if(length(specimen_type$id) > 0){
-    num_items_of_specimen_type <- filter(sampleDB::CheckTable(database = database, "specimen"), specimen_type_id == specimen_type$id) %>% nrow()
+    num_items_of_specimen_type <- filter(CheckTable(database = database, "specimen"), specimen_type_id == specimen_type$id) %>% nrow()
   }
   if(num_items_of_specimen_type > 0){
     out <- FALSE
@@ -156,7 +156,7 @@ library(yaml)
 
 #Study Check
 .CheckStudyTitleIsUnique <- function(study_title, test, input, database){
-  study_title_dup_test <- filter(sampleDB::CheckTable(database = database, "study"), title == study_title) %>% nrow()
+  study_title_dup_test <- filter(CheckTable(database = database, "study"), title == study_title) %>% nrow()
   if(study_title_dup_test > 0){
     out <- FALSE
   }else{
@@ -166,7 +166,7 @@ library(yaml)
 }
 
 .CheckStudyShortCodeIsUnique <- function(study_short_code, test, input, database){
-  study_short_code_dup_test <- filter(sampleDB::CheckTable(database = database, "study"), short_code == study_short_code) %>% nrow()
+  study_short_code_dup_test <- filter(CheckTable(database = database, "study"), short_code == study_short_code) %>% nrow()
   if(study_short_code_dup_test > 0){
     out <- FALSE
   }else{
@@ -177,9 +177,9 @@ library(yaml)
 
 .CheckStudyDeletion <- function(study_ui, input, database){
   num_items_of_studies <- 0
-  studies <- filter(sampleDB::CheckTable(database = database, "study"), short_code == study_ui)
+  studies <- filter(CheckTable(database = database, "study"), short_code == study_ui)
   if(length(studies$id) > 0){
-    num_items_of_studies <- filter(sampleDB::CheckTable(database = database, "study_subject"), study_id == studies$id) %>% nrow()
+    num_items_of_studies <- filter(CheckTable(database = database, "study_subject"), study_id == studies$id) %>% nrow()
   }
   if(num_items_of_studies > 0){
     out <- FALSE
@@ -210,7 +210,7 @@ library(yaml)
                             barcode = container_barcode),
                        conn = conn) %>% suppressWarnings()
 
-  eval.plate_id <- tail(sampleDB::CheckTableTx(conn = conn, table), 1)$id
+  eval.plate_id <- tail(CheckTableTx(conn = conn, table), 1)$id
 
   return(eval.plate_id)
 

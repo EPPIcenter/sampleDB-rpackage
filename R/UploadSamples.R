@@ -173,8 +173,8 @@ UploadSamples <- function(sample_type_id, upload_data) {
     }
 
     # sample automatically in use
-    eval.status_id <- filter(sampleDB::CheckTableTx(conn = conn, "status"), name %in% "In Use")$id
-    eval.state_id <- filter(sampleDB::CheckTableTx(conn = conn, "state"), name %in% "Active")$id
+    eval.status_id <- filter(CheckTableTx(conn = conn, "status"), name %in% "In Use")$id
+    eval.state_id <- filter(CheckTableTx(conn = conn, "state"), name %in% "Active")$id
 
     #4. create the new item's storage container to the database using the item's sample id
 
@@ -197,7 +197,7 @@ UploadSamples <- function(sample_type_id, upload_data) {
     if(sample_type_id == 1){
       # create a new housing (if it does not already exist)
       if(!eval.container_name %in% CheckTableTx(conn = conn, "micronix_plate")$name){
-        eval.plate_id <- sampleDB:::.UploadPlate(conn = conn, container_name = eval.container_name, container_barcode = eval.plate_barcode, freezer_address = eval.freezer_address, table = "micronix_plate")
+        eval.plate_id <- .UploadPlate(conn = conn, container_name = eval.container_name, container_barcode = eval.plate_barcode, freezer_address = eval.freezer_address, table = "micronix_plate")
       }else{
         eval.plate_id <- filter(CheckTableTx(conn = conn, "micronix_plate"), name == eval.container_name)$id
       }
@@ -214,7 +214,7 @@ UploadSamples <- function(sample_type_id, upload_data) {
     else if (sample_type_id == 2) {
      # create a new housing (if it does not already exist)
       if(!eval.container_name %in% CheckTableTx(conn = conn, "cryovial_box")$name){
-        eval.plate_id <- sampleDB:::.UploadPlate(conn = conn, container_name = eval.container_name, container_barcode = eval.plate_barcode, freezer_address = eval.freezer_address, table = "cryovial_box")
+        eval.plate_id <- UploadPlate(conn = conn, container_name = eval.container_name, container_barcode = eval.plate_barcode, freezer_address = eval.freezer_address, table = "cryovial_box")
       }else{
         eval.plate_id <- filter(CheckTableTx(conn = conn, "cryovial_box"), name == eval.container_name)$id
       }
@@ -230,7 +230,7 @@ UploadSamples <- function(sample_type_id, upload_data) {
     } else if (sample_type_id == 3) {
      # create a new housing (if it does not already exist)
       if(!eval.container_name %in% CheckTableTx(conn = conn, "dbs_paper")$name){
-        eval.plate_id <- sampleDB:::.UploadPlate(conn = conn, container_name = eval.container_name, container_barcode = eval.plate_barcode, freezer_address = eval.freezer_address, table = "dbs_paper")
+        eval.plate_id <- UploadPlate(conn = conn, container_name = eval.container_name, container_barcode = eval.plate_barcode, freezer_address = eval.freezer_address, table = "dbs_paper")
       }else{
         eval.plate_id <- filter(CheckTableTx(conn = conn, "dbs_paper"), name == eval.container_name)$id
       }
@@ -286,7 +286,7 @@ UploadSamples <- function(sample_type_id, upload_data) {
                             name = container_name,
                             barcode = container_barcode),
                        conn = conn) %>% suppressWarnings()
-  eval.plate_id <- tail(sampleDB::CheckTable(database = database, manifest_table), 1)$id
+  eval.plate_id <- tail(CheckTable(database = database, manifest_table), 1)$id
 
   RSQLite::dbCommit(conn)
   RSQLite::dbDisconnect(conn)

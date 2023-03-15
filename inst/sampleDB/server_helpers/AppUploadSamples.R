@@ -138,7 +138,7 @@ AppUploadSamples <- function(session, input, output, database) {
       withCallingHandlers({
 
         ## format the file
-        rv$user_file <- sampleDB::ProcessCSV(
+        rv$user_file <- ProcessCSV(
           user_csv = dataset$datapath,
           user_action = "upload",
           file_type = input$UploadFileType,
@@ -272,7 +272,7 @@ AppUploadSamples <- function(session, input, output, database) {
           }
 
           ## format the file
-          rv$user_file <- sampleDB::ProcessCSV(
+          rv$user_file <- ProcessCSV(
             user_csv = dataset$datapath,
             user_action = "upload",
             file_type = input$UploadFileType,
@@ -349,7 +349,7 @@ AppUploadSamples <- function(session, input, output, database) {
         }
 
         shinyjs::reset("UploadAction")
-        sampleDB::UploadSamples(sample_type_id = as.integer(input$UploadSampleType), upload_data = rv$user_file)
+        UploadSamples(sample_type_id = as.integer(input$UploadSampleType), upload_data = rv$user_file)
       },
       message = function(m) {
         shinyjs::html(id = "UploadOutputConsole", html = paste0(dataset$name, ": ", m$message), add = rv$console_verbatim)
@@ -403,7 +403,7 @@ AppUploadSamples <- function(session, input, output, database) {
     updateSelectInput(
       session, 
       "UploadLocationRoot",
-      selected = character(0),
+      selected = "",
       choices = c("", tbl(con, "location") %>%
         collect() %>% 
         pull(name) %>%
@@ -428,7 +428,7 @@ AppUploadSamples <- function(session, input, output, database) {
         "Cryovial" = "Box Name",
         "DBS" = "Paper Name"
       ),
-      selected = character(0),
+      selected = "",
       choices = c("", DBI::dbReadTable(con, manifest) %>% pull(name)),
       options = list(create = TRUE)
     )

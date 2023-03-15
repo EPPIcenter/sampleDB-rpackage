@@ -10,7 +10,7 @@
 #' `delete` should be used to remove all traces of the sample (internal and external data).
 #' Deletions are recursive in the sense that they if sample ids associated with samples from an entire cryovial_box are deleted then the cryovial_box is automatically deleted.
 #'
-#' @param sample_id A numeric vector of a one or more sample IDs (also referred to as storage container IDs). Can be accessed using sampleDB::SearchSamples().
+#' @param sample_id A numeric vector of a one or more sample IDs (also referred to as storage container IDs). Can be accessed using SearchSamples().
 #'
 #' @param verification A logical value. If set to TRUE user verification of the operation is required. If set to false user verification is bypassed. Default is set to TRUE.
 #'
@@ -36,8 +36,8 @@ ArchiveAndDeleteSamples <- function(operation, data, comment, status, verificati
     stopifnot("Status is not valid" = status %in% CheckTable("status")$name)
   }
 
-  status_id <- filter(sampleDB::CheckTable("status"), name %in% status)$id
-  state_id <- filter(sampleDB::CheckTable("state"), name %in% "Archived")$id
+  status_id <- filter(CheckTable("status"), name %in% status)$id
+  state_id <- filter(CheckTable("state"), name %in% "Archived")$id
 
   stopifnot("Operation is not valid" = operation %in% c("archive", "delete", "unarchive"))
 
@@ -127,12 +127,12 @@ ArchiveAndDeleteSamples <- function(operation, data, comment, status, verificati
 }
 
 .GetDatabaseTables <- function(database){
-  database.tables <- list(table.storage_container = sampleDB::CheckTable(database = database, "storage_container"),
-                          table.specimen = sampleDB::CheckTable(database = database, "specimen"),
-                          table.cryovial_tube = sampleDB::CheckTable(database = database, "cryovial_tube"),
-                          table.rdt = sampleDB::CheckTable(database = database, "rdt"),
-                          table.paper = sampleDB::CheckTable(database = database, "paper"),
-                          table.micronix_tube = sampleDB::CheckTable(database = database, "micronix_tube"))
+  database.tables <- list(table.storage_container = CheckTable(database = database, "storage_container"),
+                          table.specimen = CheckTable(database = database, "specimen"),
+                          table.cryovial_tube = CheckTable(database = database, "cryovial_tube"),
+                          table.rdt = CheckTable(database = database, "rdt"),
+                          table.paper = CheckTable(database = database, "paper"),
+                          table.micronix_tube = CheckTable(database = database, "micronix_tube"))
   return(database.tables)
 }
 
@@ -142,19 +142,19 @@ ArchiveAndDeleteSamples <- function(operation, data, comment, status, verificati
   study_subject_id <- filter(database.tables$table.specimen, id %in% specimen_id)$study_subject_id
 
   # DELETE INTERNAL DATA -- storage container categorically
-  sampleDB::DeleteFromTable(conn = conn,
+  DeleteFromTable(conn = conn,
                             table_name = "storage_container",
                             id = as.character(tmp_table.storage_container$id))
 
   # DELETE INTERNAL DATA -- delete specimen if it is no longer being reference
   if(!specimen_id %in% CheckTableTx(conn = conn, "storage_container")$specimen_id){
-    sampleDB::DeleteFromTable(conn = conn,
+    DeleteFromTable(conn = conn,
                               table_name = "specimen",
                               id = as.character(specimen_id))
 
     # DELETE INTERNAL DATA -- delete study subject if it is no longer being reference
     if(!study_subject_id %in% CheckTableTx(conn = conn, "specimen")$study_subject_id){
-      sampleDB::DeleteFromTable(conn = conn,
+      DeleteFromTable(conn = conn,
                                 table_name = "study_subject",
                                 id = as.character(study_subject_id))
     }
@@ -180,7 +180,7 @@ ArchiveAndDeleteSamples <- function(operation, data, comment, status, verificati
                           id = as.character(eval.id))
 
     # # delete sample
-    # sampleDB::DeleteFromTable(database = database,
+    # DeleteFromTable(database = database,
     #                           table_name = "micronix_tube",
     #                           id = as.character(eval.id))
 
@@ -205,7 +205,7 @@ ArchiveAndDeleteSamples <- function(operation, data, comment, status, verificati
                           id = as.character(eval.id))
 
     # # delete sample
-    # sampleDB::DeleteFromTable(database = database,
+    # DeleteFromTable(database = database,
     #                           table_name = "micronix_tube",
     #                           id = as.character(eval.id))
 
@@ -238,13 +238,13 @@ ArchiveAndDeleteSamples <- function(operation, data, comment, status, verificati
       matrix_plate_id <- filter(database.tables$table.micronix_tube, id %in% eval.id)$manifest_id
 
       # delete sample
-      sampleDB::DeleteFromTable(conn = conn,
+      DeleteFromTable(conn = conn,
                                 table_name = "micronix_tube",
                                 id = as.character(eval.id))
 
       # delete container if container id is no longer in micronix table
-      if(!matrix_plate_id %in% sampleDB::CheckTableTx(conn = conn, "micronix_tube")$manifest_id){
-        sampleDB::DeleteFromTable(conn = conn,
+      if(!matrix_plate_id %in% CheckTableTx(conn = conn, "micronix_tube")$manifest_id){
+        DeleteFromTable(conn = conn,
                                   table_name = "micronix_plate",
                                   id = as.character(matrix_plate_id))
       }
@@ -257,14 +257,14 @@ ArchiveAndDeleteSamples <- function(operation, data, comment, status, verificati
       manifest_id <- filter(database.tables$table.cryovial_tube, id %in% eval.id)$manifest_id
 
       #delete sample
-      sampleDB::DeleteFromTable(conn = conn,
+      DeleteFromTable(conn = conn,
                                 table_name = "cryovial_tube",
                                 id = as.character(eval.id))
 
       # delete container if container id is no longer in cryovial_tube table
       if(!manifest_id %in% CheckTableTx(conn = conn, "cryovial_tube")$manifest_id) {
 
-        sampleDB::DeleteFromTable(conn = conn,
+        DeleteFromTable(conn = conn,
                                   table_name = "cryovial_box",
                                   id = as.character(manifest_id))
       }

@@ -6,7 +6,7 @@ DeleteFromTable <- function(table_name, id, conn) {
 
   #check and see if table is a reference table. if it is make sure the reference being deleted is not in use
   if(table_name == "location"){
-    if(!(id %in% sampleDB::CheckTableTx(conn = conn, "micronix_plate")$location_id)){
+    if(!(id %in% CheckTableTx(conn = conn, "micronix_plate")$location_id)){
       .delete_row(table_name, id, conn)
     }else{
       warning("Storage Location is in use, it cannot be deleted.")
@@ -14,7 +14,7 @@ DeleteFromTable <- function(table_name, id, conn) {
   }
 
   else if(table_name == "study"){
-    if(!(id %in% sampleDB::CheckTableTx(conn = conn, "study_subject")$study_id)){
+    if(!(id %in% CheckTableTx(conn = conn, "study_subject")$study_id)){
       .delete_row(table_name, id, conn)
     }else{
       warning("Study is in use, it cannot be deleted.")
@@ -22,7 +22,7 @@ DeleteFromTable <- function(table_name, id, conn) {
   }
 
   else if(table_name == "specimen_type"){
-    if(!(id %in% sampleDB::CheckTableTx(conn = conn, "specimen")$specimen_type_id)){
+    if(!(id %in% CheckTableTx(conn = conn, "specimen")$specimen_type_id)){
       .delete_row(table_name, id, conn)
     }else{
       warning("Specimen Type is in use, it cannot be deleted.")

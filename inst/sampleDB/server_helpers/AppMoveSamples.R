@@ -327,7 +327,7 @@ AppMoveSamples <- function(session, input, output, database) {
       withCallingHandlers({
 
         ## format the file
-        rv$user_file <- sampleDB::ProcessCSV(
+        rv$user_file <- ProcessCSV(
           user_csv = dataset$datapath,
           user_action = "move",
           file_type = input$MoveFileType,
@@ -407,7 +407,7 @@ AppMoveSamples <- function(session, input, output, database) {
         move_file_list <- list(rv$user_file)
         names(move_file_list) <- unique(rv$user_file$manifest_name)
 
-        sampleDB::MoveSamples(sample_type = as.integer(input$MoveSampleType), move_data = move_file_list)
+        MoveSamples(sample_type = as.integer(input$MoveSampleType), move_data = move_file_list)
       },
       message = function(m) {
         shinyjs::html(id = "MoveOutputConsole", html = paste0(dataset$name, ": ", m$message), add = rv$console_verbatim)
