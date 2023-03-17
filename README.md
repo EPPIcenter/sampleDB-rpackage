@@ -13,7 +13,7 @@ After minimal installation and setup SampleDB can be accessed at the url:
 
 1. Uniquely Barcoded Samples
 2. Linux Server
-3. R >= 4.0
+3. R >= 4.1
 4. [Rstudio Server](https://www.rstudio.com/products/rstudio/download-server/) or ![Rstudio Workbench](https://www.rstudio.com/products/workbench/)
 5. [Shiny Server](https://www.rstudio.com/products/shiny/download-server/)
 6. [sqlite3](https://www.sqlite.org/position.html)
@@ -106,3 +106,13 @@ To run Rstudio as an administrator:
 sudo /Applications/RStudio.app/Contents/MacOS/RStudio
 ```
 - Now RStudio will launch with admin access
+
+
+### I ran `Run_SampleDB()` but the I see an error message
+
+First run `SampleDB_Setup()`. This will create the database and setup all other dependencies.
+
+### I installed the application but I cannot upload files
+
+Locations, studies, and specimen types need to be defined first before they can be referenced in upload files. You can find these panels under the `Update References` tab.
+

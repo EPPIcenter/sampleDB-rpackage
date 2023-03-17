@@ -100,17 +100,13 @@ AppUploadSamples <- function(session, input, output, database) {
     }
 
     rv$error <- NULL
-  })
-
-  observeEvent(input$Exit, ignoreInit = TRUE, {
     error$title <- ""
     error$message <- ""
     error$type <- ""
     error$table <- NULL
-    rv$error <- NULL
     rv$user_file_error_annotated <- NULL
-    removeModal()
   })
+
 
   # Download a complete upload template
   observe({
@@ -243,6 +239,11 @@ AppUploadSamples <- function(session, input, output, database) {
     }
 
     dataset <- input$UploadSampleDataSet
+    if (is.null(dataset) || is.null(dataset$datapath)) {
+      message("Aborting upload - no file uploaded")
+      return()
+    }
+
     early_stop <- FALSE
     if (is.null(rv$user_file)) {
       # dataset <- input$UploadSampleDataSet
