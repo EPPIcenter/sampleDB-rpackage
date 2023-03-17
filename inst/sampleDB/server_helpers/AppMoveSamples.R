@@ -34,16 +34,15 @@ AppMoveSamples <- function(session, input, output, database) {
   )
 
   observeEvent(input$CreateNewManifest, ignoreInit = TRUE, {
-
     con <- dbConnect(SQLite(), Sys.getenv("SDB_PATH"))
 
     updateSelectInput(
-      session, 
+      session,
       "ManifestLocationRoot",
       selected = "",
       label = "Upload Location",
       choices = c("", tbl(con, "location") %>%
-        collect() %>% 
+        collect() %>%
         pull(name) %>%
         unique(.)
       )
@@ -54,7 +53,7 @@ AppMoveSamples <- function(session, input, output, database) {
       "ManifestLocationRootLevelI",
       label = switch(
         input$MoveSampleType,
-        "1" = "Shelf Name", 
+        "1" = "Shelf Name",
         "2" = "Rack Number",
         "3" = "To Be Implemented"
       )
@@ -88,7 +87,8 @@ AppMoveSamples <- function(session, input, output, database) {
         textInput("ManifestID", label = "Human Readable Name", placeholder = "PRISM-2022-001"),
         uiOutput("ManifestIDCheck"),
         textInput("ManifestBarcode", label = "Barcode"),
-        
+        uiOutput("ManifestBarcodeCheck"),
+
         footer = tagList(
           modalButton("Cancel"),
           actionButton("ManifestCreateAction", "OK")
@@ -131,7 +131,23 @@ AppMoveSamples <- function(session, input, output, database) {
         error$title = "Error"
         error$message = paste0("Cannot create the container ", input$ManifestID, " because it already exists.")
         error$table = NULL
-    
+
+        rv$error <- TRUE
+
+        return()
+      }
+
+      result <- tbl(con, manifest) %>%
+        filter(barcode %in% local(input$ManifestBarcode)) %>%
+        count() %>%
+        pull(n)
+
+      if (result > 0) {
+        # note: this should be stale
+        error$title = "Error"
+        error$message = paste0("The barcode ", input$ManifestBarcode, " already exists for this type of container.")
+        error$table = NULL
+
         rv$error <- TRUE
 
         return()
@@ -195,7 +211,40 @@ AppMoveSamples <- function(session, input, output, database) {
       }
 
       HTML(html)
-    })      
+    })
+  })
+
+  observeEvent(input$ManifestBarcode, ignoreInit = TRUE, {
+    output$ManifestBarcodeCheck <- renderUI({
+
+      html <- paste0("<span></span>")
+
+      if (dbCanConnect(RSQLite::SQLite(), Sys.getenv("SDB_PATH"))) {
+        con <- dbConnect(SQLite(), Sys.getenv("SDB_PATH"))
+
+        if (input$ManifestBarcode != "") {
+          manifest <- switch(
+            input$MoveSampleType,
+            "1" = "micronix_plate",
+            "2" = "cryovial_box",
+            "3" = "dbs_paper"
+          )
+
+          result <- tbl(con, manifest) %>%
+            filter(barcode %in% local(input$ManifestBarcode)) %>%
+            count() %>%
+            pull(n)
+
+          if (result > 0) {
+            html <- paste0("<span style=color:#0000ff>", "Barcode is in use!", "</span>")
+          }
+        }
+
+        dbDisconnect(con)
+      }
+
+      HTML(html)
+    })
   })
 
   observeEvent(input$ManifestLocationRoot, ignoreInit = TRUE, {
@@ -206,7 +255,7 @@ AppMoveSamples <- function(session, input, output, database) {
       selected = "",
       choices = c("", tbl(con, "location") %>%
         filter(name == local(input$ManifestLocationRoot)) %>%
-        collect() %>% 
+        collect() %>%
         pull(level_I)
       )
     )
@@ -224,7 +273,7 @@ AppMoveSamples <- function(session, input, output, database) {
       selected = "",
       choices = c("", tbl(con, "location") %>%
         filter(name == local(input$ManifestLocationRoot) && level_I == local(input$ManifestLocationRootLevelI)) %>%
-        collect() %>% 
+        collect() %>%
         pull(level_II)
       )
     )
@@ -243,14 +292,25 @@ AppMoveSamples <- function(session, input, output, database) {
   })
 
   observeEvent(rv$error, ignoreInit = TRUE, {
+
     message("Running error workflow")
 
     df <- error$table
     modal_size <- "m"
-    if (error$type == "formatting") {
+
+    if (is.null(error$type) || error$type == "") {
+      showModal(
+        modalDialog(
+          size = "m",
+          title = error$title,
+          error$message,
+          footer = modalButton("Exit")
+        )
+      )
+    } else if (error$type == "formatting") {
       df <- error$table %>%
         dplyr::rename(
-          Column = column, 
+          Column = column,
           Reason = reason,
           `Triggered By` = trigger
         ) %>%
@@ -276,13 +336,13 @@ AppMoveSamples <- function(session, input, output, database) {
           RowNumber = colDef(sticky = "left")
         ),
         paginateSubRows = TRUE,
-        outlined = TRUE, 
+        outlined = TRUE,
         defaultColDef = colDef(
           align = "center",
           minWidth = 120,
-          html = TRUE, 
-          sortable = FALSE, 
-          resizable = FALSE, 
+          html = TRUE,
+          sortable = FALSE,
+          resizable = FALSE,
           na = "-"
         )
       )
@@ -299,17 +359,16 @@ AppMoveSamples <- function(session, input, output, database) {
           footer = modalButton("Exit")
         )
       )
+    } else {
+      message("No type defined!")
     }
 
-    rv$error <- NULL
-  })
-
-  observeEvent(input$Exit, ignoreInit = TRUE, {
+    ## note: this needs to be here
+    rv$error<-NULL
     error$title = ""
     error$message = ""
     error$table = NULL
-    rv$error = NULL
-    removeModal()
+    error$type = ""
   })
 
   observeEvent(input$MoveAction, ignoreInit = TRUE, {
@@ -321,6 +380,12 @@ AppMoveSamples <- function(session, input, output, database) {
 
     early_stop <- FALSE
     dataset <- input$MoveDataSet
+
+    if (is.null(dataset) || is.null(dataset$datapath)) {
+      message("Aborting move - no file uploaded")
+      return()
+    }
+
     message(paste("Loaded", dataset$name))
 
     tryCatch({
@@ -347,7 +412,6 @@ AppMoveSamples <- function(session, input, output, database) {
         shinyjs::html(id = "MoveOutputConsole", html = html, add = rv$console_verbatim)
         rv$console_verbatim <- FALSE
 
-        rv$error <- TRUE
         error$type <- "validation"
         error$title <- e$message
         error$table <- e$df
@@ -367,7 +431,6 @@ AppMoveSamples <- function(session, input, output, database) {
       },
       formatting_error = function(e) {
         message("Caught formatting error")
-        rv$error <- TRUE
         early_stop <<- TRUE
         error$title = "Invalid File Detected"
         error$type = "formatting"
@@ -382,7 +445,10 @@ AppMoveSamples <- function(session, input, output, database) {
       }
     )
 
-    if (early_stop) { return() }
+    if (isTRUE(early_stop)) { 
+      rv$error <- TRUE
+      return()
+    }
 
     message("Starting Move...")
 
@@ -403,7 +469,7 @@ AppMoveSamples <- function(session, input, output, database) {
 
         shinyjs::reset("MoveAction")
 
-        # note: this is to make things work retroactively 
+        # note: this is to make things work retroactively
         move_file_list <- list(rv$user_file)
         names(move_file_list) <- unique(rv$user_file$manifest_name)
 

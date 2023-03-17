@@ -237,6 +237,8 @@ DelArchSamples <- function(session, input, database, output, inputs, outputs){
 
     manifest_names <- c()
 
+    con <- DBI::dbConnect(RSQLite::SQLite(), Sys.getenv("SDB_PATH"))
+
     if (manifest == "All") {
       manifest_names <- c(manifest_names, DBI::dbReadTable(con, "micronix_plate") %>% pull(name))
       manifest_names <- c(manifest_names, DBI::dbReadTable(con, "cryovial_box") %>% pull(name))
@@ -268,6 +270,8 @@ DelArchSamples <- function(session, input, database, output, inputs, outputs){
     updateDateRangeInput(session, "DelArchdateRange", start = NA, end = NA) %>% suppressWarnings()
 
     rv$user_file <- NULL
+
+    dbDisconnect(con)
   })
 
   observeEvent(input$DelArchSearchByState, {
