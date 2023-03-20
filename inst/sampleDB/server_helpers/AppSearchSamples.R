@@ -3,8 +3,6 @@ library(shinyjs)
 SearchWetlabSamples <- function(session, input, database, output, DelArch = FALSE){
   
   # get search ui elements
-  ui_elements <- GetUISearchElements()
-
   rv <- reactiveValues(user_file = NULL, error = NULL)
 
   error <- reactiveValues(
@@ -36,16 +34,36 @@ SearchWetlabSamples <- function(session, input, database, output, DelArch = FALS
         footer = modalButton("Exit")
       )
     )
-    rv$error <- NULL
-  })
 
-  observeEvent(input$Exit, ignoreInit = TRUE, {
     error$title = ""
     error$message = ""
     error$table = NULL
     rv$error <- NULL
-    removeModal()
   })
+
+
+  observe({
+
+    filters <- list(
+      barcode = input$SearchByBarcode,
+      manifest = input$SearchByManifest,
+      study_short_code = input$SearchByStudy,
+      study_subject = input$SearchBySubjectUID,
+      collection_date = input$dateRange,
+      location = list(
+        name = input$SearchByLocation,
+        level_I = input$SearchByLevelI,
+        level_II = input$SearchByLevelII
+      ),
+      state = input$SearchByState,
+      status = input$SearchByStatus
+    )
+
+    filters <- purrr::discard(filters, function(x) is.null(x) | "" %in% x | length(x) == 0)
+
+    SearchSamples(input$SearchBySampleType, filters)
+  })
+
 
   observeEvent(input$SearchBySampleType, ignoreInit = FALSE, {
 
@@ -86,52 +104,6 @@ SearchWetlabSamples <- function(session, input, database, output, DelArch = FALS
     dbDisconnect(con)
   })
   
-  # create a null value to store the search results
-  values <- reactiveValues(data = NULL)
-  list.search_results <- NULL
-  observe({
-    
-    #search
-    list.search_results <- SearchFunction(input, output, ui_elements, rv$user_file)
-    
-    if(!is.null(list.search_results)){
-      values$data <- list.search_results$results
-    } else {
-      values$data <- NULL
-    }
-    
-    # print search results
-    output[[ui_elements$ui.output$SearchResultsTable]] <- DT::renderDataTable({
-      if(!is.null(values$data)){
-        values$data
-      }else{
-        tibble(a = c(1)) %>% filter(a == 2)
-      }
-      }, options = DataTableRenderOptions(), rownames = FALSE)
-    
-    # download handler
-    output[[ui_elements$ui.output$downloadData]] <- downloadHandler(
-      filename = function() {
-        paste('data-', Sys.Date(), '.csv', sep='')
-      },
-      content = function(con) {
-        write.csv(values$data, con)
-      }
-    )
-  })
-
-  # smart dropdown
-  SmartFreezerDropdownFilter(database = database, session = session,
-                             input = input,
-                             location_ui = ui_elements$ui.input$SearchByLocation,
-                             levelI_ui = ui_elements$ui.input$SearchByLevelI,
-                             levelII_ui = ui_elements$ui.input$SearchByLevelII)
-  
-  # load dropdown using the server -- saves time
-  updateSelectizeInput(session, 'SearchBySubjectUID', 
-                       choices = c("", CheckTable(database = database, "study_subject")$name %>% 
-                                     unique()), 
-                       server = TRUE)
   
   # clear files
   .SearchReset(input)
@@ -166,20 +138,7 @@ SearchWetlabSamples <- function(session, input, database, output, DelArch = FALS
     })
   })
 
-  observe({
-    updateSelectInput(session, selected = input$SearchByPlate, "SearchByPlate", label = "Plate Name", choices = c("", dbUpdateEvent()$micronix_plate_name))
-    updateSelectInput(session, selected = input$SearchByBox, "SearchByBox", label = "Box Name", choices = c("", dbUpdateEvent()$cryovial_box_name))
-
-    updateSelectizeInput(session, selected = input$SearchByStudy, "SearchByStudy", "Study", choices = c("", names(dbUpdateEvent()$study)))
-    updateSelectizeInput(session, selected = input$SearchBySpecimenType, "SearchBySpecimenType", "Specimen Type", choices = c("", dbUpdateEvent()$specimen_type))
-    updateSelectizeInput(session, selected = input$SearchByLocation, "SearchByLocation", "Storage Location", choices = c("", dbUpdateEvent()$location))
-
-    updateSelectizeInput(session, selected = input$SearchByState, "SearchByState", "State", choices = c(dbUpdateEvent()$state))
-    
-    # name uid should be updated when db updates + when studies are selected
-    .SearchSubjectUID(session, input)
-  })
-
+  
   observeEvent(input$SearchReset, {
 
     con <- DBI::dbConnect(RSQLite::SQLite(), Sys.getenv("SDB_PATH"))
@@ -266,23 +225,3 @@ SearchWetlabSamples <- function(session, input, database, output, DelArch = FALS
     choices = choices,
     server = TRUE)
 }
-
-
-.SearchReset <- function(input){
-  observeEvent(input$ClearSearchBarcodes, ({shinyjs::reset("SearchByBarcode")}))
-  observeEvent(input$ClearSearchUIDFile, ({shinyjs::reset("SearchBySubjectUIDFile")})) 
-}
-
-# SubsetPlateNames <- function(input, database){
-#    study_ref_id <- filter(CheckTable(database = database, "study"), short_code %in% input$SearchByStudy)$id
-#    study_subject_ref_id <- filter(CheckTable(database = database, "study_subject"), study_id %in% study_ref_id)$id
-#    specimen_ref_id <- filter(CheckTable(database = database, "specimen"), study_subject_id %in% study_subject_ref_id)$id
-#    storage_container_id <- filter(CheckTable(database = database, "storage_container"), specimen_id %in% specimen_ref_id)$id
-#    matrix_tube_ids <- filter(CheckTable(database = database, "micronix_tube"), id %in% storage_container_id)$id
-#    
-#    plate_ids <- filter(CheckTable(database = database, "micronix_tube"), id %in% matrix_tube_ids)$plate_id %>% unique()
-#    plate_names <- filter(CheckTable(database = database, "micronix_plate"), id %in% plate_ids)$uid
-#    return(plate_names)
-#  }
-
-

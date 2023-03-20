@@ -81,7 +81,7 @@ CREATE TABLE IF NOT EXISTS "cryovial_tube" (
 
 	PRIMARY KEY("id"),
 	FOREIGN KEY("id") REFERENCES "storage_container"("id"),
-	FOREIGN KEY("manifest_id") REFERENCES "micronix_plate"("id"),
+	FOREIGN KEY("manifest_id") REFERENCES "cryovial_box"("id"),
 
 	CONSTRAINT "cryovial_tube_position_manifest_id_uc" UNIQUE("position", "manifest_id")
 );
