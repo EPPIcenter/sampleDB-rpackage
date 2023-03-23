@@ -354,18 +354,6 @@ DataTableRenderOptions <- function(){
   return(out)
 }
 
-SetMoveRequirements <- function(input, sample_type){
-
-  #get ui elements
-  ui_elements <- GetUIMoveElements(sample_type)
-
-  out <- req(
-    input[[ui_elements$ui.input$MoveDataSet]] # user must supply move files
-  )
-
-  return(out)
-}
-
 SetFreezerAddRequirements <- function(input, database, ui_elements){
   req(input[[ui_elements$ui.input$AddFreezerName]],
       input[[ui_elements$ui.input$AddFreezerType]],
@@ -464,4 +452,118 @@ UpdateStudyDropdowns <- function(database, session){
   updateCheckboxInput(session = session, "RenameStudyIsLongitudinal", value = FALSE)
   updateCheckboxInput(session = session, "RenameStudyIsHidden", value = FALSE)
   updateSelectInput(session = session, "DeleteStudyShortCode", choices = c("", CheckTable(database = database, "study")$short_code))
+}
+
+heckUploadContainerBarcodeDuplication <- function(plate_barcode, database){
+
+  if(plate_barcode != "" && !is.null(plate_barcode)){
+    out <- all(!(plate_barcode %in% c(CheckTable(database = database, "micronix_plate")$plate_barcode)))
+  }else{
+    out <- TRUE
+  }
+  return(out)
+}
+#Freezer Checks
+CheckFreezerNameIsUnique <- function(input, database, freezer_address){
+
+  freezer_address_dup_test <- filter(CheckTable("location"),
+                                     name == freezer_address$freezer_name,
+                                     level_I == freezer_address$freezer_levelI,
+                                     level_II == freezer_address$freezer_levelII) %>% nrow()
+
+  if(freezer_address_dup_test > 0){
+    out <- FALSE
+  }else{
+    out <- TRUE
+  }
+  return(out)
+}
+
+CheckFreezerDeletion <- function(input, database, freezer_address){
+  num_items_at_address <- 0
+
+  freezer_address <- filter(CheckTable(database = database, "location"),
+                            name == freezer_address$freezer_name,
+                            level_I == freezer_address$freezer_levelI,
+                            level_II == freezer_address$freezer_levelII)
+  if(length(freezer_address$id) > 0){
+    items_at_address <- filter(CheckTable(database = database, "micronix_plate"), location_id == freezer_address$id)
+    num_items_at_address <- items_at_address %>% nrow()
+  }
+  if(num_items_at_address > 0){
+    out <- FALSE
+  }else{
+    out <- TRUE
+  }
+  return(out)
+}
+
+#Specimen Type Check
+CheckSpecimenTypeUnique <- function(input, database, specimen_type){
+  specimen_type_dup_test <- filter(CheckTable(database = database, "specimen_type"), name == specimen_type) %>% nrow()
+  if(specimen_type_dup_test > 0){
+    out <- FALSE
+  }else{
+    out <- TRUE
+  }
+  return(out)
+}
+
+
+CheckSpecimenTypeDeletion <- function(input, database, specimen_type){
+  num_items_of_specimen_type <- 0
+  specimen_type <- filter(CheckTable(database = database, "specimen_type"), name == specimen_type)
+  if(length(specimen_type$id) > 0){
+    num_items_of_specimen_type <- filter(CheckTable(database = database, "specimen"), specimen_type_id == specimen_type$id) %>% nrow()
+  }
+  if(num_items_of_specimen_type > 0){
+    out <- FALSE
+  }else{
+    out <- TRUE
+  }
+  return(out)
+}
+
+#Study Check
+CheckStudyTitleIsUnique <- function(study_title, test, input, database){
+  study_title_dup_test <- filter(CheckTable(database = database, "study"), title == study_title) %>% nrow()
+  if(study_title_dup_test > 0){
+    out <- FALSE
+  }else{
+    out <- TRUE
+  }
+  return(out)
+}
+
+CheckStudyShortCodeIsUnique <- function(study_short_code, test, input, database){
+  study_short_code_dup_test <- filter(CheckTable(database = database, "study"), short_code == study_short_code) %>% nrow()
+  if(study_short_code_dup_test > 0){
+    out <- FALSE
+  }else{
+    out <- TRUE
+  }
+  return(out)
+}
+
+CheckStudyDeletion <- function(study_ui, input, database){
+  num_items_of_studies <- 0
+  studies <- filter(CheckTable(database = database, "study"), short_code == study_ui)
+  if(length(studies$id) > 0){
+    num_items_of_studies <- filter(CheckTable(database = database, "study_subject"), study_id == studies$id) %>% nrow()
+  }
+  if(num_items_of_studies > 0){
+    out <- FALSE
+  }else{
+    out <- TRUE
+  }
+  return(out)
+}
+
+#upload a new micronix plate
+
+ViewArchiveStatuses <- function(database) {
+  conn <- RSQLite::dbConnect(RSQLite::SQLite(), database)
+  out_table <- RSQLite::dbGetQuery(conn, "SELECT * FROM view_archive_statuses") %>% tibble()
+  RSQLite::dbDisconnect(conn)
+  return(out_table)
 }

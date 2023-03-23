@@ -1,5 +1,7 @@
 library(RSQLite)
 library(shinyjs)
+library(reactable)
+
 UISearchSamples <- function(){
   con <- DBI::dbConnect(RSQLite::SQLite(), Sys.getenv("SDB_PATH"))
   ui <- sidebarLayout(
@@ -34,7 +36,7 @@ UISearchSamples <- function(){
     ),
     mainPanel(
       width = 10,
-      DT::dataTableOutput("SearchResultsTable"),
+      reactableOutput("SearchResultsTable"),
       downloadButton("downloadData", "Download")
     ))
 

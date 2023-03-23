@@ -214,7 +214,7 @@ UploadSamples <- function(sample_type_id, upload_data) {
     else if (sample_type_id == 2) {
      # create a new housing (if it does not already exist)
       if(!eval.container_name %in% CheckTableTx(conn = conn, "cryovial_box")$name){
-        eval.plate_id <- UploadPlate(conn = conn, container_name = eval.container_name, container_barcode = eval.plate_barcode, freezer_address = eval.freezer_address, table = "cryovial_box")
+        eval.plate_id <- .UploadPlate(conn = conn, container_name = eval.container_name, container_barcode = eval.plate_barcode, freezer_address = eval.freezer_address, table = "cryovial_box")
       }else{
         eval.plate_id <- filter(CheckTableTx(conn = conn, "cryovial_box"), name == eval.container_name)$id
       }
@@ -230,7 +230,7 @@ UploadSamples <- function(sample_type_id, upload_data) {
     } else if (sample_type_id == 3) {
      # create a new housing (if it does not already exist)
       if(!eval.container_name %in% CheckTableTx(conn = conn, "dbs_paper")$name){
-        eval.plate_id <- UploadPlate(conn = conn, container_name = eval.container_name, container_barcode = eval.plate_barcode, freezer_address = eval.freezer_address, table = "dbs_paper")
+        eval.plate_id <- .UploadPlate(conn = conn, container_name = eval.container_name, container_barcode = eval.plate_barcode, freezer_address = eval.freezer_address, table = "dbs_paper")
       }else{
         eval.plate_id <- filter(CheckTableTx(conn = conn, "dbs_paper"), name == eval.container_name)$id
       }
@@ -319,4 +319,31 @@ UploadSamples <- function(sample_type_id, upload_data) {
             row.names = FALSE)
     })
   }
+}
+
+
+.UploadPlate <- function(conn, container_name, container_barcode, freezer_address, table){
+  eval.location_id <- filter(CheckTableTx(conn = conn, "location"), name == freezer_address$location, level_I == freezer_address$level_I, level_II == freezer_address$level_II)$id
+  if(is.null(container_barcode) | is.na(container_barcode)) {
+    container_barcode <- NA
+  }
+  else if(container_barcode == "" | container_barcode == "NA") {
+    container_barcode <- NA
+  }
+  else{
+    container_barcode <- container_barcode
+  }
+
+  AddToTable(table,
+                       list(created = lubridate::now() %>% as.character(),
+                            last_updated = lubridate::now() %>% as.character(),
+                            location_id = eval.location_id,
+                            name = container_name,
+                            barcode = container_barcode),
+                       conn = conn) %>% suppressWarnings()
+
+  eval.plate_id <- tail(CheckTableTx(conn = conn, table), 1)$id
+
+  return(eval.plate_id)
+
 }

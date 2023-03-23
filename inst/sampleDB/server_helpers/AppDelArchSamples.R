@@ -124,15 +124,15 @@ DelArchSamples <- function(session, input, database, output, inputs, outputs){
   
   observe({
     #search
-    list.search_results <- SearchFunction(input, output, ui_elements, rv$user_file)
-    if (!is.null(list.search_results)) {
-      search_results <- list.search_results$results
-      storage_container_ids <- list.search_results$id.wetlab_samples 
-      values$data <- search_results %>%
-        mutate(`Sample ID` = storage_container_ids)    
-    } else {
-      values$data <- NULL
-    }
+    # list.search_results <- SearchFunction(input, output, ui_elements, rv$user_file)
+    # if (!is.null(list.search_results)) {
+    #   search_results <- list.search_results$results
+    #   storage_container_ids <- list.search_results$id.wetlab_samples 
+    #   values$data <- search_results %>%
+    #     mutate(`Sample ID` = storage_container_ids)    
+    # } else {
+    #   values$data <- NULL
+    # }
   })
 
   # print search results
