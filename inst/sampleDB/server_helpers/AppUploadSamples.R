@@ -105,7 +105,7 @@ AppUploadSamples <- function(session, input, output, database) {
     error$message <- ""
     error$type <- ""
     error$table <- NULL
-    rv$user_file_error_annotated <- NULL
+    # rv$user_file_error_annotated <- NULL
   })
 
 
@@ -116,7 +116,8 @@ AppUploadSamples <- function(session, input, output, database) {
           storage_type <- switch(
             input$UploadSampleType,
             "1" = "micronix",
-            "2" = "cryovial"
+            "2" = "cryovial",
+            "3" = "dbs"
           )
           paste(paste(c(storage_type, input$UploadFileType, "upload", "template"), collapse="_"), '.csv', sep='')
         },
@@ -301,7 +302,6 @@ AppUploadSamples <- function(session, input, output, database) {
         error$table <- e$df
 
         # TODO: just download the error data frame for now
-
         rv$user_file_error_annotated <- e$df %>%
           group_by(RowNumber) %>%
           mutate(Error = paste(Error, collapse=";")) %>%
