@@ -5,21 +5,16 @@
 \title{Search for Wetlab Samples in the EPPIcenter SampleDB database}
 \usage{
 SearchSamples(
-  sample_type = NULL,
-  sample_barcode = NULL,
-  container_name = NULL,
-  study_subject = NULL,
-  specimen_type = NULL,
-  study = NULL,
-  collection_dates = NULL,
-  status = NULL,
-  state = NULL,
-  freezer = NULL,
-  return_sample_ids = FALSE
+  sample_storage_type,
+  filters = NULL,
+  format = "na",
+  database = Sys.getenv("SDB_PATH")
 )
 }
 \arguments{
 \item{sample_type}{A string specifying the type of EPPIcenter sample. (\code{micronix}, \code{cryovile}, \code{rdt} and/or \code{paper})}
+
+\item{sample_label}{A list of vectors specifying the vector micronix, cryovile, rdt, and paper label names (\code{micronix.label_name}, \code{cryovile.label_name}, \code{rdt.label_name} and/or \code{paper.label_name})}
 
 \item{container_name}{A list of vectors specifying the vector micronix, cryovile, rdt, and paper container names (\code{micronix.container_name}, \code{cryovile.container_name}, \code{rdt.container_name} and/or \code{paper.container_name})}
 
@@ -31,13 +26,11 @@ SearchSamples(
 
 \item{collection_dates}{A list of date values strings (\code{date.to} and \code{date.from}) that can be used to filter EPPIcenter samples}
 
+\item{archived}{A logical value. \code{TRUE} filters for archived samples and \code{FALSE} filters for active samples}
+
 \item{freezer}{A list specifying the vector \code{name}, \code{level_I}, and/or\code{level_II}}
 
 \item{return_sample_ids}{A logical value. Setting \code{return_sample_ids} to \code{TRUE} means \code{SearchSamples} returns sample ids as well as search results. Setting \code{return_sample_ids} to \code{FALSE} means \code{SearchSamples} returns only search results. Default value is \code{FALSE}.}
-
-\item{sample_label}{A list of vectors specifying the vector micronix, cryovile, rdt, and paper label names (\code{micronix.label_name}, \code{cryovile.label_name}, \code{rdt.label_name} and/or \code{paper.label_name})}
-
-\item{archived}{A logical value. \code{TRUE} filters for archived samples and \code{FALSE} filters for active samples}
 }
 \description{
 Search for wetlab samples.

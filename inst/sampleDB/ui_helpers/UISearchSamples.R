@@ -8,7 +8,7 @@ UISearchSamples <- function(){
     sidebarPanel(
       shinyjs::useShinyjs(),
       width = 2,
-      HTML("<h4>Search Samples</h4>"),
+      tags$h4("Search Samples"),
       hr(),
       # fileInput("SearchByLabel", label = HTML("Barcode <h6>Single column named \"barcode\"</h6>")), actionButton("ClearSearchBarcodes", label = "Clear Barcodes"), textOutput("WarnSubjectBarcodeFileColnames"), textOutput("WarnSubjectBarcodeFileColnames2"),
       radioButtons("SearchBySampleType","Sample Type", choices = c("All" = "all", DBI::dbReadTable(con, "sample_type") %>% pull(id, name = "name")), selected = "all", inline = T),
@@ -16,7 +16,7 @@ UISearchSamples <- function(){
       actionButton("SearchReset", width = '100%', label = "Reset Search Criteria", style="color: #fff; background-color: #337ab7; border-color: #2e6da4"),
       hr(),
       fileInput("SearchByBarcode", label = "Sample Barcodes"),
-      selectInput("SearchByManifest", label = NULL, choices = c()),
+      selectizeInput("SearchByManifest", label = NULL, choices = c()),
       hr(),
       selectizeInput("SearchByStudy", "Study", choices = c("", CheckTable(database = database, "study")$short_code)),
       conditionalPanel(condition = "input.SubjectUIDSearchType == \"individual\"",
@@ -31,13 +31,12 @@ UISearchSamples <- function(){
       selectizeInput("SearchByLevelII", "Storage Location: Level II", choices = c("")),
       selectizeInput("SearchByState", "State", choices = c(Global$DefaultStateSearchTerm)),
       selectizeInput("SearchByStatus", "Status", choices = c(Global$DefaultStatusSearchTerm)),
-      textOutput("WarnSubjectUIDFileColnames"),
-      textOutput("WarnSubjectUIDFileColnames2")
     ),
     mainPanel(
       width = 10,
       reactableOutput("SearchResultsTable"),
-      downloadButton("downloadData", "Download")
+      hr(),
+      downloadButton("DownloadSearchData", "Download")
     ))
 
     DBI::dbDisconnect(con)

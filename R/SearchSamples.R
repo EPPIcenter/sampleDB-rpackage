@@ -22,8 +22,7 @@
 #' @export
 
 
-SearchSamples <- function(sample_storage_type, filters = NULL, format = "na", database = Sys.getenv("SDB_PATH")) {
-  browser()
+SearchSamples <- function(sample_storage_type, filters = NULL, format = "na", database = Sys.getenv("SDB_PATH"), include_internal_sample_id = FALSE) {
   container_tables <- list(
     "manifest" = switch(sample_storage_type,
       "1" = "micronix_plate",
@@ -37,20 +36,28 @@ SearchSamples <- function(sample_storage_type, filters = NULL, format = "na", da
     )
   )
 
-
   con <- DBI::dbConnect(RSQLite::SQLite(), database)
+  dbBegin(con)
 
-  sql <- tbl(con, "study") %>% dplyr::rename(study_id = id)
+  sql <- tbl(con, "study") %>% dplyr::rename(study_id = id) %>% select(study_id, short_code)
   if (!is.null(filters$short_code)) {
     sql <- filter(sql, short_code == local(filters$short_code))
   }
 
-  sql <- inner_join(sql, tbl(con, "study_subject") %>% dplyr::rename(study_subject_id = id, study_subject = name), by = c("study_id"))
+  sql <- inner_join(sql, tbl(con, "study_subject") %>%
+    dplyr::rename(study_subject_id = id, study_subject = name) %>%
+    select(study_subject_id, study_subject, study_id), by = c("study_id"))
+
   if (!is.null(filters$study_subject)) {
-    sql <- filter(sql, study_subject == local(filters$study_subject))
+    sql <- filter(sql, study_subject %in% local(filters$study_subject))
   }
 
-  sql <- inner_join(sql, tbl(con, "specimen") %>% dplyr::rename(specimen_id = id), by = c("study_subject_id"))
+  sql <- sql %>%
+    inner_join(
+      tbl(con, "specimen") %>%
+        dplyr::rename(specimen_id = id) %>%
+        select(specimen_id, study_subject_id, specimen_type_id, collection_date)
+      , by = c("study_subject_id"))
 
   if (!is.null(filters$collection_date) & sum(is.na(filters$collection_date)) == 0) {
     if (!is.null(filters$collection_date$date.from) & !is.null(filters$collection_date$date.to)) {
@@ -71,13 +78,18 @@ SearchSamples <- function(sample_storage_type, filters = NULL, format = "na", da
     sql <- filter(sql, collection_date %within% intervals)
   }
 
-  sql <- inner_join(sql, tbl(con, "specimen_type") %>% dplyr::rename(specimen_type_id = id, specimen_type = name), by = c("specimen_type_id"))
+  sql <- sql %>% inner_join(
+    tbl(con, "specimen_type") %>%
+      dplyr::rename(specimen_type_id = id, specimen_type = name) %>%
+      select(specimen_type_id, specimen_type)
+    , by = c("specimen_type_id"))
+
   if (!is.null(filters$specimen_type)) {
     sql <- filter(sql, specimen_type == local(filters$specimen_type))
   }
 
-  sql <- inner_join(sql, tbl(con, "storage_container") %>% dplyr::rename(storage_container_id = id), by = c("specimen_id"))
-  sql <- inner_join(sql, tbl(con, "sample_type") %>% dplyr::rename(sample_type_id = id, sample_type_name = name), by = c("sample_type_id"))
+  sql <- inner_join(sql, tbl(con, "storage_container") %>% dplyr::rename(storage_container_id = id) %>% select(-c(created, last_updated)), by = c("specimen_id"))
+  sql <- inner_join(sql, tbl(con, "sample_type") %>% dplyr::rename(sample_type_id = id, sample_type = name) %>% select(sample_type_id, sample_type), by = c("sample_type_id"))
 
   if (sample_storage_type != "all") {
     sql <- filter(sql, sample_type_id == sample_storage_type)
@@ -121,16 +133,22 @@ SearchSamples <- function(sample_storage_type, filters = NULL, format = "na", da
 
   # note: dbs does not have a barcode
   if (!is.null(filters$barcode) && sample_storage_type != 3) {
-    sql <- filter(sql, barcode == local(filters$barcode))
+    sql <- filter(sql, barcode %in% local(filters$barcode)) 
   }
+
 
   if (sample_storage_type == "all") {
 
-    # Rf. https://stackoverflow.com/questions/53806023/row-bind-tables-in-sql-with-differing-columns
     list_of_tables <- c("micronix_plate", "cryovial_box", "dbs_paper")
+
+    # This is needed because the container tables do not explitly keep track of the sample types they keep.
+    # Thus, table order is important here!!!
+    lapply(1:length(list_of_tables), function(i) { DBI::dbExecute(con, paste0("ALTER TABLE ", list_of_tables[i], " ADD COLUMN `sample_type_id` DEFAULT ", i)) })
+
+    # Rf. https://stackoverflow.com/questions/53806023/row-bind-tables-in-sql-with-differing-columns
     eachnames <- sapply(list_of_tables, function(a) DBI::dbQuoteIdentifier(con, DBI::dbListFields(con, a)), simplify = FALSE)
     allnames <- unique(unlist(eachnames, use.names=FALSE))
-    allnames <- allnames[3:6] # "`id`"          "`location_id`" "`name`"        "`barcode`"
+    allnames <- c(allnames[3:6], allnames[length(allnames)]) # "`id`"          "`location_id`" "`name`"        "`barcode`"
 
     list_of_fields <- lapply(eachnames, function(a) {
       paste(ifelse(allnames %in% a, allnames, paste("null as", allnames)), collapse = ", ")
@@ -146,19 +164,26 @@ SearchSamples <- function(sample_storage_type, filters = NULL, format = "na", da
         collapse = " union\n"))
 
     DBI::dbExecute(con, qry)
-    sql <- inner_join(sql, tbl(con, "manifests") %>% dplyr::rename(manifest_id = id, manifest = name, manifest_barcode = barcode), by = c("manifest_id")) %>% collapse()
+    # NOT a bug - leave `sample_type_id` here and not in the manifest-specific pathway.
+    sql <- inner_join(sql, tbl(con, "manifests") %>% dplyr::rename(manifest_id = id, manifest = name, manifest_barcode = barcode), by = c("manifest_id", "sample_type_id")) %>% collapse()
   } else {
-    sql <- inner_join(sql, tbl(con, container_tables[["manifest"]]) %>% dplyr::rename(manifest_id = id, manifest = name, manifest_barcode = barcode), by = c("manifest_id")) %>% collapse() 
+    sql <- inner_join(sql, tbl(con, container_tables[["manifest"]]) %>% dplyr::rename(manifest_id = id, manifest = name, manifest_barcode = barcode), by = c("manifest_id")) %>% collapse()
   }
 
   if (!is.null(filters$manifest)) {
     sql <- filter(sql, manifest == local(filters$manifest))
   }
 
-  sql <- inner_join(sql, tbl(con, "location") %>% dplyr::rename(location_id = id, name = name), by = c("location_id"))
+  sql <- inner_join(sql, tbl(con, "location") %>% dplyr::rename(location_id = id) %>% select(location_id, name, level_I, level_II), by = c("location_id"))
 
   if (!is.null(filters$location)) {
-    sql <- filter(sql, location_name == local(filters$location[['name']]) & level_I == local(filters$location[['level_I']]) & level_II == local(filters$location[['level_II']]))
+    if (!is.null(filters$location[['name']]) & !is.null(filters$location[['level_I']]) & !is.null(filters$location[['level_II']])) {
+      sql <- filter(sql, name == local(filters$location[['name']]) & level_I == local(filters$location[['level_I']]) & level_II == local(filters$location[['level_II']]))
+    } else if (!is.null(filters$location[['name']]) & !is.null(filters$location[['level_I']])) {
+      sql <- filter(sql, name == local(filters$location[['name']]) & level_I == local(filters$location[['level_I']]))
+    } else if (!is.null(filters$location[['name']])) {
+      sql <- filter(sql, name == local(filters$location[['name']]))
+    }
   }
 
   ## map results to the final columns
@@ -236,9 +261,16 @@ SearchSamples <- function(sample_storage_type, filters = NULL, format = "na", da
   }
 
   dbmap$comment <- "Comment"
+  if (include_internal_sample_id) {
+    db.results <- sql %>%
+      select("storage_container_id", names(dbmap)) %>%
+      collect()
 
-  db.results <- sql %>% select(names(dbmap)) %>% collect()
-  colnames(db.results) <- unname(dbmap)
+    colnames(db.results) <- c("Sample ID", unname(dbmap))
+  } else {
+    db.results <- sql %>% select(names(dbmap)) %>% collect()
+    colnames(db.results) <- unname(dbmap)
+  }
 
   dbDisconnect(con)
 

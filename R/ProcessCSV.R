@@ -31,7 +31,7 @@
 #' @export
 
 
-ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_name = NULL, freezer_address = NULL, file_type = "na", validate = TRUE, database = Sys.getenv("SDB_PATH"), config_yml = Sys.getenv("SDB_CONFIG")) {
+ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type = NULL, container_name = NULL, freezer_address = NULL, file_type = "na", validate = TRUE, database = Sys.getenv("SDB_PATH"), config_yml = Sys.getenv("SDB_CONFIG")) {
 
   df.error.formatting <- data.frame(column = NULL, reason = NULL, trigger = NULL)
 
@@ -113,7 +113,9 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
       manifest_name <- file_specs_json$shared$sample_type[[sample_type_index]]$manifest$name
     }
   } else { ## Search
-    required_user_column_names <- file_specs_json$shared[[user_action]]$required
+    if (search_type %in% c("barcode", "study_subject")) {
+      required_user_column_names <- file_specs_json$shared[[user_action]][[search_type]]$required
+    }
   }
 
   if (is.null(required_user_column_names)) {
@@ -148,11 +150,19 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
   if (user_action %in% c("upload", "move")) {
     user_file <- user_file %>% setNames(.[header_row, ]) %>% .[-c(1, header_row), ]
   } else {
+    ## TODO: it turns into a list because there's one row, this needs to be cleaned up
     x <- user_file %>% setNames(.[header_row, ]) %>% .[-c(1, header_row), ]
     user_file <- NULL
-    user_file <- data.frame(
-      Barcodes = x
-    )
+
+    if (search_type == "barcode") {
+      user_file <- data.frame(
+        Barcodes = x
+      )
+    } else {
+      user_file <- data.frame(
+        StudySubjects = x
+      )
+    }
   }
 
   # Check the parameters of the function and see if some of the data points are there (in case called from R package)
@@ -183,7 +193,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, container_nam
           data.frame(
             column = "CollectionDate",
             reason = "Collection date is required for samples of longitudinal studies.",
-            trigger = filter(tmp, is_longitudinal) %>% pull(name)
+            trigger = filter(tmp, is_longitudinal == 1) %>% pull(short_code)
           )
         )
       }

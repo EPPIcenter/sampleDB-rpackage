@@ -5,7 +5,7 @@ DelArchSamples <- function(session, input, database, output, inputs, outputs){
   # get search ui elements
   ui_elements <- GetUIDelArchElements()
   
-  rv <- reactiveValues(user_file = NULL, error = NULL)
+  rv <- reactiveValues(user_file = NULL, error = NULL, search_table = NULL, filters = NULL)
 
   error <- reactiveValues(
     title = "",
@@ -47,6 +47,39 @@ DelArchSamples <- function(session, input, database, output, inputs, outputs){
     removeModal()
   })
 
+  observe({
+    rv$filters <- list(
+      barcode = input$DelArchSearchByBarcode,
+      manifest = input$DelArchSearchByManifest,
+      short_code = input$DelArchSearchByStudy,
+      specimen_type = input$DelArchSearchBySpecimenType,
+      study_subject = input$DelArchSearchBySubjectUID,
+      collection_date = input$DelArchdateRange,
+      location = list(
+        name = input$DelArchSearchByLocation,
+        level_I = input$DelArchSearchByLevelI,
+        level_II = input$DelArchSearchByLevelII
+      ),
+      state = input$DelArchSearchByState,
+      status = input$DelArchSearchByStatus
+    )
+  })
+
+  observe({
+    message("Searching (DelArch)...")
+    filters <- purrr::discard(rv$filters, function(x) is.null(x) | "" %in% x | length(x) == 0)
+    values$data <- SearchSamples(input$DelArchSearchBySampleType, filters, include_internal_sample_id = TRUE)
+    head(values$data)
+
+    output$DelArchSearchResultsTable <- DT::renderDataTable({
+      if (!is.null(values$data)) { 
+        values$data %>% select(-`Sample ID`)
+      } else {
+        tibble(a = c(1)) %>% filter(a == 2)
+      }
+    }, options = DataTableRenderOptions(), rownames = FALSE)
+  })
+
   observeEvent(input$DelArchSearchBySampleType, ignoreInit = FALSE, {
 
     con <- DBI::dbConnect(RSQLite::SQLite(), Sys.getenv("SDB_PATH"))
@@ -55,7 +88,7 @@ DelArchSamples <- function(session, input, database, output, inputs, outputs){
       input$DelArchSearchBySampleType,
       "1" = "micronix_plate",
       "2" = "cryovial_box",
-      # "3" = "dbs_paper",
+      "3" = "dbs_paper",
       "all" = "All"
     )
 
@@ -64,7 +97,7 @@ DelArchSamples <- function(session, input, database, output, inputs, outputs){
     if (manifest == "All") {
       manifest_names <- c(manifest_names, DBI::dbReadTable(con, "micronix_plate") %>% pull(name))
       manifest_names <- c(manifest_names, DBI::dbReadTable(con, "cryovial_box") %>% pull(name))
-      # manifest_names <- c(manifest_names, DBI::dbReadTable(con, "dbs_paper"))
+      manifest_names <- c(manifest_names, DBI::dbReadTable(con, "dbs_paper") %>% pull(name))
     } else {
       manifest_names <- c(manifest_names, DBI::dbReadTable(con, manifest) %>% pull(name))
     }
@@ -121,22 +154,9 @@ DelArchSamples <- function(session, input, database, output, inputs, outputs){
   
   #create empty value to store data for delarch
   values <- reactiveValues(data = NULL, selected = NULL, operation = NULL)
-  
-  observe({
-    #search
-    # list.search_results <- SearchFunction(input, output, ui_elements, rv$user_file)
-    # if (!is.null(list.search_results)) {
-    #   search_results <- list.search_results$results
-    #   storage_container_ids <- list.search_results$id.wetlab_samples 
-    #   values$data <- search_results %>%
-    #     mutate(`Sample ID` = storage_container_ids)    
-    # } else {
-    #   values$data <- NULL
-    # }
-  })
 
   # print search results
-  output[[ui_elements$ui.output$SearchResultsTable]] <- DT::renderDataTable({
+  output$DelArchSearchResultsTable <- DT::renderDataTable({
     if (!is.null(values$data)) { 
       values$data %>% select(-`Sample ID`)
     } else {
@@ -231,7 +251,7 @@ DelArchSamples <- function(session, input, database, output, inputs, outputs){
       input$DelArchSearchBySampleType,
       "1" = "micronix_plate",
       "2" = "cryovial_box",
-      # "3" = "dbs_paper",
+      "3" = "dbs_paper",
       "all" = "All"
     )
 
@@ -242,7 +262,7 @@ DelArchSamples <- function(session, input, database, output, inputs, outputs){
     if (manifest == "All") {
       manifest_names <- c(manifest_names, DBI::dbReadTable(con, "micronix_plate") %>% pull(name))
       manifest_names <- c(manifest_names, DBI::dbReadTable(con, "cryovial_box") %>% pull(name))
-      # manifest_names <- c(manifest_names, DBI::dbReadTable(con, "dbs_paper"))
+      manifest_names <- c(manifest_names, DBI::dbReadTable(con, "dbs_paper") %>% pull(name))
     } else {
       manifest_names <- c(manifest_names, DBI::dbReadTable(con, manifest) %>% pull(name))
     }
@@ -252,7 +272,7 @@ DelArchSamples <- function(session, input, database, output, inputs, outputs){
       "1" = "Plate Name",
       "2" = "Box Name",
       "3" = "Paper Name",
-      "all" = "All"
+      "all" = "All Containers"
     )
 
     updateSelectInput(session, selected = NULL, "DelArchSearchByManifest", label = manifest_label, choices = c("", manifest_names))
@@ -289,6 +309,128 @@ DelArchSamples <- function(session, input, database, output, inputs, outputs){
   })
 
   observeEvent(input$DelArchSearchByStudy, { .UpdateDelArchSubjectUID(session, input) })
+
+  dbUpdateEvent <- reactivePoll(
+    1000 * 5,
+    session,
+    function() file.mtime(Sys.getenv("SDB_PATH")),
+    function() {
+      con <- DBI::dbConnect(SQLite(), Sys.getenv("SDB_PATH"))
+
+      SampleType <- isolate({ input$DelArchSearchBySampleType })
+      if (SampleType == "all") {
+        dat <- list(
+          study_subject = unique(tbl(con, "study_subject") %>% pull(name)),
+          study = unique(tbl(con, "study") %>% pull(short_code)),
+          specimen_type = unique(tbl(con, "specimen_type") %>% pull(name)),
+          location = unique(tbl(con, "location") %>% pull(name))
+        )
+
+        # Rf. https://stackoverflow.com/questions/53806023/row-bind-tables-in-sql-with-differing-columns
+        list_of_tables <- c("micronix_plate", "cryovial_box", "dbs_paper")
+        eachnames <- sapply(list_of_tables, function(a) DBI::dbQuoteIdentifier(con, DBI::dbListFields(con, a)), simplify = FALSE)
+        allnames <- unique(unlist(eachnames, use.names=FALSE))
+        allnames <- allnames[5] # `name`
+
+        list_of_fields <- lapply(eachnames, function(a) {
+          paste(ifelse(allnames %in% a, allnames, paste("null as", allnames)), collapse = ", ")
+        })
+
+        qry <- paste0("CREATE TEMPORARY TABLE `manifests` AS\n", paste(
+          mapply(function(nm, flds) {
+            paste("select",
+                  paste(ifelse(allnames %in% flds, allnames, paste("null as", allnames)),
+                        collapse = ", "),
+                  "from", nm)
+            }, names(eachnames), eachnames),
+            collapse = " union\n"))
+
+        DBI::dbExecute(con, qry)
+        dat$manifest <- unique(tbl(con, "manifests") %>% pull(name))
+
+      } else {
+
+        container_tables <- list(
+          "manifest" = switch(
+            SampleType,
+            "1" = "micronix_plate",
+            "2" = "cryovial_box",
+            "3" = "dbs_paper"
+          ),
+          "container_class" = switch(
+            SampleType,
+            "1" = "micronix_tube",
+            "2" = "cryovial_tube",
+            "3" = "dbs_spot"
+          )
+        )
+        sql <- tbl(con, "storage_container") %>%
+          dplyr::filter(sample_type_id == SampleType) %>%
+          inner_join(tbl(con, "specimen") %>% dplyr::rename(specimen_id = id), by = c("specimen_id")) %>%
+          inner_join(tbl(con, "study_subject") %>% dplyr::rename(study_subject_id = id, study_subject = name), by = c("study_subject_id")) %>%
+          inner_join(tbl(con, "specimen_type") %>% dplyr::rename(specimen_type_id = id, specimen_type = name), by = c("specimen_type_id")) %>%
+          inner_join(tbl(con, "study") %>% dplyr::rename(study = short_code, study_id = id), by = c("study_id")) %>%
+          select(id, study, specimen_type, study_subject) %>%
+          distinct() %>%
+          inner_join(tbl(con, container_tables[["container_class"]]), by = c("id")) %>%
+          inner_join(tbl(con, container_tables[["manifest"]]) %>% dplyr::rename(manifest_id = id, manifest = name), by = c("manifest_id")) %>%
+          inner_join(tbl(con, "location") %>% dplyr::rename(location_id = id, location = name), by = c("location_id")) %>%
+          select(study_subject, study, specimen_type, manifest, location) %>%
+          distinct() 
+
+        db <- sql %>% collect()
+        dat <- list(
+          study_subject = unique(db$study_subject),
+          study = unique(db$study),
+          specimen_type = unique(db$specimen_type),
+          location = unique(db$location),
+          manifest = unique(db$manifest)
+        )
+      }
+      
+      DBI::dbDisconnect(con)
+
+      return(dat)
+    }
+  )
+
+  observeEvent(dbUpdateEvent(), ignoreInit = TRUE, {
+
+    updateSelectInput(
+      session,
+      "DelArchSearchByManifest",
+      choices = c("", dbUpdateEvent()$manifest),
+      selected = input$DelArchSearchByManifest
+    )
+
+    updateSelectInput(
+      session,
+      "DelArchSearchByStudy",
+      choices = c("", dbUpdateEvent()$study),
+      selected = input$DelArchSearchByStudy
+    )
+
+    updateSelectizeInput(
+      session,
+      "DelArchSearchBySpecimenType",
+      choices = c("", dbUpdateEvent()$specimen_type),
+      selected = input$DelArchSearchBySpecimenType
+    )
+
+    updateSelectizeInput(
+      session,
+      "DelArchSearchByLocation",
+      choices = c("", dbUpdateEvent()$location),
+      selected = input$DelArchSearchByLocation
+    )
+
+    updateSelectizeInput(
+      session,
+      "DelArchSearchBySubjectUID",
+      choices = c("", dbUpdateEvent()$study_subject),
+      selected = input$DelArchSearchBySubjectUID
+    )
+  })
     
   # popup window
   dataModal <- function(failed = FALSE, operation, data) {
@@ -313,7 +455,7 @@ DelArchSamples <- function(session, input, database, output, inputs, outputs){
     study_id <- match(input$DelArchSearchByStudy, names(dbUpdateEvent()$study))
     req(study_id)
     subject_indexes <- which(unname(dbUpdateEvent()$subject) == study_id)
-    choices <- names(dbUpdateEvent()$subject[subject_indexes])
+    choices <- names(dbUpdateEvent()$study_subject[subject_indexes])
   }
 
   updateSelectizeInput(session,
