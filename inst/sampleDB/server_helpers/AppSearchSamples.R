@@ -52,7 +52,11 @@ SearchWetlabSamples <- function(session, input, database, output, DelArch = FALS
       short_code = input$SearchByStudy,
       specimen_type = input$SearchBySpecimenType,
       study_subject = input$SearchBySubjectUID,
-      collection_date = input$dateRange,
+      collection_date = list(
+        date.from = input$dateRange[1],
+        date.to = input$dateRange[2]
+      ), 
+      input$dateRange,
       location = list(
         name = input$SearchByLocation,
         level_I = input$SearchByLevelI,

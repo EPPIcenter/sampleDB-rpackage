@@ -23,6 +23,7 @@
 
 
 SearchSamples <- function(sample_storage_type, filters = NULL, format = "na", database = Sys.getenv("SDB_PATH"), include_internal_sample_id = FALSE) {
+  db.results <- NULL
   tryCatch({
     container_tables <- list(
       "manifest" = switch(sample_storage_type,
@@ -59,25 +60,6 @@ SearchSamples <- function(sample_storage_type, filters = NULL, format = "na", da
           dplyr::rename(specimen_id = id) %>%
           select(specimen_id, study_subject_id, specimen_type_id, collection_date)
         , by = c("study_subject_id"))
-
-    if (!is.null(filters$collection_date) & sum(is.na(filters$collection_date)) == 0) {
-      if (!is.null(filters$collection_date$date.from) & !is.null(filters$collection_date$date.to)) {
-        intervals <- list()
-        for (i in 1:length(filters$collection_date$date.from)) {
-          intervals <- append(
-            intervals,
-            list(
-              interval(
-                lubridate::as_date(local(filters$collection_date$date.from[i])),
-                lubridate::as_date(local(filters$collection_date$date.to[i]))
-              )
-            )
-          )
-        }
-      }
-
-      sql <- filter(sql, collection_date %within% intervals)
-    }
 
     sql <- sql %>% inner_join(
       tbl(con, "specimen_type") %>%
@@ -263,16 +245,52 @@ SearchSamples <- function(sample_storage_type, filters = NULL, format = "na", da
 
     dbmap$comment <- "Comment"
     if (include_internal_sample_id) {
-      db.results <- sql %>%
-        select("storage_container_id", names(dbmap)) %>%
-        collect()
 
+      ## Do date collection here because lubridate and purrr::map (used by dplyr sql backend) is not cooperating
+      db.results <- sql %>% select("storage_container_id", names(dbmap)) %>% collect() %>% dplyr::mutate(collection_date = as_date(collection_date))
+
+      if (!is.null(filters$collection_date) && sum(is.na(filters$collection_date)) == 0) {      
+        if (!is.null(filters$collection_date$date.from) && !is.null(filters$collection_date$date.to)) {
+          intervals <- list()
+          for (i in 1:length(filters$collection_date$date.from)) {
+            intervals <- append(
+              intervals,
+              list(
+                interval(
+                  lubridate::as_date(local(filters$collection_date$date.from[i])),
+                  lubridate::as_date(local(filters$collection_date$date.to[i]))
+                )
+              )
+            )
+          }
+        }
+
+        db.results <- filter(db.results, collection_date %within% intervals)
+      }
       colnames(db.results) <- c("Sample ID", unname(dbmap))
     } else {
-      db.results <- sql %>% select(names(dbmap)) %>% collect()
+      db.results <- sql %>% select(names(dbmap)) %>% collect() %>% dplyr::mutate(collection_date = as_date(collection_date))
+
+      if (!is.null(filters$collection_date) && sum(is.na(filters$collection_date)) == 0) {      
+        if (!is.null(filters$collection_date$date.from) && !is.null(filters$collection_date$date.to)) {
+          intervals <- list()
+          for (i in 1:length(filters$collection_date$date.from)) {
+            intervals <- append(
+              intervals,
+              list(
+                interval(
+                  lubridate::as_date(local(filters$collection_date$date.from[i])),
+                  lubridate::as_date(local(filters$collection_date$date.to[i]))
+                )
+              )
+            )
+          }
+        }
+
+        db.results <- filter(db.results, collection_date %within% intervals) 
+      }
       colnames(db.results) <- unname(dbmap)
     }
-
   },
   error = function(e) {
     message(e$message)
