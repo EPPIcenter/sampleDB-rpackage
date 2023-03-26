@@ -7,11 +7,11 @@
 #' @param sample_storage_type The type of storage the samples are in. This can be '1', '2' or '3', which identify 'Micronix', 'Cryovial' or 'DBS', respectively.
 #' @param file_type The file type. This usually will be 'na'. The default value is 'na'.
 #' @param container_name Optional parameter to specify the container the samples are being added to. This is not required if the container name is specifed in your file.
-#' @param freezer_address The location of the container as a named list `list(name=NULL, level_I=NULL, level_II=NULL)`. This is not required in the location is specified in file. 
+#' @param freezer_address The location of the container as a named list `list(name=NULL, level_I=NULL, level_II=NULL)`. This is not required in the location is specified in file.
 #' @param validate Whether to validate the data. Setting to `FALSE` will skip the validation step and will only check the file format. Default is `TRUE`.
 #' @param database Path to the sampleDB database. Default is `Sys.getenv("SDB_PATH")`.
 #' @param config_yml Path to the user configuration file. Default is `Sys.getenv("SDB_CONFIG")`.
-#' 
+#'
 #' @examples
 #' \dontrun{
 #'  # Format a sample datasheet with micronix samples using the 'na' micronix format that will be added to sampleDB. Add the container name and container location as parameters.
@@ -22,12 +22,13 @@
 #'    sample_storage_type = "micronix",
 #'    container_name="LN2_XXXX",
 #'    freezer_address=list(name="FreezerA", level_I="Shelf1", level_II="BasketC")
-#'   ) 
+#'   )
 #' }
 #' @import lubridate
 #' @import dplyr
 #' @importFrom rlang abort
 #' @import rjson
+#' @importFrom tidyr unnest
 #' @export
 
 
@@ -245,6 +246,9 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
   # this will contain the processed, validated file that can be used for the associated action
   processed_file <- NULL
 
+  # this will map the processed file back to the user file in case there are validation errors
+  dbmap <- NULL
+
   ## pass the row id to link back to the actual user file, so that
   # we can inform the user if there is an issue with one of their rows
   processed_file$RowNumber <- user_file$RowNumber
@@ -253,24 +257,39 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
 
     ## Micronix
     if (sample_storage_type == 1 && file_type == "na") {
-      processed_file$barcode <- user_file$Barcode
-      processed_file$position <- sprintf("%s%02d", user_file$Row, as.integer(user_file$Column))
+      dbmap$barcode <- "Barcode"
+      processed_file$barcode <- user_file[[dbmap$barcode]]
+
+      dbmap$position <- c("Row", "Column")
+      processed_file$position <- sprintf("%s%02d", user_file[[dbmap$position[1]]], as.integer(user_file[[dbmap$position[2]]]))
+
     } else if (sample_storage_type == 1 && file_type == "traxcer") {
-      processed_file$barcode <- user_file$`Tube RowNumber`
-      processed_file$position <- user_file %>% pull(all_of(traxcer_position))
+      dbmap$barcode <- "Tube Row"
+      processed_file$barcode <- user_file[[dbmap$barcode]]
+
+      dbmap$position <- traxcer_position
+      processed_file$position <- user_file %>% pull(all_of(dbmap$position))
+
     } else if (sample_storage_type == 1 && file_type == "visionmate") {
-      processed_file$barcode <- user_file$TubeCode
-      processed_file$position <- sprintf("%s%02d", user_file$LocationRow, as.integer(user_file$LocationColumn))
+      dbmap$barcode <- "Tube Row"
+      processed_file$barcode <- user_file[[dbmap$barcode]]
+
+      dbmap$position <- c("LocationRow", "LocationColumn")
+      processed_file$position <- sprintf("%s%02d", user_file[[dbmap$position[1]]], as.integer(user_file[[dbmap$position[2]]]))
     }
 
     ## Cryovial
     else if (sample_storage_type == 2) {
-      processed_file$barcode <- user_file$Barcode
-      processed_file$position <-  sprintf("%s%02d",user_file$BoxRow, as.integer(user_file$BoxColumn))
+      dbmap$barcode <- "Barcode"
+      processed_file$barcode <- user_file[[dbmap$barcode]]
+
+      dbmap$position <- c("BoxRow", "BoxColumn")
+      processed_file$position <- sprintf("%s%02d", user_file[[dbmap$position[1]]], as.integer(user_file[[dbmap$position[2]]]))
 
     ## DBS
     } else if (sample_storage_type == 3) {
-      processed_file$position <-  sprintf("%s%02d", user_file$Row, as.integer(user_file$Column))
+      dbmap$position <- c("Row", "Column")
+      processed_file$position <-  sprintf("%s%02d", user_file[[dbmap$position[1]]], as.integer(user_file[[dbmap$position[2]]]))
     } else {
       stop("Unimplemented position formatting code for this sample type.")
     }
@@ -281,21 +300,32 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
   # metadata only applies for uploads.
 
   if ("upload" %in% c(user_action)) {
-    processed_file$study_short_code <- user_file$StudyCode
-    processed_file$study_subject <- user_file$StudySubject
-    processed_file$specimen_type <- user_file$SpecimenType
 
+    dbmap$study_short_code <- "StudyCode"
+    dbmap$study_subject <- "StudySubject"
+    dbmap$specimen_type <- "SpecimenType"
+
+    processed_file$study_short_code <- user_file[[dbmap$study_short_code]]
+    processed_file$study_subject <- user_file[[dbmap$study_subject]]
+    processed_file$specimen_type <- user_file[[dbmap$specimen_type]]
+
+    dbmap$collection_date <- "CollectionDate"
     if ("CollectionDate" %in% colnames(user_file)) {
-      processed_file$collection_date <- user_file$CollectionDate
+      processed_file$collection_date <- user_file[[dbmap$collection_date]]
     } else {
       processed_file$collection_date <- rep(NA, nrow(user_file))
     }
 
+    dbmap$comment <- "Comment"
     if ("Comment" %in% colnames(user_file)) {
-      processed_file$comment <- user_file$Comment
+      processed_file$comment <- user_file[[dbmap$comment]]
     } else {
       processed_file$comment <- rep(NA, nrow(user_file))
     }
+
+    dbmap['name'] <- unname(location_parameters['name'])
+    dbmap['level_I'] <- unname(location_parameters['level_I'])
+    dbmap['level_II'] <- unname(location_parameters['level_II'])
 
     if (all(location_parameters %in% colnames(user_file)) && is.null(freezer_address)) {
       processed_file$name <- user_file %>% pull(all_of(unlist(location_parameters['name'])))
@@ -307,6 +337,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
       processed_file$level_II <- rep(freezer_address[['level_II']], nrow(user_file))
     }
 
+    dbmap$manifest_barcode <- manifest_barcode_name
     if (manifest_barcode_name %in% colnames(user_file)) {
       processed_file$manifest_barcode <- user_file %>% pull(all_of(manifest_barcode_name))
     } else {
@@ -314,6 +345,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
     }
   }
 
+  dbmap$manifest_name <- manifest_name
   if (user_action %in% c("upload", "move")) {
     if (manifest_name %in% colnames(user_file) && is.null(container_name)) {
       processed_file$manifest_name <- user_file %>% pull(all_of(manifest_name))
@@ -322,6 +354,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
     }
   }
 
+  # note: right now don't worry about this for dbmap...
   if ("upload" %in% c(user_action) && sample_storage_type == 3) {
     processed_file$`0.05` <- user_file$`0.05`
     processed_file$`0.1` <- user_file$`0.1`
@@ -351,17 +384,27 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
         formatted_csv = processed_file,
         sample_storage_type = sample_storage_type,
         user_action = user_action,
-        required_user_column_names = required_user_column_names,
-        conditional_user_column_names = conditional_user_column_names,
-        optional_user_column_names = optional_user_column_names
+        dbmap = dbmap
       )
 
       message("Validation complete.")
     },
     validation_error = function(e) {
-      df <- left_join(e$df, user_file, by = c("RowNumber")) %>%
-        select("error", colnames(user_file)) %>%
-        dplyr::rename(Error = error)
+      browser()
+      message("Validation error detected...")
+
+      e$df 
+
+      df <- e$df %>%
+        mutate(
+            RowNumber = strsplit(RowNumber, ","),
+            ErrCol = strsplit(ErrCol, ",")
+        ) %>%
+        tidyr::unnest(cols = c(ErrCol)) %>%
+        mutate(RowNumber = as.integer(RowNumber)) %>%
+        ungroup() %>%
+        inner_join(user_file, by = "RowNumber") %>%
+        nest_by(Error, ErrCol, .key = "Table")
 
       stop_validation_error(e$message, df)
     })
@@ -370,7 +413,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
   return(processed_file)
 }
 
-.CheckFormattedFileData <- function(database, formatted_csv, sample_storage_type, user_action, required_user_column_names, conditional_user_column_names, optional_user_column_names) {
+.CheckFormattedFileData <- function(database, formatted_csv, sample_storage_type, user_action, dbmap) {
 
   # this is an internal mapping to the database that should not be exposed to the user
   required_names <- requires_data <- container_metadata <- NULL
@@ -424,10 +467,6 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
 
       stopifnot("Required database column names not implemented" = !is.null(required_names))
 
-      if (user_action %in% c("upload")) {
-        stopifnot("All collection dates are not in YMD format" = .CheckDateFormat(formatted_csv))
-      }
-
       matched_columns <- match(required_names, names(formatted_csv))
       if (any(is.na(matched_columns))) {
         errmsg <- paste("Required database column is missing:", paste(required_names[is.na(matched_columns)], collapse = ", "))
@@ -435,8 +474,24 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
       }
 
       ## broad sweep check if missing any data in required fields
-      df <- formatted_csv[rowSums(is.na(formatted_csv[, requires_data])) > 0, ] %>% select(RowNumber)
-      errdf <- .maybe_add_errdf(errdf, df, "Rows found with missing data")
+      rs <- rowSums(is.na(formatted_csv[, requires_data])) > 0
+      rn <- formatted_csv[rs, ] %>% pull(RowNumber)
+
+      cs <- colSums(is.na(formatted_csv[, requires_data])) > 0
+      cols <- dbmap[colnames(formatted_csv[, requires_data])[cs]]
+
+      errdf <- .maybe_add_errdf(errdf, cols, "Rows found with missing data", rn)
+
+      ## check the formats of dates - right now this is hardcoded
+      if (user_action %in% c("upload")) {
+        parsed_dates <- lubridate::parse_date_time(formatted_csv$collection_date, c("%Y-%m-%d", "%m/%d/%Y"), quiet = TRUE, exact = TRUE)
+        rn <- formatted_csv[xor(is.na(parsed_dates), is.na(formatted_csv$collection_date)),] %>% pull(RowNumber)
+
+        errdf <- .maybe_add_errdf(errdf, dbmap["collection_date"], "Rows found with improperly formatted dates", rn)
+        if (length(rn) == 0) {
+          formatted_csv$collection_date <- parsed_dates
+        }
+      }
 
       ## Deeper validation using database
 
@@ -462,26 +517,22 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
       if (user_action == "move") {
 
         ## check if the container exists in the database
-        df <- tbl(con, "formatted_csv") %>%
+        rn <- tbl(con, "formatted_csv") %>%
           left_join(tbl(con, container_tables[["manifest"]]) %>% dplyr::rename(manifest_barcode = barcode), by = c("manifest_name" = "name")) %>%
           filter(is.na(id)) %>%
-          select(RowNumber) %>%
-          distinct() %>%
-          collect()
+          pull(RowNumber)
 
-        errdf <- .maybe_add_errdf(errdf, df, "Container not found")
+        errdf <- .maybe_add_errdf(errdf, dbmap["manifest_name"], "Container not found", rn)
 
         ## only micronix and cryovial have barcodes (right now)
         if (sample_storage_type %in% c(1,2)) {
-          df <- tbl(con, "formatted_csv") %>%
+          rn <- tbl(con, "formatted_csv") %>%
             inner_join(tbl(con, container_tables[["container_class"]]) %>%
               dplyr::rename(container_position = position), by = c("barcode")) %>%
             filter(is.na(id)) %>%
-            select(RowNumber) %>%
-            distinct() %>%
-            collect()
+            pull(RowNumber)
 
-          errdf <- .maybe_add_errdf(errdf, df, "Barcodes not found in the database")
+          errdf <- .maybe_add_errdf(errdf, dbmap["barcode"], "Barcodes not found in the database", rn)
         }
       }
 
@@ -490,47 +541,38 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
         ## check if the barcodes already exist
         ## only micronix and cryovial have barcodes (right now)
         if (sample_storage_type %in% c(1,2)) {
-          df <- tbl(con, "formatted_csv") %>%
+          rn <- tbl(con, "formatted_csv") %>%
             inner_join(tbl(con, container_tables[["container_class"]]) %>%
               dplyr::rename(container_position = position), by = c("barcode")) %>%
             filter(!is.na(id)) %>%
-            select(RowNumber) %>%
-            distinct() %>%
-            collect()
+            pull(RowNumber)
 
-          errdf <- .maybe_add_errdf(errdf, df, "Barcodes already exist in the database")
+          errdf <- .maybe_add_errdf(errdf, dbmap["barcode"], "Barcodes already exist in the database", rn)
         }
 
         ## Check the references
 
-        df <- tbl(con, "formatted_csv") %>%
+        rn <- tbl(con, "formatted_csv") %>%
           left_join(tbl(con, "study"), by = c("study_short_code" = "short_code")) %>%
           filter(is.na(id)) %>%
-          select(RowNumber) %>%
-          distinct() %>%
-          collect()
+          pull(RowNumber)
 
-        errdf <- .maybe_add_errdf(errdf, df, "Study not found")
+        errdf <- .maybe_add_errdf(errdf, dbmap["study_short_code"], "Study not found", rn)
 
-        df <- tbl(con, "formatted_csv") %>%
+        rn <- tbl(con, "formatted_csv") %>%
           left_join(tbl(con, "specimen_type"), by = c("specimen_type" = "name")) %>%
           filter(is.na(id)) %>%
-          select(RowNumber) %>%
-          distinct() %>%
-          collect()
+          pull(RowNumber)
 
-        errdf <- .maybe_add_errdf(errdf, df, "Specimen type not found")
+        errdf <- .maybe_add_errdf(errdf, dbmap["specimen_type"], "Specimen type not found", rn)
 
-        df <- tbl(con, "formatted_csv") %>%
+        rn <- tbl(con, "formatted_csv") %>%
           left_join(tbl(con, "location") %>%
             dplyr::rename(location_id = id), by = c('name', 'level_I', 'level_II')) %>%
           filter(is.na(location_id)) %>%
-          select(RowNumber) %>%
-          distinct() %>%
-          collect()
+          pull(RowNumber)
 
-        errdf <- .maybe_add_errdf(errdf, df, "Location not found")
-
+        errdf <- .maybe_add_errdf(errdf, dbmap["name", "level_I", "level_II"], "Location not found", rn)
       }
 
       ## Validation shared by more than one action
@@ -538,7 +580,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
 
         ## only micronix and cryovial have barcodes (right now)
         if (sample_storage_type %in% c(1,2)) {
-          df <- tbl(con, "storage_container") %>%
+          rn <- tbl(con, "storage_container") %>%
             select(status_id, id) %>%
             filter(status_id == 1) %>%
             inner_join(tbl(con, container_tables[["container_class"]]) %>% dplyr::rename(container_class_barcode = barcode), by = c("id" = "id")) %>%
@@ -547,23 +589,23 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
                                manifest_name = name,
                                manifest_barcode = barcode
                            ), by = c("manifest_id" = "id")) %>%
-            collect() %>%
-            inner_join(formatted_csv, by = c("manifest_name", "position")) %>%
-            select(RowNumber)
+            inner_join(tbl(con, "formatted_csv"), by = c("manifest_name", "position")) %>%
+            pull(RowNumber)
 
+          # note: position doesn't exist in user files so hardcoded here
           action <- switch(
             user_action,
             "move" = "Moving",
             "upload" = "Uploading"
           )
 
-          errdf <- .maybe_add_errdf(errdf, df, paste0(action, " sample to well location that already has an active sample"))
+          errdf <- .maybe_add_errdf(errdf, dbmap["position"], paste0(action, " sample to well location that already has an active sample"), rn)
         }
       }
     },
     warning = function(w) {
       bError <<- TRUE
-      errmsg <<- e$message
+      errmsg <<- w$message
     },
     error = function(e) {
       bError <<- TRUE
@@ -580,7 +622,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
 
       ## throw if bad data found
       if (!is.null(errdf) && nrow(errdf) > 0) {
-        stop_validation_error("There was a problem with the content of your file.", errdf)
+        stop_validation_error("There was a problem with the content of your file", errdf)
       }
     }) # end tryCatch
   }
@@ -604,26 +646,14 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
   return(NULL)
 }
 
-.CheckDateFormat <- function(formatted_csv){
-  if (require(lubridate)) {
-    if("collection_date" %in% names(formatted_csv)){
-      collection_dates <- formatted_csv %>% pull(collection_date)
-      collection_dates <- collection_dates[!is.na(collection_dates)]
-      out <- all(!is.na(parse_date_time(collection_dates, orders = "ymd")) == TRUE)
-    }else{
-      out <- TRUE
-    }
-    return(out)
-  }
-}
-
-.maybe_add_errdf <- function(errdf, df, msg) {
-  if (nrow(df) > 0) {
+.maybe_add_errdf <- function(errdf, columns, msg, rn) {
+  if (length(rn) > 0 && length(columns) > 0) {
     errdf <- rbind(
       errdf,
       data.frame(
-        error = msg,
-        table = df
+        Error = msg,
+        ErrCol =  paste(columns, collapse = ","),
+        RowNumber= paste(rn, collapse = ",")
       )
     )
   }

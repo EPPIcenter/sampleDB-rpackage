@@ -105,7 +105,6 @@ AppUploadSamples <- function(session, input, output, database) {
     error$message <- ""
     error$type <- ""
     error$table <- NULL
-    # rv$user_file_error_annotated <- NULL
   })
 
 
@@ -215,6 +214,7 @@ AppUploadSamples <- function(session, input, output, database) {
       # TODO: breakup process csv into three stages(but keep calls in global process csv).
       # Just download the error data frame for now.
       rv$user_file_error_annotated <- e$df %>%
+        dplyr::reframe(Table) %>%
         group_by(RowNumber) %>%
         mutate(Error = paste(Error, collapse=";")) %>%
         distinct() %>%
@@ -290,6 +290,7 @@ AppUploadSamples <- function(session, input, output, database) {
         })
       },
       validation_error = function(e) {
+        browser()
         message("Caught validation error")
         early_stop <<- TRUE
         html<-paste0("<font color='red'>", paste0(dataset$name, ": ", e$message), "</font>")
@@ -303,7 +304,7 @@ AppUploadSamples <- function(session, input, output, database) {
 
         # TODO: just download the error data frame for now
         rv$user_file_error_annotated <- e$df %>%
-          group_by(RowNumber) %>%
+          group_by(Error) %>%
           mutate(Error = paste(Error, collapse=";")) %>%
           distinct() %>%
           dplyr::rename(
@@ -322,6 +323,7 @@ AppUploadSamples <- function(session, input, output, database) {
         error$table = e$df
       },
       error = function(e) {
+        browser()
         early_stop <<- TRUE
         html<-paste0("<font color='red'>", paste0(dataset$name, ": ", e$message), "</font>")
         shinyjs::html(id = "UploadOutputConsole", html = html, add = rv$console_verbatim)
