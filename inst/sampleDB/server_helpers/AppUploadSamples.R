@@ -43,11 +43,10 @@ AppUploadSamples <- function(session, input, output, database) {
 
   observeEvent(rv$error, ignoreInit = TRUE, {
     message("Running error workflow")
-
-    df <- error$table
+    df <- error$list
     modal_size <- "m"
     if (error$type == "formatting") {
-      df <- error$table %>%
+      df <- error$list %>%
         dplyr::rename(
           Column = column, 
           Reason = reason,
@@ -66,25 +65,27 @@ AppUploadSamples <- function(session, input, output, database) {
         )
       )
     } else if (error$type == "validation") {
-
-      df <- reactable(
-        error$table,
-        groupBy = "Error",
-        columns = list(
-          Error = colDef(sticky = "left", minWidth = 160),
-          RowNumber = colDef(sticky = "left")
-        ),
-        paginateSubRows = TRUE,
-        outlined = TRUE, 
-        defaultColDef = colDef(
-          align = "center",
-          minWidth = 120,
-          html = TRUE, 
-          sortable = FALSE, 
-          resizable = FALSE, 
-          na = "-"
+      errors <- unique(names(error$list))
+      errors <- data.frame(errors)
+      colnames(errors) <- "Error"
+      df <- reactable(errors, details = function(index) {
+        data <- error$list[[index]]$Columns
+        htmltools::div(style = "padding: 1rem",
+          reactable(
+            data, 
+            outlined = TRUE, 
+            striped = TRUE,
+            # rownames = TRUE,
+            theme = reactableTheme(
+            headerStyle = list(
+              "&:hover[aria-sort]" = list(background = "hsl(0, 0%, 96%)"),
+              "&[aria-sort='ascending'], &[aria-sort='descending']" = list(background = "hsl(0, 0%, 96%)"),
+              borderColor = "#555"
+            )),
+            defaultColDef = colDef(na = "-", align = "center")
+          )
         )
-      )
+      })
 
       showModal(
         modalDialog(
@@ -104,7 +105,7 @@ AppUploadSamples <- function(session, input, output, database) {
     error$title <- ""
     error$message <- ""
     error$type <- ""
-    error$table <- NULL
+    error$list <- NULL
   })
 
 
@@ -173,7 +174,7 @@ AppUploadSamples <- function(session, input, output, database) {
         rv$error <- TRUE
         error$title = "Invalid File Detected"
         error$message = e$message
-        error$table = e$df
+        error$list = e$df
       } else {
         if (manifest_name %in% columns) {
           shinyjs::show("UploadManifestName")
@@ -207,22 +208,20 @@ AppUploadSamples <- function(session, input, output, database) {
       rv$error <- TRUE
       error$type <- "validation"
       error$title <- e$message
-      error$table <- e$df
-
-      print(e$df)
+      error$list <- e$data
 
       # TODO: breakup process csv into three stages(but keep calls in global process csv).
       # Just download the error data frame for now.
-      rv$user_file_error_annotated <- e$df %>%
-        dplyr::reframe(Table) %>%
-        group_by(RowNumber) %>%
-        mutate(Error = paste(Error, collapse=";")) %>%
-        distinct() %>%
-        dplyr::rename(
-          Errors = Error
-        )
+      errors <- names(e$data)
+      df <- lapply(1:length(errors), function(idx) {
+        e$data[[idx]]$CSV %>%
+          mutate(Error = errors[idx]) %>%
+          mutate(ErrCol = paste(e$data[[idx]]$Columns, collapse = ",")) %>%
+          select(Error, colnames(e$data[[idx]]$CSV)) 
+      })
 
-      rv$barcodes <- e$df %>% select()
+      rv$user_file_error_annotated <- do.call("rbind", df) %>%
+        select(-c(RowNumber))
     },
     error = function(e) {
       print(e)
@@ -290,7 +289,6 @@ AppUploadSamples <- function(session, input, output, database) {
         })
       },
       validation_error = function(e) {
-        browser()
         message("Caught validation error")
         early_stop <<- TRUE
         html<-paste0("<font color='red'>", paste0(dataset$name, ": ", e$message), "</font>")
@@ -300,18 +298,19 @@ AppUploadSamples <- function(session, input, output, database) {
         rv$error <- TRUE
         error$type <- "validation"
         error$title <- e$message
-        error$table <- e$df
+        error$list <- e$data
 
         # TODO: just download the error data frame for now
-        rv$user_file_error_annotated <- e$df %>%
-          group_by(Error) %>%
-          mutate(Error = paste(Error, collapse=";")) %>%
-          distinct() %>%
-          dplyr::rename(
-            Errors = Error
-          )
+        errors <- names(e$data)
+        df <- lapply(1:length(errors), function(idx) {
+          e$data[[idx]]$CSV %>%
+            mutate(Error = errors[idx]) %>%
+            mutate(ErrCol = paste(e$data[[idx]]$Columns, collapse = ",")) %>%
+            select(Error, colnames(e$data[[idx]]$CSV)) 
+        })
 
-        print(e$df)
+        rv$user_file_error_annotated <- do.call("rbind", df) %>%
+          select(-c(RowNumber))
 
       },
       formatting_error = function(e) {
@@ -320,10 +319,9 @@ AppUploadSamples <- function(session, input, output, database) {
         early_stop <<- TRUE
         error$title = "Invalid File Detected"
         error$message = e$message
-        error$table = e$df
+        error$list = e$df
       },
       error = function(e) {
-        browser()
         early_stop <<- TRUE
         html<-paste0("<font color='red'>", paste0(dataset$name, ": ", e$message), "</font>")
         shinyjs::html(id = "UploadOutputConsole", html = html, add = rv$console_verbatim)

@@ -230,16 +230,6 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
     user_file <- select(user_file, RowNumber, all_of(required_user_column_names))
   }
 
-  ## use this chunk to validate conditional parameters
-
-  if ("upload" %in% user_action) {
-    if ("CollectionDate" %in% colnames(user_file)) {
-      df_invalid <- filter(tmp, is_longitudinal == 1 & is.na(CollectionDate))
-      if (nrow(df_invalid) > 0) {
-        stop_validation_error("Missing collection date found for sample in longitudinal study", df_invalid)
-      }
-    }
-  }
 
   ## Now convert to sampleDB formatting
 
@@ -377,9 +367,8 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
   message("Formatting complete.")
 
   if (validate) {
-
     tryCatch({
-      .CheckFormattedFileData(
+      processed_file <- .CheckFormattedFileData(
         database = database,
         formatted_csv = processed_file,
         sample_storage_type = sample_storage_type,
@@ -387,27 +376,32 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
         dbmap = dbmap
       )
 
-      message("Validation complete.")
+      processed_file$RowNumber <- NULL
     },
     validation_error = function(e) {
-      browser()
-      message("Validation error detected...")
 
-      e$df 
+      # TODO: Make this return the users file with error annotation by row number (allow for multiple errors in cell)
+      data1 <- lapply(1:length(e$data), function(x) {
+        result <- NULL
+        position_idx <- match(paste0(dbmap["position"]), colnames(e$data[[x]]))
+        if (!is.na(position_idx)) {
 
-      df <- e$df %>%
-        mutate(
-            RowNumber = strsplit(RowNumber, ","),
-            ErrCol = strsplit(ErrCol, ",")
-        ) %>%
-        tidyr::unnest(cols = c(ErrCol)) %>%
-        mutate(RowNumber = as.integer(RowNumber)) %>%
-        ungroup() %>%
-        inner_join(user_file, by = "RowNumber") %>%
-        nest_by(Error, ErrCol, .key = "Table")
+          tmp <- e$data[[x]][, -position_idx]
+          tmp.1 <- cbind(user_file[e$data[[x]]$RowNumber, unlist(dbmap["position"])], tmp)
 
-      stop_validation_error(e$message, df)
+          result <- list(Columns = e$data[[x]], CSV = inner_join(tmp.1, user_file, by = colnames(tmp.1)))
+        } else {
+          result <- list(Columns = e$data[[x]], CSV = inner_join(e$data[[x]], user_file, by = colnames(e$data[[x]])))
+        }
+
+        return(result)
+      })
+
+      names(data1) <- names(e$data)
+      stop_validation_error(e$message, data1)
     })
+
+    message("Validation complete.")
   }
 
   return(processed_file)
@@ -458,7 +452,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
   }
 
   bError <- FALSE
-  errdf <- errmsg <- NULL
+  err <- errmsg <- NULL
 
   if (user_action %in% c("upload", "move")) {
 
@@ -478,20 +472,41 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
       rn <- formatted_csv[rs, ] %>% pull(RowNumber)
 
       cs <- colSums(is.na(formatted_csv[, requires_data])) > 0
-      cols <- dbmap[colnames(formatted_csv[, requires_data])[cs]]
+      cols <- colnames(formatted_csv[, requires_data])[cs]
 
-      errdf <- .maybe_add_errdf(errdf, cols, "Rows found with missing data", rn)
+      if (length(cols) > 1) {
+        df <- formatted_csv[rn, c("RowNumber", cols)]
+        colnames(df) <- c("RowNumber", dbmap[cols])
 
-      ## check the formats of dates - right now this is hardcoded
-      if (user_action %in% c("upload")) {
-        parsed_dates <- lubridate::parse_date_time(formatted_csv$collection_date, c("%Y-%m-%d", "%m/%d/%Y"), quiet = TRUE, exact = TRUE)
-        rn <- formatted_csv[xor(is.na(parsed_dates), is.na(formatted_csv$collection_date)),] %>% pull(RowNumber)
-
-        errdf <- .maybe_add_errdf(errdf, dbmap["collection_date"], "Rows found with improperly formatted dates", rn)
-        if (length(rn) == 0) {
-          formatted_csv$collection_date <- parsed_dates
-        }
+        err <- .maybe_add_err(err, df, "Rows found with missing data")
       }
+
+      ## check to make sure there are no duplicated values 
+      # 1. Make sure that two samples aren't being uploaded to the same place
+
+      df <- formatted_csv %>% 
+        group_by(manifest_name, position) %>%
+        count()
+
+      if (any(df$n > 1)) {
+        df <- formatted_csv[df$n > 1, ] %>% select(RowNumber, position, manifest_name)
+        colnames(df) <- c("RowNumber", dbmap[c("position", "manifest_name")])
+        err <- .maybe_add_err(err, df, "Uploading at least two samples to the same position in a manifest")
+      }
+
+      # 2. Check for duplicated barcodes
+      df <- formatted_csv %>%
+        group_by(barcode) %>% 
+        count()
+
+      if (any(df$n > 1)) {
+        df <- formatted_csv[df$n > 1, ] %>%
+          select(RowNumber, barcode)
+
+        colnames(df) <- c("RowNumber", dbmap["barcode"])
+        err <- .maybe_add_err(err, df, "Uploading at least two samples with identical barcodes")
+      }
+
 
       ## Deeper validation using database
 
@@ -514,6 +529,37 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
       con <- DBI::dbConnect(RSQLite::SQLite(), database)
       copy_to(con, formatted_csv)
 
+      ## check the formats of dates - right now this is hardcoded
+      if (user_action %in% c("upload")) {
+        parsed_dates <- lubridate::parse_date_time(formatted_csv$collection_date, c("%Y-%m-%d", "%m/%d/%Y", "%m-%d-%Y"), quiet = TRUE, exact = TRUE)
+        rn <- formatted_csv[xor(is.na(parsed_dates), is.na(formatted_csv$collection_date)),] %>% pull(RowNumber)
+
+        df <- formatted_csv[rn, c("RowNumber", "collection_date")]
+        colnames(df) <- c("RowNumber", dbmap["collection_date"])
+
+        err <- .maybe_add_err(err, df, "Rows found with improperly formatted dates")
+        if (length(rn) == 0) {
+          formatted_csv$collection_date <- parsed_dates
+        }
+      
+
+        ## check that dates exist for longitudinal studies
+        df <- tbl(con, "formatted_csv") %>%
+          dplyr::inner_join(
+            tbl(con, "study") %>%
+              select(short_code, is_longitudinal)
+            , by = c("study_short_code" = "short_code")
+          ) %>%
+          filter(is_longitudinal == 1 & is.na(collection_date)) %>%
+          select(RowNumber, study_short_code, collection_date) %>%
+          distinct() %>%
+          collect()
+
+        colnames(df) <- c("RowNumber", dbmap[c("study_short_code", "collection_date")])
+
+        err <- .maybe_add_err(err, df, "Missing collection date found for sample in longitudinal study")
+      }
+
       if (user_action == "move") {
 
         ## check if the container exists in the database
@@ -522,7 +568,10 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
           filter(is.na(id)) %>%
           pull(RowNumber)
 
-        errdf <- .maybe_add_errdf(errdf, dbmap["manifest_name"], "Container not found", rn)
+        df <- formatted_csv[rn, c("RowNumber", "manifest_name")]
+        colnames(df) <- c("RowNumber", dbmap["manifest_name"])
+
+        err <- .maybe_add_err(err, df, "Container not found")
 
         ## only micronix and cryovial have barcodes (right now)
         if (sample_storage_type %in% c(1,2)) {
@@ -532,7 +581,10 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
             filter(is.na(id)) %>%
             pull(RowNumber)
 
-          errdf <- .maybe_add_errdf(errdf, dbmap["barcode"], "Barcodes not found in the database", rn)
+          df <- formatted_csv[rn, c("RowNumber", "barcode")]
+          colnames(df) <- c("RowNumber", dbmap["barcode"])
+
+          err <- .maybe_add_err(err, df, "Barcodes not found in the database")
         }
       }
 
@@ -547,7 +599,10 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
             filter(!is.na(id)) %>%
             pull(RowNumber)
 
-          errdf <- .maybe_add_errdf(errdf, dbmap["barcode"], "Barcodes already exist in the database", rn)
+          df <- formatted_csv[rn, c("RowNumber", "barcode")]
+          colnames(df) <- c("RowNumber", dbmap["barcode"])
+
+          err <- .maybe_add_err(err, df, "Barcodes already exist in the database")
         }
 
         ## Check the references
@@ -557,14 +612,20 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
           filter(is.na(id)) %>%
           pull(RowNumber)
 
-        errdf <- .maybe_add_errdf(errdf, dbmap["study_short_code"], "Study not found", rn)
+        df <- formatted_csv[rn, c("RowNumber", "study_short_code")]
+        colnames(df) <- c("RowNumber", dbmap["study_short_code"])
+
+        err <- .maybe_add_err(err, df, "Study not found")
 
         rn <- tbl(con, "formatted_csv") %>%
           left_join(tbl(con, "specimen_type"), by = c("specimen_type" = "name")) %>%
           filter(is.na(id)) %>%
           pull(RowNumber)
 
-        errdf <- .maybe_add_errdf(errdf, dbmap["specimen_type"], "Specimen type not found", rn)
+        df <- formatted_csv[rn, c("RowNumber", "specimen_type")]
+        colnames(df) <- c("RowNumber", dbmap["specimen_type"])
+
+        err <- .maybe_add_err(err, df, "Specimen type not found")
 
         rn <- tbl(con, "formatted_csv") %>%
           left_join(tbl(con, "location") %>%
@@ -572,7 +633,10 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
           filter(is.na(location_id)) %>%
           pull(RowNumber)
 
-        errdf <- .maybe_add_errdf(errdf, dbmap["name", "level_I", "level_II"], "Location not found", rn)
+        df <- formatted_csv[rn, c("RowNumber", "name", "level_I", "level_II")]
+        colnames(df) <- c("RowNumber", dbmap[c("name", "level_I", "level_II")])
+
+        err <- .maybe_add_err(err, df, "Location not found")
       }
 
       ## Validation shared by more than one action
@@ -599,7 +663,10 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
             "upload" = "Uploading"
           )
 
-          errdf <- .maybe_add_errdf(errdf, dbmap["position"], paste0(action, " sample to well location that already has an active sample"), rn)
+          df <- formatted_csv[rn, c("RowNumber", "position")]
+          colnames(df) <- c("RowNumber", dbmap["position"])
+
+          err <- .maybe_add_err(err, df, paste0(action, " sample to well location that already has an active sample"))
         }
       }
     },
@@ -621,10 +688,12 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
       }
 
       ## throw if bad data found
-      if (!is.null(errdf) && nrow(errdf) > 0) {
-        stop_validation_error("There was a problem with the content of your file", errdf)
+      if (!is.null(err) && length(err) > 0) {
+        stop_validation_error("There was a problem with the content of your file", err)
       }
     }) # end tryCatch
+
+    return(formatted_csv)
   }
 }
 
@@ -646,18 +715,13 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
   return(NULL)
 }
 
-.maybe_add_errdf <- function(errdf, columns, msg, rn) {
-  if (length(rn) > 0 && length(columns) > 0) {
-    errdf <- rbind(
-      errdf,
-      data.frame(
-        Error = msg,
-        ErrCol =  paste(columns, collapse = ","),
-        RowNumber= paste(rn, collapse = ",")
-      )
-    )
+.maybe_add_err <- function(err, df, msg) {
+  if (nrow(df) > 0) {
+    idx <- ifelse(is.null(err), 1, length(err) + 1)
+    err[[idx]] <- df
+    names(err)[idx] <- msg
   }
-  return(errdf)
+  return(err)
 }
 
 stop_usage_error <- function(message) {
@@ -669,6 +733,6 @@ stop_formatting_error <- function(df) {
   rlang::abort("formatting_error", message = message, df = df)
 }
 
-stop_validation_error <- function(message, df) {
-  rlang::abort("validation_error", message = message, df = df)
+stop_validation_error <- function(message, data) {
+  rlang::abort("validation_error", message = message, data = data)
 }
