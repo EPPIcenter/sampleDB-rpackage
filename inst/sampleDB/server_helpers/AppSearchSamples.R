@@ -105,15 +105,15 @@ SearchWetlabSamples <- function(session, input, database, output, DelArch = FALS
       "1" = "micronix_plate",
       "2" = "cryovial_box",
       "3" = "dbs_paper",
-      "all" = "All"
+      "all" = "All Containers"
     )
 
     manifest_names <- c()
 
-    if (manifest == "All") {
+    if (manifest == "All Containers") {
       manifest_names <- c(manifest_names, DBI::dbReadTable(con, "micronix_plate") %>% pull(name))
       manifest_names <- c(manifest_names, DBI::dbReadTable(con, "cryovial_box") %>% pull(name))
-      manifest_names <- c(manifest_names, DBI::dbReadTable(con, "dbs_paper"))
+      manifest_names <- c(manifest_names, DBI::dbReadTable(con, "dbs_paper") %>% pull(name))
     } else {
       manifest_names <- c(manifest_names, DBI::dbReadTable(con, manifest) %>% pull(name))
     }
@@ -131,6 +131,14 @@ SearchWetlabSamples <- function(session, input, database, output, DelArch = FALS
       selected = "",
       choices = c("", manifest_names)
     )
+
+    
+    updateSelectizeInput(session, "SearchByStudy", "Study", selected = "", choices = c("", dbReadTable(con, "study") %>% pull(short_code)))
+    updateSelectizeInput(session, "SearchBySubjectUID", "Study Subject", selected = "", choices = c("", dbReadTable(con, "study_subject") %>% pull(var = study_id, name = name)))
+    updateSelectizeInput(session, "SearchBySpecimenType", "Specimen Type", selected = "", choices = c("", dbReadTable(con, "specimen_type") %>% pull(name)))
+    updateSelectizeInput(session, "SearchByLocation", "Storage Location", selected = "", choices = c("", dbReadTable(con, "location") %>% pull(name)))
+    updateSelectizeInput(session, "SearchByState", "State", selected = Global$DefaultStateSearchTerm, choices = dbReadTable(con, "state") %>% pull(name))
+    updateDateRangeInput(session, "dateRange", start = NA, end = NA) %>% suppressWarnings()
 
     dbDisconnect(con)
   })
@@ -217,6 +225,8 @@ SearchWetlabSamples <- function(session, input, database, output, DelArch = FALS
 
     updateRadioButtons(session, selected = "individual", "SubjectUIDSearchType", label = NULL, choices = list("Single Study Subject" = "individual", "Multiple Study Subjects" = "multiple"))
 
+    con <- dbConnect(SQLite(), Sys.getenv("SDB_PATH"))
+
     manifest_label <- switch(
       input$SearchBySampleType,
       "1" = "Plate Name",
@@ -224,8 +234,33 @@ SearchWetlabSamples <- function(session, input, database, output, DelArch = FALS
       "3" = "Paper Name",
       "all" = "All Containers"
     )
-    updateSelectizeInput(session, "SearchByManifest", label = manifest_label, selected = "", choices = c("", dbUpdateEvent()$manifest))
 
+    manifest <- switch(
+      input$SearchBySampleType,
+      "1" = "micronix_plate",
+      "2" = "cryovial_box",
+      "3" = "dbs_paper",
+      "all" = "All Containers"
+    )
+
+    manifest_names <- c()
+
+    if (manifest == "All Containers") {
+      manifest_names <- c(manifest_names, DBI::dbReadTable(con, "micronix_plate") %>% pull(name))
+      manifest_names <- c(manifest_names, DBI::dbReadTable(con, "cryovial_box") %>% pull(name))
+      manifest_names <- c(manifest_names, DBI::dbReadTable(con, "dbs_paper") %>% pull(name))
+    } else {
+      manifest_names <- c(manifest_names, DBI::dbReadTable(con, manifest) %>% pull(name))
+    }
+
+    updateSelectInput(
+      session,
+      "SearchByManifest",
+      label = manifest_label,
+      selected = "",
+      choices = c("", manifest_names)
+    )
+    
     updateSelectizeInput(session, "SearchByStudy", "Study", selected = "", choices = c("", dbUpdateEvent()$study))
     updateSelectizeInput(session, "SearchBySubjectUID", "Study Subject", selected = "", choices = c("", dbUpdateEvent()$study_subject))
     updateSelectizeInput(session, "SearchBySpecimenType", "Specimen Type", selected = "", choices = c("", dbUpdateEvent()$specimen_type))
@@ -400,11 +435,39 @@ SearchWetlabSamples <- function(session, input, database, output, DelArch = FALS
 
   observeEvent(dbUpdateEvent(), ignoreInit = TRUE, {
 
+    con <- DBI::dbConnect(SQLite(), Sys.getenv("SDB_PATH"))
+    manifest_label <- switch(
+      input$SearchBySampleType,
+      "1" = "Plate Name",
+      "2" = "Box Name",
+      "3" = "Paper Name",
+      "all" = "All Containers"
+    )
+
+    manifest <- switch(
+      input$SearchBySampleType,
+      "1" = "micronix_plate",
+      "2" = "cryovial_box",
+      "3" = "dbs_paper",
+      "all" = "All Containers"
+    )
+
+    manifest_names <- c()
+
+    if (manifest == "All Containers") {
+      manifest_names <- c(manifest_names, DBI::dbReadTable(con, "micronix_plate") %>% pull(name))
+      manifest_names <- c(manifest_names, DBI::dbReadTable(con, "cryovial_box") %>% pull(name))
+      manifest_names <- c(manifest_names, DBI::dbReadTable(con, "dbs_paper") %>% pull(name))
+    } else {
+      manifest_names <- c(manifest_names, DBI::dbReadTable(con, manifest) %>% pull(name))
+    }
+
     updateSelectInput(
       session,
       "SearchByManifest",
-      choices = c("", dbUpdateEvent()$manifest),
-      selected = input$SearchByManifest
+      label = manifest_label,
+      selected = "",
+      choices = c("", manifest_names)
     )
 
     updateSelectInput(
@@ -434,6 +497,9 @@ SearchWetlabSamples <- function(session, input, database, output, DelArch = FALS
       choices = c("", dbUpdateEvent()$study_subject),
       selected = input$SearchBySubjectUID
     )
+
+    DBI::dbDisconnect(con)
+
   })
 
   observe({

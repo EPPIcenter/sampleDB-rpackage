@@ -494,17 +494,20 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
         err <- .maybe_add_err(err, df, "Uploading at least two samples to the same position in a manifest")
       }
 
-      # 2. Check for duplicated barcodes
-      df <- formatted_csv %>%
-        group_by(barcode) %>% 
-        count()
+      if (sample_storage_type %in% c(1,2)) {
+        ## only micronix and cryovial have barcodes (right now)
+        # 2. Check for duplicated barcodes
+        df <- formatted_csv %>%
+          group_by(barcode) %>% 
+          count()
 
-      if (any(df$n > 1)) {
-        df <- formatted_csv[df$n > 1, ] %>%
-          select(RowNumber, barcode)
+        if (any(df$n > 1)) {
+          df <- formatted_csv[df$n > 1, ] %>%
+            select(RowNumber, barcode)
 
-        colnames(df) <- c("RowNumber", dbmap["barcode"])
-        err <- .maybe_add_err(err, df, "Uploading at least two samples with identical barcodes")
+          colnames(df) <- c("RowNumber", dbmap["barcode"])
+          err <- .maybe_add_err(err, df, "Uploading at least two samples with identical barcodes")
+        }
       }
 
 
@@ -642,7 +645,6 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
       ## Validation shared by more than one action
       if (user_action %in% c("upload", "move")) {
 
-        ## only micronix and cryovial have barcodes (right now)
         if (sample_storage_type %in% c(1,2)) {
           rn <- tbl(con, "storage_container") %>%
             select(status_id, id) %>%
