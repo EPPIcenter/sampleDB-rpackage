@@ -22,7 +22,7 @@
 #' @export
 
 
-SearchSamples <- function(sample_storage_type, filters = NULL, format = "na", database = Sys.getenv("SDB_PATH"), include_internal_sample_id = FALSE) {
+SearchSamples <- function(sample_storage_type, filters = NULL, format = "na", database = Sys.getenv("SDB_PATH"), config_yml = Sys.getenv("SDB_CONFIG"), include_internal_sample_id = FALSE) {
   db.results <- NULL
   tryCatch({
     container_tables <- list(
@@ -183,7 +183,13 @@ SearchSamples <- function(sample_storage_type, filters = NULL, format = "na", da
       dbmap$position <- "Position"
     } else if (sample_storage_type == 1 && format == "traxcer") {
       dbmap$barcode <- "Tube"
-      dbmap$position <- traxcer_position
+
+      dbmap$position <- ifelse(
+        !is.na(config$traxcer_position$override),
+        config$traxcer_position$override,
+        config$traxcer_position$default
+      )
+
     } else if (sample_storage_type == 1 && format == "visionmate") {
       dbmap$barcode <- "TubeCode"
       dbmap$position <- "Position"

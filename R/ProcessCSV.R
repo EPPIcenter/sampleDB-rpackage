@@ -122,11 +122,19 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
     stop(paste("The expected column names for sample type", sample_storage_type, "and file type", file_type, "are not implemented (yet)."))
   }
 
+  traxcer_position <- NULL
   ## If the file type is traxcer, replace with the custom config value
   if (file_type == "traxcer") {
 
     ## Read Configuration File and replace with user override from user preferences
     config <- yaml::read_yaml(config_yml)
+
+    traxcer_position <- ifelse(
+      !is.na(config$traxcer_position$override),
+      config$traxcer_position$override,
+      config$traxcer_position$default
+    )
+
     if (!is.na(config$traxcer_position$override)) {
       required_user_column_names <- stringr::str_replace(required_user_column_names, config$traxcer_position$default, config$traxcer_position$override)
     }
@@ -253,7 +261,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
       processed_file$position <- sprintf("%s%02d", user_file[[dbmap$position[1]]], as.integer(user_file[[dbmap$position[2]]]))
 
     } else if (sample_storage_type == 1 && file_type == "traxcer") {
-      dbmap$barcode <- "Tube Row"
+      dbmap$barcode <- "Tube ID"
       processed_file$barcode <- user_file[[dbmap$barcode]]
 
       dbmap$position <- traxcer_position
