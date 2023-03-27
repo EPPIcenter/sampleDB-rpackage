@@ -236,11 +236,11 @@ DelArchSamples <- function(session, input, database, output, inputs, outputs){
     updateSelectInput(session, selected = input$DelArchSearchByPlate, "DelArchSearchByPlate", label = "Plate Name", choices = c("", dbUpdateEvent()$micronix_plate_name))
     updateSelectInput(session, selected = input$DelArchSearchByBox, "DelArchSearchByBox", label = "Box Name", choices = c("", dbUpdateEvent()$cryovial_box_name))
 
-    updateSelectizeInput(session, selected = input$DelArchSearchByStudy, "DelArchSearchByStudy", "Study", choices = c("", names(dbUpdateEvent()$study)))
-    updateSelectizeInput(session, selected = input$DelArchSearchBySpecimenType, "DelArchSearchBySpecimenType", "Specimen Type", choices = c("", dbUpdateEvent()$specimen_type))
-    updateSelectizeInput(session, selected = input$DelArchSearchByLocation, "DelArchSearchByLocation", "Storage Location", choices = c("", dbUpdateEvent()$location))
+    updateSelectizeInput(session, selected = input$DelArchSearchByStudy, "DelArchSearchByStudy", "Study", choices = c("", names(dbUpdateEvent()$study)), server = TRUE)
+    updateSelectizeInput(session, selected = input$DelArchSearchBySpecimenType, "DelArchSearchBySpecimenType", "Specimen Type", choices = c("", dbUpdateEvent()$specimen_type), server = TRUE)
+    updateSelectizeInput(session, selected = input$DelArchSearchByLocation, "DelArchSearchByLocation", "Storage Location", choices = c("", dbUpdateEvent()$location), server = TRUE)
 
-    updateSelectizeInput(session, selected = input$DelArchSearchByState, "DelArchSearchByState", "State", choices = c(dbUpdateEvent()$state))
+    updateSelectizeInput(session, selected = input$DelArchSearchByState, "DelArchSearchByState", "State", choices = c(dbUpdateEvent()$state), server = TRUE)
   
     # name uid should be updated when db updates + when studies are selected
     .UpdateDelArchSubjectUID(session, input)
@@ -283,11 +283,11 @@ DelArchSamples <- function(session, input, database, output, inputs, outputs){
     updateSelectInput(session, selected = NULL, "DelArchSearchByPlate", label = "Plate Name", choices = c("", dbUpdateEvent()$micronix_plate_name))
     updateSelectInput(session, selected = NULL, "DelArchSearchByBox", label = "Box Name", choices = c("", dbUpdateEvent()$cryovial_box_name))
 
-    updateSelectizeInput(session, selected = NULL, "DelArchSearchByStudy", "Study", choices = c("", names(dbUpdateEvent()$study)))
-    updateSelectizeInput(session, selected = NULL, "DelArchSearchBySpecimenType", "Specimen Type", choices = c("", dbUpdateEvent()$specimen_type))
-    updateSelectizeInput(session, selected = NULL, "DelArchSearchByLocation", "Storage Location", choices = c("", dbUpdateEvent()$location))
+    updateSelectizeInput(session, selected = NULL, "DelArchSearchByStudy", "Study", choices = c("", names(dbUpdateEvent()$study)), server = TRUE)
+    updateSelectizeInput(session, selected = NULL, "DelArchSearchBySpecimenType", "Specimen Type", choices = c("", dbUpdateEvent()$specimen_type), server = TRUE)
+    updateSelectizeInput(session, selected = NULL, "DelArchSearchByLocation", "Storage Location", choices = c("", dbUpdateEvent()$location), server = TRUE)
 
-    updateSelectizeInput(session, selected = NULL, "DelArchSearchByState", "State", choices = c(dbUpdateEvent()$state))  
+    updateSelectizeInput(session, selected = NULL, "DelArchSearchByState", "State", choices = c(dbUpdateEvent()$state), server = TRUE)  
     updateDateRangeInput(session, "DelArchdateRange", start = NA, end = NA) %>% suppressWarnings()
 
     rv$user_file <- NULL
@@ -306,7 +306,7 @@ DelArchSamples <- function(session, input, database, output, inputs, outputs){
     }
     selected <- choices[1]
 
-    updateSelectizeInput(session, selected = selected, "DelArchSearchByStatus", "Status", choices = choices) 
+    updateSelectizeInput(session, selected = selected, "DelArchSearchByStatus", "Status", choices = choices, server = TRUE) 
   })
 
   observeEvent(input$DelArchSearchByStudy, { .UpdateDelArchSubjectUID(session, input) })
@@ -415,21 +415,24 @@ DelArchSamples <- function(session, input, database, output, inputs, outputs){
       session,
       "DelArchSearchBySpecimenType",
       choices = c("", dbUpdateEvent()$specimen_type),
-      selected = input$DelArchSearchBySpecimenType
+      selected = input$DelArchSearchBySpecimenType,
+      server = TRUE
     )
 
     updateSelectizeInput(
       session,
       "DelArchSearchByLocation",
       choices = c("", dbUpdateEvent()$location),
-      selected = input$DelArchSearchByLocation
+      selected = input$DelArchSearchByLocation,
+      server = TRUE
     )
 
     updateSelectizeInput(
       session,
       "DelArchSearchBySubjectUID",
       choices = c("", dbUpdateEvent()$study_subject),
-      selected = input$DelArchSearchBySubjectUID
+      selected = input$DelArchSearchBySubjectUID,
+      server = TRUE
     )
   })
     

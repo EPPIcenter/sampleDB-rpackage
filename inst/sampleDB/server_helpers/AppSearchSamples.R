@@ -133,11 +133,11 @@ SearchWetlabSamples <- function(session, input, database, output, DelArch = FALS
     )
 
     
-    updateSelectizeInput(session, "SearchByStudy", "Study", selected = "", choices = c("", dbReadTable(con, "study") %>% pull(short_code)))
-    updateSelectizeInput(session, "SearchBySubjectUID", "Study Subject", selected = "", choices = c("", dbReadTable(con, "study_subject") %>% pull(var = study_id, name = name)))
-    updateSelectizeInput(session, "SearchBySpecimenType", "Specimen Type", selected = "", choices = c("", dbReadTable(con, "specimen_type") %>% pull(name)))
-    updateSelectizeInput(session, "SearchByLocation", "Storage Location", selected = "", choices = c("", dbReadTable(con, "location") %>% pull(name)))
-    updateSelectizeInput(session, "SearchByState", "State", selected = Global$DefaultStateSearchTerm, choices = dbReadTable(con, "state") %>% pull(name))
+    updateSelectizeInput(session, "SearchByStudy", "Study", selected = "", choices = c("", dbReadTable(con, "study") %>% pull(short_code)), server = TRUE)
+    updateSelectizeInput(session, "SearchBySubjectUID", "Study Subject", selected = "", choices = c("", dbReadTable(con, "study_subject") %>% pull(var = study_id, name = name)), server = TRUE)
+    updateSelectizeInput(session, "SearchBySpecimenType", "Specimen Type", selected = "", choices = c("", dbReadTable(con, "specimen_type") %>% pull(name)), server = TRUE)
+    updateSelectizeInput(session, "SearchByLocation", "Storage Location", selected = "", choices = c("", dbReadTable(con, "location") %>% pull(name)), server = TRUE)
+    updateSelectizeInput(session, "SearchByState", "State", selected = Global$DefaultStateSearchTerm, choices = dbReadTable(con, "state") %>% pull(name), server = TRUE)
     updateDateRangeInput(session, "dateRange", start = NA, end = NA) %>% suppressWarnings()
 
     dbDisconnect(con)
@@ -261,11 +261,11 @@ SearchWetlabSamples <- function(session, input, database, output, DelArch = FALS
       choices = c("", manifest_names)
     )
     
-    updateSelectizeInput(session, "SearchByStudy", "Study", selected = "", choices = c("", dbUpdateEvent()$study))
-    updateSelectizeInput(session, "SearchBySubjectUID", "Study Subject", selected = "", choices = c("", dbUpdateEvent()$study_subject))
-    updateSelectizeInput(session, "SearchBySpecimenType", "Specimen Type", selected = "", choices = c("", dbUpdateEvent()$specimen_type))
-    updateSelectizeInput(session, "SearchByLocation", "Storage Location", selected = "", choices = c("", dbUpdateEvent()$location))
-    updateSelectizeInput(session, "SearchByState", "State", selected = Global$DefaultStateSearchTerm, choices = dbReadTable(con, "state") %>% pull(name))
+    updateSelectizeInput(session, "SearchByStudy", "Study", selected = "", choices = c("", dbUpdateEvent()$study), server = TRUE)
+    updateSelectizeInput(session, "SearchBySubjectUID", "Study Subject", selected = "", choices = c("", dbUpdateEvent()$study_subject), server = TRUE)
+    updateSelectizeInput(session, "SearchBySpecimenType", "Specimen Type", selected = "", choices = c("", dbUpdateEvent()$specimen_type), server = TRUE)
+    updateSelectizeInput(session, "SearchByLocation", "Storage Location", selected = "", choices = c("", dbUpdateEvent()$location), server = TRUE)
+    updateSelectizeInput(session, "SearchByState", "State", selected = Global$DefaultStateSearchTerm, choices = dbReadTable(con, "state") %>% pull(name), server = TRUE)
     updateDateRangeInput(session, "dateRange", start = NA, end = NA) %>% suppressWarnings()
 
     shinyjs::reset("SearchByBarcode")
@@ -291,7 +291,7 @@ SearchWetlabSamples <- function(session, input, database, output, DelArch = FALS
     }
     selected <- choices[1]
 
-    updateSelectizeInput(session, selected = selected, "SearchByStatus", "Status", choices = choices) 
+    updateSelectizeInput(session, selected = selected, "SearchByStatus", "Status", choices = choices, server = TRUE) 
   })
 
   observeEvent(input$SearchByStudy, ignoreInit = TRUE, { 
@@ -481,21 +481,24 @@ SearchWetlabSamples <- function(session, input, database, output, DelArch = FALS
       session,
       "SearchBySpecimenType",
       choices = c("", dbUpdateEvent()$specimen_type),
-      selected = input$SearchBySpecimenType
+      selected = input$SearchBySpecimenType,
+      server = TRUE
     )
 
     updateSelectizeInput(
       session,
       "SearchByLocation",
       choices = c("", dbUpdateEvent()$location),
-      selected = input$SearchByLocation
+      selected = input$SearchByLocation,
+      server = TRUE
     )
 
     updateSelectizeInput(
       session,
       "SearchBySubjectUID",
       choices = c("", dbUpdateEvent()$study_subject),
-      selected = input$SearchBySubjectUID
+      selected = input$SearchBySubjectUID,
+      server = TRUE
     )
 
     DBI::dbDisconnect(con)
