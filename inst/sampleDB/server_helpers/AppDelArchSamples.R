@@ -205,11 +205,12 @@ DelArchSamples <- function(session, input, database, output, inputs, outputs){
           State = name.x,
           Status = name.y,
           Comment = comment
-        )
+        ) %>%
+        select(-c(State))
 
       values$data <- values$data %>%
         mutate(
-          State = as.factor(replace(as.character(State), `Sample ID` %in% updated_values$`Sample ID`, updated_values$State)),
+          # State = as.factor(replace(as.character(State), `Sample ID` %in% updated_values$`Sample ID`, updated_values$State)),
           Status = as.factor(replace(as.character(Status), `Sample ID` %in% updated_values$`Sample ID`, updated_values$Status)),
           Comment = as.factor(replace(as.character(Comment), `Sample ID` %in% updated_values$`Sample ID`, updated_values$Comment))
         )

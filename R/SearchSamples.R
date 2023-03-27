@@ -81,9 +81,12 @@ SearchSamples <- function(sample_storage_type, filters = NULL, format = "na", da
     sql <- inner_join(sql, tbl(con, "status") %>% dplyr::rename(status_id = id, status = name), by = c("status_id"))
     sql <- inner_join(sql, tbl(con, "state") %>% dplyr::rename(state_id = id, state = name), by = c("state_id"))
 
-    # note: should these always be set together?
-    if (!is.null(filters$state) & is.null(filters$status)) {
-      sql <- filter(sql, status == local(filters$status) & state == local(filters$state))
+    if (!is.null(filters$state)) {
+      sql <- filter(sql, state == local(filters$state))
+    }
+
+    if (!is.null(filters$status)) {
+      sql <- filter(sql, status == local(filters$status))
     }
 
     if (sample_storage_type == "all") {
@@ -244,6 +247,8 @@ SearchSamples <- function(sample_storage_type, filters = NULL, format = "na", da
     }
 
     dbmap$comment <- "Comment"
+    dbmap$status <- "Status"
+
     if (include_internal_sample_id) {
 
       ## Do date collection here because lubridate and purrr::map (used by dplyr sql backend) is not cooperating

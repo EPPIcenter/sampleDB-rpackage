@@ -28,7 +28,6 @@
 #' @import dplyr
 #' @importFrom rlang abort
 #' @import rjson
-#' @importFrom tidyr unnest
 #' @export
 
 
@@ -386,7 +385,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
         position_idx <- match(paste0(dbmap["position"]), colnames(e$data[[x]]))
         if (!is.na(position_idx)) {
 
-          tmp <- e$data[[x]][, -position_idx]
+          tmp <- e$data[[x]] %>% select(-position_idx)
           tmp.1 <- cbind(user_file[e$data[[x]]$RowNumber, unlist(dbmap["position"])], tmp)
 
           result <- list(Columns = e$data[[x]], CSV = inner_join(tmp.1, user_file, by = colnames(tmp.1)))
@@ -645,6 +644,12 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
       ## Validation shared by more than one action
       if (user_action %in% c("upload", "move")) {
 
+        action <- switch(
+          user_action,
+          "move" = "Moving",
+          "upload" = "Uploading"
+        )
+
         if (sample_storage_type %in% c(1,2)) {
           rn <- tbl(con, "storage_container") %>%
             select(status_id, id) %>%
@@ -658,12 +663,25 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
             inner_join(tbl(con, "formatted_csv"), by = c("manifest_name", "position")) %>%
             pull(RowNumber)
 
-          # note: position doesn't exist in user files so hardcoded here
-          action <- switch(
-            user_action,
-            "move" = "Moving",
-            "upload" = "Uploading"
-          )
+          df <- formatted_csv[rn, c("RowNumber", "position")]
+          colnames(df) <- c("RowNumber", dbmap["position"])
+
+          err <- .maybe_add_err(err, df, paste0(action, " sample to well location that already has an active sample"))
+
+        } else if (sample_storage_type %in% c(3)) {
+
+          # The only difference between this sql and the lines for micronix and cryovial is the barcode rename - dbs does not have a barcode.
+          rn <- tbl(con, "storage_container") %>%
+            select(status_id, id) %>%
+            filter(status_id == 1) %>%
+            inner_join(tbl(con, container_tables[["container_class"]]), by = c("id" = "id")) %>%
+            inner_join(tbl(con, container_tables[["manifest"]]) %>%
+                           dplyr::rename(
+                               manifest_name = name,
+                               manifest_barcode = barcode
+                           ), by = c("manifest_id" = "id")) %>%
+            inner_join(tbl(con, "formatted_csv"), by = c("manifest_name", "position")) %>%
+            pull(RowNumber)
 
           df <- formatted_csv[rn, c("RowNumber", "position")]
           colnames(df) <- c("RowNumber", dbmap["position"])
