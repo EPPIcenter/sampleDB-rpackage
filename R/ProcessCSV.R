@@ -53,7 +53,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
 
   # no header because the header will be identified by the storage type and the expected columns, and the traxcer header can be the second row
   # na.strings = "" to indicate real empty values. `NA` can be used to indicate that there is data not available. The only time
-  # that this should be allowed is in collection date column for longitudinal studies when there is no date available. 
+  # that this should be allowed is in collection date column for longitudinal studies when there is no date available.
   user_file <- read.csv(file = user_csv, header = FALSE)
 
   valid_actions = c("upload", "move", "search")
@@ -492,10 +492,10 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
         err <- .maybe_add_err(err, df, "Rows found with missing data")
       }
 
-      ## check to make sure there are no duplicated values 
+      ## check to make sure there are no duplicated values
       # 1. Make sure that two samples aren't being uploaded to the same place
 
-      df <- formatted_csv %>% 
+      df <- formatted_csv %>%
         group_by(manifest_name, position) %>%
         count()
 
@@ -509,7 +509,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
         ## only micronix and cryovial have barcodes (right now)
         # 2. Check for duplicated barcodes
         df <- formatted_csv %>%
-          group_by(barcode) %>% 
+          group_by(barcode) %>%
           count()
 
         if (any(df$n > 1)) {
@@ -555,7 +555,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
         if (length(rn) == 0) {
           formatted_csv$collection_date <- parsed_dates
         }
-      
+
 
         ## check that dates exist for longitudinal studies
         df <- tbl(con, "formatted_csv") %>%
@@ -607,16 +607,37 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
         ## check if the barcodes already exist
         ## only micronix and cryovial have barcodes (right now)
         if (sample_storage_type %in% c(1,2)) {
-          rn <- tbl(con, "formatted_csv") %>%
-            inner_join(tbl(con, container_tables[["container_class"]]) %>%
-              dplyr::rename(container_position = position), by = c("barcode")) %>%
-            filter(!is.na(id)) %>%
-            pull(RowNumber)
 
-          df <- formatted_csv[rn, c("RowNumber", "barcode")]
-          colnames(df) <- c("RowNumber", dbmap["barcode"])
+          # Micronix barcodes are univesally unique
+          if (sample_storage_type == 1) {
+            rn <- tbl(con, "formatted_csv") %>%
+              inner_join(tbl(con, container_tables[["container_class"]]) %>%
+                dplyr::rename(container_position = position), by = c("barcode")) %>%
+              filter(!is.na(id)) %>%
+              pull(RowNumber)
 
-          err <- .maybe_add_err(err, df, "Barcodes already exist in the database")
+            df <- formatted_csv[rn, c("RowNumber", "barcode")]
+            colnames(df) <- c("RowNumber", dbmap["barcode"])
+
+            err <- .maybe_add_err(err, df, "Barcodes already exist in the database")
+
+          } else {
+
+            ## Cryovials are unique by study
+            rn <- tbl(con, "formatted_csv") %>%
+              inner_join(tbl(con, container_tables[["container_class"]]) %>%
+              dplyr::rename(container_position = position, storage_container_id = id), by = c("barcode")) %>%
+              inner_join(tbl(con, "storage_container") %>% dplyr::rename(storage_container_id = id), by = c("storage_container_id")) %>%
+              inner_join(tbl(con, "specimen") %>% dplyr::rename("specimen_id" = "id"), by = c("specimen_id")) %>%
+              inner_join(tbl(con, "study_subject") %>% dplyr::rename("study_subject_id" = "id"), by = c("study_subject_id")) %>%
+              inner_join(tbl(con, "study") %>% dplyr::rename("study_id" = "id"), by = c("study_id", "study_short_code" = "short_code")) %>%
+              pull(RowNumber)
+
+            df <- formatted_csv[rn, c("RowNumber", "barcode", "study_short_code")]
+            colnames(df) <- c("RowNumber", dbmap[c("barcode", "study_short_code")])
+
+            err <- .maybe_add_err(err, df, "Barcodes found that already exist with current study")
+          }
         }
 
         ## Check the references
@@ -675,8 +696,8 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
             inner_join(tbl(con, "formatted_csv"), by = c("manifest_name", "position")) %>%
             pull(RowNumber)
 
-          df <- formatted_csv[rn, c("RowNumber", "position")]
-          colnames(df) <- c("RowNumber", dbmap["position"])
+          df <- formatted_csv[rn, c("RowNumber", "position", "manifest_name")]
+          colnames(df) <- c("RowNumber", dbmap[c("position", "manifest_name")])
 
           err <- .maybe_add_err(err, df, paste0(action, " sample to well location that already has an active sample"))
 

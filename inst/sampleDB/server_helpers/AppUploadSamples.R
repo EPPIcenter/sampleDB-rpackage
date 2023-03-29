@@ -89,7 +89,7 @@ AppUploadSamples <- function(session, input, output, database) {
 
       showModal(
         modalDialog(
-          size = "xl",
+          size = "l",
           title = error$title,
           tags$p("One or more rows had invalid or missing data. See the errors below and expand them to see which rows caused this error."),
           tags$p("Press the button below to download your file with annotations"),
