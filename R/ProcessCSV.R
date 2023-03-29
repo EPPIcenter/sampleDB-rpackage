@@ -54,7 +54,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
   # no header because the header will be identified by the storage type and the expected columns, and the traxcer header can be the second row
   # na.strings = "" to indicate real empty values. `NA` can be used to indicate that there is data not available. The only time
   # that this should be allowed is in collection date column for longitudinal studies when there is no date available.
-  user_file <- read.csv(file = user_csv, header = FALSE)
+  user_file <- read.csv(file = user_csv, header = FALSE, na.strings = "", blank.lines.skip = TRUE)
 
   valid_actions = c("upload", "move", "search")
   if (!user_action %in% valid_actions) {
@@ -397,7 +397,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
         if (!is.na(position_idx)) {
 
           tmp <- e$data[[x]] %>% select(-position_idx)
-          tmp.1 <- cbind(user_file[e$data[[x]]$RowNumber, unlist(dbmap["position"])], tmp)
+          tmp.1 <- cbind(user_file[e$data[[x]]$RowNumber, ] %>% select(unname(unlist(dbmap["position"]))), tmp)
 
           result <- list(Columns = e$data[[x]], CSV = inner_join(tmp.1, user_file, by = colnames(tmp.1)))
         } else {
@@ -545,8 +545,24 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
 
       ## check the formats of dates - right now this is hardcoded
       if (user_action %in% c("upload")) {
-        parsed_dates <- lubridate::parse_date_time(formatted_csv$collection_date, c("%Y-%m-%d", "%m/%d/%Y", "%m-%d-%Y"), quiet = TRUE, exact = TRUE)
-        rn <- formatted_csv[xor(is.na(parsed_dates), is.na(formatted_csv$collection_date)),] %>% pull(RowNumber)
+
+
+        ## Start by parsing the string - NAs will appear if the allowed formats could not be detected
+        ## this is a fairly minimal check so we need to confirm in other ways that the user is uploading 
+        ## dates in the correct format (ie. MM/DD/YYYY vs DD/MM/YYYY), particulary when there can be ambiguity
+        parsed_dates <- lubridate::parse_date_time(formatted_csv$collection_date, c("%Y-%m-%d", "%m/%d/%Y"), quiet = TRUE, exact = TRUE)
+
+        ## Validate that only dates or NA mask values ("NA". "N/A") exist in the column
+        token_mask <- !formatted_csv$collection_date %in% c("NA", "N/A")
+
+        ## Invalid formats will appear as NA in "parsed_dates". If they are also unrecognized tokens,
+        ## report back to the user
+        rn <- formatted_csv[is.na(parsed_dates) & token_mask,]$RowNumber  # not a recognized date format AND not a recognized token
+        df <- formatted_csv[rn, c("RowNumber", "collection_date")]
+        colnames(df) <- c("RowNumber", dbmap["collection_date"])
+        err <- .maybe_add_err(err, df, "Unrecognized strings found in collection date column (Valid strings are 'NA' or 'N/A' if the collection date is unknown)")
+
+        rn <- formatted_csv[xor(is.na(parsed_dates[token_mask]), is.na(formatted_csv$collection_date[token_mask])),] %>% pull(RowNumber)
 
         df <- formatted_csv[rn, c("RowNumber", "collection_date")]
         colnames(df) <- c("RowNumber", dbmap["collection_date"])
@@ -554,6 +570,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
         err <- .maybe_add_err(err, df, "Rows found with improperly formatted dates")
         if (length(rn) == 0) {
           formatted_csv$collection_date <- parsed_dates
+          formatted_csv$collection_date[!token_mask] <- rep(lubridate::origin, sum(!token_mask))
         }
 
 
