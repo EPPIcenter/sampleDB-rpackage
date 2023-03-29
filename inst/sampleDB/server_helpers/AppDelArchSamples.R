@@ -49,12 +49,13 @@ DelArchSamples <- function(session, input, database, output, inputs, outputs){
 
   observe({
     rv$filters <- list(
-      barcode = input$DelArchSearchByBarcode,
       manifest = input$DelArchSearchByManifest,
       short_code = input$DelArchSearchByStudy,
       specimen_type = input$DelArchSearchBySpecimenType,
-      study_subject = input$DelArchSearchBySubjectUID,
-      collection_date = input$DelArchdateRange,
+      collection_date = list(
+        date.from = input$dateRange[1],
+        date.to = input$dateRange[2]
+      ),
       location = list(
         name = input$DelArchSearchByLocation,
         level_I = input$DelArchSearchByLevelI,
@@ -129,8 +130,46 @@ DelArchSamples <- function(session, input, database, output, inputs, outputs){
       rv$user_file <- ProcessCSV(
         user_csv = dataset$datapath,
         user_action = "search",
+        search_type = "barcode",
         validate = FALSE
       )
+
+      head(rv$user_file)
+      rv$filters$barcode <- rv$user_file[,2]
+    },
+    formatting_error = function(e) {
+      message("Caught formatting error")
+      error$title <- "Invalid File Detected"
+      error$message <- e$message
+      error$table <- e$df
+
+      rv$error <- TRUE
+    },
+    error = function(e) {
+      message(e)
+      error$title <- "Error Detected"
+      error$message <- e$message
+      error$table <- NULL
+      rv$error <- TRUE
+    })
+  })
+
+  observeEvent(input$DelArchSearchBySubjectUIDFile, ignoreInit = FALSE, {
+    dataset <- input$DelArchSearchBySubjectUIDFile
+
+    message(paste("Loaded", dataset$name))
+
+    tryCatch({
+      ## format the file
+      rv$user_file <- ProcessCSV(
+        user_csv = dataset$datapath,
+        user_action = "search",
+        search_type = "study_subject",
+        validate = FALSE
+      )
+
+      head(rv$user_file)
+      rv$filters$study_subject <- rv$user_file[,2]
     },
     formatting_error = function(e) {
       message("Caught formatting error")

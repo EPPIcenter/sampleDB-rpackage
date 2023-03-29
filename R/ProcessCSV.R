@@ -51,6 +51,9 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
     stop("No csv file was provided.")
   }
 
+  # no header because the header will be identified by the storage type and the expected columns, and the traxcer header can be the second row
+  # na.strings = "" to indicate real empty values. `NA` can be used to indicate that there is data not available. The only time
+  # that this should be allowed is in collection date column for longitudinal studies when there is no date available. 
   user_file <- read.csv(file = user_csv, header = FALSE)
 
   valid_actions = c("upload", "move", "search")
@@ -290,6 +293,8 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
     } else {
       stop("Unimplemented position formatting code for this sample type.")
     }
+  } else if (user_action == "search") {
+    processed_file$barcode <- user_file %>% pull(all_of(required_user_column_names))
   }
 
   # conditional and optional columns only apply for uploads.
@@ -342,8 +347,8 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
     }
   }
 
-  dbmap$manifest_name <- manifest_name
   if (user_action %in% c("upload", "move")) {
+    dbmap$manifest_name <- manifest_name
     if (manifest_name %in% colnames(user_file) && is.null(container_name)) {
       processed_file$manifest_name <- user_file %>% pull(all_of(manifest_name))
     } else {
@@ -363,9 +368,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
     processed_file$strain <- user_file$Strain
   }
 
-  if (user_action == "search") {
-    processed_file$barcode <- user_file %>% pull(all_of(required_user_column_names))
-  }
+
 
   # need check.names FALSE to prevent prepending `X` to numeric colnames
   processed_file <- as.data.frame(processed_file, check.names=FALSE)
@@ -457,6 +460,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
 
     ))
   }
+
 
   bError <- FALSE
   err <- errmsg <- NULL

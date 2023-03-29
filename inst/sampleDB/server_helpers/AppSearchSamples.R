@@ -47,16 +47,13 @@ SearchWetlabSamples <- function(session, input, database, output, DelArch = FALS
   observe({
 
     rv$filters <- list(
-      barcode = input$SearchByBarcode,
       manifest = input$SearchByManifest,
       short_code = input$SearchByStudy,
       specimen_type = input$SearchBySpecimenType,
-      study_subject = input$SearchBySubjectUID,
       collection_date = list(
         date.from = input$dateRange[1],
         date.to = input$dateRange[2]
       ), 
-      input$dateRange,
       location = list(
         name = input$SearchByLocation,
         level_I = input$SearchByLevelI,
@@ -69,7 +66,6 @@ SearchWetlabSamples <- function(session, input, database, output, DelArch = FALS
 
   observe({
     message("Searching...")
-
     filters <- purrr::discard(rv$filters[names(rv$filters) != "location"], function(x) is.null(x) | "" %in% x | length(x) == 0)
     locations <- rv$filters$location[nchar(rv$filters$location) > 0]
     if(length(locations) > 0) {
