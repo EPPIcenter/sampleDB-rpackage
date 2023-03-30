@@ -553,14 +553,16 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
         parsed_dates <- lubridate::parse_date_time(formatted_csv$collection_date, c("%Y-%m-%d", "%m/%d/%Y"), quiet = TRUE, exact = TRUE)
 
         ## Validate that only dates or NA mask values ("NA". "N/A") exist in the column
-        token_mask <- !formatted_csv$collection_date %in% c("NA", "N/A")
+        tokens <- c("unk", "UNK", "unknown", "UNKNOWN")
+        token_mask <- !formatted_csv$collection_date %in% tokens
 
         ## Invalid formats will appear as NA in "parsed_dates". If they are also unrecognized tokens,
         ## report back to the user
         rn <- formatted_csv[is.na(parsed_dates) & token_mask,]$RowNumber  # not a recognized date format AND not a recognized token
         df <- formatted_csv[rn, c("RowNumber", "collection_date")]
         colnames(df) <- c("RowNumber", dbmap["collection_date"])
-        err <- .maybe_add_err(err, df, "Unrecognized strings found in collection date column (Valid strings are 'NA' or 'N/A' if the collection date is unknown)")
+        string <- paste("Unrecognized strings found in collection date column. Add any of the following if the collection date is unknown:", paste(tokens, collapse=", "))
+        err <- .maybe_add_err(err, df, string)
 
         rn <- formatted_csv[xor(is.na(parsed_dates[token_mask]), is.na(formatted_csv$collection_date[token_mask])),] %>% pull(RowNumber)
 
