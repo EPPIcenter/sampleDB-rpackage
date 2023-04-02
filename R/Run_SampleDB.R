@@ -8,7 +8,7 @@
 #' }
 #' @export
 
-Run_SampleDB <- function(){
+Run_SampleDB <- function(host="0.0.0.0", port=3838) {
   # make a copy of the database before each run
-  shiny::runApp(system.file('sampleDB', package='sampleDB'))
+  shiny::runApp(system.file('sampleDB', package='sampleDB'), host=host, port=port)
 }

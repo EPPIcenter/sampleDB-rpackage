@@ -1,6 +1,6 @@
-FROM rocker/r-ver:4.2.3
-RUN apt-get update && apt-get install -y  libicu-dev make pandoc zlib1g-dev && rm -rf /var/lib/apt/lists/*
-RUN mkdir -p /usr/local/lib/R/etc/ /usr/lib/R/etc/
+FROM rocker/shiny:4.2.3
+RUN apt-get update && apt-get install -y  libicu-dev make pandoc zlib1g-dev sqlite3 && rm -rf /var/lib/apt/lists/*
+RUN mkdir -p /usr/local/lib/R/etc/ /usr/lib/R/etc/ /etc/xdg/ 
 RUN echo "options(repos = c(CRAN = 'https://cran.rstudio.com/'), download.file.method = 'libcurl', Ncpus = 4)" | tee /usr/local/lib/R/etc/Rprofile.site | tee /usr/lib/R/etc/Rprofile.site
 RUN R -e 'install.packages("remotes")'
 RUN Rscript -e 'remotes::install_version("rlang",upgrade="never", version = "1.0.6")'
@@ -28,5 +28,8 @@ RUN rm -rf /build_zone
 
 RUN Rscript -e 'library(sampleDB); SampleDB_Setup();'
 
+# Enable Logging from stdout
+ENV SHINY_LOG_STDERR=1
+USER shiny
 EXPOSE 3838
-CMD R -e 'sampleDB::Run_SampleDB()'
+CMD R -e 'sampleDB::Run_SampleDB(port=3838)'

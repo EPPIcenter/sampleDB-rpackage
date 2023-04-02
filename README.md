@@ -20,6 +20,25 @@ After minimal installation and setup SampleDB can be accessed at the url:
 
 ## Installation
 
+### Docker
+
+
+#### Build the image
+
+```b
+docker build -t eppicenter/sampledb:latest .
+```
+
+#### Create a volume
+
+```bash
+docker volume create sampledb_database
+```
+```bash
+docker run -d -p 8080:3838 -v /srv/shinyapps/:/srv/shiny-server -v /srv/shinylog/:/var/log/shiny-server -v sampledb_database:/usr/local/share/sampleDB --name sampleDB eppicenter/sampledb:latest
+```
+
+
 Please take a second to review the below sections before installing the application.
 
 ### Hosted versus local application instances
