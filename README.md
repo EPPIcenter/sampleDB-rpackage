@@ -20,42 +20,73 @@ After minimal installation and setup SampleDB can be accessed at the url:
 
 ## Installation
 
+SampleDB can be installed using Docker or from GitHub.
+
 ### Docker
 
+This is the preferred way to setup sampleDB because the docker image will come with all of the dependencies needed to run the application. Please follow the steps below to ensure setup is done correctly.
 
-#### Build the image
+#### 1. Create a volume
+
+You should first create a volume to contain the sampleDB database. Start by running the command below:
+
+```bash
+docker volume create sampledb_database
+```
+
+#### 2. Create the image
+
+There are two ways to obtain a sampleDB image. You can either pull the image from DockerHub or you may build it locally. Instructions for both can be found below.
+
+##### Option 1: Pull from DockerHub
+
+A docker image for sampleDB can be pulled from [DockerHub](https://hub.docker.com/repository/docker/eppicenter/sampledb/general).
+
+To pull from DockerHub, run the command below:
+
+```bash
+docker pull eppicenter/sampledb
+```
+
+##### Option 2: Build the image
+
+You can build the image instead of pulling from DockerHub. To do so, run the following command:
 
 ```b
 docker build -t eppicenter/sampledb:latest .
 ```
 
-#### Create a volume
+#### 3. Create your container
 
-```bash
-docker volume create sampledb_database
-```
+This is the final step. The host `localhost` and port `8080` will be used to access the application within the container, and all volumes needed to run the container are passed in on the command line. Notice that the sampleDB database volume is also include in the list of volumes.
+
 ```bash
 docker run -d -p 8080:3838 -v /srv/shinyapps/:/srv/shiny-server -v /srv/shinylog/:/var/log/shiny-server -v sampledb_database:/usr/local/share/sampleDB --name sampleDB eppicenter/sampledb:latest
 ```
 
+#### 4. Access sampleDB 
+
+You may now access sampleDB from your browser by navigating to `localhost:8080`.
+
+### From GitHub
 
 Please take a second to review the below sections before installing the application.
 
-### Hosted versus local application instances
+#### Hosted versus local application instances
 
 The sampleDB shiny application can be hosted by a shiny server or can be run locally. If you would like to link the
 application to the server, you must install the application into any of the site library pathways. Otherwise, it is okay
 to install the package locally (or at the site level) and run the shiny application using `Run_SampleDB()`. 
 
-### Data availability
+#### Data availability
 
 Data access is another important consideration, and should affect your installation choice. If you would like all users to access the same database, you must install using a site library pathway. Local installs will install data files to your operating system's default location for user data, and therefore will prevent other users from accessing that data. System
 installs will place the database into the default location for shared application data and will be accessble to anyone who
 uses the application.
 
-### Command to setup external environment
+#### Command to setup external environment
 
-#### Site Install
+##### Site Install
 
 To install sampleDB at the site level, you can run the command below using an R process with elevated privileges:
 
@@ -69,7 +100,7 @@ remotes::install_github(
 
 To run an elevated R process, you can run `sudo R` in your terminal. You can also launch an elevated rstudio instance by opening a terminal and running `sudo rstudio`. 
 
-#### Local Install
+##### Local Install
 
 For a local install, the below command is sufficient within a regular RStudio or terminal launch:
 
@@ -80,7 +111,7 @@ remotes::install_github(
 )
 ```
 
-## Set Up and Upgrades
+### Set Up and Upgrades
 
 To set up or upgrade sampleDB, run the command below. 
 
