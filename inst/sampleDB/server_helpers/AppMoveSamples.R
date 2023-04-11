@@ -297,6 +297,7 @@ AppMoveSamples <- function(session, input, output, database) {
     message("Running error workflow")
     df <- error$list
     modal_size <- "m"
+    message(error$type)
     if (error$type == "formatting") {
       df <- error$list %>%
         dplyr::rename(
@@ -351,6 +352,8 @@ AppMoveSamples <- function(session, input, output, database) {
           footer = modalButton("Exit")
         )
       )
+    } else {
+      stop("Invalid error formatting selected.")
     }
 
     rv$error <- NULL
