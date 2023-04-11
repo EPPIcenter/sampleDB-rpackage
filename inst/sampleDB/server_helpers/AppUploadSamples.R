@@ -220,8 +220,7 @@ AppUploadSamples <- function(session, input, output, database) {
           select(Error, colnames(e$data[[idx]]$CSV)) 
       })
 
-      rv$user_file_error_annotated <- do.call("rbind", df) %>%
-        select(-c(RowNumber))
+      rv$user_file_error_annotated <- do.call("rbind", df) 
     },
     error = function(e) {
       print(e)

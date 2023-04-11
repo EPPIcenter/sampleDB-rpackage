@@ -19,7 +19,8 @@ AppMoveSamples <- function(session, input, output, database) {
     error = FALSE, # whether to start an error workflow
     new_manifest_trigger = FALSE, # user wants to add a new manifest
     user_action_required = FALSE, # whether the user needs to add additional inputs
-    required_elements = NULL # elements on form that need user attention
+    required_elements = NULL, # elements on form that need user attention
+    user_file_error_annotated = NULL
   )
   error <- reactiveValues(
     title = "",
@@ -284,34 +285,22 @@ AppMoveSamples <- function(session, input, output, database) {
   observe({
     output$ErrorMoveFileDownload <- downloadHandler(
       filename = function() {
-        paste(paste(c(input$MoveSampleDataSet$name, "annotated"), collapse="_"), '.csv', sep='')
+        paste(paste(c("move", "annotated"), collapse="_"), '.csv', sep='')
       },
       content = function(con) {
-        write.csv(rv$user_move_file_error_annotated, con, row.names = FALSE, quote=FALSE)
+        write.csv(rv$user_file_error_annotated, con, row.names = FALSE, quote=FALSE)
       }
     )
   })
 
   observeEvent(rv$error, ignoreInit = TRUE, {
-
     message("Running error workflow")
-
-    df <- error$table
+    df <- error$list
     modal_size <- "m"
-
-    if (is.null(error$type) || error$type == "") {
-      showModal(
-        modalDialog(
-          size = "m",
-          title = error$title,
-          error$message,
-          footer = modalButton("Exit")
-        )
-      )
-    } else if (error$type == "formatting") {
-      df <- error$table %>%
+    if (error$type == "formatting") {
+      df <- error$list %>%
         dplyr::rename(
-          Column = column,
+          Column = column, 
           Reason = reason,
           `Triggered By` = trigger
         ) %>%
@@ -328,29 +317,31 @@ AppMoveSamples <- function(session, input, output, database) {
         )
       )
     } else if (error$type == "validation") {
-
-      df <- reactable(
-        error$table,
-        groupBy = "Error",
-        columns = list(
-          Error = colDef(sticky = "left", minWidth = 160),
-          RowNumber = colDef(sticky = "left")
-        ),
-        paginateSubRows = TRUE,
-        outlined = TRUE,
-        defaultColDef = colDef(
-          align = "center",
-          minWidth = 120,
-          html = TRUE,
-          sortable = FALSE,
-          resizable = FALSE,
-          na = "-"
+      errors <- unique(names(error$list))
+      errors <- data.frame(errors)
+      colnames(errors) <- "Error"
+      df <- reactable(errors, details = function(index) {
+        data <- error$list[[index]]$Columns
+        htmltools::div(style = "padding: 1rem",
+          reactable(
+            data, 
+            outlined = TRUE, 
+            striped = TRUE,
+            # rownames = TRUE,
+            theme = reactableTheme(
+            headerStyle = list(
+              "&:hover[aria-sort]" = list(background = "hsl(0, 0%, 96%)"),
+              "&[aria-sort='ascending'], &[aria-sort='descending']" = list(background = "hsl(0, 0%, 96%)"),
+              borderColor = "#555"
+            )),
+            defaultColDef = colDef(na = "-", align = "center")
+          )
         )
-      )
+      })
 
       showModal(
         modalDialog(
-          size = "xl",
+          size = "l",
           title = error$title,
           tags$p("One or more rows had invalid or missing data. See the errors below and expand them to see which rows caused this error."),
           tags$p("Press the button below to download your file with annotations"),
@@ -360,16 +351,13 @@ AppMoveSamples <- function(session, input, output, database) {
           footer = modalButton("Exit")
         )
       )
-    } else {
-      message("No type defined!")
     }
 
-    ## note: this needs to be here
-    rv$error<-NULL
-    error$title = ""
-    error$message = ""
-    error$table = NULL
-    error$type = ""
+    rv$error <- NULL
+    error$title <- ""
+    error$message <- ""
+    error$type <- ""
+    error$list <- NULL
   })
 
   observeEvent(input$MoveAction, ignoreInit = TRUE, {
@@ -382,28 +370,37 @@ AppMoveSamples <- function(session, input, output, database) {
     early_stop <- FALSE
     dataset <- input$MoveDataSet
 
-    if (is.null(dataset) || is.null(dataset$datapath)) {
+    if (is.null(dataset) || nrow(dataset) == 0) {
       message("Aborting move - no file uploaded")
       return()
     }
 
-    message(paste("Loaded", dataset$name))
+    # message(paste("Loaded", dataset$name))
 
     tryCatch({
       withCallingHandlers({
+        move_data_list <- list()
+        for (i in 1:length(dataset[,1])) {
+          manifest_name <- sub('\\.csv$', '', dataset[i,]$name)
 
-        ## format the file
-        rv$user_file <- ProcessCSV(
-          user_csv = dataset$datapath,
-          user_action = "move",
-          file_type = input$MoveFileType,
-          sample_storage_type = input$MoveSampleType,
-          container_name = sub('\\.csv$', '', dataset$name)
-        )
+          ## format the file
+          result <- ProcessCSV(
+            user_csv = dataset[i,]$datapath,
+            user_action = "move",
+            file_type = input$MoveFileType,
+            sample_storage_type = input$MoveSampleType,
+            container_name = manifest_name
+          )
+
+          move_data_list <- c(move_data_list, list(result))
+          names(move_data_list)[i] <- manifest_name
+        }
+
+        rv$user_file <- move_data_list
       },
       message = function(m) {
-        shinyjs::html(id = "MoveOutputConsole", html = paste0(dataset$name, ": ", m$message), add = rv$console_verbatim)
-        rv$console_verbatim <- TRUE
+        # shinyjs::html(id = "MoveOutputConsole", html = paste0(dataset$name, ": ", m$message), add = rv$console_verbatim)
+        # rv$console_verbatim <- TRUE
       })
     },
     validation_error = function(e) {
@@ -415,19 +412,22 @@ AppMoveSamples <- function(session, input, output, database) {
 
         error$type <- "validation"
         error$title <- e$message
-        error$table <- e$df
+        error$list <- e$data
 
-        # TODO: just download the error data frame for now
+        # TODO: breakup process csv into three stages(but keep calls in global process csv).
+        # Just download the error data frame for now.
+        errors <- names(e$data)
+        df <- lapply(1:length(errors), function(idx) {
+          e$data[[idx]]$CSV %>%
+            mutate(Error = errors[idx]) %>%
+            mutate(ErrCol = paste(e$data[[idx]]$Columns, collapse = ",")) %>%
+            select(Error, colnames(e$data[[idx]]$CSV)) 
+        })
 
-        rv$user_move_file_error_annotated <- e$df %>%
-          group_by(RowNumber) %>%
-          mutate(Error = paste(Error, collapse=";")) %>%
-          distinct() %>%
-          dplyr::rename(
-            Errors = Error
-          )
+        rv$user_file_error_annotated <- do.call("rbind", df) %>%
+          select(-c(RowNumber))
 
-        print(e$df)
+        print(e$data)
 
       },
       formatting_error = function(e) {
@@ -458,23 +458,20 @@ AppMoveSamples <- function(session, input, output, database) {
     tryCatch({
       withCallingHandlers({
         # simple way to add a dialog or not
-        b_use_wait_dialog <- nrow(rv$user_file) > 5
+        b_use_wait_dialog <- length(rv$user_file) > 5
 
         if (b_use_wait_dialog) {
           show_modal_spinner(
             spin = "double-bounce",
             color = "#00bfff",
-            text = paste("Moving", nrow(rv$user_file), "samples, please be patient...")
+            text = paste("Working on", length(rv$user_file), "files, please be patient...")
           )
         }
 
         shinyjs::reset("MoveAction")
 
         # note: this is to make things work retroactively
-        move_file_list <- list(rv$user_file)
-        names(move_file_list) <- unique(rv$user_file$manifest_name)
-
-        MoveSamples(sample_type = as.integer(input$MoveSampleType), move_data = move_file_list)
+        MoveSamples(sample_type = as.integer(input$MoveSampleType), move_data = rv$user_file)
       },
       message = function(m) {
         shinyjs::html(id = "MoveOutputConsole", html = paste0(dataset$name, ": ", m$message), add = rv$console_verbatim)

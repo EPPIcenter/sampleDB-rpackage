@@ -18,7 +18,7 @@ UIMoveSamples <- function(){
       radioButtons("MoveSampleType","1. Sample Storage Type", DBI::dbReadTable(con, "sample_type") %>% pull(id, name = "name"), inline = T),
       hr(),
       radioButtons("MoveFileType", label = "2. Move File Type", choices = file_type_ids, inline = T),
-      fileInput("MoveDataSet", "3. Move Samples File", width = '47%', multiple = FALSE, accept = c("text/csv", "text/comma-separated-values,text/plain", ".csv")),
+      fileInput("MoveDataSet", "3. Move Samples File", width = '47%', multiple = TRUE, accept = c("text/csv", "text/comma-separated-values,text/plain", ".csv")),
 
       hr(),
       #action buttons

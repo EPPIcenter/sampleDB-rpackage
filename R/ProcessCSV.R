@@ -97,7 +97,6 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
     optional_user_column_names <- actions[['optional']]
 
     ## Shared fields
-
     sample_type_index <- which(lapply(file_specs_json$shared$sample_type, function(x) x$id) == sample_storage_type)
 
     if (user_action %in% "upload") {
@@ -180,7 +179,13 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
   # then, filter out the columns that could not be resolved, and add to the data frame. This will be a formatting error.
   missing_columns <- required_user_column_names[!required_user_column_names %in% colnames(user_file)]
 
-  if (user_action %in% "upload") {
+  if (user_action %in% "move") {
+    if (!is.null(container_name) && manifest_name %in% missing_columns) {
+      missing_columns <- missing_columns[missing_columns != manifest_name]
+      user_file[manifest_name] <- container_name
+    }
+  }
+  else if (user_action %in% "upload") {
 
     ## these are the special case columns that can be added by users
     if (!is.null(container_name) && manifest_name %in% missing_columns) {
@@ -389,7 +394,6 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
       processed_file$RowNumber <- NULL
     },
     validation_error = function(e) {
-
       # TODO: Make this return the users file with error annotation by row number (allow for multiple errors in cell)
       data1 <- lapply(1:length(e$data), function(x) {
         result <- NULL
@@ -485,7 +489,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
       cs <- colSums(is.na(formatted_csv[, requires_data])) > 0
       cols <- colnames(formatted_csv[, requires_data])[cs]
 
-      if (length(cols) > 1) {
+      if (length(cols) > 0) {
         df <- formatted_csv[rn, c("RowNumber", cols)]
         colnames(df) <- c("RowNumber", dbmap[cols])
 
@@ -513,7 +517,9 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
           count()
 
         if (any(df$n > 1)) {
-          df <- formatted_csv[df$n > 1, ] %>%
+          df <- df %>%
+            filter(n > 1 & !is.na(barcode)) %>%
+            inner_join(formatted_csv, by = c("barcode")) %>%
             select(RowNumber, barcode)
 
           colnames(df) <- c("RowNumber", dbmap["barcode"])
@@ -548,7 +554,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
 
 
         ## Start by parsing the string - NAs will appear if the allowed formats could not be detected
-        ## this is a fairly minimal check so we need to confirm in other ways that the user is uploading 
+        ## this is a fairly minimal check so we need to confirm in other ways that the user is uploading
         ## dates in the correct format (ie. MM/DD/YYYY vs DD/MM/YYYY), particulary when there can be ambiguity
         parsed_dates <- lubridate::parse_date_time(formatted_csv$collection_date, c("%Y-%m-%d", "%m/%d/%Y"), quiet = TRUE, exact = TRUE)
 
@@ -694,7 +700,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
       }
 
       ## Validation shared by more than one action
-      if (user_action %in% c("upload", "move")) {
+      if (user_action %in% c("upload")) {
 
         action <- switch(
           user_action,
