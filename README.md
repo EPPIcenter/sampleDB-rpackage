@@ -45,14 +45,14 @@ A docker image for sampleDB can be pulled from [DockerHub](https://hub.docker.co
 To pull from DockerHub, run the command below:
 
 ```bash
-docker pull eppicenter/sampledb
+docker pull eppicenter/sampledb:latest
 ```
 
 ##### Option 2: Build the image
 
 You can build the image instead of pulling from DockerHub. To do so, run the following command:
 
-```b
+```bash
 docker build -t eppicenter/sampledb:latest .
 ```
 
