@@ -294,12 +294,13 @@ AppMoveSamples <- function(session, input, output, database) {
   })
 
   observeEvent(rv$error, ignoreInit = TRUE, {
+    browser()
     message("Running error workflow")
-    df <- error$list
+    df <- error$table
     modal_size <- "m"
     message(error$type)
     if (error$type == "formatting") {
-      df <- error$list %>%
+      df <- error$table %>%
         dplyr::rename(
           Column = column, 
           Reason = reason,
@@ -318,11 +319,11 @@ AppMoveSamples <- function(session, input, output, database) {
         )
       )
     } else if (error$type == "validation") {
-      errors <- unique(names(error$list))
+      errors <- unique(names(error$table))
       errors <- data.frame(errors)
       colnames(errors) <- "Error"
       df <- reactable(errors, details = function(index) {
-        data <- error$list[[index]]$Columns
+        data <- error$table[[index]]$Columns
         htmltools::div(style = "padding: 1rem",
           reactable(
             data, 
@@ -360,7 +361,7 @@ AppMoveSamples <- function(session, input, output, database) {
     error$title <- ""
     error$message <- ""
     error$type <- ""
-    error$list <- NULL
+    error$table <- NULL
   })
 
   observeEvent(input$MoveAction, ignoreInit = TRUE, {
@@ -415,7 +416,7 @@ AppMoveSamples <- function(session, input, output, database) {
 
         error$type <- "validation"
         error$title <- e$message
-        error$list <- e$data
+        error$table <- e$data
 
         # TODO: breakup process csv into three stages(but keep calls in global process csv).
         # Just download the error data frame for now.
