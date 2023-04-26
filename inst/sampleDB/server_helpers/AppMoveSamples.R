@@ -294,12 +294,11 @@ AppMoveSamples <- function(session, input, output, database) {
   })
 
   observeEvent(rv$error, ignoreInit = TRUE, {
-    browser()
     message("Running error workflow")
     df <- error$table
     modal_size <- "m"
     message(error$type)
-    if (error$type == "formatting") {
+    if (!is.null(error$type) && error$type == "formatting") {
       df <- error$table %>%
         dplyr::rename(
           Column = column, 
@@ -318,7 +317,7 @@ AppMoveSamples <- function(session, input, output, database) {
           footer = modalButton("Exit")
         )
       )
-    } else if (error$type == "validation") {
+    } else if (!is.null(error$type) && error$type == "validation") {
       errors <- unique(names(error$table))
       errors <- data.frame(errors)
       colnames(errors) <- "Error"
@@ -354,7 +353,17 @@ AppMoveSamples <- function(session, input, output, database) {
         )
       )
     } else {
-      stop("Invalid error formatting selected.")
+      errmsg = ifelse(is.null(error$message), "No message available", error$message)
+      showModal(
+        modalDialog(
+          size = "l",
+          title = error$title,
+          tags$p("Something went wrong - contact the app author, and report the error message below."),
+          tags$hr(),
+          tags$p(errmsg),
+          footer = modalButton("Exit")
+        )
+      )
     }
 
     rv$error <- NULL
@@ -447,6 +456,10 @@ AppMoveSamples <- function(session, input, output, database) {
         html<-paste0("<font color='red'>", paste0(dataset$name, ": ", e$message), "</font>")
         shinyjs::html(id = "MoveOutputConsole", html = html, add = rv$console_verbatim)
         rv$console_verbatim <- FALSE
+        error$title = "Unknown Error"
+        error$type = "unknown"
+        error$message = e$message
+        error$table = NULL
       }
     )
 
