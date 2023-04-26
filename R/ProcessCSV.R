@@ -397,16 +397,23 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
       # TODO: Make this return the users file with error annotation by row number (allow for multiple errors in cell)
       data1 <- lapply(1:length(e$data), function(x) {
         result <- NULL
-        position_idx <- match(paste0(dbmap["position"]), colnames(e$data[[x]]))
+        position_idx <- match("position", colnames(e$data[[x]]))
         if (!is.na(position_idx)) {
 
           tmp <- e$data[[x]] %>% select(-position_idx)
           tmp.1 <- cbind(user_file[e$data[[x]]$RowNumber, ] %>% select(unname(unlist(dbmap["position"]))), tmp)
 
-          result <- list(Columns = e$data[[x]], CSV = inner_join(tmp.1, user_file, by = colnames(tmp.1)))
+          result <- list(Columns = e$data[[x]], CSV = inner_join(tmp.1, processed_file, by = colnames(tmp.1)))
         } else {
-          result <- list(Columns = e$data[[x]], CSV = inner_join(e$data[[x]], user_file, by = colnames(e$data[[x]])))
+          result <- list(Columns = e$data[[x]], CSV = inner_join(e$data[[x]], processed_file, by = colnames(e$data[[x]])))
         }
+
+        tmp.2 = dbmap[colnames(result$CSV)[colnames(result$CSV) != "RowNumber"]]
+        colnames(result$CSV) = c("RowNumber", tmp.2)
+
+        tmp.2 = dbmap[colnames(result$Columns)[colnames(result$Columns) != "RowNumber"]]
+        colnames(result$Columns) = c("RowNumber", tmp.2)
+
 
         return(result)
       })
@@ -422,6 +429,8 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
 }
 
 .CheckFormattedFileData <- function(database, formatted_csv, sample_storage_type, user_action, dbmap) {
+
+  #NOTE: dbmap is unused right now and should probably be removed from the function
 
   # this is an internal mapping to the database that should not be exposed to the user
   required_names <- requires_data <- container_metadata <- NULL
@@ -491,8 +500,6 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
 
       if (length(cols) > 0) {
         df <- formatted_csv[rn, c("RowNumber", cols)]
-        colnames(df) <- c("RowNumber", dbmap[cols])
-
         err <- .maybe_add_err(err, df, "Rows found with missing data")
       }
 
@@ -505,7 +512,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
 
       if (any(df$n > 1)) {
         df <- formatted_csv[df$n > 1, ] %>% select(RowNumber, position, manifest_name)
-        colnames(df) <- c("RowNumber", dbmap[c("position", "manifest_name")])
+        colnames(df) <- c("RowNumber", "position", "manifest_name")
         err <- .maybe_add_err(err, df, "Uploading at least two samples to the same position in a manifest")
       }
 
@@ -522,7 +529,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
             inner_join(formatted_csv, by = c("barcode")) %>%
             select(RowNumber, barcode)
 
-          colnames(df) <- c("RowNumber", dbmap["barcode"])
+          colnames(df) <- c("RowNumber", "barcode")
           err <- .maybe_add_err(err, df, "Uploading at least two samples with identical barcodes")
         }
       }
@@ -566,14 +573,13 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
         ## report back to the user
         rn <- formatted_csv[!is.na(formatted_csv$collection_date) & is.na(parsed_dates) & token_mask,]$RowNumber  # Was not left out AND not a recognized date format AND not a recognized token
         df <- formatted_csv[rn, c("RowNumber", "collection_date")]
-        colnames(df) <- c("RowNumber", dbmap["collection_date"])
+        colnames(df) <- c("RowNumber", "collection_date")
         string <- paste("Unrecognized strings found in collection date column. Add any of the following if the collection date is unknown:", paste(tokens, collapse=", "))
         err <- .maybe_add_err(err, df, string)
 
         rn <- formatted_csv[xor(is.na(parsed_dates[token_mask]), is.na(formatted_csv$collection_date[token_mask])),] %>% pull(RowNumber)
 
         df <- formatted_csv[rn, c("RowNumber", "collection_date")]
-        colnames(df) <- c("RowNumber", dbmap["collection_date"])
 
         err <- .maybe_add_err(err, df, "Rows found with improperly formatted dates")
         if (length(rn) == 0) {
@@ -594,7 +600,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
           distinct() %>%
           collect()
 
-        colnames(df) <- c("RowNumber", dbmap[c("study_short_code", "collection_date")])
+        colnames(df) <- c("RowNumber", "study_short_code", "collection_date")
 
         err <- .maybe_add_err(err, df, "Missing collection date found for sample in longitudinal study")
       }
@@ -608,7 +614,6 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
           pull(RowNumber)
 
         df <- formatted_csv[rn, c("RowNumber", "manifest_name")]
-        colnames(df) <- c("RowNumber", dbmap["manifest_name"])
 
         err <- .maybe_add_err(err, df, "Container not found")
 
@@ -621,7 +626,6 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
             pull(RowNumber)
 
           df <- formatted_csv[rn, c("RowNumber", "barcode")]
-          colnames(df) <- c("RowNumber", dbmap["barcode"])
 
           err <- .maybe_add_err(err, df, "Barcodes not found in the database")
         }
@@ -642,7 +646,6 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
               pull(RowNumber)
 
             df <- formatted_csv[rn, c("RowNumber", "barcode")]
-            colnames(df) <- c("RowNumber", dbmap["barcode"])
 
             err <- .maybe_add_err(err, df, "Barcodes already exist in the database")
 
@@ -659,7 +662,6 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
               pull(RowNumber)
 
             df <- formatted_csv[rn, c("RowNumber", "barcode", "study_short_code")]
-            colnames(df) <- c("RowNumber", dbmap[c("barcode", "study_short_code")])
 
             err <- .maybe_add_err(err, df, "Barcodes found that already exist with current study")
           }
@@ -673,7 +675,6 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
           pull(RowNumber)
 
         df <- formatted_csv[rn, c("RowNumber", "study_short_code")]
-        colnames(df) <- c("RowNumber", dbmap["study_short_code"])
 
         err <- .maybe_add_err(err, df, "Study not found")
 
@@ -683,7 +684,6 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
           pull(RowNumber)
 
         df <- formatted_csv[rn, c("RowNumber", "specimen_type")]
-        colnames(df) <- c("RowNumber", dbmap["specimen_type"])
 
         err <- .maybe_add_err(err, df, "Specimen type not found")
 
@@ -694,7 +694,6 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
           pull(RowNumber)
 
         df <- formatted_csv[rn, c("RowNumber", "name", "level_I", "level_II")]
-        colnames(df) <- c("RowNumber", dbmap[c("name", "level_I", "level_II")])
 
         err <- .maybe_add_err(err, df, "Location not found")
       }
@@ -722,7 +721,6 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
             pull(RowNumber)
 
           df <- formatted_csv[rn, c("RowNumber", "position", "manifest_name")]
-          colnames(df) <- c("RowNumber", dbmap[c("position", "manifest_name")])
 
           err <- .maybe_add_err(err, df, paste0(action, " sample to well location that already has an active sample"))
 
@@ -742,7 +740,6 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
             pull(RowNumber)
 
           df <- formatted_csv[rn, c("RowNumber", "position")]
-          colnames(df) <- c("RowNumber", dbmap["position"])
 
           err <- .maybe_add_err(err, df, paste0(action, " sample to well location that already has an active sample"))
         }
