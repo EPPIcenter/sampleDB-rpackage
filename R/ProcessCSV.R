@@ -440,6 +440,24 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
         )
       )
 
+    # todo
+    # switch(sample_storage_type,
+    #   "1" = c(
+    #     "The location of the Micronix tube needs to be documented",
+    #     "Micronix tubes are always required to have barcodes. ",
+    #     "The PlateName is always required."
+    #   ),
+    #   "2" = c(
+    #     "",
+    #     "manifest_name"
+    #   ),
+    #   "3" = c(
+    #     "position",
+    #     "manifest_name"
+    #   )
+    # )
+
+
     requires_data <- c(requires_data, required_names)
   }
 
@@ -539,7 +557,6 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
       )
 
       # make sure not uploading to well positions with active samples
-      # note: potentially could increase speed by using copy_to if upload files are large
 
       con <- DBI::dbConnect(RSQLite::SQLite(), database)
       copy_to(con, formatted_csv)
@@ -639,8 +656,9 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
 
           } else {
 
-            ## Cryovials are unique by study
+            # Cryovials are unique by study - they are also allowed to be left out
             rn <- tbl(con, "formatted_csv") %>%
+              filter(!is.na(barcode)) %>%  # Only check barcodes that exist in the upload
               inner_join(tbl(con, container_tables[["container_class"]]) %>%
               dplyr::rename(container_position = position, storage_container_id = id), by = c("barcode")) %>%
               inner_join(tbl(con, "storage_container") %>% dplyr::rename(storage_container_id = id), by = c("storage_container_id")) %>%

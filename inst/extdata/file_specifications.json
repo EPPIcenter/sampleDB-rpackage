@@ -74,11 +74,12 @@
           "actions": {
             "upload": {
               "required": [
-                "Barcode",
                 "BoxRow",
                 "BoxColumn"
               ],
-              "optional": null,
+              "optional": [
+                "Barcode"
+              ],
               "conditional": null
             },
             "move": {
