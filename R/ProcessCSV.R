@@ -166,11 +166,11 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
 
     if (search_type == "barcode") {
       user_file <- data.frame(
-        Barcodes = x
+        Barcodes = x %>% select(Barcodes)
       )
     } else {
       user_file <- data.frame(
-        StudySubjects = x
+        StudySubjects = x %>% select(StudySubjects)
       )
     }
   }

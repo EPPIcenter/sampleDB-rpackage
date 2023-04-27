@@ -45,7 +45,7 @@ AppUploadSamples <- function(session, input, output, database) {
     message("Running error workflow")
     df <- error$list
     modal_size <- "m"
-    if (error$type == "formatting") {
+    if (!is.null(error$type) && error$type == "formatting") {
       df <- error$list %>%
         dplyr::rename(
           Column = column, 
@@ -64,7 +64,7 @@ AppUploadSamples <- function(session, input, output, database) {
           footer = modalButton("Exit")
         )
       )
-    } else if (error$type == "validation") {
+    } else if (!is.null(error$type) && error$type == "validation") {
       errors <- unique(names(error$list))
       errors <- data.frame(errors)
       colnames(errors) <- "Error"
@@ -96,6 +96,18 @@ AppUploadSamples <- function(session, input, output, database) {
           downloadButton("ErrorFileDownload"),
           tags$hr(),
           renderReactable({ df }),
+          footer = modalButton("Exit")
+        )
+      )
+    } else {
+      errmsg = ifelse(is.null(error$message), "No message available", error$message)
+      showModal(
+        modalDialog(
+          size = "l",
+          title = error$title,
+          tags$p("Something went wrong - contact the app author, and report the error message below."),
+          tags$hr(),
+          tags$p(errmsg),
           footer = modalButton("Exit")
         )
       )
@@ -226,6 +238,12 @@ AppUploadSamples <- function(session, input, output, database) {
       print(e)
       html<-paste0("<font color='red'>", paste0(dataset$name, ": ", e$message), "</font>")
       shinyjs::html(id = "UploadOutputConsole", html = html, add = rv$console_verbatim)
+
+      error$title = "Unknown Error"
+      error$type = "unknown"
+      error$message = e$message
+      error$list = NULL
+      rv$error = TRUE
     })
 
     rv$console_verbatim <- FALSE
@@ -325,6 +343,12 @@ AppUploadSamples <- function(session, input, output, database) {
         html<-paste0("<font color='red'>", paste0(dataset$name, ": ", e$message), "</font>")
         shinyjs::html(id = "UploadOutputConsole", html = html, add = rv$console_verbatim)
         rv$console_verbatim <- FALSE
+
+        rv$error <- TRUE
+        error$title = "Unknown Error"
+        error$type = "unknown"
+        error$message = e$message
+        error$list = NULL
       })
 
     }
@@ -360,6 +384,11 @@ AppUploadSamples <- function(session, input, output, database) {
       message(e)
       html<-paste0("<font color='red'>", paste0(dataset$name, ": ", e$message), "</font>")
       shinyjs::html(id = "UploadOutputConsole", html = html, add = rv$console_verbatim)
+      error$title = "Unknown Error"
+      error$type = "unknown"
+      error$message = e$message
+      error$list = NULL
+      rv$error <- TRUE
     },
     finally = {
       if (b_use_wait_dialog)
