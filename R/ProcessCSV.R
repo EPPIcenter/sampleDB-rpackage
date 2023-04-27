@@ -396,24 +396,13 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
     validation_error = function(e) {
       # TODO: Make this return the users file with error annotation by row number (allow for multiple errors in cell)
       data1 <- lapply(1:length(e$data), function(x) {
-        result <- NULL
-        position_idx <- match("position", colnames(e$data[[x]]))
-        if (!is.na(position_idx)) {
-
-          tmp <- e$data[[x]] %>% select(-position_idx)
-          tmp.1 <- cbind(user_file[e$data[[x]]$RowNumber, ] %>% select(unname(unlist(dbmap["position"]))), tmp)
-
-          result <- list(Columns = e$data[[x]], CSV = inner_join(tmp.1, processed_file, by = colnames(tmp.1)))
-        } else {
-          result <- list(Columns = e$data[[x]], CSV = inner_join(e$data[[x]], processed_file, by = colnames(e$data[[x]])))
-        }
-
+        result <- list(Columns = e$data[[x]], CSV = inner_join(e$data[[x]], processed_file, by = colnames(e$data[[x]])))
+        
         tmp.2 = dbmap[colnames(result$CSV)[colnames(result$CSV) != "RowNumber"]]
         colnames(result$CSV) = c("RowNumber", tmp.2)
 
         tmp.2 = dbmap[colnames(result$Columns)[colnames(result$Columns) != "RowNumber"]]
         colnames(result$Columns) = c("RowNumber", tmp.2)
-
 
         return(result)
       })
@@ -443,7 +432,6 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
         ),
         "2" = c(
           "position",
-          "barcode",
           "manifest_name"
         ),
         "3" = c(
@@ -695,7 +683,8 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
 
         df <- formatted_csv[rn, c("RowNumber", "name", "level_I", "level_II")]
 
-        err <- .maybe_add_err(err, df, "Location not found")
+        errstring = sprintf("The following %s, %s and / or %s are not found in the database", dbmap["name"], dbmap["level_I"], dbmap["level_II"])
+        err <- .maybe_add_err(err, df, errstring)
       }
 
       ## Validation shared by more than one action
