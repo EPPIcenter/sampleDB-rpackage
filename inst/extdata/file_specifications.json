@@ -84,12 +84,14 @@
             },
             "move": {
               "required": [
-                "Barcode",
                 "BoxRow",
                 "BoxColumn"
               ],
               "conditional": [
                 "BoxName"
+              ],
+              "optional": [
+                "Barcode"
               ]
             }
           }
