@@ -286,7 +286,12 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
     ## Cryovial
     else if (sample_storage_type == 2) {
       dbmap$barcode <- "Barcode"
-      processed_file$barcode <- user_file[[dbmap$barcode]]
+
+      if ("Barcode" %in% colnames(user_file)) {
+        processed_file$barcode <- user_file[[dbmap$barcode]]
+      } else {
+        processed_file$barcode <- rep(NA, nrow(user_file))
+      }
 
       dbmap$position <- c("BoxRow", "BoxColumn")
       processed_file$position <- sprintf("%s%02d", user_file[[dbmap$position[1]]], as.integer(user_file[[dbmap$position[2]]]))
@@ -523,9 +528,10 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
       }
 
       if (sample_storage_type %in% c(1,2)) {
-        ## only micronix and cryovial have barcodes (right now)
+        ## only micronix have barcodes (right now)
         # 2. Check for duplicated barcodes
         df <- formatted_csv %>%
+          filter(!is.na(barcode)) %>%
           group_by(barcode) %>%
           count()
 
