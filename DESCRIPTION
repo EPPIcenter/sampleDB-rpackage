@@ -34,5 +34,7 @@ Imports:
     tools (>= 3.6.2),
     yaml (>= 2.3.7)
 Suggests: 
-    shiny (>= 1.7.4)
+    shiny (>= 1.7.4),
+    testthat (>= 3.0.0)
 LazyData: true
+Config/testthat/edition: 3

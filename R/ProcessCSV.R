@@ -11,7 +11,7 @@
 #' @param validate Whether to validate the data. Setting to `FALSE` will skip the validation step and will only check the file format. Default is `TRUE`.
 #' @param database Path to the sampleDB database. Default is `Sys.getenv("SDB_PATH")`.
 #' @param config_yml Path to the user configuration file. Default is `Sys.getenv("SDB_CONFIG")`.
-#'
+#'#' 
 #' @examples
 #' \dontrun{
 #'  # Format a sample datasheet with micronix samples using the 'na' micronix format that will be added to sampleDB. Add the container name and container location as parameters.
@@ -28,7 +28,7 @@
 #' @import dplyr
 #' @importFrom rlang abort
 #' @import rjson
-#' @export
+#' @export ProcessCSV
 
 
 ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type = NULL, container_name = NULL, freezer_address = NULL, file_type = "na", validate = TRUE, database = Sys.getenv("SDB_PATH"), config_yml = Sys.getenv("SDB_CONFIG")) {
@@ -516,36 +516,11 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
 
       ## check to make sure there are no duplicated values
       # 1. Make sure that two samples aren't being uploaded to the same place
+      df = CheckSampleLocationUnique(formatted_csv)
+      err <- .maybe_add_err(err, df, "Uploading at least two samples to the same position in a manifest")
 
-      df <- formatted_csv %>%
-        group_by(manifest_name, position) %>%
-        count()
-
-      if (any(df$n > 1)) {
-        df <- formatted_csv[df$n > 1, ] %>% select(RowNumber, position, manifest_name)
-        colnames(df) <- c("RowNumber", "position", "manifest_name")
-        err <- .maybe_add_err(err, df, "Uploading at least two samples to the same position in a manifest")
-      }
-
-      if (sample_storage_type %in% c(1,2)) {
-        ## only micronix have barcodes (right now)
-        # 2. Check for duplicated barcodes
-        df <- formatted_csv %>%
-          filter(!is.na(barcode)) %>%
-          group_by(barcode) %>%
-          count()
-
-        if (any(df$n > 1)) {
-          df <- df %>%
-            filter(n > 1 & !is.na(barcode)) %>%
-            inner_join(formatted_csv, by = c("barcode")) %>%
-            select(RowNumber, barcode)
-
-          colnames(df) <- c("RowNumber", "barcode")
-          err <- .maybe_add_err(err, df, "Uploading at least two samples with identical barcodes")
-        }
-      }
-
+      df = CheckDuplicatedBarcodes(formatted_csv, sample_storage_type)
+      err <- .maybe_add_err(err, df, "Uploading at least two samples with identical barcodes")
 
       ## Deeper validation using database
 
@@ -570,34 +545,12 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
       ## check the formats of dates - right now this is hardcoded
       if (user_action %in% c("upload")) {
 
-
-        ## Start by parsing the string - NAs will appear if the allowed formats could not be detected
-        ## this is a fairly minimal check so we need to confirm in other ways that the user is uploading
-        ## dates in the correct format (ie. MM/DD/YYYY vs DD/MM/YYYY), particulary when there can be ambiguity
-        parsed_dates <- lubridate::parse_date_time(formatted_csv$collection_date, c("%Y-%m-%d", "%m/%d/%Y"), quiet = TRUE, exact = TRUE)
-
-        ## Validate that only dates or NA mask values ("unk", "UNK", "unknown", "UNKNOWN") exist in the column
-        tokens <- c("unk", "UNK", "unknown", "UNKNOWN")
-        token_mask <- !formatted_csv$collection_date %in% tokens
-
-        ## Invalid formats will appear as NA in "parsed_dates". If they are also unrecognized tokens,
-        ## report back to the user
-        rn <- formatted_csv[!is.na(formatted_csv$collection_date) & is.na(parsed_dates) & token_mask,]$RowNumber  # Was not left out AND not a recognized date format AND not a recognized token
-        df <- formatted_csv[rn, c("RowNumber", "collection_date")]
-        colnames(df) <- c("RowNumber", "collection_date")
-        string <- paste("Unrecognized strings found in collection date column. Add any of the following if the collection date is unknown:", paste(tokens, collapse=", "))
-        err <- .maybe_add_err(err, df, string)
-
-        rn <- formatted_csv[xor(is.na(parsed_dates[token_mask]), is.na(formatted_csv$collection_date[token_mask])),] %>% pull(RowNumber)
-
-        df <- formatted_csv[rn, c("RowNumber", "collection_date")]
-
-        err <- .maybe_add_err(err, df, "Rows found with improperly formatted dates")
-        if (length(rn) == 0) {
-          formatted_csv$collection_date <- parsed_dates
-          formatted_csv$collection_date[!token_mask] <- rep(lubridate::origin, sum(!token_mask))
+        allowed_date_formats = c("%Y-%m-%d", "%m/%d/%Y")
+        tokens = c("unk", "UNK", "unknown", "UNKNOWN")
+        df = ParseDateTime(formatted_csv, allowed_date_formats, tokens)
+        if (!is.null(df)) {
+          err = c(err, df)
         }
-
 
         ## check that dates exist for longitudinal studies
         df <- tbl(con, "formatted_csv") %>%
@@ -804,7 +757,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
 }
 
 .maybe_add_err <- function(err, df, msg) {
-  if (nrow(df) > 0) {
+  if (!is.null(df) && nrow(df) > 0) {
     idx <- ifelse(is.null(err), 1, length(err) + 1)
     err[[idx]] <- df
     names(err)[idx] <- msg
@@ -823,4 +776,112 @@ stop_formatting_error <- function(df) {
 
 stop_validation_error <- function(message, data) {
   rlang::abort("validation_error", message = message, data = data)
+}
+
+
+#' Checks for duplicated barcodes in users formatted csv file
+#'
+#' This function is internally used to check a formatted csv file for duplicated barcodes. Note that this should accept the formatted file produced by ProcessCSV().
+#'
+#' @export CheckDuplicatedBarcodes
+#' 
+#' @param formatted_csv The formatted file produced by ProcessCSV()
+#' @param sample_storage_type The type of storage the samples are in. This can be '1', '2' or '3', which identify 'Micronix', 'Cryovial' or 'DBS', respectively.
+#'
+#' @noRd
+CheckDuplicatedBarcodes <- function(formatted_csv, sample_storage_type) {
+
+  # right now only accept Micronix and Cryovial storage types
+  if (sample_storage_type %in% c(1,2)) {
+    df <- formatted_csv %>%
+      filter(!is.na(barcode)) %>%
+      group_by(barcode) %>%
+      count()
+
+    if (any(df$n > 1)) {
+      df <- df %>%
+        filter(n > 1 & !is.na(barcode)) %>%
+        inner_join(formatted_csv, by = c("barcode")) %>%
+        select(RowNumber, barcode)
+
+      colnames(df) <- c("RowNumber", "barcode")
+
+      return(df)
+    } else {
+      return(NULL)
+    }
+  } else {
+    return(NULL)
+  }
+}
+
+
+#' Checks for sample barcodes in users formatted csv file
+#'
+#' This function is internally used to check a formatted csv file for duplicated positions. Note that this should accept the formatted file produced by ProcessCSV().
+#'
+#' @export CheckSampleLocationUnique
+#' 
+#' @param formatted_csv The formatted file produced by ProcessCSV()
+#'
+#' @noRd
+CheckSampleLocationUnique <- function(formatted_csv) {
+  df <- formatted_csv %>%
+    group_by(manifest_name, position) %>%
+    count()
+
+  if (any(df$n > 1)) {
+    df <- formatted_csv[df$n > 1, ] %>% select(RowNumber, position, manifest_name)
+    colnames(df) <- c("RowNumber", "position", "manifest_name")
+    return(df)
+  } else {
+    return(NULL)
+  }
+}
+
+
+#' Parse sample collection date
+#'
+#' This function is internally used to check a formatted csv file for properly formatted collection dates. Note that this should accept the formatted file produced by ProcessCSV().
+#'
+#' @export ParseDateTime
+#' 
+#' @param formatted_csv The formatted file produced by ProcessCSV()
+#' @param allowed_date_formats Vector of allowed date formats for the datetime parser
+#' @param tokens Vector of tokens that signify an 'unknown' date. These will be ignored by the datetime parser.
+#' 
+#' @return A named list of datafame. The name is the error message, and the dataframe are the rows and columns from formatted_csv that triggered the error.
+#'
+#' @noRd
+ParseDateTime <- function(formatted_csv, allowed_date_formats, tokens) {
+
+  # dataframe to hold errors
+  err <- NULL
+  ## Start by parsing the string - NAs will appear if the allowed formats could not be detected
+  ## this is a fairly minimal check so we need to confirm in other ways that the user is uploading
+  ## dates in the correct format (ie. MM/DD/YYYY vs DD/MM/YYYY), particulary when there can be ambiguity
+  parsed_dates <- lubridate::parse_date_time(formatted_csv$collection_date, allowed_date_formats, quiet = TRUE, exact = TRUE)
+
+  ## Validate that only dates or NA mask values ("unk", "UNK", "unknown", "UNKNOWN") exist in the column
+  token_mask <- !formatted_csv$collection_date %in% tokens
+
+  ## Invalid formats will appear as NA in "parsed_dates". If they are also unrecognized tokens,
+  ## report back to the user
+  rn <- formatted_csv[!is.na(formatted_csv$collection_date) & is.na(parsed_dates) & token_mask,]$RowNumber  # Was not left out AND not a recognized date format AND not a recognized token
+  df <- formatted_csv[rn, c("RowNumber", "collection_date")]
+  colnames(df) <- c("RowNumber", "collection_date")
+  string <- paste("Unrecognized strings found in collection date column. Add any of the following if the collection date is unknown:", paste(tokens, collapse=", "))
+  err <- .maybe_add_err(err, df, string)
+
+  rn <- formatted_csv[xor(is.na(parsed_dates[token_mask]), is.na(formatted_csv$collection_date[token_mask])),] %>% pull(RowNumber)
+
+  df <- formatted_csv[rn, c("RowNumber", "collection_date")]
+
+  err <- .maybe_add_err(err, df, "Rows found with improperly formatted dates")
+  if (length(rn) == 0) {
+    formatted_csv$collection_date <- parsed_dates
+    formatted_csv$collection_date[!token_mask] <- rep(lubridate::origin, sum(!token_mask))
+  }
+
+  return(err)
 }

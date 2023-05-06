@@ -8,6 +8,7 @@ ProcessCSV(
   user_csv,
   user_action,
   sample_storage_type,
+  search_type = NULL,
   container_name = NULL,
   freezer_address = NULL,
   file_type = "na",
@@ -36,6 +37,9 @@ ProcessCSV(
 \item{config_yml}{Path to the user configuration file. Default is \code{Sys.getenv("SDB_CONFIG")}.}
 }
 \description{
+Process your CSV to check for appropriate columns and data validation.
+}
+\details{
 \code{ProcessCSV()} creates an intermediate dataframe from a user provided csv that can then be passed to UploadSamples or MoveSamples:
 }
 \examples{
@@ -48,6 +52,6 @@ ProcessCSV(
    sample_storage_type = "micronix",
    container_name="LN2_XXXX",
    freezer_address=list(name="FreezerA", level_I="Shelf1", level_II="BasketC")
-  ) 
+  )
 }
 }

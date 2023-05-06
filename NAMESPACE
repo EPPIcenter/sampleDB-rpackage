@@ -3,6 +3,7 @@
 export(AddToTable)
 export(ArchiveAndDeleteSamples)
 export(Backup_SampleDB)
+export(CheckDuplicatedBarcodes)
 export(CheckTable)
 export(CheckTableTx)
 export(DeleteEmptyContainer)

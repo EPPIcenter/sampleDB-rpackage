@@ -4,7 +4,7 @@
 \alias{Run_SampleDB}
 \title{Run sampleDB as a R Shiny App}
 \usage{
-Run_SampleDB()
+Run_SampleDB(host = "0.0.0.0", port = 3838)
 }
 \description{
 Launch sampleDB as a R Shiny application.

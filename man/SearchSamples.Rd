@@ -8,7 +8,9 @@ SearchSamples(
   sample_storage_type,
   filters = NULL,
   format = "na",
-  database = Sys.getenv("SDB_PATH")
+  database = Sys.getenv("SDB_PATH"),
+  config_yml = Sys.getenv("SDB_CONFIG"),
+  include_internal_sample_id = FALSE
 )
 }
 \arguments{
