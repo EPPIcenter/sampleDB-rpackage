@@ -22,7 +22,7 @@
 #' @export
 
 
-SearchSamples <- function(sample_storage_type, filters = NULL, format = "na", database = Sys.getenv("SDB_PATH"), config_yml = Sys.getenv("SDB_CONFIG"), include_internal_sample_id = FALSE) {
+SearchSamples <- function(sample_storage_type, filters = NULL, format = NULL, database = Sys.getenv("SDB_PATH"), config_yml = Sys.getenv("SDB_CONFIG"), include_internal_sample_id = FALSE) {
   db.results <- NULL
   tryCatch({
     container_tables <- list(
@@ -178,10 +178,10 @@ SearchSamples <- function(sample_storage_type, filters = NULL, format = "na", da
     dbmap <- list()
 
     ## Micronix
-    if (sample_storage_type == 1 && format == "na") {
+    if (!is.null(format) && sample_storage_type == 1 && format == "na") {
       dbmap$barcode <- "Barcode"
       dbmap$position <- "Position"
-    } else if (sample_storage_type == 1 && format == "traxcer") {
+    } else if (!is.null(format) && sample_storage_type == 1 && format == "traxcer") {
       dbmap$barcode <- "Tube"
 
       dbmap$position <- ifelse(
@@ -190,7 +190,7 @@ SearchSamples <- function(sample_storage_type, filters = NULL, format = "na", da
         config$traxcer_position$default
       )
 
-    } else if (sample_storage_type == 1 && format == "visionmate") {
+    } else if (!is.null(format) && sample_storage_type == 1 && format == "visionmate") {
       dbmap$barcode <- "TubeCode"
       dbmap$position <- "Position"
     }
@@ -253,6 +253,7 @@ SearchSamples <- function(sample_storage_type, filters = NULL, format = "na", da
     }
 
     dbmap$comment <- "Comment"
+    dbmap$state <- "State"
     dbmap$status <- "Status"
 
     if (include_internal_sample_id) {
@@ -278,7 +279,11 @@ SearchSamples <- function(sample_storage_type, filters = NULL, format = "na", da
 
         db.results <- filter(db.results, collection_date %within% intervals)
       }
-      colnames(db.results) <- c("Sample ID", unname(dbmap))
+
+      if (!is.null(format)) {
+        colnames(db.results) <- c("Sample ID", unname(dbmap))
+      }
+
     } else {
       db.results <- sql %>% select(names(dbmap)) %>% collect() %>% dplyr::mutate(collection_date = as_date(collection_date))
 
@@ -300,7 +305,10 @@ SearchSamples <- function(sample_storage_type, filters = NULL, format = "na", da
 
         db.results <- filter(db.results, collection_date %within% intervals) 
       }
-      colnames(db.results) <- unname(dbmap)
+
+      if (!is.null(format)) {
+        colnames(db.results) <- unname(dbmap)
+      }
     }
   },
   error = function(e) {

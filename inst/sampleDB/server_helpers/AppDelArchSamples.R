@@ -509,8 +509,3 @@ DelArchSamples <- function(session, input, database, output, inputs, outputs){
     server = TRUE)
 }
 
-
-.SearchReset <- function(input){
-  observeEvent(input$ClearSearchBarcodes, ({shinyjs::reset("SearchByBarcode")}))
-  observeEvent(input$ClearSearchUIDFile, ({shinyjs::reset("SearchBySubjectUIDFile")})) 
-}
