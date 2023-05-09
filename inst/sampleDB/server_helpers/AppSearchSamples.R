@@ -6,7 +6,7 @@ library(stringr)
 SearchWetlabSamples <- function(session, input, database, output, DelArch = FALSE){
   
   # get search ui elements
-  rv <- reactiveValues(user_file = NULL, error = NULL, search_table = NULL, filters = NULL, dbmap = NULL, refresh = TRUE)
+  rv <- reactiveValues(user_file = NULL, error = NULL, search_table = NULL, filters = NULL, dbmap = NULL)
 
   error <- reactiveValues(
     title = "",
@@ -44,14 +44,7 @@ SearchWetlabSamples <- function(session, input, database, output, DelArch = FALS
     rv$error <- NULL
   })
 
-  dbUpdateEvent <- reactivePoll(
-    1000 * 5,
-    session,
-    function() file.mtime(Sys.getenv("SDB_PATH")),
-    function() { TRUE }
-  )
-
-  observeEvent(list(input$SearchBySampleType, dbUpdateEvent()), {
+  observeEvent(input$SearchBySampleType, {
     message("Reloading search table...")
 
     dbmap <- list()
@@ -125,14 +118,14 @@ SearchWetlabSamples <- function(session, input, database, output, DelArch = FALS
 
     rv$dbmap <- dbmap
     rv$search_table <- SearchSamples(input$SearchBySampleType)
+
+    .ResetInputs(session, input, rv$search_table)
   })
 
   observe({
     output$SearchResultsTable <- renderReactable({
       rt = NULL
-      if (is.null(rv$search_table)) {
-        return(data.frame())
-      } else {
+      if ("" != local(input$SearchByState) && "" != local(input$SearchByStatus)) {
         search_table = rv$search_table %>% select(names(rv$dbmap))
         colnames(search_table) <- unname(rv$dbmap)
         rt <- reactable(
@@ -162,45 +155,48 @@ SearchWetlabSamples <- function(session, input, database, output, DelArch = FALS
         date.from = input$dateRange[1],
         date.to = input$dateRange[2]
       ), 
-      location = list(
-        name = input$SearchByLocation,
-        level_I = input$SearchByLevelI,
-        level_II = input$SearchByLevelII
-      ),
-      state = input$SearchByState,
+      name = input$SearchByLocation,
+      level_I = input$SearchByLevelI,
+      level_II = input$SearchByLevelII,
+      # state = input$SearchByState,
       status = input$SearchByStatus
     )
-
-    updateSelectizeInput(
-      session,
-      "SearchByManifest",
-      label = switch(
-          input$SearchBySampleType,
-          "1" = "Plate Name",
-          "2" = "Box Name",
-          "3" = "Paper Name",
-          "all" = "All Containers"
-      ),
-      selected = "",
-      choices = c("", rv$search_table$manifest),
-      server = TRUE
-    )
-    
-    updateSelectizeInput(session, "SearchByStudy", "Study", selected = "", choices = c("", unique(rv$search_table$short_code)), server = TRUE)
-    updateSelectizeInput(session, "SearchBySubjectUID", "Study Subject", selected = "", choices = c("", unique(rv$search_table$study_subject)), server = TRUE)
-    updateSelectizeInput(session, "SearchBySpecimenType", "Specimen Type", selected = "", choices = c("", unique(rv$search_table$specimen_type)), server = TRUE)
-    updateSelectizeInput(session, "SearchByLocation", "Storage Location", selected = "", choices = c("", unique(rv$search_table$name)), server = TRUE)
-    updateSelectizeInput(session, "SearchByState", "State", selected = Global$DefaultStateSearchTerm, choices = unique(rv$search_table$state), server = TRUE)
-
   })
 
   observeEvent(rv$filters, {
+
     filters <- purrr::discard(rv$filters[!names(rv$filters) %in% c("location", "collection_date")], function(x) is.null(x) | "" %in% x | length(x) == 0)
-    locations <- filters$location[nchar(filters$location) > 0]
 
-    df = inner_join(data.frame(filters), rv$search_table)
-    print(df)
+    if (!is.null(rv$search_table) && any(names(filters) %in% colnames(rv$search_table))) {
 
+      filtered = inner_join(data.frame(filters), rv$search_table)
+      intervals <- list()
+
+      if (!is.null(rv$filters$collection_date) && sum(is.na(rv$filters$collection_date)) == 0) {      
+        if (!is.null(rv$filters$collection_date$date.from) && !is.null(rv$filters$collection_date$date.to)) {
+          for (i in 1:length(rv$filters$collection_date$date.from)) {
+            intervals <- append(
+              intervals,
+              list(
+                interval(
+                  lubridate::as_date(local(rv$filters$collection_date$date.from[i])),
+                  lubridate::as_date(local(rv$filters$collection_date$date.to[i]))
+                )
+              )
+            )
+          }
+        }
+      }
+
+      filtered = if (length(intervals) > 0) filter(filtered, collection_date %within% intervals) else filtered
+      filtered = filtered %>% select(names(rv$dbmap))
+      colnames(filtered) <- unname(rv$dbmap)
+      updateReactable("SearchResultsTable", data = filtered)
+    } else {
+      search_table <- rv$search_table %>% select(names(rv$dbmap))
+      colnames(search_table) <- unname(rv$dbmap)
+      updateReactable("SearchResultsTable", data = search_table)
+    }
   })
 
   ### Search by file
@@ -275,12 +271,29 @@ SearchWetlabSamples <- function(session, input, database, output, DelArch = FALS
   
   observeEvent(input$SearchReset, ignoreInit = TRUE, {
 
-    message("Reset.")
+    message("Reset")
     updateRadioButtons(session, selected = "individual", "SubjectUIDSearchType", label = NULL, choices = list("Single Study Subject" = "individual", "Multiple Study Subjects" = "multiple"))
     
     updateDateRangeInput(session, "dateRange", start = NA, end = NA) %>% suppressWarnings()
-    shinyjs::reset("SearchByBarcode")
-    shinyjs::reset("SearchBySubjectUIDFile")
+
+    .ResetInputs(session, input, rv$search_table)
+
+    ## these should be freed explicitly
+    rv$filters <- list(
+      manifest = NULL,
+      short_code = NULL,
+      study_subject = NULL,
+      specimen_type = NULL,
+      collection_date = list(
+        date.from = NA,
+        date.to = NA
+      ), 
+      name = NULL,
+      level_I = NULL,
+      level_II = NULL,
+      state = Global$DefaultStateSearchTerm,
+      status = Global$DefaultStatusSearchTerm
+    )
 
     # search file
     rv$user_file <- NULL
@@ -317,7 +330,8 @@ SearchWetlabSamples <- function(session, input, database, output, DelArch = FALS
       "Study Subject",
       selected = "",
       choices = choices,
-      server = TRUE)
+      server = TRUE
+    )
   })
 
   observeEvent(input$SearchByLocation, ignoreInit = TRUE, {
@@ -355,9 +369,34 @@ SearchWetlabSamples <- function(session, input, database, output, DelArch = FALS
         paste('data-', Sys.Date(), '.csv', sep='')
       },
       content = function(con) {
-        substitute
         write.csv(rv$search_table, con, row.names = FALSE, quote = FALSE)
       }
     )
   })
+}
+
+
+.ResetInputs <- function(session, input, search_table) {
+  updateSelectizeInput(
+    session,
+    "SearchByManifest",
+    label = switch(
+        input$SearchBySampleType,
+        "1" = "Plate Name",
+        "2" = "Box Name",
+        "3" = "Paper Name",
+        "all" = "All Containers"
+    ),
+    selected = "",
+    choices = c("", search_table$manifest),
+    server = TRUE
+  )
+
+  updateSelectizeInput(session, "SearchByStudy", "Study", choices = c("", unique(search_table$short_code)), server = TRUE)
+  updateSelectizeInput(session, "SearchBySubjectUID", "Study Subject", choices = c("", unique(search_table$study_subject)), server = TRUE)
+  updateSelectizeInput(session, "SearchBySpecimenType", "Specimen Type", choices = c("", unique(search_table$specimen_type)), server = TRUE)
+  updateSelectizeInput(session, "SearchByLocation", "Storage Location", choices = c("", unique(search_table$name)), server = TRUE)
+
+  shinyjs::reset("SearchByBarcode")
+  shinyjs::reset("SearchBySubjectUIDFile")
 }

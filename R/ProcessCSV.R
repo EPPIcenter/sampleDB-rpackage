@@ -157,23 +157,8 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
     stop_formatting_error(df.error.formatting)
   }
 
-  if (user_action %in% c("upload", "move")) {
-    user_file <- user_file %>% setNames(.[header_row, ]) %>% .[-c(1, header_row), ]
-  } else {
-    ## TODO: it turns into a list because there's one row, this needs to be cleaned up
-    x <- user_file %>% setNames(.[header_row, ]) %>% .[-c(1, header_row), ]
-    user_file <- NULL
-
-    if (search_type == "barcode") {
-      user_file <- data.frame(
-        Barcodes = x %>% select(Barcodes)
-      )
-    } else {
-      user_file <- data.frame(
-        StudySubjects = x %>% select(StudySubjects)
-      )
-    }
-  }
+  colnames(user_file) = user_file[header_row,]
+  user_file = user_file %>%  slice(-c(header_row))
 
   # Check the parameters of the function and see if some of the data points are there (in case called from R package)
   # then, filter out the columns that could not be resolved, and add to the data frame. This will be a formatting error.
@@ -241,7 +226,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
   user_file <- dplyr::mutate(user_file, RowNumber = row_number())
   if (user_action %in% "upload") {
     user_file <- select(user_file, RowNumber, all_of(required_user_column_names), contains(conditional_user_column_names), contains(optional_user_column_names))
-  } else if (user_action %in% "move") {
+  } else if (user_action %in% c("move", "search")) {
     user_file <- select(user_file, RowNumber, all_of(required_user_column_names))
   }
 
