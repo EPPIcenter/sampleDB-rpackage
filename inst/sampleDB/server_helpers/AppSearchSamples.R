@@ -50,10 +50,6 @@ SearchWetlabSamples <- function(session, input, database, output, DelArch = FALS
     dbmap <- list()
     format <- "na" # this could be modified
 
-    if (input$SearchBySampleType == "all") {
-      dbmap$sample_type <- "Sample Storage Type"
-    }
-
     ## Micronix
     if (input$SearchBySampleType == 1 && format == "na") {
       dbmap$barcode <- "Barcode"
