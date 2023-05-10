@@ -28,8 +28,8 @@ UIDelArchSamples <- function(){
       selectizeInput("DelArchSearchByLocation", "Storage Location", choices = c("", CheckTable("location")$name)),
       selectizeInput("DelArchSearchByLevelI", "Storage Location: Level I", choices = c("")),
       selectizeInput("DelArchSearchByLevelII", "Storage Location: Level II", choices = c("")),
-      selectizeInput("DelArchSearchByState", "State", choices = c(Global$DefaultStateSearchTerm)),
-      selectizeInput("DelArchSearchByStatus", "Status", choices = c(Global$DefaultStatusSearchTerm))
+      selectizeInput("DelArchSearchByState", "State", choices = DBI::dbReadTable(con, "state")$name),
+      selectizeInput("DelArchSearchByStatus", "Status", choices = c("In Use"))
     ),
     mainPanel(
       width = 10,

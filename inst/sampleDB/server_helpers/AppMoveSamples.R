@@ -115,6 +115,8 @@ AppMoveSamples <- function(session, input, output, database) {
 
       con <- dbConnect(SQLite(), Sys.getenv("SDB_PATH"))
 
+      dbBegin(con)
+
       manifest <- switch(
         input$MoveSampleType,
         "1" = "micronix_plate",
@@ -167,6 +169,7 @@ AppMoveSamples <- function(session, input, output, database) {
 
       result <- DBI::dbAppendTable(con, manifest, df.payload)
       if (result == 1) {
+        dbCommit(con)
         shinyjs::html(id = "MoveOutputConsole", html = paste0("Empty Container Created: ", df.payload$name), add = FALSE)
         removeModal()
       } else {

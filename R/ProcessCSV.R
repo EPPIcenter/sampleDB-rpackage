@@ -529,7 +529,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
       ## check the formats of dates - right now this is hardcoded
       if (user_action %in% c("upload")) {
 
-        allowed_date_formats = c("%Y-%m-%d", "%m/%d/%Y")
+        allowed_date_formats = c("%Y-%m-%d")
         tokens = c("unk", "UNK", "unknown", "UNKNOWN")
         df = ParseDateTime(formatted_csv, allowed_date_formats, tokens)
         if (!is.null(df)) {
@@ -852,7 +852,7 @@ CheckSampleLocationUnique <- function(formatted_csv) {
 #'
 #' @noRd
 ParseDateTime <- function(formatted_csv, allowed_date_formats, tokens) {
-
+  
   # dataframe to hold errors
   err <- NULL
   ## Start by parsing the string - NAs will appear if the allowed formats could not be detected
