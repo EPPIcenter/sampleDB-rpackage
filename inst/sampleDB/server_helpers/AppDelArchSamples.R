@@ -6,7 +6,7 @@ library(stringr)
 DelArchSamples <- function(session, input, database, output, DelArch = FALSE){
   
   # get DelArchSearch ui elements
-  rv <- reactiveValues(user_file = NULL, error = NULL, search_table = NULL, filters = NULL, dbmap = NULL, operation = NULL)
+  rv <- reactiveValues(user_file = NULL, error = NULL, search_table = NULL, filters = NULL, dbmap = NULL, operation = NULL, filtered_sample_container_ids = NULL)
 
   error <- reactiveValues(
     title = "",
@@ -50,9 +50,9 @@ DelArchSamples <- function(session, input, database, output, DelArch = FALSE){
     dbmap <- list()
     format <- "na" # this could be modified
 
-    if (input$DelArchSearchBySampleType == "all") {
-      dbmap$sample_type <- "Sample Storage Type"
-    }
+    # if (input$DelArchSearchBySampleType == "all") {
+    #   dbmap$sample_type <- "Sample Storage Type"
+    # }
 
     ## Micronix
     if (input$DelArchSearchBySampleType == 1 && format == "na") {
@@ -203,10 +203,12 @@ DelArchSamples <- function(session, input, database, output, DelArch = FALSE){
       filtered = if (length(intervals) > 0) filter(filtered, collection_date %within% intervals) else filtered
       filtered = filtered %>% select(names(rv$dbmap))
       colnames(filtered) <- unname(rv$dbmap)
+      rv$filtered_sample_container_ids = filtered$storage_container_id
       updateReactable("DelArchSearchResultsTable", data = filtered)
     } else {
       search_table <- rv$search_table %>% select(names(rv$dbmap))
       colnames(search_table) <- unname(rv$dbmap)
+      rv$filtered_sample_container_ids = NULL
       updateReactable("DelArchSearchResultsTable", data = search_table)
     }
   })
@@ -395,7 +397,9 @@ DelArchSamples <- function(session, input, database, output, DelArch = FALSE){
   selected <- reactive(getReactableState("DelArchSearchResultsTable", "selected"))
 
   observeEvent(input$ArchiveAction, ignoreInit = TRUE, {
-    user.selected.rows = rv$search_table[selected(), ]
+    browser()
+    user.selected.rows = rv$search_table %>% filter(storage_container_id %in% rv$storage.container.ids)
+    user.selected.rows = user.selected.rows[selected(), ]
     rt.select = names(rv$dbmap[names(rv$dbmap) %in% colnames(user.selected.rows)])
     user.selected.rows.select = user.selected.rows %>% select(all_of(rt.select))
     colnames(user.selected.rows.select) <- unname(rv$dbmap)
@@ -463,9 +467,12 @@ DelArchSamples <- function(session, input, database, output, DelArch = FALSE){
     shinyjs::disable("Archive")
     showNotification("Working...", id = "ArchDelNotification", type = "message", action = NULL, duration = 5, closeButton = FALSE)
 
+    user.selected.rows = rv$search_table %>% filter(storage_container_id %in% rv$storage.container.ids)
+    user.selected.rows = user.selected.rows[selected(), ]
+
     ArchiveAndDeleteSamples(
       operation = "archive",
-      data = rv$search_table[selected(), ],
+      data = user.selected.rows,
       comment = input$DelArchComment,
       status = input$DelArchStatus,
       verification = FALSE
@@ -474,7 +481,7 @@ DelArchSamples <- function(session, input, database, output, DelArch = FALSE){
     database <- file.path(Sys.getenv("SDB_PATH"))
     updated_values <- rv$search_table %>%
       select(storage_container_id) %>%
-      filter(storage_container_id %in% rv$search_table[selected(), ]$storage_container_id) %>%
+      filter(storage_container_id %in% rv$storage_container_id) %>%
       inner_join(CheckTable(database = database, table = "storage_container"), by = c("storage_container_id" = "id")) %>%
       inner_join(CheckTable(database = database, table = "state") %>% dplyr::rename(state = name), by = c("state_id" = "id")) %>%
       inner_join(CheckTable(database = database, table = "status") %>% dplyr::rename(status = name), by = c("status_id" = "id"))
@@ -493,9 +500,15 @@ DelArchSamples <- function(session, input, database, output, DelArch = FALSE){
 
 
   observeEvent(input$DeleteAction, ignoreInit = TRUE, {
-    user.selected.rows = rv$search_table[selected(), ]
+    browser()
+    user.selected.rows = rv$search_table %>% filter(storage_container_id %in% rv$storage.container.ids)
+    user.selected.rows = user.selected.rows[selected(), ]
+
     rt.select = names(rv$dbmap[names(rv$dbmap) %in% colnames(user.selected.rows)])
-    user.selected.rows.select = user.selected.rows %>% select(all_of(rt.select))
+    user.selected.rows.select = user.selected.rows %>% 
+      select(all_of(rt.select)) %>%
+      filter(storage_container_id %in% rv$storage.container.ids)
+
     colnames(user.selected.rows.select) <- unname(rv$dbmap)
 
     rt <- reactable(
@@ -533,9 +546,12 @@ DelArchSamples <- function(session, input, database, output, DelArch = FALSE){
     shinyjs::disable("Delete")
     showNotification("Working...", id = "ArchDelNotification", type = "message", action = NULL, duration = 5, closeButton = FALSE)
 
+    user.selected.rows = rv$search_table %>% filter(storage_container_id %in% rv$filtered_sample_container_ids)
+    user.selected.rows = user.selected.rows[selected(), ]
+
     ArchiveAndDeleteSamples(
       operation = "delete",
-      data = rv$search_table[selected(), ],
+      data = user.selected.rows,
       comment = input$DelArchComment,
       status = input$DelArchStatus,
       verification = FALSE
@@ -553,23 +569,26 @@ DelArchSamples <- function(session, input, database, output, DelArch = FALSE){
 
 
 .ResetDelArchInputs <- function(session, input, search_table) {
-  if (input$SearchBySampleType == "all") {
-    df = search_table %>% select(sample_type, manifest) %>% distinct()
-    manifests = split(df$manifest, df$sample_type)
+  # if (input$SearchBySampleType == "all") {
+  #   df = search_table %>% select(sample_type, manifest) %>% distinct()
+  #   manifests = split(df$manifest, df$sample_type)
 
-    df = search_table %>% select(sample_type, short_code) %>% distinct()
-    short_codes = split(df$short_code, df$sample_type)
+  #   df = search_table %>% select(sample_type, short_code) %>% distinct()
+  #   short_codes = split(df$short_code, df$sample_type)
 
-    df = search_table %>% select(sample_type, study_subject) %>% distinct()
-    study_subjects = split(df$study_subject, df$sample_type)
+  #   df = search_table %>% select(sample_type, study_subject) %>% distinct()
+  #   study_subjects = split(df$study_subject, df$sample_type)
 
-    df = search_table %>% select(sample_type, specimen_type) %>% distinct()
-    specimen_types = split(df$specimen_type, df$sample_type)
+  #   df = search_table %>% select(sample_type, specimen_type) %>% distinct()
+  #   specimen_types = split(df$specimen_type, df$sample_type)
 
-    df = search_table %>% select(sample_type, name) %>% distinct()
-    locations = split(df$name, df$sample_type)
+  #   df = search_table %>% select(sample_type, name) %>% distinct()
+  #   locations = split(df$name, df$sample_type)
 
-  } else {
+  # } 
+
+  # note there's a weird race condition that needs to be worked out first
+  if (TRUE) {
     manifests = unique(search_table$manifest)
     short_codes = unique(search_table$short_code)
     study_subjects = unique(search_table$study_subject)
@@ -581,7 +600,7 @@ DelArchSamples <- function(session, input, database, output, DelArch = FALSE){
     session,
     "DelArchSearchByManifest",
     label = switch(
-        input$SearchBySampleType,
+        input$DelArchSearchBySampleType,
         "1" = "Plate Name",
         "2" = "Box Name",
         "3" = "Paper Name",

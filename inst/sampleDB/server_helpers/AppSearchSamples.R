@@ -376,23 +376,24 @@ SearchWetlabSamples <- function(session, input, database, output, DelArch = FALS
 
 .ResetInputs <- function(session, input, search_table) {
 
-  if (input$SearchBySampleType == "all") {
-    df = search_table %>% select(sample_type, manifest) %>% distinct()
-    manifests = split(df$manifest, df$sample_type)
+  # if (input$SearchBySampleType == "all") {
+  #   df = search_table %>% select(sample_type, manifest) %>% distinct()
+  #   manifests = split(df$manifest, df$sample_type)
 
-    df = search_table %>% select(sample_type, short_code) %>% distinct()
-    short_codes = split(df$short_code, df$sample_type)
+  #   df = search_table %>% select(sample_type, short_code) %>% distinct()
+  #   short_codes = split(df$short_code, df$sample_type)
 
-    df = search_table %>% select(sample_type, study_subject) %>% distinct()
-    study_subjects = split(df$study_subject, df$sample_type)
+  #   df = search_table %>% select(sample_type, study_subject) %>% distinct()
+  #   study_subjects = split(df$study_subject, df$sample_type)
 
-    df = search_table %>% select(sample_type, specimen_type) %>% distinct()
-    specimen_types = split(df$specimen_type, df$sample_type)
+  #   df = search_table %>% select(sample_type, specimen_type) %>% distinct()
+  #   specimen_types = split(df$specimen_type, df$sample_type)
 
-    df = search_table %>% select(sample_type, name) %>% distinct()
-    locations = split(df$name, df$sample_type)
+  #   df = search_table %>% select(sample_type, name) %>% distinct()
+  #   locations = split(df$name, df$sample_type)
 
-  } else {
+  # } 
+  if(TRUE) {
     manifests = unique(search_table$manifest)
     short_codes = unique(search_table$short_code)
     study_subjects = unique(search_table$study_subject)
