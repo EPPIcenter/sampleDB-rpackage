@@ -44,7 +44,7 @@ ArchiveAndDeleteSamples <- function(operation, data, comment, status, verificati
   # GET DATABASE TABLES
   database.tables <- .GetDatabaseTables(database)
 
-  v <- (data$`Sample ID` %in% database.tables$table.storage_container$id)
+  v <- (data$storage_container_id %in% database.tables$table.storage_container$id)
 
   if (!all(v)) {
     return(paste("Error: sample could not be found in the database (table is stale): ", data$barcode[isFALSE(v)]))
@@ -69,7 +69,7 @@ ArchiveAndDeleteSamples <- function(operation, data, comment, status, verificati
         info_list <- append(info_list, list(comment = comment))
       }
 
-      for(eval.id in data$`Sample ID`){
+      for(eval.id in data$storage_container_id){
 
         # ARCHIVE
         ModifyTable(conn = conn,
@@ -81,7 +81,7 @@ ArchiveAndDeleteSamples <- function(operation, data, comment, status, verificati
       }
 
       # USER MSG
-      return_message <- paste("Archived", length(data$`Sample ID`), "Successfully")
+      return_message <- paste("Archived", length(data$storage_container_id), "Successfully")
       message(return_message)
     }
   }
@@ -107,7 +107,7 @@ ArchiveAndDeleteSamples <- function(operation, data, comment, status, verificati
     if(as.character(response) == "Yes" || as.character(response) == "1"){
 
       # DELETE SAMPLES
-      for(eval.id in data$`Sample ID`){
+      for(eval.id in data$storage_container_id){
 
         # DELETE INTERNAL DATA
         .DeleteInternalData(eval.id, database.tables, conn)
@@ -117,7 +117,7 @@ ArchiveAndDeleteSamples <- function(operation, data, comment, status, verificati
       }
 
       # USER MSG
-      return_message <- paste("Deleted", length(data$`Sample ID`), "Successfully")
+      return_message <- paste("Deleted", length(data$storage_container_id), "Successfully")
       message(return_message)
     }
   }
