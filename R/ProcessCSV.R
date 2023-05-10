@@ -32,7 +32,6 @@
 
 
 ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type = NULL, container_name = NULL, freezer_address = NULL, file_type = "na", validate = TRUE, database = Sys.getenv("SDB_PATH"), config_yml = Sys.getenv("SDB_CONFIG")) {
-
   df.error.formatting <- data.frame(column = NULL, reason = NULL, trigger = NULL)
 
   if (!require(dplyr)) {

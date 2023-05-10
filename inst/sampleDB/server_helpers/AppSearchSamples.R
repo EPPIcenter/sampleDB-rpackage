@@ -215,6 +215,7 @@ SearchWetlabSamples <- function(session, input, database, output, DelArch = FALS
       rv$user_file <- ProcessCSV(
         user_csv = dataset$datapath,
         user_action = "search",
+        search_type = "barcode",
         validate = FALSE
       )
 
@@ -248,6 +249,7 @@ SearchWetlabSamples <- function(session, input, database, output, DelArch = FALS
       rv$user_file <- ProcessCSV(
         user_csv = dataset$datapath,
         user_action = "search",
+        search_type = "study_subject",
         validate = FALSE
       )
 
@@ -341,11 +343,10 @@ SearchWetlabSamples <- function(session, input, database, output, DelArch = FALS
       session,
       "SearchByLevelI",
       selected = "",
-      choices = c("", rv$search_table %>%
+      choices = rv$search_table %>%
         filter(name == local(input$SearchByLocation)) %>%
         pull(level_I) %>%
         unique(.)
-      )
     )
 
     shinyjs::reset("SearchByLevelII")
@@ -356,12 +357,11 @@ SearchWetlabSamples <- function(session, input, database, output, DelArch = FALS
       session,
       "SearchByLevelII",
       selected = "",
-      choices = c("", rv$search_table %>%
+      choices = rv$search_table %>%
         filter(name == local(input$SearchByLocation) & level_I == local(input$SearchByLevelI)) %>%
         collect() %>% 
         pull(level_II) %>%
         unique(.)
-      )
     )
   })  
 
@@ -414,15 +414,15 @@ SearchWetlabSamples <- function(session, input, database, output, DelArch = FALS
         "3" = "Paper Name",
         "all" = "All Containers"
     ),
-    selected = "",
-    choices = c("", manifests),
+    selected = FALSE,
+    choices = manifests,
     server = TRUE
   )
 
-  updateSelectizeInput(session, "SearchByStudy", "Study", choices = c("", short_codes), server = TRUE)
-  updateSelectizeInput(session, "SearchBySubjectUID", "Study Subject", choices = c("", study_subjects), server = TRUE)
-  updateSelectizeInput(session, "SearchBySpecimenType", "Specimen Type", choices = c("", specimen_types), server = TRUE)
-  updateSelectizeInput(session, "SearchByLocation", "Storage Location", choices = c("", locations), server = TRUE)
+  updateSelectizeInput(session, "SearchByStudy", "Study", choices = short_codes, selected = FALSE, server = TRUE)
+  updateSelectizeInput(session, "SearchBySubjectUID", "Study Subject", choices = study_subjects, selected = FALSE, server = TRUE)
+  updateSelectizeInput(session, "SearchBySpecimenType", "Specimen Type", choices = specimen_types, selected = FALSE, server = TRUE)
+  updateSelectizeInput(session, "SearchByLocation", "Storage Location", choices = locations, selected = FALSE, server = TRUE)
 
   shinyjs::reset("SearchByBarcode")
   shinyjs::reset("SearchBySubjectUIDFile")

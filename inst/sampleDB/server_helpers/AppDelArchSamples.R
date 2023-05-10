@@ -223,6 +223,7 @@ DelArchSamples <- function(session, input, database, output, DelArch = FALSE){
       rv$user_file <- ProcessCSV(
         user_csv = dataset$datapath,
         user_action = "search",
+        search_type = "barcode",
         validate = FALSE
       )
 
@@ -256,6 +257,7 @@ DelArchSamples <- function(session, input, database, output, DelArch = FALSE){
       rv$user_file <- ProcessCSV(
         user_csv = dataset$datapath,
         user_action = "search",
+        search_type = "study_subject",
         validate = FALSE
       )
 
@@ -551,7 +553,7 @@ DelArchSamples <- function(session, input, database, output, DelArch = FALSE){
 
 
 .ResetDelArchInputs <- function(session, input, search_table) {
-    if (input$SearchBySampleType == "all") {
+  if (input$SearchBySampleType == "all") {
     df = search_table %>% select(sample_type, manifest) %>% distinct()
     manifests = split(df$manifest, df$sample_type)
 
@@ -585,14 +587,17 @@ DelArchSamples <- function(session, input, database, output, DelArch = FALSE){
         "3" = "Paper Name",
         "all" = "All Containers"
     ),
-    selected = "",
-    choices = c("", manifests),
+    selected = FALSE,
+    choices = manifests,
     server = TRUE
   )
 
-  updateSelectizeInput(session, "DelArchSearchByStudy", "Study", choices = c("", short_codes), server = TRUE)
-  updateSelectizeInput(session, "DelArchSearchBySubjectUID", "Study Subject", choices = c("", study_subjects), server = TRUE)
-  updateSelectizeInput(session, "DelArchSearchBySpecimenType", "Specimen Type", choices = c("", specimen_types), server = TRUE)
-  updateSelectizeInput(session, "DelArchSearchByLocation", "Storage Location", choices = c("", locations), server = TRUE)
+  updateSelectizeInput(session, "DelArchSearchByStudy", "Study", choices = short_codes, selected = FALSE, server = TRUE)
+  updateSelectizeInput(session, "DelArchSearchBySubjectUID", "Study Subject", choices = study_subjects, selected = FALSE, server = TRUE)
+  updateSelectizeInput(session, "DelArchSearchBySpecimenType", "Specimen Type", choices = specimen_types, selected = FALSE, server = TRUE)
+  updateSelectizeInput(session, "DelArchSearchByLocation", "Storage Location", choices = locations, selected = FALSE, server = TRUE)
+
+  shinyjs::reset("DelArchSearchByBarcode")
+  shinyjs::reset("DelArchSearchBySubjectUIDFile")
 }
 
