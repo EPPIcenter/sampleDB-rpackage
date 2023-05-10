@@ -522,10 +522,6 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
     con <- dbConnect(SQLite(), Sys.getenv("SDB_PATH"))
     sample_type_id <- as(local(input$UploadSampleType), "integer")
 
-    sample_type_name <- DBI::dbReadTable(con, "sample_type") %>%
-      filter(id == sample_type_id) %>%
-      pull(name)
-
     ## Read File Specification File
     file_specs_json <- rjson::fromJSON(file = system.file(
       "extdata", "file_specifications.json", package = .sampleDB$pkgname))
@@ -535,6 +531,29 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
     file_type_indexes <- which(lapply(file_specs_json$file_types, function(x) x$id) %in% sample_file_types)
     file_type_names <- lapply(file_type_indexes, function(x) file_specs_json$file_types[[x]]$name)
     names(sample_file_types) <- file_type_names
+
+    subtype_ids = tbl(con, "sample_type") %>% filter(parent_id == local(input$UploadSampleType)) %>% pull(id, name = "name")
+
+    if (length(subtype_ids) > 0) {
+      storage_types = tbl(con, "sample_type") %>% filter(is.na(parent_id)) %>% pull(name)
+      updateRadioButtons(
+        session,
+        "UploadFileSubType",
+        label = sprintf("%s Derived Sample Types", storage_types[as.integer(local(input$UploadSampleType))]),
+        choices = subtype_ids,
+        inline = TRUE
+      )
+      shinyjs::show("UploadSampleSubType")
+    } else {
+      shinyjs::hide("UploadSampleSubType")
+      updateRadioButtons(
+        session,
+        label = NULL,
+        "UploadFileSubType",
+        choices = c(""),
+        inline = TRUE
+      )
+    }
 
     updateRadioButtons(
       session,
@@ -555,24 +574,23 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
     )
 
     manifest <- switch(
-      sample_type_name,
-      "Micronix" = "micronix_plate",
-      "Cryovial" = "cryovial_box",
-      "DBS" = "dbs_paper"
+      input$UploadSampleType,
+      "1" = "micronix_plate",
+      "2" = "cryovial_box",
+      "3" = "dbs_bag"
     )
-
 
     updateSelectizeInput(
       session,
       "UploadManifestName",
       label = switch(
-        sample_type_name,
-        "Micronix" = "Plate Name",
-        "Cryovial" = "Box Name",
-        "DBS" = "Paper Name"
+        input$UploadSampleType,
+        "1" = "Plate Name",
+        "2" = "Box Name",
+        "3" = "DBS Bag"
       ),
-      selected = "",
-      choices = c("", DBI::dbReadTable(con, manifest) %>% pull(name)),
+      selected = FALSE,
+      choices = DBI::dbReadTable(con, manifest) %>% pull(name),
       options = list(create = TRUE)
     )
 
@@ -580,10 +598,10 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
       session,
       "UploadLocationLevelI",
       label = switch(
-        sample_type_name,
-        "Micronix" = "Shelf Name", 
-        "Cryovial" = "Rack Number",
-        "DBS" = "To Be Implemented"
+        input$UploadSampleType,
+        "1" = "Shelf Name", 
+        "2" = "Rack Number",
+        "3" = "Rack Number"
       )
     )
 
@@ -591,10 +609,10 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
       session,
       "UploadLocationLevelII",
       label = switch(
-        sample_type_name,
-        "Micronix" = "Basket Name",
-        "Cryovial" = "Rack Position",
-        "DBS" = "To Be Implemented"
+        input$UploadSampleType,
+        "1" = "Basket Name",
+        "2" = "Rack Position",
+        "3" = "Rack Position"
       )
     )
 

@@ -99,6 +99,8 @@ SampleDB_Setup <- function(env=TRUE, db=TRUE, server=TRUE) {
 
           if (is.null(current_config$version) || current_config$version < expected_versions$config) {
             current_config <- .recurse_update_config(current_config, new_config)
+            current_config$version <- new_config$version
+
             yaml::write_yaml(current_config, Sys.getenv("SDB_CONFIG"))
             message(paste(crayon::green(cli::symbol$tick), paste0("Configuration file updated to version ", current_config$version, " [", config, "]")))
           } else {
