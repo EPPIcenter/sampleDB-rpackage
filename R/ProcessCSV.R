@@ -552,6 +552,20 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
         colnames(df) <- c("RowNumber", "study_short_code", "collection_date")
 
         err <- .maybe_add_err(err, df, "Missing collection date found for sample in longitudinal study")
+
+
+        ## Cryovials are required to have collection dates if they 
+        if (sample_storage_type == 2) {
+          rn = tbl(con, "formatted_csv") %>%
+            count(study_subject, study_short_code) %>%
+            filter(n > 1) %>%
+            inner_join(tbl(con, "formatted_csv"), by=c("study_subject", "study_short_code")) %>%
+            filter(is.na(barcode) & is.na(collection_date)) %>%
+            pull(RowNumber)
+
+          df = formatted_csv[rn,]
+          err <- .maybe_add_err(err, df, "Missing collection date found for sample in longitudinal study")
+        }
       }
 
       if (user_action == "move") {
