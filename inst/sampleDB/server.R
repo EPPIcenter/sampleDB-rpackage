@@ -42,9 +42,9 @@ function(input, output, session) {
     # Upload Paper Samples
     # PaperUpload(session, output, input, database)
     
-    # -------- Search Samples -------------
+    # -------- Search, Archive and Delete Samples -------------
     
-    SearchWetlabSamples(session, input, database, output)
+    SearchDelArchSamples(session, input, database, output)    
     
     # -------- Move Samples -------------
 
@@ -52,11 +52,7 @@ function(input, output, session) {
 
     # -------- Edit Containers --------
     
-    EditWetlabContainers(session, input, database, output)
-    
-    # -------- Archive and Delete Samples --------
-    
-    DelArchSamples(session, input, database, output)
+    EditWetlabContainers(session, input, database, output)  
 
     # -------- Delete Empty Container --------
     

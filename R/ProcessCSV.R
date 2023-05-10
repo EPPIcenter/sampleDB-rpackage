@@ -569,6 +569,17 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
 
       if (user_action == "move") {
 
+        ## check that the barcodes in the move file exist in the database
+        rn <- tbl(con, "formatted_csv") %>%
+          filter(!is.na(barcode)) %>% # cryovials sometimes don't have barcodes
+          left_join(tbl(con, container_tables[["container_class"]]), by = c("barcode")) %>%
+          filter(is.na(id)) %>%
+          pull(RowNumber)
+
+        df <- formatted_csv[rn, c("RowNumber", "barcode")]
+
+        err <- .maybe_add_err(err, df, "Barcode not found in database")
+
         ## check if the container exists in the database
         rn <- tbl(con, "formatted_csv") %>%
           left_join(tbl(con, container_tables[["manifest"]]) %>% dplyr::rename(manifest_barcode = barcode), by = c("manifest_name" = "name")) %>%
