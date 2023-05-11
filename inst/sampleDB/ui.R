@@ -21,7 +21,7 @@ navbarPage("EPPIcenter SampleDB",
   #upload 
   tabPanel("Upload Samples", UIUploadSamples()),
   #search & delarch
-  tabPanel("Serch, Delete & Archive Samples", UISearchDelArchSamples()),
+  tabPanel("Search, Delete & Archive Samples", UISearchDelArchSamples()),
 
   #move
   tabPanel("Move Samples",  UIMoveSamples()),

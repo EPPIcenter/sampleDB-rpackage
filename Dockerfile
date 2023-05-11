@@ -26,10 +26,8 @@ WORKDIR /build_zone
 RUN R -e 'remotes::install_local(upgrade="never")'
 RUN rm -rf /build_zone
 
-RUN Rscript -e 'library(sampleDB); SampleDB_Setup();'
-
 # Enable Logging from stdout
 ENV SHINY_LOG_STDERR=1
-USER shiny
+# USER shiny
 EXPOSE 3838
-CMD R -e 'sampleDB::Run_SampleDB(port=3838)'
+CMD R -e 'library(sampleDB); SampleDB_Setup(); Run_SampleDB();'
