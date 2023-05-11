@@ -2,21 +2,7 @@
 
 ## Overview
 
-SampleDB is a Management System for Wet Lab Samples. It can be used to track a sample's `storage address` and `metadata`.
-SampleDB is installed as an R package and is accessible via an RShiny web app.
-
-## Running SampleDB
-
-After minimal installation and setup SampleDB can be accessed at the url:
-`http://<ip address>:3838/sampleDB/`. This 
-
-
-1. Uniquely Barcoded Samples
-2. Linux Server
-3. R >= 4.1
-4. [Rstudio Server](https://www.rstudio.com/products/rstudio/download-server/) or ![Rstudio Workbench](https://www.rstudio.com/products/workbench/)
-5. [Shiny Server](https://www.rstudio.com/products/shiny/download-server/)
-6. [sqlite3](https://www.sqlite.org/position.html)
+SampleDB is a Management System for Wet Lab Samples. 
 
 ## Installation
 
@@ -45,7 +31,7 @@ A docker image for sampleDB can be pulled from [DockerHub](https://hub.docker.co
 To pull from DockerHub, run the command below:
 
 ```bash
-docker pull eppicenter/sampledb:latest
+docker pull eppicenter/sampledb:v2.0.0
 ```
 
 ##### Option 2: Build the image
@@ -53,7 +39,7 @@ docker pull eppicenter/sampledb:latest
 You can build the image instead of pulling from DockerHub. To do so, run the following command:
 
 ```bash
-docker build -t eppicenter/sampledb:latest .
+docker build -t eppicenter/sampledb:v2.0.0 .
 ```
 
 #### 3. Create your container
@@ -61,7 +47,7 @@ docker build -t eppicenter/sampledb:latest .
 This is the final step. The host `localhost` and port `8080` will be used to access the application within the container, and all volumes needed to run the container are passed in on the command line. Notice that the sampleDB database volume is also include in the list of volumes.
 
 ```bash
-docker run -d -p 8080:3838 -v /srv/shinyapps/:/srv/shiny-server -v /srv/shinylog/:/var/log/shiny-server -v sampledb_database:/usr/local/share/sampleDB --name sampleDB eppicenter/sampledb:latest
+docker run -d -p 8080:3838 -v /srv/shinyapps/:/srv/shiny-server -v /srv/shinylog/:/var/log/shiny-server -v sampledb_database:/usr/local/share/sampleDB --name sampleDB eppicenter/sampledb:v2.0.0
 ```
 
 #### 4. Access sampleDB 

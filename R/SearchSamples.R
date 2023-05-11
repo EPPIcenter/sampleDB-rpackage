@@ -177,10 +177,6 @@ SearchSamples <- function(sample_storage_type, filters = NULL, format = NULL, da
 
     dbmap <- list()
 
-    if (sample_storage_type == "all") {
-      dbmap$sample_type <- "Sample Storage Type"
-    }
-
     ## Micronix
     if (!is.null(format) && sample_storage_type == 1 && format == "na") {
       dbmap$barcode <- "Barcode"

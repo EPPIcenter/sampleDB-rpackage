@@ -32,7 +32,6 @@
 
 
 ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type = NULL, container_name = NULL, freezer_address = NULL, file_type = "na", validate = TRUE, database = Sys.getenv("SDB_PATH"), config_yml = Sys.getenv("SDB_CONFIG")) {
-
   df.error.formatting <- data.frame(column = NULL, reason = NULL, trigger = NULL)
 
   if (!require(dplyr)) {
@@ -530,7 +529,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
       ## check the formats of dates - right now this is hardcoded
       if (user_action %in% c("upload")) {
 
-        allowed_date_formats = c("%Y-%m-%d", "%m/%d/%Y")
+        allowed_date_formats = c("%Y-%m-%d")
         tokens = c("unk", "UNK", "unknown", "UNKNOWN")
         df = ParseDateTime(formatted_csv, allowed_date_formats, tokens)
         if (!is.null(df)) {
@@ -552,9 +551,34 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
         colnames(df) <- c("RowNumber", "study_short_code", "collection_date")
 
         err <- .maybe_add_err(err, df, "Missing collection date found for sample in longitudinal study")
+
+
+        ## Cryovials are required to have collection dates if they 
+        if (sample_storage_type == 2) {
+          rn = tbl(con, "formatted_csv") %>%
+            count(study_subject, study_short_code) %>%
+            filter(n > 1) %>%
+            inner_join(tbl(con, "formatted_csv"), by=c("study_subject", "study_short_code")) %>%
+            filter(is.na(barcode) & is.na(collection_date)) %>%
+            pull(RowNumber)
+
+          df = formatted_csv[rn,]
+          err <- .maybe_add_err(err, df, "Missing collection date found for sample in longitudinal study")
+        }
       }
 
       if (user_action == "move") {
+
+        ## check that the barcodes in the move file exist in the database
+        rn <- tbl(con, "formatted_csv") %>%
+          filter(!is.na(barcode)) %>% # cryovials sometimes don't have barcodes
+          left_join(tbl(con, container_tables[["container_class"]]), by = c("barcode")) %>%
+          filter(is.na(id)) %>%
+          pull(RowNumber)
+
+        df <- formatted_csv[rn, c("RowNumber", "barcode")]
+
+        err <- .maybe_add_err(err, df, "Barcode not found in database")
 
         ## check if the container exists in the database
         rn <- tbl(con, "formatted_csv") %>%
@@ -839,7 +863,7 @@ CheckSampleLocationUnique <- function(formatted_csv) {
 #'
 #' @noRd
 ParseDateTime <- function(formatted_csv, allowed_date_formats, tokens) {
-
+  
   # dataframe to hold errors
   err <- NULL
   ## Start by parsing the string - NAs will appear if the allowed formats could not be detected

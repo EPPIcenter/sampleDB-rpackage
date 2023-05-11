@@ -20,13 +20,13 @@ navbarPage("EPPIcenter SampleDB",
   theme = bs_theme(version = 4, bootswatch = "flatly"),
   #upload 
   tabPanel("Upload Samples", UIUploadSamples()),
-  #search
-  tabPanel("Search Samples", UISearchSamples()),
+  #search & delarch
+  tabPanel("Search, Delete & Archive Samples", UISearchDelArchSamples()),
+
   #move
   tabPanel("Move Samples",  UIMoveSamples()),
-  #delarch
-  tabPanel("Delete & Archive Samples", UIDelArchSamples()),
-  #edit containers
+  
+    #edit containers
   tabPanel("Move, Rename & Delete Containers", UIMoveContainerOfSamples()),
   #referrences
   navbarMenu("Update References",
