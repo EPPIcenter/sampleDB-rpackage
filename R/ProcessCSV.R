@@ -157,7 +157,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
   }
 
   colnames(user_file) = user_file[header_row,]
-  user_file = user_file %>%  slice(-c(header_row))
+  user_file = user_file %>%  slice(-c(1:header_row))
 
   # Check the parameters of the function and see if some of the data points are there (in case called from R package)
   # then, filter out the columns that could not be resolved, and add to the data frame. This will be a formatting error.
