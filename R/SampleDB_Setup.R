@@ -77,42 +77,38 @@ SampleDB_Setup <- function(env=TRUE, db=TRUE, server=TRUE) {
         if (!dir.exists(configdir))
           dir.create(configdir)
 
+        environ_file_path <- suppressWarnings(
+          normalizePath(
+              ifelse(site_install,
+                file.path(Sys.getenv("R_HOME"), "etc", "Renviron.site"),
+                file.path(Sys.getenv("HOME"), ".Renviron")
+              )))
+
+        if (!file.exists(environ_file_path))
+            file.create(environ_file_path)
+
         if (!file.exists(config)) {
             file.copy(system.file("conf",
                 "config.yml", package = pkgname), config)
             message(paste(crayon::green(cli::symbol$tick), paste0("Configuration file installed [", config, "]")))
         } else {
-            new_config <- yaml::read_yaml(system.file("conf",
-                            "config.yml", package = pkgname))
+          new_config <- yaml::read_yaml(system.file("conf",
+                          "config.yml", package = pkgname))
 
-            current_config <- yaml::read_yaml(Sys.getenv("SDB_CONFIG"))
+          current_config <- yaml::read_yaml(Sys.getenv("SDB_CONFIG"))
 
-            if (is.null(current_config$version) || current_config$version < expected_versions$config) {
-              current_config <- .recurse_update_config(current_config, new_config)
-              yaml::write_yaml(current_config, Sys.getenv("SDB_CONFIG"))
-              message(paste(crayon::green(cli::symbol$tick), paste0("Configuration file updated to version ", current_config$version, " [", config, "]")))
-            } else {
-              message(paste(crayon::white(cli::symbol$info), paste0("Configuration file exists [", config, "]")))
-            }
+          if (is.null(current_config$version) || current_config$version < expected_versions$config) {
+            current_config <- .recurse_update_config(current_config, new_config)
+            yaml::write_yaml(current_config, Sys.getenv("SDB_CONFIG"))
+            message(paste(crayon::green(cli::symbol$tick), paste0("Configuration file updated to version ", current_config$version, " [", config, "]")))
+          } else {
+            message(paste(crayon::white(cli::symbol$info), paste0("Configuration file exists [", config, "]")))
+          }
         }
-      }
 
-      # Database Setup
-
-      if (db) {
         database <- Sys.getenv("SDB_PATH")
 
         if(0 == nchar(database)) {
-
-          environ_file_path <- suppressWarnings(
-            normalizePath(
-                ifelse(site_install,
-                  file.path(Sys.getenv("R_HOME"), "etc", "Renviron.site"),
-                  file.path(Sys.getenv("HOME"), ".Renviron")
-                )))
-
-          if (!file.exists(environ_file_path))
-              file.create(environ_file_path)
 
           database <- suppressWarnings(
             normalizePath(
@@ -126,6 +122,13 @@ SampleDB_Setup <- function(env=TRUE, db=TRUE, server=TRUE) {
                 )
               )
             )
+
+        environ_file_path <- suppressWarnings(
+          normalizePath(
+              ifelse(site_install,
+                file.path(Sys.getenv("R_HOME"), "etc", "Renviron.site"),
+                file.path(Sys.getenv("HOME"), ".Renviron")
+              )))
 
 
           write.table(
@@ -148,9 +151,42 @@ SampleDB_Setup <- function(env=TRUE, db=TRUE, server=TRUE) {
             paste0("Database location already set [", database, "]")))
         }
 
+
         datadir <- dirname(database)
         if (!dir.exists(datadir))
           dir.create(datadir)
+
+        # create subdirectories
+
+        Sys.chmod(datadir, mode = "0777", use_umask = FALSE)
+
+        subdirs <- suppressWarnings(
+          normalizePath(
+              file.path(
+                datadir, c(
+                  "backups",
+                  "upload_files",
+                  "move_files"
+                )
+              )
+            )
+          )
+
+        for (subdir in subdirs) {
+          if (!dir.exists(subdir)) {
+              dir.create(subdir)
+              Sys.chmod(subdir, mode = "0777", use_umask = FALSE)
+              message(paste(crayon::green(cli::symbol$tick), paste0("Subdirectory installed [", subdir, "]")))
+          } else {
+              message(paste(crayon::white(cli::symbol$info), paste0("Subdirectory exists [", subdir, "]")))
+          }
+        }
+      }
+
+      # Database Setup
+
+      if (db) {
+        database <- Sys.getenv("SDB_PATH")
 
         db_directory <- system.file("extdata", "db", package = pkgname)
         db_versions <- list.dirs(db_directory)
@@ -255,34 +291,6 @@ SampleDB_Setup <- function(env=TRUE, db=TRUE, server=TRUE) {
             stop(e$message)
           })
         }
-
-        # create subdirectories
-
-        subdirs <- suppressWarnings(
-          normalizePath(
-              file.path(
-                datadir, c(
-                  "backups",
-                  "upload_files",
-                  "move_files"
-                )
-              )
-            )
-          )
-
-
-        # subdirs <- file.path(datadir, c("backups", "upload_files", "move_files"))
-        for (subdir in subdirs) {
-            if (!dir.exists(subdir)) {
-                dir.create(subdir)
-                Sys.chmod(subdir, mode = "0777", use_umask = FALSE)
-                message(paste(crayon::green(cli::symbol$tick), paste0("Subdirectory installed [", subdir, "]")))
-            } else {
-                message(paste(crayon::white(cli::symbol$info), paste0("Subdirectory exists [", subdir, "]")))
-            }
-        }
-
-        Sys.chmod(datadir, mode = "0777", use_umask = FALSE)
       }
 
       if (server) {
