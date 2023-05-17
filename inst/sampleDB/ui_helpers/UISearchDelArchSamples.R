@@ -35,15 +35,23 @@ UISearchDelArchSamples <- function(){
       width = 10,
       reactableOutput("DelArchSearchResultsTable"),
       hr(),
+      tags$em("Use the filters in the panel to the left to find samples that you wish to download. You may optionally select samples from the table to narrow down the samples that should be included. When you are finished, press the button below.", style = "color: grey;font-size: 18px;"),
+      fluidRow(
+        width = 3,
+        column(
+          width = 6, 
+          downloadButton("DelArchDownloadSearchData", "Download")
+        )
+      ),
+      tags$h3("Sample Archival & Deletion Workflows"),
+      tags$hr(),
       tags$em("Select samples above to get started. In all workflows, users will be asked to confirm that they have selected the correct samples.", style = "color: grey;font-size: 18px;"),
-      hr(),
-      downloadButton("DelArchDownloadSearchData", "Download"),
       fluidRow(
         width = 3,
         column(
           width = 6, 
           tagList(
-            tags$h3("Sample Archival"), 
+            tags$h4("Sample Archival"), 
             tags$hr(),
             tags$p("Select sample above that you wish to archive. This will remove samples from plates in the database so that they may be replaced with", tags$em("In Use"), "samples."),
             actionButton("ArchiveAction", width = '25%', label = "Archive Samples", style="color: #fff; background-color: #337ab7; border-color: #2e6da4")
@@ -52,7 +60,7 @@ UISearchDelArchSamples <- function(){
         column(
           width = 6, 
           tagList(
-            tags$h3("Sample Deletion"), 
+            tags$h4("Sample Deletion"), 
             tags$hr(),
             tags$p("Select sample above that you wish to delete. Samples that are", tags$em("deleted"), "are removed", tags$strong("permanently", style = "color:red"),". Use caution when deleting samples - in most cases, archival should be used to retain sample history. An example of when to delete a sample is if a sample has been uploaded by mistake."),
             actionButton("DeleteAction", width = '25%', label = "Delete Samples", style="color:#c4244c; background-color: #fff4f4; border-color: #c4244c")

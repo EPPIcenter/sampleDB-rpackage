@@ -531,9 +531,11 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
 
         allowed_date_formats = c("%Y-%m-%d")
         tokens = c("unk", "UNK", "unknown", "UNKNOWN")
-        df = ParseDateTime(formatted_csv, allowed_date_formats, tokens)
-        if (!is.null(df)) {
+        res = ParseDateTime(formatted_csv, allowed_date_formats, tokens)
+        if (!is.null(res$error)) {
           err = c(err, df)
+        } else {
+          formatted_csv = res$df
         }
 
         ## check that dates exist for longitudinal studies
@@ -859,7 +861,7 @@ CheckSampleLocationUnique <- function(formatted_csv) {
 #' @param allowed_date_formats Vector of allowed date formats for the datetime parser
 #' @param tokens Vector of tokens that signify an 'unknown' date. These will be ignored by the datetime parser.
 #' 
-#' @return A named list of datafame. The name is the error message, and the dataframe are the rows and columns from formatted_csv that triggered the error.
+#' @return A named list, with an error dataframe and the formatted csv with a modified collectiondate column IF no error was detected. If the `error` dataframe is null, then the operation was successful and you should use the formatted csv included in the result (`df`).
 #'
 #' @noRd
 ParseDateTime <- function(formatted_csv, allowed_date_formats, tokens) {
@@ -892,5 +894,5 @@ ParseDateTime <- function(formatted_csv, allowed_date_formats, tokens) {
     formatted_csv$collection_date[!token_mask] <- rep(lubridate::origin, sum(!token_mask))
   }
 
-  return(err)
+  return(list(error=err,df=formatted_csv))
 }

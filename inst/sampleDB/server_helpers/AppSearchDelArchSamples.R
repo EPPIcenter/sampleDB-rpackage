@@ -136,7 +136,8 @@ SearchDelArchSamples <- function(session, input, database, output, DelArch = FAL
           search_table,
           defaultColDef = colDef(minWidth = 95, html = TRUE, sortable = TRUE, resizable = FALSE, na = "-", align = "center"),
           searchable = TRUE,
-          selection = "multiple", onClick = "select",
+          selection = "multiple", 
+          onClick = "select",
           columns = list(
             .selection = colDef(
               headerStyle = list(pointerEvents = "none")
@@ -150,7 +151,8 @@ SearchDelArchSamples <- function(session, input, database, output, DelArch = FAL
               "&:hover[aria-sort]" = list(background = "hsl(0, 0%, 96%)"),
               "&[aria-sort='ascending'], &[aria-sort='descending']" = list(background = "hsl(0, 0%, 96%)"),
               borderColor = "#555"
-            )
+            ),
+            rowSelectedStyle = list(backgroundColor = '#aafaff', boxShadow = 'inset 2px 0 0 0 #ffa62d')
           )
         )
 
@@ -587,7 +589,8 @@ SearchDelArchSamples <- function(session, input, database, output, DelArch = FAL
       },
       content = function(con) {
         user.filtered.rows = rv$search_table %>% filter(storage_container_id %in% rv$filtered_sample_container_ids)
-        user.selected.rows = user.filtered.rows[selected(), ] 
+        user.selected.rows <- if (length(selected() > 0)) user.filtered.rows[selected(), ] else user.filtered.rows
+
         rt.select = names(rv$dbmap[names(rv$dbmap) %in% colnames(user.selected.rows)])
         user.selected.rows.select = user.selected.rows %>% select(all_of(rt.select))
         colnames(user.selected.rows.select) <- unname(rv$dbmap)
