@@ -531,11 +531,31 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
 
         allowed_date_formats = c("%Y-%m-%d")
         tokens = c("unk", "UNK", "unknown", "UNKNOWN")
-        res = ParseDateTime(formatted_csv, allowed_date_formats, tokens)
-        if (!is.null(res$error)) {
-          err = c(err, df)
-        } else {
-          formatted_csv = res$df
+
+        ## Start by parsing the string - NAs will appear if the allowed formats could not be detected
+        ## this is a fairly minimal check so we need to confirm in other ways that the user is uploading
+        ## dates in the correct format (ie. MM/DD/YYYY vs DD/MM/YYYY), particulary when there can be ambiguity
+        parsed_dates <- lubridate::parse_date_time(formatted_csv$collection_date, allowed_date_formats, quiet = TRUE, exact = TRUE)
+
+        ## Validate that only dates or NA mask values ("unk", "UNK", "unknown", "UNKNOWN") exist in the column
+        token_mask <- !formatted_csv$collection_date %in% tokens
+
+        ## Invalid formats will appear as NA in "parsed_dates". If they are also unrecognized tokens,
+        ## report back to the user
+        rn <- formatted_csv[!is.na(formatted_csv$collection_date) & is.na(parsed_dates) & token_mask,]$RowNumber  # Was not left out AND not a recognized date format AND not a recognized token
+        df <- formatted_csv[rn, c("RowNumber", "collection_date")]
+        colnames(df) <- c("RowNumber", "collection_date")
+        string <- paste("Unrecognized strings found in collection date column. Add any of the following if the collection date is unknown:", paste(tokens, collapse=", "))
+        err <- .maybe_add_err(err, df, string)
+
+        rn <- formatted_csv[xor(is.na(parsed_dates[token_mask]), is.na(formatted_csv$collection_date[token_mask])),] %>% pull(RowNumber)
+
+        df <- formatted_csv[rn, c("RowNumber", "collection_date")]
+
+        err <- .maybe_add_err(err, df, "Rows found with improperly formatted dates")
+        if (length(rn) == 0) {
+          formatted_csv$collection_date <- parsed_dates
+          formatted_csv$collection_date[!token_mask] <- rep(lubridate::origin, sum(!token_mask))
         }
 
         ## check that dates exist for longitudinal studies
@@ -868,31 +888,7 @@ ParseDateTime <- function(formatted_csv, allowed_date_formats, tokens) {
   
   # dataframe to hold errors
   err <- NULL
-  ## Start by parsing the string - NAs will appear if the allowed formats could not be detected
-  ## this is a fairly minimal check so we need to confirm in other ways that the user is uploading
-  ## dates in the correct format (ie. MM/DD/YYYY vs DD/MM/YYYY), particulary when there can be ambiguity
-  parsed_dates <- lubridate::parse_date_time(formatted_csv$collection_date, allowed_date_formats, quiet = TRUE, exact = TRUE)
-
-  ## Validate that only dates or NA mask values ("unk", "UNK", "unknown", "UNKNOWN") exist in the column
-  token_mask <- !formatted_csv$collection_date %in% tokens
-
-  ## Invalid formats will appear as NA in "parsed_dates". If they are also unrecognized tokens,
-  ## report back to the user
-  rn <- formatted_csv[!is.na(formatted_csv$collection_date) & is.na(parsed_dates) & token_mask,]$RowNumber  # Was not left out AND not a recognized date format AND not a recognized token
-  df <- formatted_csv[rn, c("RowNumber", "collection_date")]
-  colnames(df) <- c("RowNumber", "collection_date")
-  string <- paste("Unrecognized strings found in collection date column. Add any of the following if the collection date is unknown:", paste(tokens, collapse=", "))
-  err <- .maybe_add_err(err, df, string)
-
-  rn <- formatted_csv[xor(is.na(parsed_dates[token_mask]), is.na(formatted_csv$collection_date[token_mask])),] %>% pull(RowNumber)
-
-  df <- formatted_csv[rn, c("RowNumber", "collection_date")]
-
-  err <- .maybe_add_err(err, df, "Rows found with improperly formatted dates")
-  if (length(rn) == 0) {
-    formatted_csv$collection_date <- parsed_dates
-    formatted_csv$collection_date[!token_mask] <- rep(lubridate::origin, sum(!token_mask))
-  }
+  
 
   return(list(error=err,df=formatted_csv))
 }
