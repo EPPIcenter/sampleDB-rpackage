@@ -383,6 +383,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
       processed_file$RowNumber <- NULL
     },
     validation_error = function(e) {
+
       # TODO: Make this return the users file with error annotation by row number (allow for multiple errors in cell)
       data1 <- lapply(1:length(e$data), function(x) {
         result <- list(Columns = e$data[[x]], CSV = inner_join(e$data[[x]], processed_file, by = colnames(e$data[[x]])))
@@ -556,6 +557,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
         if (length(rn) == 0) {
           formatted_csv$collection_date <- parsed_dates
           formatted_csv$collection_date[!token_mask] <- rep(lubridate::origin, sum(!token_mask))
+          formatted_csv$collection_date = as.character(formatted_csv$collection_date)
         }
 
         ## check that dates exist for longitudinal studies
@@ -577,15 +579,19 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
 
         ## Cryovials are required to have collection dates if they 
         if (sample_storage_type == 2) {
+
           rn = tbl(con, "formatted_csv") %>%
+            inner_join(tbl(con,"study") %>% dplyr::rename(study_id=id), by = c("study_short_code"="short_code")) %>%
+            inner_join(tbl(con, "study_subject") %>% dplyr::rename(study_subject_id=id, study_subject=name), by = c("study_subject")) %>%
             count(study_subject, study_short_code) %>%
             filter(n > 1) %>%
             inner_join(tbl(con, "formatted_csv"), by=c("study_subject", "study_short_code")) %>%
             filter(is.na(barcode) & is.na(collection_date)) %>%
             pull(RowNumber)
 
-          df = formatted_csv[rn,]
-          err <- .maybe_add_err(err, df, "Missing collection date found for sample in longitudinal study")
+          df = formatted_csv[rn,] %>% select(RowNumber, barcode, study_subject, study_short_code, collection_date)
+
+          err <- .maybe_add_err(err, df, "Sample must have a collection date if there is no barcode and there is already a sample from this study subject.")
         }
       }
 
