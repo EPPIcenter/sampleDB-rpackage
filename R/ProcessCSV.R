@@ -575,24 +575,6 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
         colnames(df) <- c("RowNumber", "study_short_code", "collection_date")
 
         err <- .maybe_add_err(err, df, "Missing collection date found for sample in longitudinal study")
-
-
-        ## Cryovials are required to have collection dates if they 
-        if (sample_storage_type == 2) {
-
-          rn = tbl(con, "formatted_csv") %>%
-            inner_join(tbl(con,"study") %>% dplyr::rename(study_id=id), by = c("study_short_code"="short_code")) %>%
-            inner_join(tbl(con, "study_subject") %>% dplyr::rename(study_subject_id=id, study_subject=name), by = c("study_subject")) %>%
-            count(study_subject, study_short_code) %>%
-            filter(n > 1) %>%
-            inner_join(tbl(con, "formatted_csv"), by=c("study_subject", "study_short_code")) %>%
-            filter(is.na(barcode) & is.na(collection_date)) %>%
-            pull(RowNumber)
-
-          df = formatted_csv[rn,] %>% select(RowNumber, barcode, study_subject, study_short_code, collection_date)
-
-          err <- .maybe_add_err(err, df, "Sample must have a collection date if there is no barcode and there is already a sample from this study subject.")
-        }
       }
 
       if (user_action == "move") {
@@ -652,7 +634,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
 
           } else {
 
-            # Cryovials are unique by study - they are also allowed to be left out
+            # Cryovial barcodes are unique by study - they are also allowed to be left out
             rn <- tbl(con, "formatted_csv") %>%
               filter(!is.na(barcode)) %>%  # Only check barcodes that exist in the upload
               inner_join(tbl(con, container_tables[["container_class"]]) %>%
@@ -667,6 +649,53 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
 
             err <- .maybe_add_err(err, df, "Barcodes found that already exist with current study")
           }
+        }
+
+
+        ###################################
+        ### Cryovial Upload Constraints ###
+        ###################################
+
+        if (user_action == "upload" && sample_storage_type == 2) {
+
+          ## if the study is not longitudinal, StudySubject must be unique within the study
+          rn <- tbl(con, "formatted_csv") %>%
+            inner_join(tbl(con, "study") %>% dplyr::rename("study_id" = "id"), by = c("study_short_code" = "short_code")) %>%
+            filter(is_longitudinal == 0) %>%
+            count(study,study_subject) %>%
+            filter(n > 1) %>%
+            pull(RowNumber)
+
+          df <- formatted_csv[rn, c("RowNumber", "study", "study_subject")]
+
+          err <- .maybe_add_err(err, df, "Study subjects must be unique in studies that are not longitudinal")
+
+
+          ## If the study is longitudinal, the study subject and collection date must be unique within the study
+          rn <- tbl(con, "formatted_csv") %>%
+            inner_join(tbl(con, "study") %>% dplyr::rename("study_id" = "id"), by = c("study_short_code" = "short_code")) %>%
+            filter(is_longitudinal == 1) %>%
+            count(study_subject, collection_date) %>%
+            filter(n > 1) %>%
+            pull(RowNumber)
+
+          df <- formatted_csv[rn, c("RowNumber", "study_subject", "collection_date")]
+
+          err <- .maybe_add_err(err, df, "Study subject and collection date must be unique within a longitudinal study")
+
+          ## Cryovials are required to have collection dates if they have no barcode and there is already a sample from the study subject in the study
+          rn = tbl(con, "formatted_csv") %>%
+            inner_join(tbl(con,"study") %>% dplyr::rename(study_id=id), by = c("study_short_code"="short_code")) %>%
+            inner_join(tbl(con, "study_subject") %>% dplyr::rename(study_subject_id=id, study_subject=name), by = c("study_subject")) %>%
+            count(study_subject, study_short_code) %>%
+            filter(n > 1) %>%
+            inner_join(tbl(con, "formatted_csv"), by=c("study_subject", "study_short_code")) %>%
+            filter(is.na(barcode) & is.na(collection_date)) %>%
+            pull(RowNumber)
+
+          df = formatted_csv[rn,] %>% select(RowNumber, barcode, study_subject, study_short_code, collection_date)
+
+          err <- .maybe_add_err(err, df, "Sample must have a collection date if there is no barcode and there is already a sample from this study subject.")
         }
 
         ## Check the references
