@@ -332,11 +332,54 @@ AppUploadSamples <- function(session, input, output, database) {
       },
       formatting_error = function(e) {
         message("Caught formatting error")
-        rv$error <- TRUE
+        print(e$df)
+
+        error$type <- "formatting"
         early_stop <<- TRUE
-        error$title = "Invalid File Detected"
-        error$message = e$message
-        error$list = e$df
+
+        ## Read File Specification File
+        file_specs_json <- rjson::fromJSON(file = system.file(
+          "extdata", "file_specifications.json", package = .sampleDB$pkgname))
+
+        sample_type_index <- which(lapply(file_specs_json$shared$sample_type, function(x) x$id) == input$UploadSampleType)
+
+        ## UI components that are put in place to fill missing data go here
+
+        manifest_name <- file_specs_json$shared$sample_type[[sample_type_index]]$manifest$name
+        location_parameters <- file_specs_json$shared$sample_type[[sample_type_index]]$location
+        location_parameters <- unlist(location_parameters[c("name", "level_I", "level_II")])
+        required_elements <- c()
+
+        columns <- e$df$column
+
+        missing <- columns[!columns %in% c(location_parameters, manifest_name)]
+        if (length(missing) > 0) {
+          rv$error <- TRUE
+          error$title = "Invalid File Detected"
+          error$message = e$message
+          error$list = e$df
+        } else {
+          if (manifest_name %in% columns) {
+            shinyjs::show("UploadManifestName")
+            required_elements <- c(required_elements, "UploadManifestName")
+          }
+
+          # should be all or none
+          if (all(location_parameters %in% columns)) {
+            shinyjs::show("UploadLocationRoot")
+            shinyjs::show("UploadLocationLevelI")
+            shinyjs::show("UploadLocationLevelII")
+            required_elements <- c(required_elements, c("UploadManifestName", "UploadLocationLevelI", "UploadLocationLevelII"))
+
+          }
+
+          shinyjs::disable("UploadSampleType")
+          shinyjs::disable("UploadFileType")
+
+          rv$required_elements <- required_elements
+          rv$user_action_required <- FALSE
+          rv$user_file <- NULL # sanity check
+        }
       },
       error = function(e) {
         early_stop <<- TRUE
