@@ -501,7 +501,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
       cols <- colnames(formatted_csv[, requires_data])[cs]
 
       if (length(cols) > 0) {
-        df <- formatted_csv[formatted_csv$RowNumber == rn, c("RowNumber", cols)]
+        df <- formatted_csv[formatted_csv$RowNumber %in% rn, c("RowNumber", cols)]
         err <- .maybe_add_err(err, df, "Rows found with missing data")
       }
 
@@ -550,14 +550,14 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
         ## Invalid formats will appear as NA in "parsed_dates". If they are also unrecognized tokens,
         ## report back to the user
         rn <- formatted_csv[!is.na(formatted_csv$collection_date) & is.na(parsed_dates) & token_mask,]$RowNumber  # Was not left out AND not a recognized date format AND not a recognized token
-        df <- formatted_csv[formatted_csv$RowNumber == rn, c("RowNumber", "collection_date")]
+        df <- formatted_csv[formatted_csv$RowNumber %in% rn, c("RowNumber", "collection_date")]
         colnames(df) <- c("RowNumber", "collection_date")
         string <- paste("Unrecognized strings found in collection date column. Add any of the following if the collection date is unknown:", paste(tokens, collapse=", "))
         err <- .maybe_add_err(err, df, string)
 
         rn <- formatted_csv[xor(is.na(parsed_dates[token_mask]), is.na(formatted_csv$collection_date[token_mask])),] %>% pull(RowNumber)
 
-        df <- formatted_csv[formatted_csv$RowNumber == rn, c("RowNumber", "collection_date")]
+        df <- formatted_csv[formatted_csv$RowNumber %in% rn, c("RowNumber", "collection_date")]
 
         err <- .maybe_add_err(err, df, "Rows found with improperly formatted dates")
         if (length(rn) == 0) {
@@ -592,7 +592,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
           filter(is.na(id)) %>%
           pull(RowNumber)
 
-        df <- formatted_csv[formatted_csv$RowNumber == rn, c("RowNumber", "barcode")]
+        df <- formatted_csv[formatted_csv$RowNumber %in% rn, c("RowNumber", "barcode")]
 
         err <- .maybe_add_err(err, df, "Barcode not found in database")
 
@@ -602,7 +602,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
           filter(is.na(id)) %>%
           pull(RowNumber)
 
-        df <- formatted_csv[formatted_csv$RowNumber == rn, c("RowNumber", "manifest_name")]
+        df <- formatted_csv[formatted_csv$RowNumber %in% rn, c("RowNumber", "manifest_name")]
 
         err <- .maybe_add_err(err, df, "Container not found")
 
@@ -614,7 +614,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
             filter(is.na(id)) %>%
             pull(RowNumber)
 
-          df <- formatted_csv[formatted_csv$RowNumber == rn, c("RowNumber", "barcode")]
+          df <- formatted_csv[formatted_csv$RowNumber %in% rn, c("RowNumber", "barcode")]
 
           err <- .maybe_add_err(err, df, "Barcodes not found in the database")
         }
@@ -634,7 +634,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
               filter(!is.na(id)) %>%
               pull(RowNumber)
 
-            df <- formatted_csv[formatted_csv$RowNumber == rn, c("RowNumber", "barcode")]
+            df <- formatted_csv[formatted_csv$RowNumber %in% rn, c("RowNumber", "barcode")]
 
             err <- .maybe_add_err(err, df, "Barcodes already exist in the database")
 
@@ -651,7 +651,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
               inner_join(tbl(con, "study") %>% dplyr::rename("study_id" = "id"), by = c("study_id", "study_short_code" = "short_code")) %>%
               pull(RowNumber)
 
-            df <- formatted_csv[formatted_csv$RowNumber == rn, c("RowNumber", "barcode", "study_short_code")]
+            df <- formatted_csv[formatted_csv$RowNumber %in% rn, c("RowNumber", "barcode", "study_short_code")]
 
             err <- .maybe_add_err(err, df, "Barcodes found that already exist with current study")
           }
@@ -677,7 +677,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
             filter(n > 1) %>%
             pull(RowNumber)
 
-          df <- formatted_csv[formatted_csv$RowNumber == rn, c("RowNumber", "study", "study_subject")]
+          df <- formatted_csv[formatted_csv$RowNumber %in% rn, c("RowNumber", "study", "study_subject")]
 
           err <- .maybe_add_err(err, df, "Study subjects must be unique in studies that are not longitudinal")
 
@@ -690,7 +690,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
             filter(n > 1) %>%
             pull(RowNumber)
 
-          df <- formatted_csv[formatted_csv$RowNumber == rn, c("RowNumber", "study_subject", "collection_date")]
+          df <- formatted_csv[formatted_csv$RowNumber %in% rn, c("RowNumber", "study_subject", "collection_date")]
 
           err <- .maybe_add_err(err, df, "Study subject and collection date must be unique within a longitudinal study")
 
@@ -704,7 +704,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
             filter(is.na(barcode) & is.na(collection_date)) %>%
             pull(RowNumber)
 
-          df = formatted_csv[formatted_csv$RowNumber == rn,] %>% select(RowNumber, barcode, study_subject, study_short_code, collection_date)
+          df = formatted_csv[formatted_csv$RowNumber %in% rn,] %>% select(RowNumber, barcode, study_subject, study_short_code, collection_date)
 
           err <- .maybe_add_err(err, df, "Sample must have a collection date if there is no barcode and there is already a sample from this study subject.")
         }
@@ -716,7 +716,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
           filter(is.na(id)) %>%
           pull(RowNumber)
 
-        df <- formatted_csv[formatted_csv$RowNumber == rn, c("RowNumber", "study_short_code")]
+        df <- formatted_csv[formatted_csv$RowNumber %in% rn, c("RowNumber", "study_short_code")]
 
         err <- .maybe_add_err(err, df, "Study not found")
 
@@ -725,7 +725,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
           filter(is.na(id)) %>%
           pull(RowNumber)
 
-        df <- formatted_csv[formatted_csv$RowNumber == rn, c("RowNumber", "specimen_type")]
+        df <- formatted_csv[formatted_csv$RowNumber %in% rn, c("RowNumber", "specimen_type")]
 
         err <- .maybe_add_err(err, df, "Specimen type not found")
 
@@ -735,7 +735,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
           filter(is.na(location_id)) %>%
           pull(RowNumber)
 
-        df <- formatted_csv[formatted_csv$RowNumber == rn, c("RowNumber", "name", "level_I", "level_II")]
+        df <- formatted_csv[formatted_csv$RowNumber %in% rn, c("RowNumber", "name", "level_I", "level_II")]
 
         errstring = sprintf("The following %s, %s and / or %s are not found in the database", dbmap["name"], dbmap["level_I"], dbmap["level_II"])
         err <- .maybe_add_err(err, df, errstring)
@@ -763,7 +763,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
             inner_join(tbl(con, "formatted_csv"), by = c("manifest_name", "position")) %>%
             pull(RowNumber)
 
-          df <- formatted_csv[formatted_csv$RowNumber == rn, c("RowNumber", "position", "manifest_name")]
+          df <- formatted_csv[formatted_csv$RowNumber %in% rn, c("RowNumber", "position", "manifest_name")]
 
           err <- .maybe_add_err(err, df, paste0(action, " sample to well location that already has an active sample"))
 
@@ -782,7 +782,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
             inner_join(tbl(con, "formatted_csv"), by = c("manifest_name", "position")) %>%
             pull(RowNumber)
 
-          df <- formatted_csv[formatted_csv$RowNumber == rn, c("RowNumber", "position")]
+          df <- formatted_csv[formatted_csv$RowNumber %in% rn, c("RowNumber", "position")]
 
           err <- .maybe_add_err(err, df, paste0(action, " sample to well location that already has an active sample"))
         }
