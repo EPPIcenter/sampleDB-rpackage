@@ -399,6 +399,10 @@ AppMoveSamples <- function(session, input, output, database) {
         for (i in 1:length(dataset[,1])) {
           manifest_name <- sub('\\.csv$', '', dataset[i,]$name)
 
+          if(input$MoveTraxcerStripFromFilename) {
+            manifest_name <- substr(manifest_name, 1, nchar(manifest_name)-16)
+          }
+
           ## format the file
           result <- ProcessCSV(
             user_csv = dataset[i,]$datapath,
