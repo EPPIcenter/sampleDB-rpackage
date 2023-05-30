@@ -275,9 +275,9 @@ SearchSamples <- function(sample_storage_type, filters = NULL, format = NULL, da
               )
             )
           }
+          db.results <- filter(db.results, collection_date %within% intervals)
         }
 
-        db.results <- filter(db.results, collection_date %within% intervals)
       }
 
       if (!is.null(format)) {
@@ -301,9 +301,8 @@ SearchSamples <- function(sample_storage_type, filters = NULL, format = NULL, da
               )
             )
           }
+          db.results <- filter(db.results, collection_date %within% intervals) 
         }
-
-        db.results <- filter(db.results, collection_date %within% intervals) 
       }
 
       if (!is.null(format)) {

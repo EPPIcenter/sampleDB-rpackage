@@ -121,7 +121,8 @@ SearchDelArchSamples <- function(session, input, database, output, DelArch = FAL
     dbmap$status <- "Status"
 
     rv$dbmap <- dbmap
-    rv$search_table <- SearchSamples(input$DelArchSearchBySampleType, include_internal_sample_id = TRUE)
+    filters <- purrr::discard(rv$filters[!names(rv$filters) %in% c("location", "collection_date")], function(x) is.null(x) | "" %in% x | length(x) == 0)
+    rv$search_table <- SearchSamples(input$DelArchSearchBySampleType, filters = filters, include_internal_sample_id = TRUE)
 
     .ResetDelArchInputs(session, input, rv$search_table)
   })
@@ -129,35 +130,33 @@ SearchDelArchSamples <- function(session, input, database, output, DelArch = FAL
   observe({
     output$DelArchSearchResultsTable <- renderReactable({
       rt = NULL
-      if ("" != local(input$DelArchSearchByState) && "" != local(input$DelArchSearchByStatus)) {
-        search_table = rv$search_table %>% select(names(rv$dbmap))
-        colnames(search_table) <- unname(rv$dbmap)
-        rt <- reactable(
-          search_table,
-          defaultColDef = colDef(minWidth = 95, html = TRUE, sortable = TRUE, resizable = FALSE, na = "-", align = "center"),
-          searchable = TRUE,
-          selection = "multiple", 
-          onClick = "select",
-          columns = list(
-            .selection = colDef(
-              headerStyle = list(pointerEvents = "none")
-            )
-          ),
-          striped = TRUE,
-          showPageSizeOptions = TRUE,
-          theme = reactableTheme(
-            headerStyle = list(
-              "& input[type='checkbox']" = list(display = "none"),
-              "&:hover[aria-sort]" = list(background = "hsl(0, 0%, 96%)"),
-              "&[aria-sort='ascending'], &[aria-sort='descending']" = list(background = "hsl(0, 0%, 96%)"),
-              borderColor = "#555"
-            ),
-            rowSelectedStyle = list(backgroundColor = '#aafaff', boxShadow = 'inset 2px 0 0 0 #ffa62d')
+      search_table = rv$search_table %>% select(names(rv$dbmap))
+      colnames(search_table) <- unname(rv$dbmap)
+      rt <- reactable(
+        search_table,
+        defaultColDef = colDef(minWidth = 95, html = TRUE, sortable = TRUE, resizable = FALSE, na = "-", align = "center"),
+        searchable = TRUE,
+        selection = "multiple", 
+        onClick = "select",
+        columns = list(
+          .selection = colDef(
+            headerStyle = list(pointerEvents = "none")
           )
+        ),
+        striped = TRUE,
+        showPageSizeOptions = TRUE,
+        theme = reactableTheme(
+          headerStyle = list(
+            "& input[type='checkbox']" = list(display = "none"),
+            "&:hover[aria-sort]" = list(background = "hsl(0, 0%, 96%)"),
+            "&[aria-sort='ascending'], &[aria-sort='descending']" = list(background = "hsl(0, 0%, 96%)"),
+            borderColor = "#555"
+          ),
+          rowSelectedStyle = list(backgroundColor = '#aafaff', boxShadow = 'inset 2px 0 0 0 #ffa62d')
         )
+      )
 
-        return(rt)
-      }
+      return(rt)
     })
 
     rv$filters <- list(
@@ -169,52 +168,36 @@ SearchDelArchSamples <- function(session, input, database, output, DelArch = FAL
         date.from = input$dateRange[1],
         date.to = input$dateRange[2]
       ), 
-      name = input$DelArchSearchByLocation,
-      level_I = input$DelArchSearchByLevelI,
-      level_II = input$DelArchSearchByLevelII,
-      # state = input$DelArchSearchByState,
+      location = list(
+        name = input$DelArchSearchByLocation,
+        level_I = input$DelArchSearchByLevelI,
+        level_II = input$DelArchSearchByLevelII
+      ),
+      state = input$DelArchSearchByState,
       status = input$DelArchSearchByStatus
     )
   })
 
-  observeEvent(rv$filters, {
+  observe({
 
     filters <- purrr::discard(rv$filters[!names(rv$filters) %in% c("location", "collection_date")], function(x) is.null(x) | "" %in% x | length(x) == 0)
+    filters$location <- purrr::discard(rv$filters$location, function(x) is.null(x) | "" %in% x | length(x) == 0)
+    filters$location <- if (length(filters$location) > 0) filters$location
 
-    if (!is.null(rv$search_table) && any(names(filters) %in% colnames(rv$search_table))) {
+    filters$collection_date <- purrr::discard(rv$filters$collection_date, function(x) is.null(x) | "" %in% x | length(x) == 0)
+    filters$collection_date <- if (length(filters$collection_date) > 0) filters$collection_date
 
-      filtered = inner_join(data.frame(filters), rv$search_table)
-      intervals <- list()
+    rv$search_table <- SearchSamples(input$DelArchSearchBySampleType, filters = filters, include_internal_sample_id = TRUE)
+    
+  })
 
-      if (!is.null(rv$filters$collection_date) && sum(is.na(rv$filters$collection_date)) == 0) {      
-        if (!is.null(rv$filters$collection_date$date.from) && !is.null(rv$filters$collection_date$date.to)) {
-          for (i in 1:length(rv$filters$collection_date$date.from)) {
-            intervals <- append(
-              intervals,
-              list(
-                interval(
-                  lubridate::as_date(local(rv$filters$collection_date$date.from[i])),
-                  lubridate::as_date(local(rv$filters$collection_date$date.to[i]))
-                )
-              )
-            )
-          }
-        }
-      }
+  observe({
 
-      filtered = if (length(intervals) > 0) filter(filtered, collection_date %within% intervals) else filtered
-      rv$filtered_sample_container_ids = filtered$storage_container_id # assign before renaming filtered table column names
-      filtered = filtered %>% select(names(rv$dbmap))
-      colnames(filtered) <- unname(rv$dbmap)
-      updateReactable("DelArchSearchResultsTable", data = filtered)
-    }
-    #  else {
-    #   rv$filtered_sample_container_ids = rv$search_table$storage_container_id
-    #   search_table <- rv$search_table %>% select(names(rv$dbmap))
-    #   colnames(search_table) <- unname(rv$dbmap)
-    #   rv$filtered_sample_container_ids = search_table$storage_container_id
-    #   updateReactable("DelArchSearchResultsTable", data = search_table)
-    # }
+    filtered = rv$search_table %>% select(names(rv$dbmap))
+    colnames(filtered) <- unname(rv$dbmap)
+
+    updateReactable("DelArchSearchResultsTable", data = filtered)
+
   })
 
   ### DelArchSearch by file
@@ -336,11 +319,17 @@ SearchDelArchSamples <- function(session, input, database, output, DelArch = FAL
 
   observeEvent(input$DelArchSearchByStudy, ignoreInit = TRUE, { 
 
+    con <- DBI::dbConnect(RSQLite::SQLite(), Sys.getenv("SDB_PATH"))
     choices <- NULL
     if (!is.null(input$DelArchSearchByStudy) && input$DelArchSearchByStudy != "") {
-      choices <- rv$search_table %>% filter(short_code == input$DelArchSearchByStudy) %>% pull(study_subject)
+      choices <- tbl(con, "study") %>%
+        inner_join(tbl(con, "study_subject"), by = c("id"="study_id")) %>%
+        filter(short_code == local(input$DelArchSearchByStudy)) %>%
+        pull(name)
     } else {
-      choices <- rv$search_table$study_subject
+      choices <- tbl(con, "study") %>%
+        inner_join(tbl(con, "study_subject"), by = c("id"="study_id")) %>%
+        pull(name)
     }
 
     updateSelectizeInput(
@@ -351,6 +340,8 @@ SearchDelArchSamples <- function(session, input, database, output, DelArch = FAL
       choices = choices,
       server = TRUE
     )
+
+    dbDisconnect(con)
   })
 
   observeEvent(input$DelArchSearchByLocation, ignoreInit = TRUE, {
@@ -412,7 +403,7 @@ SearchDelArchSamples <- function(session, input, database, output, DelArch = FAL
 
   observeEvent(input$ArchiveAction, ignoreInit = TRUE, {
 
-    user.filtered.rows = rv$search_table %>% filter(storage_container_id %in% rv$filtered_sample_container_ids)
+    user.filtered.rows = rv$search_table
     user.selected.rows = user.filtered.rows[selected(), ]
 
     rt.select = names(rv$dbmap[names(rv$dbmap) %in% colnames(user.selected.rows)])
@@ -482,7 +473,7 @@ SearchDelArchSamples <- function(session, input, database, output, DelArch = FAL
     shinyjs::disable("Archive")
     showNotification("Working...", id = "ArchDelNotification", type = "message", action = NULL, duration = 5, closeButton = FALSE)
 
-    user.filtered.rows = rv$search_table %>% filter(storage_container_id %in% rv$filtered_sample_container_ids)
+    user.filtered.rows = rv$search_table
     user.selected.rows = user.filtered.rows[selected(), ]
 
     ArchiveAndDeleteSamples(
@@ -494,6 +485,7 @@ SearchDelArchSamples <- function(session, input, database, output, DelArch = FAL
     )
 
     database <- file.path(Sys.getenv("SDB_PATH"))
+
     updated_values <- rv$search_table %>%
       select(storage_container_id) %>%
       filter(storage_container_id %in% user.selected.rows$storage_container_id) %>%
@@ -516,7 +508,7 @@ SearchDelArchSamples <- function(session, input, database, output, DelArch = FAL
 
   observeEvent(input$DeleteAction, ignoreInit = TRUE, {
 
-    user.filtered.rows = rv$search_table %>% filter(storage_container_id %in% rv$filtered_sample_container_ids)
+    user.filtered.rows = rv$search_table
     user.selected.rows = user.filtered.rows[selected(), ]
 
     rt.select = names(rv$dbmap[names(rv$dbmap) %in% colnames(user.selected.rows)])
@@ -558,7 +550,7 @@ SearchDelArchSamples <- function(session, input, database, output, DelArch = FAL
     shinyjs::disable("Delete")
     showNotification("Working...", id = "ArchDelNotification", type = "message", action = NULL, duration = 5, closeButton = FALSE)
 
-    user.selected.rows = rv$search_table %>% filter(storage_container_id %in% rv$filtered_sample_container_ids)
+    user.selected.rows = rv$search_table
     user.selected.rows = user.selected.rows[selected(), ]
 
     ArchiveAndDeleteSamples(
@@ -569,7 +561,7 @@ SearchDelArchSamples <- function(session, input, database, output, DelArch = FAL
       verification = FALSE
     )
 
-    user.filtered.rows = rv$search_table %>% filter(storage_container_id %in% rv$filtered_sample_container_ids)
+    user.filtered.rows = rv$search_table
     user.selected.rows = user.filtered.rows[selected(), ]
 
     rv$search_table <- rv$search_table[!rv$search_table$storage_container_id %in% user.selected.rows$storage_container_id, ]
@@ -588,7 +580,7 @@ SearchDelArchSamples <- function(session, input, database, output, DelArch = FAL
         paste('data-', Sys.Date(), '.csv', sep='')
       },
       content = function(con) {
-        user.filtered.rows = rv$search_table %>% filter(storage_container_id %in% rv$filtered_sample_container_ids)
+        user.filtered.rows = rv$search_table
         user.selected.rows <- if (length(selected() > 0)) user.filtered.rows[selected(), ] else user.filtered.rows
 
         rt.select = names(rv$dbmap[names(rv$dbmap) %in% colnames(user.selected.rows)])
@@ -676,6 +668,8 @@ SearchDelArchSamples <- function(session, input, database, output, DelArch = FAL
   updateSelectizeInput(session, "DelArchSearchBySubjectUID", "Study Subject", choices = study_subjects, selected = FALSE, server = TRUE)
   updateSelectizeInput(session, "DelArchSearchBySpecimenType", "Specimen Type", choices = specimen_types, selected = FALSE, server = TRUE)
   updateSelectizeInput(session, "DelArchSearchByLocation", "Storage Location", choices = locations, selected = FALSE, server = TRUE)
+  updateSelectizeInput(session, "DelArchSearchByState", "State", choices = DBI::dbReadTable(con, "state")$name, selected = "Active")
+  updateSelectizeInput(session, "DelArchSearchByStatus", "Status", choices = c("In Use"), selected = "In Use")
 
   dbDisconnect(con)
 
