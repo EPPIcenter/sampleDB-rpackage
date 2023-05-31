@@ -11,6 +11,11 @@ for(server_helper in list.files(path = "server_helpers", full.names = T, recursi
 }
 
 function(input, output, session) {
+ 
+    dbUpdateEvent <- reactivePoll(1000 * 5, NULL,
+      function() file.mtime(Sys.getenv("SDB_PATH")),
+      function() TRUE
+    )
   
     # Back up database when app is fired up... supplementary files such as the backup generator are stored in /extdata
     # for (i in system("bash /sampleDB_backup_generator.sh", intern = TRUE)) message(i)
@@ -31,7 +36,7 @@ function(input, output, session) {
     # --------- Upload Samples -------------
 
     # Upload Micronix Samples
-    AppUploadSamples(session, input, output, database)
+    AppUploadSamples(session, input, output, database, dbUpdateEvent)
     
     # Upload Cryo Samples
     # CryoUpload(session, output, input, database)
@@ -44,7 +49,7 @@ function(input, output, session) {
     
     # -------- Search, Archive and Delete Samples -------------
     
-    SearchDelArchSamples(session, input, database, output)    
+    SearchDelArchSamples(session, input, database, output, dbUpdateEvent)    
     
     # -------- Move Samples -------------
 
@@ -52,7 +57,7 @@ function(input, output, session) {
 
     # -------- Edit Containers --------
     
-    EditWetlabContainers(session, input, database, output)  
+    EditWetlabContainers(session, input, database, output, dbUpdateEvent)  
 
     # -------- Delete Empty Container --------
     

@@ -11,7 +11,7 @@ library(shinybusy)
 # perform various checks of "user provided" file, reformat "user provided" file, and print user messages if file does not pass checks
 # checks in ui can unfortunately be ignored by the user
 
-AppUploadSamples <- function(session, input, output, database) {
+AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
 
   rv <- reactiveValues(
     user_file = NULL, # this holds a file that is ready for upload
@@ -440,6 +440,76 @@ AppUploadSamples <- function(session, input, output, database) {
       rv$user_file <- NULL
       rv$console_verbatim <- FALSE
     })
+
+  })
+
+  observeEvent(dbUpdateEvent(), {
+
+    con <- dbConnect(SQLite(), Sys.getenv("SDB_PATH"))
+      sample_type_id <- as(local(input$UploadSampleType), "integer")
+
+    sample_type_name <- DBI::dbReadTable(con, "sample_type") %>%
+      filter(id == sample_type_id) %>%
+      pull(name)
+
+    updateSelectInput(
+      session, 
+      "UploadLocationRoot",
+      selected = input$UploadLocationRoot,
+      choices = c("", tbl(con, "location") %>%
+        collect() %>% 
+        pull(name) %>%
+        unique(.)
+      )
+    )
+
+    manifest <- switch(
+      sample_type_name,
+      "Micronix" = "micronix_plate",
+      "Cryovial" = "cryovial_box",
+      "DBS" = "dbs_paper"
+    )
+
+
+    updateSelectizeInput(
+      session,
+      "UploadManifestName",
+      label = switch(
+        sample_type_name,
+        "Micronix" = "Plate Name",
+        "Cryovial" = "Box Name",
+        "DBS" = "Paper Name"
+      ),
+      selected = input$UploadManifestName,
+      choices = c("", DBI::dbReadTable(con, manifest) %>% pull(name)),
+      options = list(create = TRUE)
+    )
+
+    updateSelectInput(
+      session,
+      "UploadLocationLevelI",
+      selected = input$UploadLocationLevelI,
+      label = switch(
+        sample_type_name,
+        "Micronix" = "Shelf Name", 
+        "Cryovial" = "Rack Number",
+        "DBS" = "To Be Implemented"
+      )
+    )
+
+    updateSelectInput(
+      session,
+      "UploadLocationLevelII",
+      selected = input$UploadLocationLevelII,
+      label = switch(
+        sample_type_name,
+        "Micronix" = "Basket Name",
+        "Cryovial" = "Rack Position",
+        "DBS" = "To Be Implemented"
+      )
+    )
+
+    dbDisconnect(con)
 
   })
 

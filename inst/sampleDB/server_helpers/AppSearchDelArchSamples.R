@@ -3,7 +3,7 @@ library(RSQLite)
 library(DBI)
 library(stringr)
 
-SearchDelArchSamples <- function(session, input, database, output, DelArch = FALSE){
+SearchDelArchSamples <- function(session, input, database, output, dbUpdateEvent){
   
   # get DelArchSearch ui elements
   rv <- reactiveValues(user_file = NULL, error = NULL, search_table = NULL, filters = NULL, dbmap = NULL, operation = NULL, filtered_sample_container_ids = NULL)
@@ -130,8 +130,15 @@ SearchDelArchSamples <- function(session, input, database, output, DelArch = FAL
   observe({
     output$DelArchSearchResultsTable <- renderReactable({
       rt = NULL
-      search_table = rv$search_table %>% select(names(rv$dbmap))
-      colnames(search_table) <- unname(rv$dbmap)
+      search_table = NULL
+      if (!is.null(rv$search_table)) {   
+        search_table = rv$search_table %>% select(names(rv$dbmap))
+        colnames(search_table) <- unname(rv$dbmap)
+      } else {
+        search_table = as.data.frame(matrix(ncol=length(rv$dbmap), nrow=0))
+        colnames(search_table) <- unname(rv$dbmap)
+      }
+
       rt <- reactable(
         search_table,
         defaultColDef = colDef(minWidth = 95, html = TRUE, sortable = TRUE, resizable = FALSE, na = "-", align = "center"),
@@ -165,8 +172,8 @@ SearchDelArchSamples <- function(session, input, database, output, DelArch = FAL
       study_subject = input$DelArchSearchBySubjectUID,
       specimen_type = input$DelArchSearchBySpecimenType,
       collection_date = list(
-        date.from = input$dateRange[1],
-        date.to = input$dateRange[2]
+        date.from = input$DelArchdateRange[1],
+        date.to = input$DelArchdateRange[2]
       ), 
       location = list(
         name = input$DelArchSearchByLocation,
@@ -179,7 +186,6 @@ SearchDelArchSamples <- function(session, input, database, output, DelArch = FAL
   })
 
   observe({
-
     filters <- purrr::discard(rv$filters[!names(rv$filters) %in% c("location", "collection_date")], function(x) is.null(x) | "" %in% x | length(x) == 0)
     filters$location <- purrr::discard(rv$filters$location, function(x) is.null(x) | "" %in% x | length(x) == 0)
     filters$location <- if (length(filters$location) > 0) filters$location
@@ -193,11 +199,16 @@ SearchDelArchSamples <- function(session, input, database, output, DelArch = FAL
 
   observe({
 
-    filtered = rv$search_table %>% select(names(rv$dbmap))
-    colnames(filtered) <- unname(rv$dbmap)
+    filtered=NULL
+    if (!is.null(rv$search_table)) {   
+      filtered = rv$search_table %>% select(names(rv$dbmap))
+      colnames(filtered) <- unname(rv$dbmap)
+    } else {
+      filtered = as.data.frame(matrix(ncol=length(rv$dbmap), nrow=0))
+      colnames(filtered) <- unname(rv$dbmap)
+    }
 
     updateReactable("DelArchSearchResultsTable", data = filtered)
-
   })
 
   ### DelArchSearch by file
@@ -275,7 +286,7 @@ SearchDelArchSamples <- function(session, input, database, output, DelArch = FAL
     message("Reset")
     updateRadioButtons(session, selected = "individual", "SubjectUIDDelArchSearchType", label = NULL, choices = list("Single Study Subject" = "individual", "Multiple Study Subjects" = "multiple"))
     
-    updateDateRangeInput(session, "dateRange", start = NA, end = NA) %>% suppressWarnings()
+    updateDateRangeInput(session, "DelArchdateRange", start = NA, end = NA) %>% suppressWarnings()
 
     .ResetDelArchInputs(session, input, rv$search_table)
 
@@ -289,14 +300,19 @@ SearchDelArchSamples <- function(session, input, database, output, DelArch = FAL
         date.from = NA,
         date.to = NA
       ), 
-      name = NULL,
-      level_I = NULL,
-      level_II = NULL,
+      location = list(
+        name = input$DelArchSearchByLocation,
+        level_I = input$DelArchSearchByLevelI,
+        level_II = input$DelArchSearchByLevelII
+      ),
       state = Global$DefaultStateDelArchSearchTerm,
       status = Global$DefaultStatusDelArchSearchTerm
     )
 
     # DelArchSearch file
+    rv$filters$state <- "Active"
+    rv$filters$status <- "In Use"
+
     rv$user_file <- NULL
     rv$filtered_sample_container_ids = NULL
   })
@@ -391,6 +407,54 @@ SearchDelArchSamples <- function(session, input, database, output, DelArch = FAL
         write.csv(rv$search_table, con, row.names = FALSE, quote = FALSE)
       }
     )
+  })
+
+
+  observeEvent(dbUpdateEvent(), {
+    con <- DBI::dbConnect(RSQLite::SQLite(), Sys.getenv("SDB_PATH"))
+
+    manifest <- switch(
+      input$DelArchSearchBySampleType,
+      "1" = "micronix_plate",
+      "2" = "cryovial_box",
+      "3" = "dbs_paper"
+    )
+
+    manifests = c()
+    if (is.null(manifest)) {
+      manifests = c(manifests, unique(tbl(con, "micronix_plate") %>% pull(name)))
+      manifests = c(manifests, unique(tbl(con, "cryovial_box") %>% pull(name)))
+      manifests = c(manifests, unique(tbl(con, "dbs_paper") %>% pull(name)))
+    } else {
+      manifests = unique(tbl(con, manifest) %>% pull(name))
+    }
+
+    short_codes = unique(tbl(con, "study") %>% pull(short_code))
+    study_subjects = unique(tbl(con, "study_subject") %>% pull(name))
+    specimen_types = unique(tbl(con, "specimen_type") %>% pull(name))
+    locations = unique(tbl(con, "location") %>% pull(name))
+
+    updateSelectizeInput(
+      session,
+      "DelArchSearchByManifest",
+      label = switch(
+          input$DelArchSearchBySampleType,
+          "1" = "Plate Name",
+          "2" = "Box Name",
+          "3" = "Paper Name",
+          "all" = "All Containers"
+      ),
+      selected = FALSE,
+      choices = manifests,
+      server = TRUE
+    )
+
+    updateSelectizeInput(session, "DelArchSearchByStudy", "Study", choices = short_codes, selected = input$DelArchSearchByStudy, server = TRUE)
+    updateSelectizeInput(session, "DelArchSearchBySubjectUID", "Study Subject", selected = input$DelArchSearchBySubjectUID, choices = study_subjects, server = TRUE)
+    updateSelectizeInput(session, "DelArchSearchBySpecimenType", "Specimen Type", selected = input$DelArchSearchBySpecimenType, choices = specimen_types, server = TRUE)
+    updateSelectizeInput(session, "DelArchSearchByLocation", "Storage Location", selected = input$DelArchSearchByLocation, choices = locations, server = TRUE)
+
+    dbDisconnect(con)
   })
 
 
@@ -504,7 +568,6 @@ SearchDelArchSamples <- function(session, input, database, output, DelArch = FAL
     removeNotification(id = "ArchDelNotification")
     removeModal()
   })
-
 
   observeEvent(input$DeleteAction, ignoreInit = TRUE, {
 

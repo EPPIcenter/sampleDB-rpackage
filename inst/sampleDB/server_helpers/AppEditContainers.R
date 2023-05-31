@@ -2,7 +2,7 @@ library(RSQLite)
 library(dplyr)
 library(shinyjs)
 
-EditWetlabContainers <- function(session, input, database, output){
+EditWetlabContainers <- function(session, input, database, output, dbUpdateEvent){
 
   rv <- reactiveValues(user_action_required = FALSE, error = NULL)
 
@@ -30,6 +30,68 @@ EditWetlabContainers <- function(session, input, database, output){
     error$message = ""
     rv$error <- NULL
     removeModal()
+  })
+
+  observeEvent(dbUpdateEvent(), {
+    manifest <- switch(
+      input$ContainerSampleType,
+      "1" = "micronix_plate",
+      "2" = "cryovial_box",
+      "3" = "dbs_paper"
+    )
+
+    database <- Sys.getenv("SDB_PATH")
+    con <-  RSQLite::dbConnect(RSQLite::SQLite(), database)
+
+    updateSelectInput(
+      session,
+      "ContainerManifestID",
+      label = switch(
+        input$ContainerSampleType,
+        "1" = "Plate Name",
+        "2" = "Box Name",
+        "3" = "Paper Name"
+      ),
+      choices = c("", DBI::dbReadTable(con, manifest) %>% pull(name)),
+      selected = input$ContainerManifestID
+    )
+
+    updateSelectInput(
+      session, 
+      "ContainerLocationRoot",
+      choices = c("", tbl(con, "location") %>%
+        collect() %>% 
+        pull(name) %>%
+        unique(.)
+      ),
+      selected = input$ContainerLocationRoot
+    )
+
+    updateSelectInput(
+      session,
+      "ContainerLocationLevelI",
+      label = switch(
+        input$ContainerSampleType,
+        "1" = "Shelf Name", 
+        "2" = "Rack Number",
+        "3" = "Shelf Name"
+      ),
+      selected = input$ContainerLocationLevelI
+    )
+
+    updateSelectInput(
+      session,
+      "ContainerLocationLevelII",
+      label = switch(
+        input$ContainerSampleType,
+        "1" = "Basket Name",
+        "2" = "Rack Position",
+        "3" = "Shelf Position"
+      ),
+      selected=input$ContainerLocationLevelII
+    )
+
+    DBI::dbDisconnect(con) 
   })
 
   observeEvent(input$ContainerSampleType, {
