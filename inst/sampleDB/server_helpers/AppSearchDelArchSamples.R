@@ -228,7 +228,7 @@ SearchDelArchSamples <- function(session, input, database, output, dbUpdateEvent
       )
 
       head(rv$user_file)
-      rv$filters$barcode <- rv$user_file[,2]
+      rv$filters$barcode <-rv$user_file %>% pull(Barcodes)
     },
     formatting_error = function(e) {
       message("Caught formatting error")
@@ -262,7 +262,7 @@ SearchDelArchSamples <- function(session, input, database, output, dbUpdateEvent
       )
 
       head(rv$filters$study_subject)
-      rv$filters$study_subject <- rv$user_file[,2]
+      rv$filters$study_subject <- rv$user_file %>% pull(StudySubjects)
     },
     formatting_error = function(e) {
       message("Caught formatting error")

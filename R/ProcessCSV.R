@@ -399,7 +399,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
 
   formatted_csv = formatted_csv %>%
     dplyr::mutate(row_number = row_number()) %>%
-    dplyr::mutate(collection_date = as.double(as.Date(formatted_csv$collection_date)))
+    dplyr::mutate(collection_date = as.double(lubridate::as_date(formatted_csv$collection_date)))
 
   con <- DBI::dbConnect(RSQLite::SQLite(), database)
   copy_to(con, formatted_csv)
@@ -407,7 +407,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
   # assign back a text version of the dates to the in-memory file. This will
   # be used for parsing validation. This implementation is due to the date type 
   # conversion from not working with dplyrs lazy-SQL generation. 
-  formatted_csv$collection_date = as.character(as.Date(formatted_csv$collection_date))
+  formatted_csv$collection_date = as.character(lubridate::as_date(formatted_csv$collection_date))
 
   bError <- FALSE
   err <- errmsg <- NULL
