@@ -399,8 +399,11 @@ AppMoveSamples <- function(session, input, output, database) {
         for (i in 1:length(dataset[,1])) {
           manifest_name <- sub('\\.csv$', '', dataset[i,]$name)
 
-          if(input$MoveTraxcerStripFromFilename) {
+          if(input$MoveFileType == "traxcer" && input$MoveTraxcerStripFromFilename) {
             manifest_name <- substr(manifest_name, 1, nchar(manifest_name)-16)
+            if (nchar(manifest_name) == 0) {
+              stop(sprintf("Traxcer name was completely removed - did you mean to remove the datetime string from the filename?"))
+            }
           }
 
           ## format the file

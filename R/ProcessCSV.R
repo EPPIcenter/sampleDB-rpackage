@@ -28,6 +28,7 @@
 #' @import dplyr
 #' @importFrom rlang abort
 #' @import rjson
+#' @import stringr
 #' @export ProcessCSV
 
 
@@ -224,76 +225,89 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
   # after the correct columns are found and chosen
   user_file <- dplyr::mutate(user_file)
   if (user_action %in% "upload") {
-    user_file <- select(user_file, all_of(required_user_column_names), contains(conditional_user_column_names), contains(optional_user_column_names))
+    user_file <- select(user_file, all_of(required_user_column_names), any_of(conditional_user_column_names), any_of(optional_user_column_names))
   } else if (user_action %in% c("move", "search")) {
     user_file <- select(user_file, all_of(required_user_column_names))
   }
 
-
-  # this will map the processed file back to the user file in case there are validation errors
-  dbmap <- NULL
-  dbmap$row_number <- "RowNumber"
-
-  ## pass the row id to link back to the actual user file, so that
-  # we can inform the user if there is an issue with one of their rows
-
-  if (user_action %in% c("upload", "move")) {
-
-    ## Micronix
-    if (sample_storage_type == 1 && file_type == "na") {
-      dbmap$barcode <- "Barcode"
-      dbmap$position <- c("Row", "Column")
-    } else if (sample_storage_type == 1 && file_type == "traxcer") {
-      dbmap$barcode <- "Tube ID"
-      dbmap$position <- traxcer_position
-    } else if (sample_storage_type == 1 && file_type == "visionmate") {
-      dbmap$barcode <- "Tube Row"
-      dbmap$position <- c("LocationRow", "LocationColumn")
-    }
-
-    ## Cryovial
-    else if (sample_storage_type == 2) {
-      dbmap$barcode <- "Barcode"
-      dbmap$position <- c("BoxRow", "BoxColumn")
-
-    ## DBS
-    } else if (sample_storage_type == 3) {
-      dbmap$position <- c("Row", "Column")
-    } else {
-      stop("Unimplemented position formatting code for this sample type.")
-    }
-  }
-
-  # conditional and optional columns only apply for uploads.
-  # search files only contain optional columns.
-  # metadata only applies for uploads.
-
-  if ("upload" %in% c(user_action)) {
-
-    dbmap$study_short_code <- "StudyCode"
-    dbmap$study_subject <- "StudySubject"
-    dbmap$specimen_type <- "SpecimenType"
-    dbmap$collection_date <- "CollectionDate"
-    dbmap$comment <- "Comment"
-    dbmap['name'] <- unname(location_parameters['name'])
-    dbmap['level_I'] <- unname(location_parameters['level_I'])
-    dbmap['level_II'] <- unname(location_parameters['level_II'])
-
-    dbmap$manifest_barcode <- manifest_barcode_name
-  }
-
-  if (user_action %in% c("upload", "move")) {
-    dbmap$manifest_name <- manifest_name
-  }
-
-
-
-  ### Quality check the data now
-
-  message("Formatting complete.")
+  message("Required columns detected.")
 
   if (validate) {
+
+    ### Quality check the data now
     tryCatch({
+
+      # this will map the processed file back to the user file in case there are validation errors
+      dbmap <- NULL
+      dbmap$row_number <- "RowNumber"
+
+      ## pass the row id to link back to the actual user file, so that
+      # we can inform the user if there is an issue with one of their rows
+
+      if (user_action %in% c("upload", "move")) {
+
+        ## Micronix
+        if (sample_storage_type == 1 && file_type == "na") {
+          dbmap$barcode <- "Barcode"
+          dbmap$position <- c("Row", "Column")
+        } else if (sample_storage_type == 1 && file_type == "traxcer") {
+          dbmap$barcode <- "Tube ID"
+          dbmap$position <- traxcer_position
+        } else if (sample_storage_type == 1 && file_type == "visionmate") {
+          dbmap$barcode <- "Tube Row"
+          dbmap$position <- c("LocationRow", "LocationColumn")
+        }
+
+        ## Cryovial
+        else if (sample_storage_type == 2) {
+          dbmap$barcode <- "Barcode"
+          dbmap$position <- c("BoxRow", "BoxColumn")
+
+        ## DBS
+        } else if (sample_storage_type == 3) {
+          dbmap$position <- c("Row", "Column")
+        } else {
+          stop("Unimplemented position formatting code for this sample type.")
+        }
+      }
+
+      # conditional and optional columns only apply for uploads.
+      # search files only contain optional columns.
+      # metadata only applies for uploads.
+
+      if ("upload" %in% c(user_action)) {
+
+        dbmap$study_short_code <- "StudyCode"
+        dbmap$study_subject <- "StudySubject"
+        dbmap$specimen_type <- "SpecimenType"
+        dbmap$collection_date <- "CollectionDate"
+        dbmap$comment <- "Comment"
+        dbmap['name'] <- unname(location_parameters['name'])
+        dbmap['level_I'] <- unname(location_parameters['level_I'])
+        dbmap['level_II'] <- unname(location_parameters['level_II'])
+
+        dbmap$manifest_barcode <- manifest_barcode_name
+      }
+
+      if (user_action %in% c("upload", "move")) {
+        dbmap$manifest_name <- manifest_name
+      }
+
+      for (nm in names(dbmap)) {
+        if (!all(dbmap[[nm]] %in% colnames(user_file))) {
+          if (nm == "manifest_name" && !is.null(container_name)) {
+            user_file[[dbmap[[nm]]]]  = c(container_name)
+          }
+        }
+      }
+
+      ## In cases where the CSV file was generated by certain software platforms (ie. traxcer),
+      ## empty barcodes show be allowed and simply filtered out 
+      if (sample_storage_type == "1" && file_type=="traxcer") {
+        message(sprintf("Removed %d rows with no barcode entries.", sum(is.na(user_file$`Tube ID`))))
+        user_file <- user_file[!is.na(user_file$`Tube ID`),]
+      }
+
       user_file <- .CheckFormattedFileData(
         database = database,
         formatted_csv = user_file,
@@ -306,7 +320,6 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
       user_file$row_number <- NULL
     },
     validation_error = function(e) {
-
       user_file = dplyr::mutate(user_file, RowNumber = row_number())
 
       # TODO: Make this return the users file with error annotation by row number (allow for multiple errors in cell)
@@ -377,7 +390,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
     ))
   }
 
-  # create a dbversion to use for validation. store a backup to replace the 
+  # create a dbversion to use for validation. store a backup to replace the
   # when creating the error table
 
   for (nm in names(dbmap)) {
@@ -388,7 +401,12 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
     }
   }
 
-  # could be vectorized...
+  # add rownumbers now
+  formatted_csv = formatted_csv %>%
+    dplyr::mutate(row_number = row_number())
+
+  # these break down the position from A01 to `A` `01` and are used to map back to the original
+  # user file that has the position listed in two columns
   if (!is.null(formatted_csv[["position1"]]) && !is.null(formatted_csv[["position2"]])) {
     formatted_csv$position <- sprintf(
       "%s%02d",
@@ -397,17 +415,21 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
     )
   }
 
-  formatted_csv = formatted_csv %>%
-    dplyr::mutate(row_number = row_number()) %>%
-    dplyr::mutate(collection_date = as.double(lubridate::as_date(formatted_csv$collection_date)))
+  if (user_action %in% c("upload")) {
+    formatted_csv = formatted_csv %>%
+      dplyr::mutate(collection_date = as.double(lubridate::as_date(formatted_csv$collection_date)))
+  }
 
   con <- DBI::dbConnect(RSQLite::SQLite(), database)
   copy_to(con, formatted_csv)
 
-  # assign back a text version of the dates to the in-memory file. This will
-  # be used for parsing validation. This implementation is due to the date type 
-  # conversion from not working with dplyrs lazy-SQL generation. 
-  formatted_csv$collection_date = as.character(lubridate::as_date(formatted_csv$collection_date))
+  if (user_action %in% c("upload")) {
+
+    # assign back a text version of the dates to the in-memory file. This will
+    # be used for parsing validation. This implementation is due to the date type
+    # conversion not working with dplyrs lazy-SQL generation.
+    formatted_csv$collection_date = as.character(lubridate::as_date(formatted_csv$collection_date))
+  }
 
   bError <- FALSE
   err <- errmsg <- NULL
@@ -452,7 +474,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
             df <- formatted_csv[df$n > 1, ] %>% select(row_number, position1, position2, manifest_name)
           }
           .maybe_add_err(err, df, "Uploading at least two samples to the same position in a manifest", dbmap)
-        } 
+        }
       }
 
       df = CheckDuplicatedBarcodes(formatted_csv, sample_storage_type)
@@ -463,7 +485,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
           group_by(row_number) %>%
           reframe(
             letter_check = substr(position, 1, 1) %in% LETTERS,
-            barcode_check = str_length(barcode) == 10
+            barcode_check = nchar(barcode) == 10
           )
 
         rn = df.1 %>% select(row_number, letter_check) %>% filter(letter_check == FALSE) %>% pull(row_number)
@@ -873,7 +895,7 @@ stop_validation_error <- function(message, data) {
 CheckDuplicatedBarcodes <- function(formatted_csv, sample_storage_type) {
 
   # right now only accept Micronix and Cryovial storage types
-  if (sample_storage_type %in% c(1,2)) {
+  if (sample_storage_type %in% c(1)) {
     df <- formatted_csv %>%
       filter(!is.na(barcode)) %>%
       group_by(barcode) %>%

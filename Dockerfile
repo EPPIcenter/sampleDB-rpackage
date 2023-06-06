@@ -1,4 +1,4 @@
-FROM rocker/shiny:4.2.3
+FROM rocker/shiny:4.3.0
 RUN apt-get update && apt-get install -y  libicu-dev make pandoc zlib1g-dev sqlite3 && rm -rf /var/lib/apt/lists/*
 RUN mkdir -p /usr/local/lib/R/etc/ /usr/lib/R/etc/ /etc/xdg/ 
 RUN echo "options(repos = c(CRAN = 'https://cran.rstudio.com/'), download.file.method = 'libcurl', Ncpus = 4)" | tee /usr/local/lib/R/etc/Rprofile.site | tee /usr/lib/R/etc/Rprofile.site
@@ -20,6 +20,7 @@ RUN Rscript -e 'remotes::install_version("reactable",upgrade="never", version = 
 RUN Rscript -e 'remotes::install_version("lubridate",upgrade="never", version = "1.9.2")'
 RUN Rscript -e 'remotes::install_version("DT",upgrade="never", version = "0.27")'
 RUN Rscript -e 'remotes::install_version("dbplyr",upgrade="never", version = "2.3.2")'
+RUN Rscript -e 'remotes::install_version("stringr",upgrade="never", version = "1.5.0")'
 RUN mkdir /build_zone
 ADD . /build_zone
 WORKDIR /build_zone

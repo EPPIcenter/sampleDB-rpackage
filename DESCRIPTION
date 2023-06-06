@@ -31,6 +31,7 @@ Imports:
     RSQLite (>= 2.3.0),
     shinybusy (>= 0.3.1),
     shinyjs (>= 2.1.0),
+    stringr (>= 1.5.0),
     tools (>= 3.6.2),
     yaml (>= 2.3.7)
 Suggests: 
