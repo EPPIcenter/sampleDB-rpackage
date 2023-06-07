@@ -102,12 +102,6 @@ SearchDelArchSamples <- function(session, input, database, output, dbUpdateEvent
       dbmap$level_II <- "Rack Position"
       dbmap$manifest <- "Box Name"
       dbmap$manifest_barcode <- "Box Barcode"
-    } else if (input$DelArchSearchBySampleType == 3) {
-      dbmap$name <- "Freezer Name"
-      dbmap$level_I <- "Rack Number"
-      dbmap$level_II <- "Rack Position"
-      dbmap$manifest <- "Container Label"
-      dbmap$manifest_barcode <- "Paper Barcode"
     } else {
       # Defaults
       dbmap$name <- "Location"

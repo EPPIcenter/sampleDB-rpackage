@@ -32,7 +32,9 @@ navbarPage("EPPIcenter SampleDB",
   navbarMenu("Update References",
             tabPanel("Freezers", UIFreezerReference()),
             tabPanel("Specimen Types", UISpecimenTypeReference()),
-            tabPanel("Studies", UIStudiesReference())),
+            tabPanel("Studies", UIStudiesReference()),
+            tabPanel("Controls", UIControlsReference())
+  ),
   #about
   tabPanel("Preferences", UIPreferences())
 )

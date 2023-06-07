@@ -74,6 +74,9 @@ function(input, output, session) {
     # Update EPPIcenter Lab Studies
     UpdateLabStudies(session, input, output, database)
 
+    # Controls
+    ControlReference(session, input, output, database)
+
     # Configuration panel
     AppPreferencesPanel(session, input, output, database)
 

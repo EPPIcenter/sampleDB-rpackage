@@ -1,5 +1,6 @@
 ALTER TABLE "sample_type" ADD COLUMN "parent_id" INTEGER DEFAULT NULL REFERENCES "sample_type"("id");
 ALTER TABLE "dbs_spot" RENAME TO "dbs_control";
+ALTER TABLE "dbs_control" ADD COLUMN "control_combination_id" INTEGER NOT NULL REFERENCES "control_combination_key"("id");
 
 --- insert new derived sample types
 INSERT OR ROLLBACK INTO "sample_type" (name, parent_id)
@@ -7,6 +8,17 @@ VALUES
 	("Tube", 3),
 	("Paper", 3),
 	("Control", 3);
+
+--- DBS Sheet ---
+CREATE TABLE IF NOT EXISTS "dbs_control_sheet" (
+	"id"			INTEGER NOT NULL,
+	"bag_id"		INTEGER NOT NULL,
+
+	PRIMARY KEY("id"),
+	FOREIGN KEY("id") REFERENCES "storage_container"("id"),
+	FOREIGN KEY("bag_id") REFERENCES "dbs_bag"("id")
+);
+
 
 --- create the dbs bag that holds dbs paper ---
 CREATE TABLE IF NOT EXISTS "dbs_bag" (
@@ -22,34 +34,73 @@ CREATE TABLE IF NOT EXISTS "dbs_bag" (
 	FOREIGN KEY("location_id") REFERENCES "location"("id")
 );
 
-
 --- DBS Tube ---
 CREATE TABLE IF NOT EXISTS "dbs_tube" (
 	"id"			INTEGER NOT NULL,
-	"manifest_id"	INTEGER NOT NULL,
+	"box_id"		INTEGER NOT NULL,
 	"barcode"		VARCHAR NOT NULL UNIQUE,
 	"position"		VARCHAR CHECK(length("position") > 1 OR "position" IS NULL),
 
 	PRIMARY KEY("id"),
 	FOREIGN KEY("id") REFERENCES "storage_container"("id"),
-	FOREIGN KEY("manifest_id") REFERENCES "dbs_bag"("id"),
+	FOREIGN KEY("box_id") REFERENCES "dbs_bag"("id"),
 
-	CONSTRAINT "dbs_tube_position_manifest_id_uc" UNIQUE("position", "manifest_id")
+	CONSTRAINT "dbs_tube_position_box_id_uc" UNIQUE("position", "box_id")
 );
 
 --- DBS Paper ---
 CREATE TABLE IF NOT EXISTS "dbs_paper" (
 	"id"			INTEGER NOT NULL,
-	"manifest_id"	INTEGER NOT NULL,
-	"type"			INTEGER NOT NULL CHECK("type" == 5 OR "type" == 6),
-	"barcode"		VARCHAR CHECK("type" == 5 AND "barcode" IS NOT NULL),
-	"position"		VARCHAR CHECK(length("position") > 1 OR "position" IS NULL),
+	"bag_id"		INTEGER NOT NULL,
+	"barcode"		VARCHAR NOT NULL,
+	"date"			DATE NOT NULL,
+	"replicates"	INTEGER NOT NULL,
 
 	PRIMARY KEY("id"),
 	FOREIGN KEY("id") REFERENCES "storage_container"("id"),
-	FOREIGN KEY("manifest_id") REFERENCES "dbs_bag"("id"),
+	FOREIGN KEY("bag_id") REFERENCES "dbs_bag"("id"),
 
-	CONSTRAINT "dbs_paper_position_manifest_id_uc" UNIQUE("position", "manifest_id")
+	CONSTRAINT "dbs_paper_position_bag_id_uc" UNIQUE("position", "bag_id")
+);
+
+--- DBS Control ---
+CREATE TABLE IF NOT EXISTS "dbs_control" (
+	"id"			INTEGER NOT NULL,
+	"dbs_control_sheet_id"	INTEGER NOT NULL,
+	"position"		VARCHAR NOT NULL CHECK(length("position") == 3),
+
+	PRIMARY KEY(id),
+	FOREIGN KEY(id) REFERENCES "specimen"("id"),
+	FOREIGN KEY(dbs_control_sheet_id) REFERENCES "dbs_control_sheet"("id")
+);
+
+--- Identifier for the control combination ---
+CREATE TABLE IF NOT EXISTS "control" (
+	"id"			INTEGER NOT NULL,
+	"name"			VARCHAR NOT NULL UNIQUE,
+	"study_subject_id"	INTEGER NOT NULL,
+
+	PRIMARY KEY("id"),
+	FOREIGN KEY("study_subject_id") REFERENCES "study_subject"("id")
+);
+
+CREATE TABLE IF NOT EXISTS "strain" (
+	"id"			INTEGER NOT NULL,
+	"name"			VARCHAR NOT NULL UNIQUE,
+	"description"	VARCHAR,
+
+	PRIMARY KEY("id")
+);
+
+CREATE TABLE IF NOT EXISTS "control_strain" (
+	"id"			INTEGER NOT NULL,
+	"control_id"	INTEGER NOT NULL,
+	"strain_id" 	INTEGER NOT NULL,
+	"percentage"	INTEGER NOT NULL CHECK("percentage" > 0 AND "percentage" <= 100),
+
+	PRIMARY KEY ("id"),
+	FOREIGN KEY ("control_id") REFERENCES "control"("id"),
+	FOREIGN KEY ("strain_id") REFERENCES "strain"("id")
 );
 
 --- update database version ---
