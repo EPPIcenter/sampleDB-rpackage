@@ -106,6 +106,7 @@ GetUIStudiesElements <- function(msg = NULL){
                     AddStudyIsLongitudinal = "AddStudyIsLongitudinal",
                     AddStudyAction = "AddStudyAction",
                     ChangeStudyShortCode = "ChangeStudyShortCode",
+                    AddStudyIsControl = "AddStudyIsControl",
                     RenameStudyTitle = "RenameStudyTitle",
                     RenameStudyDescription = "RenameStudyDescription",
                     RenameStudyLeadPerson = "RenameStudyLeadPerson",

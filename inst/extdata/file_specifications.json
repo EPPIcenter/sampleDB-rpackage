@@ -124,7 +124,16 @@
           "required": [
             "UID",
             "Strains",
-            "Percentage"
+            "Percentage",
+            "Density"
+          ],
+          "optional": null,
+          "conditional": null
+        },
+        {
+          "id": 2,
+          "required": [
+            "Strains"
           ],
           "optional": null,
           "conditional": null

@@ -1,13 +1,15 @@
 ALTER TABLE "sample_type" ADD COLUMN "parent_id" INTEGER DEFAULT NULL REFERENCES "sample_type"("id");
-ALTER TABLE "dbs_spot" RENAME TO "dbs_control";
-ALTER TABLE "dbs_control" ADD COLUMN "control_combination_id" INTEGER NOT NULL REFERENCES "control_combination_key"("id");
+ALTER TABLE "study" ADD COLUMN "is_control" INTEGER DEFAULT 0;
+
+--- just remove dbs ---
+DROP TABLE "dbs_spot";
 
 --- insert new derived sample types
+
 INSERT OR ROLLBACK INTO "sample_type" (name, parent_id)
 VALUES
 	("Tube", 3),
-	("Paper", 3),
-	("Control", 3);
+	("Paper", 3);
 
 --- DBS Sheet ---
 CREATE TABLE IF NOT EXISTS "dbs_control_sheet" (
@@ -76,12 +78,11 @@ CREATE TABLE IF NOT EXISTS "dbs_control" (
 
 --- Identifier for the control combination ---
 CREATE TABLE IF NOT EXISTS "control" (
-	"id"			INTEGER NOT NULL,
-	"name"			VARCHAR NOT NULL UNIQUE,
-	"study_subject_id"	INTEGER NOT NULL,
+	"id"		INTEGER NOT NULL,
+	"density"	REAL NOT NULL,
 
 	PRIMARY KEY("id"),
-	FOREIGN KEY("study_subject_id") REFERENCES "study_subject"("id")
+	FOREIGN KEY("id") REFERENCES "study_subject"("id")
 );
 
 CREATE TABLE IF NOT EXISTS "strain" (

@@ -16,25 +16,32 @@ UIUploadSamples <- function() {
     sidebarPanel(
       shinyjs::useShinyjs(),
       width = 3,
-      h4("Upload Samples"),
-      radioButtons("UploadSampleType","Sample Storage Type", choices = DBI::dbReadTable(con, "sample_type") %>% filter(is.na(parent_id)) %>% pull(id, name = "name"), inline = TRUE),
-      shinyjs::hidden(radioButtons("UploadSampleSubType", "Derived Sample Storage Types", choices = DBI::dbReadTable(con, "sample_type") %>% filter(!is.na(parent_id)) %>% pull(id, name = "name"), inline = TRUE)),
-      hr(),
-      radioButtons("UploadFileType", "Choose a file type", choices = file_type_ids, inline = TRUE),
-      #upload data
-      fileInput("UploadSampleDataSet", "Upload Samples File", accept = c("text/csv", "text/comma-separated-values,text/plain", ".csv")),
-      #add freezer infor
-      shinyjs::hidden(selectizeInput("UploadManifestName", label = "Plate Name", choices = c(),  options = list(create = TRUE))),
-      shinyjs::hidden(selectInput("UploadLocationRoot", label = "Upload Location", choices = c())),        
-      shinyjs::hidden(selectInput("UploadLocationLevelI", label = "Shelf Name", choices = c())),
-      shinyjs::hidden(selectInput("UploadLocationLevelII", label = "Basket Name", choices = c())),
-      #output messages
+      radioButtons("UploadType", "Choose Your Upload Type", choices = c("Samples", "Controls"), selected = c("Samples")),
+      conditionalPanel(
+        condition = "input.UploadType == 'Samples'",
+        h4("Upload Samples"),
+        radioButtons("UploadSampleType","Sample Storage Type", choices = DBI::dbReadTable(con, "sample_type") %>% filter(is.na(parent_id)) %>% pull(id, name = "name"), inline = TRUE),
+        shinyjs::hidden(radioButtons("UploadSampleSubType", "Derived Sample Storage Types", choices = DBI::dbReadTable(con, "sample_type") %>% filter(!is.na(parent_id)) %>% pull(id, name = "name"), inline = TRUE)),
+        hr(),
+        radioButtons("UploadFileType", "Choose a file type", choices = file_type_ids, inline = TRUE),
+        #upload data
+        fileInput("UploadSampleDataSet", "Upload Samples File", accept = c("text/csv", "text/comma-separated-values,text/plain", ".csv")),
+        #add freezer infor
+        shinyjs::hidden(selectizeInput("UploadManifestName", label = "Plate Name", choices = c(),  options = list(create = TRUE))),
+        shinyjs::hidden(selectInput("UploadLocationRoot", label = "Upload Location", choices = c())),        
+        shinyjs::hidden(selectInput("UploadLocationLevelI", label = "Shelf Name", choices = c())),
+        shinyjs::hidden(selectInput("UploadLocationLevelII", label = "Basket Name", choices = c()))
+      ),
+      conditionalPanel(
+        condition = "input.UploadType == 'Controls'",
+        h4("Upload Controls"),
+        selectizeInput("UploadControlStudy", label = "Control Study", choices = dbReadTable(con, "study") %>% filter(is_control == 1) %>% pull(id, name = "short_code")),
+        fileInput("InputUploadControls", label = "Upload Allowed Control Combinations", accept = c("text/csv", "text/comma-separated-values,text/plain", ".csv"))
+      ),
       hr(),
       #action buttons
-      fluidRow(column(width = 6, actionButton("UploadAction", width = '100%', label = "Upload Samples")),
-               column(width = 6, actionButton("ClearUploadForm", width = '100%', label = "Clear Form"))
-      ),
-      br(),
+      fluidRow(column(width = 6, actionButton("UploadAction", width = '100%', label = "Upload")),
+               column(width = 6, actionButton("ClearUploadForm", width = '100%', label = "Clear Form"))),
       span(verbatimTextOutput("UploadOutputConsole"))
     ),
     mainPanel(

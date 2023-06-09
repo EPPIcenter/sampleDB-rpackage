@@ -139,6 +139,66 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
     )
   })
 
+  observeEvent(input$InputUploadControls, ignoreInit = TRUE, {
+    dataset <- input$InputUploadControls
+
+    message(paste("Loaded", dataset$name))
+
+    tryCatch({
+
+      ## format the file
+      rv$user_file <- ProcessCSV(
+        user_csv = dataset$datapath,
+        user_action = "upload",
+        file_type = "na",
+        reference = "control"
+      )
+    },
+    formatting_error = function(e) {
+      message("Caught formatting error")
+      print(e$df)
+
+      error$type <- "formatting"
+
+      ## Read File Specification File
+      error$title = "Invalid File Detected"
+      error$message = e$message
+      error$list = e$df
+
+      rv$error <- TRUE
+    },
+    validation_error = function(e) {
+
+      message("Caught validation error")
+      
+      rv$error <- TRUE
+      error$type <- "validation"
+      error$title <- e$message
+      error$list <- e$data
+
+      # TODO: breakup process csv into three stages(but keep calls in global process csv).
+      # Just download the error data frame for now.
+      errors <- names(e$data)
+      df <- lapply(1:length(errors), function(idx) {
+        e$data[[idx]]$CSV %>%
+          mutate(Error = errors[idx]) %>%
+          mutate(ErrCol = paste(e$data[[idx]]$Columns, collapse = ",")) %>%
+          select(Error, colnames(e$data[[idx]]$CSV)) 
+      })
+
+      rv$user_file_error_annotated <- do.call("rbind", df) 
+    },
+    error = function(e) {
+      print(e)
+
+      error$title = "Unknown Error"
+      error$type = "unknown"
+      error$message = e$message
+      error$list = NULL
+      rv$error = TRUE
+    })
+  })
+
   observeEvent(input$UploadSampleDataSet, ignoreInit = TRUE, {
     dataset <- input$UploadSampleDataSet
 
@@ -256,7 +316,12 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
       return()
     }
 
-    dataset <- input$UploadSampleDataSet
+    if(input$UploadType == "Controls") {
+      dataset = input$InputUploadControls
+    } else {
+      dataset = input$UploadSampleDataSet
+    }
+ 
     if (is.null(dataset) || is.null(dataset$datapath)) {
       message("Aborting upload - no file uploaded")
       return()
@@ -270,35 +335,40 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
       tryCatch({
         withCallingHandlers({
 
-          container_name <- NULL
-          if (typeof(input$UploadManifestName) == "character" && input$UploadManifestName != "") {
-            container_name <- input$UploadManifestName 
-          }
+          # this is purely for samples - controls do not need a location 
+          if (input$UploadType == "Samples") {
 
-          location_parameters <- NULL
-          if (typeof(input$UploadLocationRoot) == "character" && input$UploadLocationRoot != "") {
-            location_parameters <- c(location_parameters, list(name = input$UploadLocationRoot))
-          }
-          if (typeof(input$UploadLocationLevelI) == "character" && input$UploadLocationLevelI != "") {
-            location_parameters <- c(location_parameters, list(level_I = input$UploadLocationLevelI))
-          }
-          if (typeof(input$UploadLocationLevelII) == "character" && input$UploadLocationLevelII != "") {
-            location_parameters <- c(location_parameters, list(level_II = input$UploadLocationLevelII))
-          }
+            container_name <- NULL
+            if (typeof(input$UploadManifestName) == "character" && input$UploadManifestName != "") {
+              container_name <- input$UploadManifestName 
+            }
 
-          if (!is.null(location_parameters) && !all(c("name", "level_I", "level_II") %in% names(location_parameters))) {
-            stop("Missing location parameter")
-          }
+            location_parameters <- NULL
+            if (typeof(input$UploadLocationRoot) == "character" && input$UploadLocationRoot != "") {
+              location_parameters <- c(location_parameters, list(name = input$UploadLocationRoot))
+            }
+            if (typeof(input$UploadLocationLevelI) == "character" && input$UploadLocationLevelI != "") {
+              location_parameters <- c(location_parameters, list(level_I = input$UploadLocationLevelI))
+            }
+            if (typeof(input$UploadLocationLevelII) == "character" && input$UploadLocationLevelII != "") {
+              location_parameters <- c(location_parameters, list(level_II = input$UploadLocationLevelII))
+            }
 
-          ## format the file
-          rv$user_file <- ProcessCSV(
-            user_csv = dataset$datapath,
-            user_action = "upload",
-            file_type = input$UploadFileType,
-            sample_storage_type = input$UploadSampleType,
-            container_name = container_name,
-            freezer_address = location_parameters
-          )
+            if (!is.null(location_parameters) && !all(c("name", "level_I", "level_II") %in% names(location_parameters))) {
+              stop("Missing location parameter")
+            }
+
+            ## format the file
+            rv$user_file <- ProcessCSV(
+              user_csv = dataset$datapath,
+              user_action = "upload",
+              file_type = input$UploadFileType,
+              sample_storage_type = input$UploadSampleType,
+              container_name = container_name,
+              freezer_address = location_parameters
+            )
+
+          }
         },
         message = function(m) {
           shinyjs::html(id = "UploadOutputConsole", html = paste0(dataset$name, ": ", m$message), add = rv$console_verbatim)
@@ -417,7 +487,58 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
         }
 
         shinyjs::reset("UploadAction")
-        UploadSamples(sample_type_id = as.integer(input$UploadSampleType), upload_data = rv$user_file)
+
+        if (input$UploadType == "Samples") {
+          UploadSamples(sample_type_id = as.integer(input$UploadSampleType), upload_data = rv$user_file)
+        } else {
+
+          browser()
+
+          now=lubridate::now()
+          ## put this in the rpackage...
+          con <- dbConnect(RSQLite::SQLite(), Sys.getenv("SDB_PATH"))
+
+          ## add the study subject uid
+          df.payload <- data.frame(
+            created=now,
+            last_updated=now,
+            study_id=c(local(input$UploadControlStudy)),
+            name=rv$user_file$study_subject
+          )
+
+          ## normalize the de-normalized columns
+          user_file = rv$user_file %>%
+            mutate(
+              strain = strsplit(strain, ";"),
+              percentage = strsplit(percentage, ";")
+            ) %>%
+            tidyr::unnest(cols = c("strain","percentage"))
+
+          # starts a transaction
+          copy_to(con, user_file)
+
+          # res <- dbAppendTable(con, "study_subject", df.payload)
+
+          sql = tbl(con, "user_file") %>%
+            left_join(
+              tbl(con, "study_subject") %>%
+                dplyr::rename(study_subject_name=name, study_subject_id=id)
+              , by=c("study_subject"="study_subject_name")
+            ) %>%
+            select(study_subject_id, density, percentage, strain)
+
+          df.payload = sql %>%
+            left_join(dbReadTable(con, "strain") %>% dplyr::rename(strain_id = id, strain = name), by = c("strain")) %>%
+            left_join(dbReadTable(con, "control") %>% dplyr::rename(study_subject_id = id), by = c("study_subject_id")) %>%
+            select(study_subject_id, strain_id, percentage, density)
+
+
+
+          res <- dbAppendTable(con, "control", df.payload %>% select(study_subject_id, density))
+          res <- dbAppendTable(con, "control_strain", df.payload %>% select(study_subject_id, strain_id, percentage))
+
+          dbCommit(con)
+        }
       },
       message = function(m) {
         shinyjs::html(id = "UploadOutputConsole", html = paste0(dataset$name, ": ", m$message), add = rv$console_verbatim)
@@ -451,6 +572,14 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
     sample_type_name <- DBI::dbReadTable(con, "sample_type") %>%
       filter(id == sample_type_id) %>%
       pull(name)
+
+    updateSelectizeInput(
+      session,
+      "UploadControlStudy",
+      selected = input$UploadControlStudy,
+      choices = dbReadTable(con, "study") %>% filter(is_control == 1) %>% pull(id, name = "short_code")
+    )
+
 
     updateSelectInput(
       session, 
