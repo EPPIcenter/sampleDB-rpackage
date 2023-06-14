@@ -296,7 +296,7 @@ ControlReference <- function(session, input, output, database) {
       description=input$InputControlStudyDesc,
       lead_person=input$InputControlNewStudy,
       is_longitudinal=0, #????,
-      is_control=1
+      control_collection_id=1
     )
 
     res=dbAppendTable(con, "study", df.payload)

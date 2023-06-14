@@ -14,6 +14,7 @@ UIControlsReference <- function() {
       tags$h4("Create a Control Study"),
       textInput("InputControlNewStudy", "Strain", placeholder = "Add new control study here..."),
       textInput("InputControlStudyDesc", "Description", placeholder = "Optionally add description here..."),
+      textInput("InputControlUrl", "URL", placeholder = "Add protocol resource locator here..."),
       actionButton("InputControlStudyAction", label = "Upload")
     ),
     mainPanel(

@@ -7,7 +7,6 @@
 #' @param sample_storage_type The type of storage the samples are in. This can be '1', '2' or '3', which identify 'Micronix', 'Cryovial' or 'DBS', respectively.
 #' @param reference The reference type that is being uploaded. This can be "control". If this parameter is set, `sample_storage_type` should be NULL.
 #' @param search_type The search method used. Can either be "study_subject" or "barcode".
-#' @param control_study The study used to keep track of controls. This is a specialized study that is separated from studies containing samples, and is created in the `Control` reference panel (in the Shiny App).
 #' @param file_type The file type. This usually will be 'na'. The default value is 'na'.
 #' @param container_name Optional parameter to specify the container the samples are being added to. This is not required if the container name is specifed in your file.
 #' @param freezer_address The location of the container as a named list `list(name=NULL, level_I=NULL, level_II=NULL)`. This is not required in the location is specified in file.
@@ -35,7 +34,7 @@
 #' @export ProcessCSV
 
 
-ProcessCSV <- function(user_csv, user_action, sample_storage_type = NULL, reference = NULL, search_type = NULL, control_study = NULL, container_name = NULL, freezer_address = NULL, file_type = "na", validate = TRUE, database = Sys.getenv("SDB_PATH"), config_yml = Sys.getenv("SDB_CONFIG")) {
+ProcessCSV <- function(user_csv, user_action, sample_storage_type = NULL, reference = NULL, search_type = NULL, container_name = NULL, freezer_address = NULL, file_type = "na", validate = TRUE, database = Sys.getenv("SDB_PATH"), config_yml = Sys.getenv("SDB_CONFIG")) {
   df.error.formatting <- data.frame(column = NULL, reason = NULL, trigger = NULL)
 
   if (is.null(sample_storage_type) && is.null(reference)) {

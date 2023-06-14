@@ -35,8 +35,8 @@ UIUploadSamples <- function() {
       conditionalPanel(
         condition = "input.UploadType == 'Controls'",
         h4("Upload Controls"),
-        selectizeInput("UploadControlStudy", label = "Control Study", choices = dbReadTable(con, "study") %>% filter(is_control == 1) %>% pull(id, name = "short_code")),
-        fileInput("InputUploadControls", label = "Upload Allowed Control Combinations", accept = c("text/csv", "text/comma-separated-values,text/plain", ".csv"))
+        shinyjs::hidden(selectizeInput("UploadControlStudy", label = "Control Study", choices = dbReadTable(con, "study") %>% filter(!is.na("control_collection_id")) %>% pull(id, name = "short_code"))),
+        fileInput("InputUploadControls", label = "lalbel, accept = c("text/csv", "text/comma-separated-values,text/plain", ".csv"))
       ),
       hr(),
       #action buttons

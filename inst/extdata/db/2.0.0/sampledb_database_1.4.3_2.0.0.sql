@@ -1,5 +1,14 @@
 ALTER TABLE "sample_type" ADD COLUMN "parent_id" INTEGER DEFAULT NULL REFERENCES "sample_type"("id");
-ALTER TABLE "study" ADD COLUMN "is_control" INTEGER DEFAULT 0;
+
+--- Control Collection ---
+CREATE TABLE IF NOT EXISTS "control_collection" (
+	"id"			INTEGER NOT NULL,
+	"url"			VARCHAR NOT NULL,
+	"metadata"		TEXT
+);
+
+
+ALTER TABLE "study" ADD COLUMN "control_collection_id" REFERENCES "control_collection"("id");
 
 --- just remove dbs ---
 DROP TABLE "dbs_spot";

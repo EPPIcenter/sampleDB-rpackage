@@ -577,7 +577,7 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
       session,
       "UploadControlStudy",
       selected = input$UploadControlStudy,
-      choices = dbReadTable(con, "study") %>% filter(is_control == 1) %>% pull(id, name = "short_code")
+      choices = dbReadTable(con, "study") %>% filter(!is.null(control_collection_id)) %>% pull(id, name = "short_code")
     )
 
 
