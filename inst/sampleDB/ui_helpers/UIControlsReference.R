@@ -11,10 +11,11 @@ UIControlsReference <- function() {
       fileInput("InputUploadStrains", label = "Upload Strains", accept = c("text/csv", "text/comma-separated-values,text/plain", ".csv")),
       actionButton("InputUploadStrainAction", label = "Upload"),
       hr(),
-      tags$h4("Create a Control Study"),
-      textInput("InputControlNewStudy", "Strain", placeholder = "Add new control study here..."),
+      tags$h4("Create a Control Batch"), # control batch enter here
+      textInput("InputControlNewStudy", "Batch", placeholder = "Add new batch here..."),
       textInput("InputControlStudyDesc", "Description", placeholder = "Optionally add description here..."),
       textInput("InputControlUrl", "URL", placeholder = "Add protocol resource locator here..."),
+      textInput("InputControlBatchPerson", "Person", placeholder = "Add person who created the batch..."),
       actionButton("InputControlStudyAction", label = "Upload")
     ),
     mainPanel(

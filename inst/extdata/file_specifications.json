@@ -118,20 +118,23 @@
           }
         }
       ],
-      "reference": [
+      "controls": [
         {
           "id": 1,
           "required": [
-            "UID",
-            "Strains",
-            "Percentage",
-            "Density"
-          ],
-          "optional": null,
-          "conditional": null
-        },
+            "SheetRow",
+            "SheetCol",
+            "SheetID",
+            "Batch",
+            "Strain",
+            "Density",
+            "Date"
+          ]
+        }
+      ],
+      "reference": [
         {
-          "id": 2,
+          "id": 1,
           "required": [
             "Strains"
           ],

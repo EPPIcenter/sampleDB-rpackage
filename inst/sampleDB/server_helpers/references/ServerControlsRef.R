@@ -288,15 +288,24 @@ ControlReference <- function(session, input, output, database) {
 
     dbBegin(con)
     now=lubridate::now()
+
+    df.payload=data.frame(
+      url=input$InputControlUrl
+    )
+
+    last_id=dbReadTable(con, "control_collection") %>% nrow(.)
+
+    res=dbAppendTable(con, "control_collection", df.payload)
+
     df.payload=data.frame(
       created=now,
       last_updated=now,
       title=input$InputControlNewStudy,
       short_code=input$InputControlNewStudy,
       description=input$InputControlStudyDesc,
-      lead_person=input$InputControlNewStudy,
-      is_longitudinal=0, #????,
-      control_collection_id=1
+      lead_person=input$InputControlBatchPerson,
+      is_longitudinal=0,
+      control_collection_id=last_id + res
     )
 
     res=dbAppendTable(con, "study", df.payload)

@@ -199,7 +199,8 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
     })
   })
 
-  observeEvent(input$UploadSampleDataSet, ignoreInit = TRUE, {
+
+  observeEvent(c(input$UploadSampleDataSet, input$InputUploadControls), ignoreInit = TRUE, {
     dataset <- input$UploadSampleDataSet
 
     message(paste("Loaded", dataset$name))

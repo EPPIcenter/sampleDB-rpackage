@@ -4,7 +4,9 @@ ALTER TABLE "sample_type" ADD COLUMN "parent_id" INTEGER DEFAULT NULL REFERENCES
 CREATE TABLE IF NOT EXISTS "control_collection" (
 	"id"			INTEGER NOT NULL,
 	"url"			VARCHAR NOT NULL,
-	"metadata"		TEXT
+	"metadata"		TEXT,
+
+	PRIMARY KEY("id")
 );
 
 
@@ -59,7 +61,7 @@ CREATE TABLE IF NOT EXISTS "dbs_tube" (
 	CONSTRAINT "dbs_tube_position_box_id_uc" UNIQUE("position", "box_id")
 );
 
---- DBS Paper ---
+--- DBS Paper - different than a DBS control sheet ---
 CREATE TABLE IF NOT EXISTS "dbs_paper" (
 	"id"			INTEGER NOT NULL,
 	"bag_id"		INTEGER NOT NULL,
