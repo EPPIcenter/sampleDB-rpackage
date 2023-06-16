@@ -4,7 +4,7 @@
 \alias{SampleDB_Setup}
 \title{Save SampleDB's database file to a specified location}
 \usage{
-SampleDB_Setup()
+SampleDB_Setup(env = TRUE, db = TRUE, server = TRUE)
 }
 \description{
 Save SampleDB's database file to a specified location

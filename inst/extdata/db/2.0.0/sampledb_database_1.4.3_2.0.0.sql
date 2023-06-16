@@ -1,5 +1,16 @@
 ALTER TABLE "sample_type" ADD COLUMN "parent_id" INTEGER DEFAULT NULL REFERENCES "sample_type"("id");
 
+--- Add shipped status ---
+
+INSERT OR ROLLBACK INTO "status" (name)
+VALUES
+	("Shipped");
+
+INSERT OR ROLLBACK INTO "state_status_relationship" ("status_id", "state_id", "default") 
+VALUES 
+	(5, 2, FALSE);
+
+
 --- Control Collection ---
 CREATE TABLE IF NOT EXISTS "control_collection" (
 	"id"			INTEGER NOT NULL,
@@ -76,14 +87,14 @@ CREATE TABLE IF NOT EXISTS "dbs_paper" (
 	CONSTRAINT "dbs_paper_position_bag_id_uc" UNIQUE("position", "bag_id")
 );
 
---- DBS Control ---
+--- DBS Control - right now don't use position, just point to a control ---
 CREATE TABLE IF NOT EXISTS "dbs_control" (
 	"id"			INTEGER NOT NULL,
 	"dbs_control_sheet_id"	INTEGER NOT NULL,
-	"position"		VARCHAR NOT NULL CHECK(length("position") == 3),
+	"control_id" 	INTEGER NOT NULL,
 
 	PRIMARY KEY(id),
-	FOREIGN KEY(id) REFERENCES "specimen"("id"),
+	FOREIGN KEY(control_id) REFERENCES "control"("id"),
 	FOREIGN KEY(dbs_control_sheet_id) REFERENCES "dbs_control_sheet"("id")
 );
 
@@ -91,6 +102,8 @@ CREATE TABLE IF NOT EXISTS "dbs_control" (
 CREATE TABLE IF NOT EXISTS "control" (
 	"id"		INTEGER NOT NULL,
 	"density"	REAL NOT NULL,
+	"state_id"	INTEGER NOT NULL,
+	"status_id"	INTEGER NOT NULL,
 
 	PRIMARY KEY("id"),
 	FOREIGN KEY("id") REFERENCES "study_subject"("id")

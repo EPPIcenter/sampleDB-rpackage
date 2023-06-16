@@ -7,7 +7,9 @@
 ProcessCSV(
   user_csv,
   user_action,
-  sample_storage_type,
+  sample_storage_type = NULL,
+  control_type = NULL,
+  reference = NULL,
   search_type = NULL,
   container_name = NULL,
   freezer_address = NULL,
@@ -24,6 +26,10 @@ ProcessCSV(
 
 \item{sample_storage_type}{The type of storage the samples are in. This can be '1', '2' or '3', which identify 'Micronix', 'Cryovial' or 'DBS', respectively.}
 
+\item{reference}{The reference type that is being uploaded. This can be "control". If this parameter is set, \code{sample_storage_type} should be NULL.}
+
+\item{search_type}{The search method used. Can either be "study_subject" or "barcode".}
+
 \item{container_name}{Optional parameter to specify the container the samples are being added to. This is not required if the container name is specifed in your file.}
 
 \item{freezer_address}{The location of the container as a named list \code{list(name=NULL, level_I=NULL, level_II=NULL)}. This is not required in the location is specified in file.}
@@ -34,12 +40,10 @@ ProcessCSV(
 
 \item{database}{Path to the sampleDB database. Default is \code{Sys.getenv("SDB_PATH")}.}
 
-\item{config_yml}{Path to the user configuration file. Default is \code{Sys.getenv("SDB_CONFIG")}.}
+\item{config_yml}{Path to the user configuration file. Default is \code{Sys.getenv("SDB_CONFIG")}.
+#'}
 }
 \description{
-Process your CSV to check for appropriate columns and data validation.
-}
-\details{
 \code{ProcessCSV()} creates an intermediate dataframe from a user provided csv that can then be passed to UploadSamples or MoveSamples:
 }
 \examples{

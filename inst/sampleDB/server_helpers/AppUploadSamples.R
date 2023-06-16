@@ -150,8 +150,8 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
       rv$user_file <- ProcessCSV(
         user_csv = dataset$datapath,
         user_action = "upload",
-        file_type = "na",
-        reference = "control"
+        file_type = input$UploadFileType,
+        control_type = 1 # dbs sheets
       )
     },
     formatting_error = function(e) {
@@ -199,8 +199,7 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
     })
   })
 
-
-  observeEvent(c(input$UploadSampleDataSet, input$InputUploadControls), ignoreInit = TRUE, {
+  observeEvent(input$UploadSampleDataSet, ignoreInit = TRUE, {
     dataset <- input$UploadSampleDataSet
 
     message(paste("Loaded", dataset$name))
@@ -492,53 +491,7 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
         if (input$UploadType == "Samples") {
           UploadSamples(sample_type_id = as.integer(input$UploadSampleType), upload_data = rv$user_file)
         } else {
-
-          browser()
-
-          now=lubridate::now()
-          ## put this in the rpackage...
-          con <- dbConnect(RSQLite::SQLite(), Sys.getenv("SDB_PATH"))
-
-          ## add the study subject uid
-          df.payload <- data.frame(
-            created=now,
-            last_updated=now,
-            study_id=c(local(input$UploadControlStudy)),
-            name=rv$user_file$study_subject
-          )
-
-          ## normalize the de-normalized columns
-          user_file = rv$user_file %>%
-            mutate(
-              strain = strsplit(strain, ";"),
-              percentage = strsplit(percentage, ";")
-            ) %>%
-            tidyr::unnest(cols = c("strain","percentage"))
-
-          # starts a transaction
-          copy_to(con, user_file)
-
-          # res <- dbAppendTable(con, "study_subject", df.payload)
-
-          sql = tbl(con, "user_file") %>%
-            left_join(
-              tbl(con, "study_subject") %>%
-                dplyr::rename(study_subject_name=name, study_subject_id=id)
-              , by=c("study_subject"="study_subject_name")
-            ) %>%
-            select(study_subject_id, density, percentage, strain)
-
-          df.payload = sql %>%
-            left_join(dbReadTable(con, "strain") %>% dplyr::rename(strain_id = id, strain = name), by = c("strain")) %>%
-            left_join(dbReadTable(con, "control") %>% dplyr::rename(study_subject_id = id), by = c("study_subject_id")) %>%
-            select(study_subject_id, strain_id, percentage, density)
-
-
-
-          res <- dbAppendTable(con, "control", df.payload %>% select(study_subject_id, density))
-          res <- dbAppendTable(con, "control_strain", df.payload %>% select(study_subject_id, strain_id, percentage))
-
-          dbCommit(con)
+          UploadControls(user_data=rv$user_file, control_type=1)
         }
       },
       message = function(m) {
@@ -770,13 +723,19 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
     if (length(sample_storage_type_index) == 0) {
       message("Unimplemented file specifications for this sample storage type.")
     } else {
-      actions <- file_specs_json$file_types[[file_index]]$sample_type[[sample_storage_type_index]]$actions[['upload']]
+      upload_type=switch(
+        input$UploadType,
+        "Controls"="controls",
+        "Samples"="sample_type"
+      )
+      browser()
+      actions <- file_specs_json$file_types[[file_index]][[upload_type]][[sample_storage_type_index]]$actions[['upload']]
       required_user_column_names <- actions[['required']]
       conditional_user_column_names <- actions[['conditional']]
       optional_user_column_names <- actions[['optional']]
 
       ## Shared fields
-      sample_type_index <- which(lapply(file_specs_json$shared$sample_type, function(x) x$id) == input$UploadSampleType)
+      sample_type_index <- which(lapply(file_specs_json$shared[[upload_type]], function(x) x$id) == input$UploadSampleType)
 
       required_user_column_names <- c(required_user_column_names, file_specs_json$shared$upload[['required']])
       if (input$UploadFileType == "traxcer") {
@@ -790,9 +749,9 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
       example_data$conditional <- conditional_user_column_names <- c(conditional_user_column_names, file_specs_json$shared$upload[['conditional']])
       optional_user_column_names <- c(optional_user_column_names, file_specs_json$shared$upload[['optional']])
 
-      manifest_name <- file_specs_json$shared$sample_type[[sample_type_index]]$manifest$name
-      manifest_barcode_name <- file_specs_json$shared$sample_type[[sample_type_index]]$manifest$barcode
-      location_parameters <- file_specs_json$shared$sample_type[[sample_type_index]]$location
+      manifest_name <- file_specs_json$shared[[upload_type]][[sample_type_index]]$manifest$name
+      manifest_barcode_name <- file_specs_json$shared[[upload_type]][[sample_type_index]]$manifest$barcode
+      location_parameters <- file_specs_json$shared[[upload_type]][[sample_type_index]]$location
       location_parameters <- unlist(location_parameters[c("name", "level_I", "level_II")])
 
       example_data$user_input <- c(manifest_name, unname(location_parameters))

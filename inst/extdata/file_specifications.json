@@ -121,15 +121,19 @@
       "controls": [
         {
           "id": 1,
-          "required": [
-            "SheetRow",
-            "SheetCol",
-            "SheetID",
-            "Batch",
-            "Strain",
-            "Density",
-            "Date"
-          ]
+          "actions": {
+            "upload": {
+              "required": [
+                "Strain",
+                "Percentage",
+                "Count",
+                "Density",
+                "Batch"
+              ],
+              "optional": null,
+              "conditional": null
+            }
+          }
         }
       ],
       "reference": [
@@ -267,6 +271,20 @@
         "manifest": {
           "name": "ContainerLabel",
           "barcode": "PaperBarcode"
+        }
+      }
+    ],
+    "controls": [
+      {
+        "id": 1,
+        "location": {
+          "description": "DBS Control Sheet location column names",
+          "name": "FreezerName",
+          "level_I": "ShelfName",
+          "level_II": "BasketName"
+        },
+        "manifest": {
+          "name": "BagName"
         }
       }
     ]

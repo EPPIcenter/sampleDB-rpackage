@@ -34,15 +34,15 @@
 #' @export ProcessCSV
 
 
-ProcessCSV <- function(user_csv, user_action, sample_storage_type = NULL, reference = NULL, search_type = NULL, container_name = NULL, freezer_address = NULL, file_type = "na", validate = TRUE, database = Sys.getenv("SDB_PATH"), config_yml = Sys.getenv("SDB_CONFIG")) {
+ProcessCSV <- function(user_csv, user_action, sample_storage_type = NULL, control_type = NULL, reference = NULL, search_type = NULL, container_name = NULL, freezer_address = NULL, file_type = "na", validate = TRUE, database = Sys.getenv("SDB_PATH"), config_yml = Sys.getenv("SDB_CONFIG")) {
   df.error.formatting <- data.frame(column = NULL, reason = NULL, trigger = NULL)
 
-  if (is.null(sample_storage_type) && is.null(reference)) {
-    stop("`sample_storage_type` or `reference` should be set.")
+  if (sum(!is.null(c(sample_storage_type, control_type, reference))) > 1) {
+    stop("Only one of `sample_storage_type`, `control_type`, or `reference` can be set at once.")
   }
 
-  if (!is.null(sample_storage_type) && is.null(reference)) {
-    stop("`sample_storage_type` or `reference` cannot be set together.")
+  if (sum(is.null(c(sample_storage_type, control_type, reference))) == 3) {
+    stop("One of `sample_storage_type`, `control_type`, or `reference` must be set.")
   }
 
   if (!require(dplyr)) {
@@ -81,9 +81,14 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type = NULL, refere
 
   # note: strange bug with search files, ignore for now
   if (user_action %in% c("move", "upload")) {
-    # empty_rows <- rowSums(user_file == "" | is.na(user_file) | is.null(user_file)) == ncol(user_file)
-    # empty_cols <- colSums(user_file == "" | is.na(user_file) | is.null(user_file)) == nrow(user_file)
-    # user_file <- user_file[!empty_rows, !empty_cols]
+    empty_rows <- rowSums(user_file == "" | is.na(user_file) | is.null(user_file)) == ncol(user_file)
+    empty_cols <- colSums(user_file == "" | is.na(user_file) | is.null(user_file)) == nrow(user_file)
+
+    if (ncol(user_file) == 1) {
+      user_file <- select(user_file, 1)
+    } else {
+      user_file <- user_file[!empty_rows, !empty_cols]
+    }
   }
 
   ## Read File Specification File
@@ -134,12 +139,39 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type = NULL, refere
     if (is.null(required_user_column_names)) {
       stop(paste("The expected column names for sample type", sample_storage_type, "and file type", file_type, "are not implemented (yet)."))
     }
+  } else if (!is.null(control_type)) {
+
+    browser()
+
+    file_index <- which(lapply(file_specs_json$file_types, function(x) x$id) == file_type)
+    control_type_index <- which(lapply(file_specs_json$file_types[[file_index]]$controls, function(x) x$id) == control_type)
+
+    if (length(control_type_index) == 0) {
+      stop("Unimplemented file specifications for this control type")
+    }
+
+    ref = required_user_column_names <- file_specs_json$file_types[[file_index]]$controls[[control_type_index]]$actions$upload
+
+    required_user_column_names <- ref[['required']]
+    conditional_user_column_names <- ref[['conditional']]
+    optional_user_column_names <- ref[['optional']]
+
+    if (is.null(required_user_column_names)) {
+      stop(paste("The expected column names for control type", control_type, "and file type", file_type, "are not implemented (yet)."))
+    }
+
+    location_parameters <- file_specs_json$shared$sample_type[[control_type_index]]$location
+    location_parameters <- unlist(location_parameters[c("name", "level_I", "level_II")])
+
+    manifest_name <- file_specs_json$shared$controls[[control_type_index]]$manifest$name
+
+    required_user_column_names <- c(required_user_column_names, c(manifest_name, unname(location_parameters)))
+
   } else {
 
     reference_type = switch(
       reference,
-      "control" = 1,
-      "strain" = 2
+      "strain" = 1
     )
 
     if (is.null(reference_type)) {
@@ -160,7 +192,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type = NULL, refere
     optional_user_column_names <- ref[['optional']]
 
     if (is.null(required_user_column_names)) {
-      stop(paste("The expected column names for sample type", sample_storage_type, "and file type", file_type, "are not implemented (yet)."))
+      stop(paste("The expected column names for reference type", reference, "and file type", file_type, "are not implemented (yet)."))
     }
   }
 
@@ -212,31 +244,34 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type = NULL, refere
   }
   else if (user_action %in% "upload") {
 
-    ## these are the special case columns that can be added by users
-    if (!is.null(container_name) && manifest_name %in% missing_columns) {
-      missing_columns <- missing_columns[missing_columns != manifest_name]
-      user_file[manifest_name] <- container_name
-    }
-    if (!is.null(freezer_address) && all(location_parameters %in% missing_columns)) {
-      missing_columns <- missing_columns[!location_parameters %in% missing_columns]
-      user_file[location_parameters] <- freezer_address
-    }
+    if (!is.null(sample_storage_type)) {
 
-    if ("StudyCode" %in% colnames(user_file) && "upload" %in% user_action) {
-      tmp <- CheckTable("study") %>%
-        filter(short_code %in% user_file$StudyCode) %>%
-        inner_join(user_file, by = c("short_code" = "StudyCode"))
+      ## these are the special case columns that can be added by users
+      if (!is.null(container_name) && manifest_name %in% missing_columns) {
+        missing_columns <- missing_columns[missing_columns != manifest_name]
+        user_file[manifest_name] <- container_name
+      }
+      if (!is.null(freezer_address) && all(location_parameters %in% missing_columns)) {
+        missing_columns <- missing_columns[!location_parameters %in% missing_columns]
+        user_file[location_parameters] <- freezer_address
+      }
 
-      # collection date column must exist for all samples that are part of a longitudinal study
-      if (!"CollectionDate" %in% colnames(user_file) && nrow(filter(tmp, is_longitudinal == 1)) > 0) {
-        df.error.formatting <- rbind(
-          df.error.formatting,
-          data.frame(
-            column = "CollectionDate",
-            reason = "Collection date is required for samples of longitudinal studies.",
-            trigger = filter(tmp, is_longitudinal == 1) %>% pull(short_code)
+      if ("StudyCode" %in% colnames(user_file) && "upload" %in% user_action) {
+        tmp <- CheckTable("study") %>%
+          filter(short_code %in% user_file$StudyCode) %>%
+          inner_join(user_file, by = c("short_code" = "StudyCode"))
+
+        # collection date column must exist for all samples that are part of a longitudinal study
+        if (!"CollectionDate" %in% colnames(user_file) && nrow(filter(tmp, is_longitudinal == 1)) > 0) {
+          df.error.formatting <- rbind(
+            df.error.formatting,
+            data.frame(
+              column = "CollectionDate",
+              reason = "Collection date is required for samples of longitudinal studies.",
+              trigger = filter(tmp, is_longitudinal == 1) %>% pull(short_code)
+            )
           )
-        )
+        }
       }
     }
   }
@@ -346,14 +381,21 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type = NULL, refere
           user_file <- user_file[!is.na(user_file$`Tube ID`),]
         }
 
-      } else {
-
+      } else if (!is.null(control_type)) {
         if (user_action %in% c("upload")) {
-          if (reference == "control") {
-            dbmap$study_subject <- "UID"
-            dbmap$strain <- "Strains"
-            dbmap$percentage <- "Percentage"
-          } else if (reference == "strain") {
+          dbmap$strain = "Strain"
+          dbmap$percentage <- "Percentage"
+          dbmap$count = "Count"
+          dbmap$density <- "Density"
+          dbmap$batch <- "Batch"
+          dbmap$manifest_name = "BagName"
+          dbmap['name'] <- unname(location_parameters['name'])
+          dbmap['level_I'] <- unname(location_parameters['level_I'])
+          dbmap['level_II'] <- unname(location_parameters['level_II'])
+        }
+      } else {
+        if (user_action %in% c("upload")) {
+          if (reference == "strain") {
             dbmap$strain <- "Strains" 
           }
         }
@@ -368,14 +410,14 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type = NULL, refere
           user_action = user_action,
           dbmap = dbmap
         )
+      } else if (!is.null(control_type)) {
+        user_file <- ValidateReferenceControls(
+          database = database,
+          user_data = user_file,
+          dbmap = dbmap
+        )
       } else {
-        if (reference == "control") {
-          user_file <- ValidateReferenceControls(
-            database = database,
-            user_data = user_file,
-            dbmap = dbmap
-          )
-        } else if (reference == "strain") {
+        if (reference == "strain") {
           user_file <- ValidateReferenceStrains(
             database = database,
             user_data = user_file,
@@ -509,7 +551,7 @@ ValidateReferenceStrains <- function(database, user_data, file_type, dbmap) {
 ValidateReferenceControls <- function(database, user_data, dbmap) {
   required_names <- requires_data <- NULL
 
-  required_names <- c("study_subject", "strain", "percentage")
+  required_names <- c("strain", "percentage", "count", "density", "manifest_name", "name", "level_I", "level_II")
 
   if (is.null(required_names)) {
     stop("Invalid reference detected")
@@ -553,6 +595,18 @@ ValidateReferenceControls <- function(database, user_data, dbmap) {
       err <- .maybe_add_err(err, df, "Rows found with missing data", dbmap)
     }
 
+    ## detect `k` or `K` and convert to numeric
+    vb <- grepl('k|K', user_data$density)
+    user_data$density[vb] <- str_replace(user_data$density[vb], "k|K", "")
+    user_data$density <- as.integer(user_data$density)
+    user_data$density[vb] <- user_data$density[vb] * 1000 # convert to numeric
+
+
+    ## check date formatting
+    # allowed_date_formats = c("%Y-%m-%d")
+    # parsed_dates <- lubridate::parse_date_time(user_data$date, allowed_date_formats, quiet = TRUE, exact = TRUE)
+    # err <- .maybe_add_err(err, user_data[is.na(parsed_dates), c("row_number", "date")], "Unrecognized date format.", dbmap)
+
     user_data.1 = user_data %>%
       dplyr::mutate(
         strain2 = strsplit(strain, ";"),
@@ -563,6 +617,16 @@ ValidateReferenceControls <- function(database, user_data, dbmap) {
 
     con <- DBI::dbConnect(RSQLite::SQLite(), database)
     copy_to(con, user_data.1)
+
+    ## Check that control batch is recorded in the database already
+
+    df = tbl(con, "user_data.1") %>%
+      left_join(tbl(con, "study"), by = c("batch"="short_code")) %>%
+      filter(is.na(id)) %>%
+      select(row_number, batch) %>%
+      collect()
+
+    err <- .maybe_add_err(err, df, "Batch is not yet recorded", dbmap)
 
     ## check that all strains are found
     df = tbl(con, "user_data.1") %>%
@@ -575,22 +639,11 @@ ValidateReferenceControls <- function(database, user_data, dbmap) {
 
     err <- .maybe_add_err(err, df, "Strain found that is not recorded in the database", dbmap)
 
-    ## Unique uuid
-    dup.uuids = tbl(con, "user_data.1") %>%
-      select(-c(strain2, percentage2)) %>%
-      distinct() %>%
-      count(study_subject) %>%
-      filter(n > 1)
-
-    df = user_data[user_data$study_subject %in% dup.uuids,] %>% select(row_number, study_subject)
-
-    err <- .maybe_add_err(err, df, "Control found that is not unique", dbmap)
-
     ## percentage does not equal 100
 
     df = tbl(con, "user_data.1") %>%
-      select(row_number, study_subject, percentage, percentage2) %>%
-      group_by(row_number, study_subject, percentage) %>%
+      select(row_number, percentage, percentage2) %>%
+      group_by(row_number, percentage) %>%
       dplyr::mutate(percentage2=as.double(percentage2)) %>%
       dplyr::mutate(percentage2=ifelse(is.na(percentage2), 0, percentage2)) %>%
       dplyr::mutate(equals_100 = as.logical(sum(percentage2, na.rm=TRUE) == 100)) %>%
@@ -601,6 +654,18 @@ ValidateReferenceControls <- function(database, user_data, dbmap) {
       collect()
 
     err <- .maybe_add_err(err, df, "Some mixed controls do not sum to 100", dbmap)
+
+    rn <- tbl(con, "user_data.1") %>%
+      left_join(tbl(con, "location") %>%
+        dplyr::rename(location_id = id), by = c('name', 'level_I', 'level_II')) %>%
+      filter(is.na(location_id)) %>%
+      pull(row_number)
+
+    df <- user_data[user_data$row_number %in% rn, c("row_number", "name", "level_I", "level_II")]
+
+    errstring = sprintf("The following %s, %s and / or %s are not found in the database", dbmap["name"], dbmap["level_I"], dbmap["level_II"])
+    err <- .maybe_add_err(err, df, errstring, dbmap)
+
   },
   warning = function(w) {
     bError <<- TRUE
