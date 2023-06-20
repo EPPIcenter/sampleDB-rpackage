@@ -141,8 +141,6 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type = NULL, contro
     }
   } else if (!is.null(control_type)) {
 
-    browser()
-
     file_index <- which(lapply(file_specs_json$file_types, function(x) x$id) == file_type)
     control_type_index <- which(lapply(file_specs_json$file_types[[file_index]]$controls, function(x) x$id) == control_type)
 
@@ -166,7 +164,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type = NULL, contro
     manifest_name <- file_specs_json$shared$controls[[control_type_index]]$manifest$name
 
     required_user_column_names <- c(required_user_column_names, c(manifest_name, unname(location_parameters)))
-
+    
   } else {
 
     reference_type = switch(
@@ -551,7 +549,7 @@ ValidateReferenceStrains <- function(database, user_data, file_type, dbmap) {
 ValidateReferenceControls <- function(database, user_data, dbmap) {
   required_names <- requires_data <- NULL
 
-  required_names <- c("strain", "percentage", "count", "density", "manifest_name", "name", "level_I", "level_II")
+  required_names <- c("strain", "percentage", "count", "density", "batch", "manifest_name", "name", "level_I", "level_II")
 
   if (is.null(required_names)) {
     stop("Invalid reference detected")
@@ -653,7 +651,7 @@ ValidateReferenceControls <- function(database, user_data, dbmap) {
       distinct() %>%
       collect()
 
-    err <- .maybe_add_err(err, df, "Some mixed controls do not sum to 100", dbmap)
+    err <- .maybe_add_err(err, df, "Some controls do not sum to 100", dbmap)
 
     rn <- tbl(con, "user_data.1") %>%
       left_join(tbl(con, "location") %>%

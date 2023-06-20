@@ -37,6 +37,7 @@ VALUES
 CREATE TABLE IF NOT EXISTS "dbs_control_sheet" (
 	"id"			INTEGER NOT NULL,
 	"bag_id"		INTEGER NOT NULL,
+	"uid"			INTEGER NOT NULL,
 
 	PRIMARY KEY("id"),
 	FOREIGN KEY("id") REFERENCES "storage_container"("id"),

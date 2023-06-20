@@ -130,7 +130,9 @@
                 "Density",
                 "Batch"
               ],
-              "optional": null,
+              "optional": [
+                "Comment"
+              ],
               "conditional": null
             }
           }

@@ -335,29 +335,27 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
       tryCatch({
         withCallingHandlers({
 
-          # this is purely for samples - controls do not need a location 
+          container_name <- NULL
+          if (typeof(input$UploadManifestName) == "character" && input$UploadManifestName != "") {
+            container_name <- input$UploadManifestName 
+          }
+
+          location_parameters <- NULL
+          if (typeof(input$UploadLocationRoot) == "character" && input$UploadLocationRoot != "") {
+            location_parameters <- c(location_parameters, list(name = input$UploadLocationRoot))
+          }
+          if (typeof(input$UploadLocationLevelI) == "character" && input$UploadLocationLevelI != "") {
+            location_parameters <- c(location_parameters, list(level_I = input$UploadLocationLevelI))
+          }
+          if (typeof(input$UploadLocationLevelII) == "character" && input$UploadLocationLevelII != "") {
+            location_parameters <- c(location_parameters, list(level_II = input$UploadLocationLevelII))
+          }
+
+          if (!is.null(location_parameters) && !all(c("name", "level_I", "level_II") %in% names(location_parameters))) {
+            stop("Missing location parameter")
+          }
+
           if (input$UploadType == "Samples") {
-
-            container_name <- NULL
-            if (typeof(input$UploadManifestName) == "character" && input$UploadManifestName != "") {
-              container_name <- input$UploadManifestName 
-            }
-
-            location_parameters <- NULL
-            if (typeof(input$UploadLocationRoot) == "character" && input$UploadLocationRoot != "") {
-              location_parameters <- c(location_parameters, list(name = input$UploadLocationRoot))
-            }
-            if (typeof(input$UploadLocationLevelI) == "character" && input$UploadLocationLevelI != "") {
-              location_parameters <- c(location_parameters, list(level_I = input$UploadLocationLevelI))
-            }
-            if (typeof(input$UploadLocationLevelII) == "character" && input$UploadLocationLevelII != "") {
-              location_parameters <- c(location_parameters, list(level_II = input$UploadLocationLevelII))
-            }
-
-            if (!is.null(location_parameters) && !all(c("name", "level_I", "level_II") %in% names(location_parameters))) {
-              stop("Missing location parameter")
-            }
-
             ## format the file
             rv$user_file <- ProcessCSV(
               user_csv = dataset$datapath,
@@ -367,8 +365,18 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
               container_name = container_name,
               freezer_address = location_parameters
             )
-
+          } else {
+            ## format the file
+            rv$user_file <- ProcessCSV(
+              user_csv = dataset$datapath,
+              user_action = "upload",
+              file_type = input$UploadFileType,
+              control_type = 1,
+              container_name = container_name,
+              freezer_address = location_parameters
+            )            
           }
+
         },
         message = function(m) {
           shinyjs::html(id = "UploadOutputConsole", html = paste0(dataset$name, ": ", m$message), add = rv$console_verbatim)
@@ -728,34 +736,51 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
         "Controls"="controls",
         "Samples"="sample_type"
       )
-      browser()
+
       actions <- file_specs_json$file_types[[file_index]][[upload_type]][[sample_storage_type_index]]$actions[['upload']]
       required_user_column_names <- actions[['required']]
       conditional_user_column_names <- actions[['conditional']]
       optional_user_column_names <- actions[['optional']]
 
       ## Shared fields
+
       sample_type_index <- which(lapply(file_specs_json$shared[[upload_type]], function(x) x$id) == input$UploadSampleType)
 
-      required_user_column_names <- c(required_user_column_names, file_specs_json$shared$upload[['required']])
-      if (input$UploadFileType == "traxcer") {
-        ## Read Configuration File and replace with user override from user preferences
-        config <- yaml::read_yaml(Sys.getenv("SDB_CONFIG"))
-        if (!is.na(config$traxcer_position$override)) {
-          required_user_column_names <- stringr::str_replace(required_user_column_names, config$traxcer_position$default, config$traxcer_position$override)
+      if (upload_type == "Samples") {
+        required_user_column_names <- c(required_user_column_names, file_specs_json$shared$upload[['required']])
+
+        if (input$UploadFileType == "traxcer") {
+          ## Read Configuration File and replace with user override from user preferences
+          config <- yaml::read_yaml(Sys.getenv("SDB_CONFIG"))
+          if (!is.na(config$traxcer_position$override)) {
+            required_user_column_names <- stringr::str_replace(required_user_column_names, config$traxcer_position$default, config$traxcer_position$override)
+          }
         }
       }
+
       example_data$required <- required_user_column_names
-      example_data$conditional <- conditional_user_column_names <- c(conditional_user_column_names, file_specs_json$shared$upload[['conditional']])
-      optional_user_column_names <- c(optional_user_column_names, file_specs_json$shared$upload[['optional']])
 
-      manifest_name <- file_specs_json$shared[[upload_type]][[sample_type_index]]$manifest$name
-      manifest_barcode_name <- file_specs_json$shared[[upload_type]][[sample_type_index]]$manifest$barcode
-      location_parameters <- file_specs_json$shared[[upload_type]][[sample_type_index]]$location
-      location_parameters <- unlist(location_parameters[c("name", "level_I", "level_II")])
+      if (upload_type == "sample_type") {
+        example_data$conditional <- conditional_user_column_names <- c(conditional_user_column_names, file_specs_json$shared$upload[['conditional']])
+        optional_user_column_names <- c(optional_user_column_names, file_specs_json$shared$upload[['optional']])
 
-      example_data$user_input <- c(manifest_name, unname(location_parameters))
-      example_data$optional <- c(optional_user_column_names, c(manifest_barcode_name))
+        manifest_name <- file_specs_json$shared[[upload_type]][[sample_type_index]]$manifest$name
+        manifest_barcode_name <- file_specs_json$shared[[upload_type]][[sample_type_index]]$manifest$barcode
+        location_parameters <- file_specs_json$shared[[upload_type]][[sample_type_index]]$location
+        location_parameters <- unlist(location_parameters[c("name", "level_I", "level_II")])
+
+        example_data$user_input <- c(manifest_name, unname(location_parameters))
+        example_data$optional <- c(optional_user_column_names, c(manifest_barcode_name))
+      } else {
+        manifest_name <- file_specs_json$shared[[upload_type]][[sample_type_index]]$manifest$name
+        manifest_barcode_name <- file_specs_json$shared[[upload_type]][[sample_type_index]]$manifest$barcode
+        location_parameters <- file_specs_json$shared[[upload_type]][[sample_type_index]]$location
+        location_parameters <- unlist(location_parameters[c("name", "level_I", "level_II")])
+
+        example_data$user_input <- c(manifest_name, unname(location_parameters))
+        example_data$conditional <- conditional_user_column_names
+        example_data$optional <- c(optional_user_column_names, c(manifest_barcode_name)) 
+      }
     }
   })
 
@@ -764,14 +789,24 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
       rt <- NULL
       if (input$UploadFileType == "na") {
 
-        sample_type_name <- switch(
-          input$UploadSampleType,
-          "1" = "micronix",
-          "2" = "cryovial",
-          "3" = "dbs"
-        )
-        example <- paste(c(sample_type_name, input$UploadFileType), collapse="_")
-        rt <- reactable(eval(as.symbol(example))[, example_data$required], defaultColDef = colDef(minWidth = 120, html = TRUE, sortable = FALSE, resizable = FALSE))
+        if (input$UploadType == "Samples") {
+          sample_type_name <- switch(
+            input$UploadSampleType,
+            "1" = "micronix",
+            "2" = "cryovial",
+            "3" = "dbs"
+          )
+          example <- paste(c(sample_type_name, input$UploadFileType), collapse="_")
+          rt <- reactable(eval(as.symbol(example))[, example_data$required], defaultColDef = colDef(minWidth = 120, html = TRUE, sortable = FALSE, resizable = FALSE))
+        } else {
+          control_type_name <- switch(
+            input$UploadSampleType,
+            "1" = "dbs_sheet"
+          )
+
+          example <- paste(c(control_type_name, input$UploadFileType), collapse="_")
+          rt <- reactable(eval(as.symbol(example))[, example_data$required], defaultColDef = colDef(minWidth = 120, html = TRUE, sortable = FALSE, resizable = FALSE))
+        }
       } else {
         mat <- matrix(nrow = 0, ncol = length(example_data$required))
         colnames(mat) <- example_data$required
@@ -784,16 +819,26 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
     output$UploadFileExampleUserInput <- renderReactable({
       rt <- NULL
       if (input$UploadFileType == "na") {
+        if (input$UploadType == "Samples") {
+          sample_type_name <- switch(
+            input$UploadSampleType,
+            "1" = "micronix",
+            "2" = "cryovial",
+            "3" = "dbs"
+          )
 
-        sample_type_name <- switch(
-          input$UploadSampleType,
-          "1" = "micronix",
-          "2" = "cryovial",
-          "3" = "dbs"
-        )
+          example <- paste(c(sample_type_name, input$UploadFileType), collapse="_")
+          rt <- reactable(eval(as.symbol(example)) %>% select(example_data$user_input), defaultColDef = colDef(minWidth = 120, html = TRUE, sortable = FALSE, resizable = FALSE))
+        
+        } else {
+          control_type_name <- switch(
+            input$UploadSampleType,
+            "1" = "dbs_sheet"
+          )
 
-        example <- paste(c(sample_type_name, input$UploadFileType), collapse="_")
-        rt <- reactable(eval(as.symbol(example)) %>% select(example_data$user_input), defaultColDef = colDef(minWidth = 120, html = TRUE, sortable = FALSE, resizable = FALSE))
+          example <- paste(c(control_type_name, input$UploadFileType), collapse="_")
+          rt <- reactable(eval(as.symbol(example))[, example_data$user_input], defaultColDef = colDef(minWidth = 120, html = TRUE, sortable = FALSE, resizable = FALSE))
+        }
       } else {
         mat <- matrix(nrow = 0, ncol = length(example_data$user_input))
         colnames(mat) <- example_data$user_input
@@ -803,41 +848,45 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
     })
 
     output$UploadFileExampleConditional <- renderReactable({
-      rt <- NULL
-      if (input$UploadFileType == "na") {
+      rt <- data.frame()
+      if (!is.null(example_data$conditional)) {
+        if (input$UploadFileType == "na") {
 
-        sample_type_name <- switch(
-          input$UploadSampleType,
-          "1" = "micronix",
-          "2" = "cryovial",
-          "3" = "dbs"
-        )
-        example <- paste(c(sample_type_name, input$UploadFileType), collapse="_")
-        rt <- reactable(eval(as.symbol(example)) %>% select(example_data$conditional), defaultColDef = colDef(minWidth = 120, html = TRUE, sortable = FALSE, resizable = FALSE))
-      } else {
-        mat <- matrix(nrow = 0, ncol = length(example_data$conditional))
-        colnames(mat) <- example_data$conditional
-        rt <- reactable(mat, defaultColDef = colDef(minWidth = 120, html = TRUE, sortable = FALSE, resizable = FALSE))
+          sample_type_name <- switch(
+            input$UploadSampleType,
+            "1" = "micronix",
+            "2" = "cryovial",
+            "3" = "dbs"
+          )
+          example <- paste(c(sample_type_name, input$UploadFileType), collapse="_")
+          rt <- reactable(eval(as.symbol(example)) %>% select(example_data$conditional), defaultColDef = colDef(minWidth = 120, html = TRUE, sortable = FALSE, resizable = FALSE))
+        } else {
+          mat <- matrix(nrow = 0, ncol = length(example_data$conditional))
+          colnames(mat) <- example_data$conditional
+          rt <- reactable(mat, defaultColDef = colDef(minWidth = 120, html = TRUE, sortable = FALSE, resizable = FALSE))
+        }
       }
       return(rt)
     })
 
     output$UploadFileExampleOptional <- renderReactable({
-      rt <- NULL
-      if (input$UploadFileType == "na") {
+      rt <- data.frame()
+      if (!is.null(example_data$optional)) {
+        if (input$UploadFileType == "na") {
 
-        sample_type_name <- switch(
-          input$UploadSampleType,
-          "1" = "micronix",
-          "2" = "cryovial",
-          "3" = "dbs"
-        )
-        example <- paste(c(sample_type_name, input$UploadFileType), collapse="_")
-        rt <- reactable(eval(as.symbol(example)) %>% select(example_data$optional), defaultColDef = colDef(minWidth = 120, html = TRUE, sortable = FALSE, resizable = FALSE))
-      } else {
-        mat <- matrix(nrow = 0, ncol = length(example_data$optional))
-        colnames(mat) <- example_data$optional
-        rt <- reactable(mat, defaultColDef = colDef(minWidth = 120, html = TRUE, sortable = FALSE, resizable = FALSE))
+          sample_type_name <- switch(
+            input$UploadSampleType,
+            "1" = "micronix",
+            "2" = "cryovial",
+            "3" = "dbs"
+          )
+          example <- paste(c(sample_type_name, input$UploadFileType), collapse="_")
+          rt <- reactable(eval(as.symbol(example)) %>% select(example_data$optional), defaultColDef = colDef(minWidth = 120, html = TRUE, sortable = FALSE, resizable = FALSE))
+        } else {
+          mat <- matrix(nrow = 0, ncol = length(example_data$optional))
+          colnames(mat) <- example_data$optional
+          rt <- reactable(mat, defaultColDef = colDef(minWidth = 120, html = TRUE, sortable = FALSE, resizable = FALSE))
+        }
       }
       return(rt)
     })
