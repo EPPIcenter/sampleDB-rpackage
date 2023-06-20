@@ -66,8 +66,6 @@ UploadControls <- function(user_data, control_type, database = Sys.getenv("SDB_P
 		## controls that exist under this study already, then "base.count" will be used to offset the indexing so that each appended number
 		## is +1 the second largest number under the study (ie. we always increment by 1).
 
-		browser()
-
 		df.payload = dbReadTable(con, "study") %>%
 		  dplyr::rename(batch=short_code) %>%
 			dplyr::mutate(study_id=id) %>%
@@ -128,8 +126,6 @@ UploadControls <- function(user_data, control_type, database = Sys.getenv("SDB_P
 
 		## Multiple sheets can go into a bag. Instead of identifying them uniquely, add a unique integer
 		## for each control sheet in the background
-
-		browser()
 
 		## Use a separate payload to subset sheet_ids
 		df.payload.1=df.payload %>%

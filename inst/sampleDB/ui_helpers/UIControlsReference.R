@@ -20,6 +20,12 @@ UIControlsReference <- function() {
       actionButton("InputControlStudyAction", label = "Upload")
     ),
     mainPanel(
+      fluidRow(
+        column(width = 3, selectizeInput("InputControlSearchBatch", width = '100%', label = "Batch", choices = tbl(con, "study") %>% filter(!is.na(control_collection_id)) %>% pull(short_code), selected=FALSE)),
+        column(width = 3, selectizeInput("InputControlSearchStrain", width = '100%', label = "Strain", choices = tbl(con, "strain") %>% pull(id, name = "name"), selected=FALSE)),
+        column(width = 3, selectizeInput("InputControlSearchDensity", width = '100%', label = "Density", choices = tbl(con, "control") %>% pull(density) %>% unique(.), selected=FALSE)),
+        column(width = 3, selectizeInput("InputControlSearchPercentage", width = '100%', label = "Percentage", choices = tbl(con, "control_strain") %>% pull(percentage) %>% unique(.), selected=FALSE)),
+      ),
       reactableOutput("ControlTableOutput"),
       downloadButton("ControlsDownload", "Download")
     )

@@ -120,8 +120,10 @@ ControlReference <- function(session, input, output, database) {
 
   observe({
     rv$filters <- list(
-      strain = input$InputControlStrain,
-      uid = input$InputControlKey
+      batch = input$InputControlSearchBatch,
+      strain = input$InputControlSearchStrain,
+      density = input$InputControlSearchDensity,
+      percentage = input$InputControlSearchPercentage
     )
 
     output$ControlTableOutput <- renderReactable({ 
@@ -130,7 +132,7 @@ ControlReference <- function(session, input, output, database) {
       if (!is.null(rv$table)) {
 
         df = rv$table
-        colnames(df) = c("UID", "Strain", "Percentage")
+        colnames(df) = c("UID", "Batch", "Density", "Strain", "Percentage", "BagName", "Freezer", "level_I", "level_II")
 
         rt = reactable(
           df,
@@ -335,27 +337,45 @@ ControlReference <- function(session, input, output, database) {
   })
 
 
-  # observeEvent(rv$filters, {
+  observeEvent(rv$filters, {
 
-  #   con <- dbConnect(RSQLite::SQLite(), Sys.getenv("SDB_PATH"))
+    con <- dbConnect(RSQLite::SQLite(), Sys.getenv("SDB_PATH"))
 
-  #   df = tbl(con, "control_strain") %>%
-  #     left_join(tbl(con, "strain") %>% dplyr::rename(strain_id = id, strain = name), by = c("strain_id")) %>%
-  #     left_join(tbl(con, "control") %>% dplyr::rename(control_id = id, uid = name), by = c("control_id")) %>%
-  #     select(control_id, uid, strain_id, strain, percentage) %>%
-  #     distinct()
+    df = tbl(con, "control_strain") %>%
+      left_join(tbl(con, "strain") %>% dplyr::rename(strain_id = id, strain = name), by = c("strain_id")) %>%
+      left_join(tbl(con, "control") %>% dplyr::rename(control_id = id), by = c("control_id")) %>%
+      left_join(tbl(con, "study_subject") %>% dplyr::rename(study_subject_id = id, control_uid = name), by = c("control_id"="study_subject_id")) %>%
+      left_join(tbl(con, "study") %>% dplyr::rename(study_id = id) %>% filter(!is.na(control_collection_id)), by = c("study_id")) %>%
+      # select(control_uid, control_id, short_code, density, strain_id, strain, percentage) %>%
+      dplyr::rename(batch=short_code) %>%
+      distinct()
 
-  #   if (!is.null(rv$filters$strain) && rv$filters$strain != "") {
-  #     df = df %>% filter(strain_id %in% local(rv$filters$strain))
-  #   }
+    if (!is.null(rv$filters$strain) && rv$filters$strain != "") {
+      df = df %>% filter(strain_id %in% local(rv$filters$strain))
+    }
 
-  #   if (!is.null(rv$filters$uid) && rv$filters$uid != "") {
-  #     df = df %>% filter(control_id %in% local(rv$filters$uid))
-  #   }
+    if (!is.null(rv$filters$density) && rv$filters$density != "") {
+      df = df %>% filter(density %in% local(rv$filters$density))
+    }
 
-  #   rv$table = df %>% select(uid, strain, percentage) %>% collect()
+    if (!is.null(rv$filters$percentage) && rv$filters$percentage != "") {
+      df = df %>% filter(percentage %in% local(rv$filters$percentage))
+    }
 
-  #   dbDisconnect(con)
-  # })
+    if (!is.null(rv$filters$batch) && rv$filters$batch != "") {
+      df = df %>% filter(batch %in% local(rv$filters$batch))
+    }
+
+    ## now grab the bag / location information
+
+    df = df %>% inner_join(tbl(con, "dbs_control"), by = c("control_id"))
+    df = df %>% inner_join(tbl(con, "dbs_control_sheet") %>% dplyr::rename(dbs_control_sheet_id=id), by = c("dbs_control_sheet_id"))
+    df = df %>% inner_join(tbl(con, "dbs_bag") %>% dplyr::rename(bag_id=id, bag_name=name), by = c("bag_id"))
+    df = df %>% inner_join(tbl(con, "location") %>% dplyr::rename(location_id=id, location_name=name), by = c("location_id"))
+
+    rv$table = df %>% select(control_uid, batch, density, strain, percentage, bag_name, location_name, level_I, level_II) %>% collect()
+
+    dbDisconnect(con)
+  })
 }
 
