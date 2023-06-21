@@ -366,6 +366,18 @@ ControlReference <- function(session, input, output, database) {
       df = df %>% filter(batch %in% local(rv$filters$batch))
     }
 
+    sql <- inner_join(sql, tbl(con, "location") %>% dplyr::rename(location_id = id) %>% select(location_id, name, level_I, level_II), by = c("location_id"))
+
+    if (!is.null(filters$location)) {
+      if (!is.null(filters$location[['name']]) & !is.null(filters$location[['level_I']]) & !is.null(filters$location[['level_II']])) {
+        sql <- filter(sql, name == local(filters$location[['name']]) & level_I == local(filters$location[['level_I']]) & level_II == local(filters$location[['level_II']]))
+      } else if (!is.null(filters$location[['name']]) & !is.null(filters$location[['level_I']])) {
+        sql <- filter(sql, name == local(filters$location[['name']]) & level_I == local(filters$location[['level_I']]))
+      } else if (!is.null(filters$location[['name']])) {
+        sql <- filter(sql, name == local(filters$location[['name']]))
+      }
+    }
+
     ## now grab the bag / location information
 
     df = df %>% inner_join(tbl(con, "dbs_control"), by = c("control_id"))

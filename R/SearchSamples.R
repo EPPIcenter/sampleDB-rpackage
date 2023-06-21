@@ -19,11 +19,155 @@
 #' @import dplyr
 #' @import RSQLite
 #' @import purrr
-#' @export
+#' @export SearchByType SearchSamples SearchControls
+
+
+SearchByType <- function(sample_storage_type=NULL, control_type=NULL, filters = NULL, format = NULL, database = Sys.getenv("SDB_PATH"), config_yml = Sys.getenv("SDB_CONFIG"), include_internal_sample_id = FALSE) {
+
+  if (sum(!is.null(sample_storage_type, control_type)) != 1) {
+    stop("Only one of sample_storage_type and control_type may be set at a time.")
+  }
+
+  browser()
+
+  search.results <- NULL
+  if (!is.null(sample_storage_type)) {
+    search.results = SearchSamples(
+      sample_storage_type = sample_storage_type,
+      filters = filters,
+      format = format,
+      database = database,
+      config_yml = config_yml,
+      include_internal_sample_id = include_internal_sample_id
+    )
+  } else {
+    search.results = SearchControls(
+      control_type = control_type,
+      filters = filters,
+      format = format,
+      database = database,
+      config_yml = config_yml,
+      include_internal_sample_id = include_internal_sample_id
+    )      
+  }
+
+  return(search.results)
+}
+
+
+SearchControls <- function(control_type, filters = NULL, format = NULL, database = Sys.getenv("SDB_PATH"), config_yml = Sys.getenv("SDB_CONFIG"), include_internal_sample_id = FALSE) {
+  
+  db.results <- NULL
+
+  tryCatch({
+    con <- dbConnect(RSQLite::SQLite(), Sys.getenv("SDB_PATH"))
+
+    df = tbl(con, "control_strain") %>%
+      left_join(tbl(con, "strain") %>% dplyr::rename(strain_id = id, strain = name), by = c("strain_id")) %>%
+      left_join(tbl(con, "control") %>% dplyr::rename(control_id = id), by = c("control_id")) %>%
+      left_join(tbl(con, "study_subject") %>% dplyr::rename(study_subject_id = id, control_uid = name), by = c("control_id"="study_subject_id")) %>%
+      left_join(tbl(con, "study") %>% dplyr::rename(study_id = id, batch_creation_date=created) %>% filter(!is.na(control_collection_id)), by = c("study_id")) %>%
+      # select(control_uid, control_id, short_code, density, strain_id, strain, percentage) %>%
+      dplyr::rename(batch=short_code) %>%
+      distinct()
+
+    if (!is.null(rv$filters$strain) && rv$filters$strain != "") {
+      df = df %>% filter(strain_id %in% local(rv$filters$strain))
+    }
+
+    if (!is.null(rv$filters$density) && rv$filters$density != "") {
+      df = df %>% filter(density %in% local(rv$filters$density))
+    }
+
+    if (!is.null(rv$filters$percentage) && rv$filters$percentage != "") {
+      df = df %>% filter(percentage %in% local(rv$filters$percentage))
+    }
+
+    if (!is.null(rv$filters$batch) && rv$filters$batch != "") {
+      df = df %>% filter(batch %in% local(rv$filters$batch))
+    }
+
+    ## now grab the bag / location information
+
+    df = df %>% inner_join(tbl(con, "dbs_control"), by = c("control_id"))
+    df = df %>% inner_join(tbl(con, "dbs_control_sheet") %>% dplyr::rename(dbs_control_sheet_id=id), by = c("dbs_control_sheet_id"))
+    df = df %>% inner_join(tbl(con, "dbs_bag") %>% dplyr::rename(bag_id=id, bag_name=name), by = c("bag_id"))
+    df = df %>% inner_join(tbl(con, "location") %>% dplyr::rename(location_id=id, location_name=name), by = c("location_id"))
+
+    rv$table = df %>% select(control_uid, batch, density, strain, percentage, bag_name, location_name, level_I, level_II) %>% collect()
+
+    if (include_internal_sample_id) {
+
+      ## Do date collection here because lubridate and purrr::map (used by dplyr sql backend) is not cooperating
+      db.results <- sql %>% select("", names(dbmap)) %>% collect() %>% dplyr::mutate(batch_creation_date = as_date(batch_creation_date))
+
+      if (!is.null(filters$collection_date) && sum(is.na(filters$collection_date)) == 0) {
+        if (!is.null(filters$collection_date$date.from) && !is.null(filters$collection_date$date.to)) {
+          intervals <- list()
+          for (i in 1:length(filters$collection_date$date.from)) {
+            intervals <- append(
+              intervals,
+              list(
+                interval(
+                  lubridate::as_date(local(filters$collection_date$date.from[i])),
+                  lubridate::as_date(local(filters$collection_date$date.to[i]))
+                )
+              )
+            )
+          }
+          db.results <- filter(db.results, batch_creation_date %within% intervals)
+        }
+
+      }
+
+      if (!is.null(format)) {
+        colnames(db.results) <- c("Sample ID", unname(dbmap))
+      }
+
+    } else {
+      db.results <- sql %>% select("", names(dbmap)) %>% collect() %>% dplyr::mutate(batch_creation_date = as_date(batch_creation_date))
+
+      if (!is.null(filters$collection_date) && sum(is.na(filters$collection_date)) == 0) {      
+        if (!is.null(filters$collection_date$date.from) && !is.null(filters$collection_date$date.to)) {
+          intervals <- list()
+          for (i in 1:length(filters$collection_date$date.from)) {
+            intervals <- append(
+              intervals,
+              list(
+                interval(
+                  lubridate::as_date(local(filters$collection_date$date.from[i])),
+                  lubridate::as_date(local(filters$collection_date$date.to[i]))
+                )
+              )
+            )
+          }
+          db.results <- filter(db.results, batch_creation_date %within% intervals) 
+        }
+      }
+
+      if (!is.null(format)) {
+        colnames(db.results) <- unname(dbmap)
+      }
+    }
+
+    dbDisconnect(con)
+  },
+  error = function(e) {
+    message(e$message)
+
+  }, finally = {
+    dbDisconnect(con)
+  })
+
+  return (db.results)
+}
 
 
 SearchSamples <- function(sample_storage_type, filters = NULL, format = NULL, database = Sys.getenv("SDB_PATH"), config_yml = Sys.getenv("SDB_CONFIG"), include_internal_sample_id = FALSE) {
+  
+  browser()
   db.results <- NULL
+
   tryCatch({
     container_tables <- list(
       "manifest" = switch(sample_storage_type,
