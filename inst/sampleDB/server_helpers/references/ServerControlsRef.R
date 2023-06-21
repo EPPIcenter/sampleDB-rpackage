@@ -4,7 +4,28 @@ ControlReference <- function(session, input, output, database) {
 		user_file = NULL,
 		user_file_error_annotated = NULL,
 		table = NULL,
-    filters = NULL
+    filters = NULL,
+    dbmap = c(
+      batch_creation_date = "Created", 
+      strain = "Strain", 
+      percentage = "Percentage", 
+      density = "Density", 
+      count = "Count", 
+      bag_name = "BagName",
+      batch = "Batch", 
+      location_name = "Freezer", 
+      level_I = "level_I",
+      level_II = "level_II"
+    ),
+    update.table = c(
+      "strain",
+      "percentage",
+      "density",
+      "bag_name"
+    ),
+    user_selected_rows = NULL,
+    last_selected_row = NULL,
+    rt = NULL
 	)
 
   error <- reactiveValues(
@@ -123,8 +144,28 @@ ControlReference <- function(session, input, output, database) {
       batch = input$InputControlSearchBatch,
       strain = input$InputControlSearchStrain,
       density = input$InputControlSearchDensity,
-      percentage = input$InputControlSearchPercentage
+      percentage = input$InputControlSearchPercentage,
+      dates = list(
+        date.from = input$InputControlSearchDateRange[1],
+        date.to = input$InputControlSearchDateRange[2]
+      ), 
+      location = list(
+        name = input$InputControlSearchByLocation,
+        level_I = input$InputControlSearchByLevelI,
+        level_II = input$InputControlSearchByLevelII
+      )
     )
+
+    observe({
+      output$DownloadControlData <- downloadHandler(
+        filename = function() {
+          paste('data-', Sys.Date(), '.csv', sep='')
+        },
+        content = function(con) {
+          write.csv(rv$table, con, row.names = FALSE, quote = FALSE)
+        }
+      )
+    })
 
     output$ControlTableOutput <- renderReactable({ 
 
@@ -132,7 +173,8 @@ ControlReference <- function(session, input, output, database) {
       if (!is.null(rv$table)) {
 
         df = rv$table
-        colnames(df) = c("UID", "Batch", "Density", "Strain", "Percentage", "BagName", "Freezer", "level_I", "level_II")
+        df = select(df, names(rv$dbmap))
+        colnames(df) = unname(rv$dbmap)
 
         rt = reactable(
           df,
@@ -158,6 +200,89 @@ ControlReference <- function(session, input, output, database) {
         return (rt)
       }
     })
+  })
+
+  ###### Delarch specific functionality
+
+  selected <- reactive(getReactableState("ControlTableOutput", "selected"))
+  selected.updating.counts <- reactive(getReactableState("InputControlsSelectedRows", "selected"))
+
+  observeEvent(input$InputControlArchiveAction, ignoreInit = TRUE, {
+
+    con <- dbConnect(RSQLite::SQLite(), Sys.getenv("SDB_PATH"))
+
+    user.filtered.rows = rv$table
+    user.selected.rows = user.filtered.rows[selected(), ]
+
+    rt.select = rv$update.table[rv$update.table %in% colnames(user.selected.rows)]
+    user.selected.rows.select = user.selected.rows %>% select(all_of(rt.select))
+    colnames(user.selected.rows.select) <- unname(rv$dbmap[names(rv$dbmap) %in% rv$update.table])
+
+    rv$user_selected_rows = user.selected.rows.select
+
+    rt <- reactable(
+      user.selected.rows.select,
+      defaultColDef = colDef(
+        minWidth = 95,
+        html = TRUE,
+        sortable = TRUE,
+        resizable = FALSE,
+        na = "-", 
+        align = "center"
+      ),
+      selection = "single",
+      onClick = "select",
+      theme = reactableTheme(
+        headerStyle = list(
+          "& input[type='checkbox']" = list(display = "none"),
+          "&:hover[aria-sort]" = list(background = "hsl(0, 0%, 96%)"),
+          "&[aria-sort='ascending'], &[aria-sort='descending']" = list(background = "hsl(0, 0%, 96%)"),
+          borderColor = "#555"
+        ),
+        rowSelectedStyle = list(backgroundColor = '#aafaff', boxShadow = 'inset 2px 0 0 0 #ffa62d')
+      )
+    )
+
+    showModal(
+      modalDialog(
+        title = "Update Controls",
+        size = "l",
+        tags$em("Please review the following fields and your selected samples below.", style = "color: grey;font-size: 18px;"),
+        hr(),
+        tags$p("Please review your selected samples below before submitting. You may cancel by selecting", tags$em("Dismiss"), "below or by clicking outside of the dialog box."),
+        renderReactable({ rt }),
+        hr(),
+        fluidRow( column(width = 6, numericInput(label = tags$strong("Number of DBS Controls Punched"), inputId = "ControlInputNumControls", value = 0, width = '75%')),
+                  column(width = 6, tags$p("Please indicate the number of controls that were punched."))
+        ),
+        easyClose = TRUE,
+        fade = TRUE,
+        footer = tagList(actionButton("ArchiveControlAction", label = "Update"), modalButton("Dismiss"))
+      )
+    )
+
+    DBI::dbDisconnect(con)
+  })
+
+  observeEvent(selected.updating.counts(), ignoreInit = TRUE, ignoreNULL = TRUE, {
+    browser()
+    if (!is.null(rv$user_selected_rows)) { 
+
+      ## if the row has changed 
+      if (is.null(rv$last_selected_row) || (!is.null(rv$last_selected_row) && rv$last_selected_row != selected.updating.counts())) {
+        updateNumericInput(
+          session,
+          "ControlInputNumControls",
+          value = 0
+        )
+
+        rv$last_selected_row = selected.updating.counts()
+      }
+    }
+  })
+
+  observeEvent(input$ControlInputNumControls, ignoreInit = TRUE, {
+
   })
 
   observeEvent(input$InputUploadStrainAction, ignoreInit = TRUE, {
@@ -249,7 +374,6 @@ ControlReference <- function(session, input, output, database) {
       }
 
       shinyjs::reset("InputUploadStrains")
-      
 
       ## Upload strains
 
@@ -336,58 +460,15 @@ ControlReference <- function(session, input, output, database) {
     dbDisconnect(con)
   })
 
+  observe({
+    filters <- purrr::discard(rv$filters[!names(rv$filters) %in% c("location", "collection_date")], function(x) is.null(x) | "" %in% x | length(x) == 0)
+    filters$location <- purrr::discard(rv$filters$location, function(x) is.null(x) | "" %in% x | length(x) == 0)
+    filters$location <- if (length(filters$location) > 0) filters$location
 
-  observeEvent(rv$filters, {
+    filters$dates <- purrr::discard(rv$filters$dates, function(x) is.null(x) | "" %in% x | length(x) == 0)
+    filters$dates <- if (length(filters$dates) > 0) filters$dates
 
-    con <- dbConnect(RSQLite::SQLite(), Sys.getenv("SDB_PATH"))
-
-    df = tbl(con, "control_strain") %>%
-      left_join(tbl(con, "strain") %>% dplyr::rename(strain_id = id, strain = name), by = c("strain_id")) %>%
-      left_join(tbl(con, "control") %>% dplyr::rename(control_id = id), by = c("control_id")) %>%
-      left_join(tbl(con, "study_subject") %>% dplyr::rename(study_subject_id = id, control_uid = name), by = c("control_id"="study_subject_id")) %>%
-      left_join(tbl(con, "study") %>% dplyr::rename(study_id = id) %>% filter(!is.na(control_collection_id)), by = c("study_id")) %>%
-      # select(control_uid, control_id, short_code, density, strain_id, strain, percentage) %>%
-      dplyr::rename(batch=short_code) %>%
-      distinct()
-
-    if (!is.null(rv$filters$strain) && rv$filters$strain != "") {
-      df = df %>% filter(strain_id %in% local(rv$filters$strain))
-    }
-
-    if (!is.null(rv$filters$density) && rv$filters$density != "") {
-      df = df %>% filter(density %in% local(rv$filters$density))
-    }
-
-    if (!is.null(rv$filters$percentage) && rv$filters$percentage != "") {
-      df = df %>% filter(percentage %in% local(rv$filters$percentage))
-    }
-
-    if (!is.null(rv$filters$batch) && rv$filters$batch != "") {
-      df = df %>% filter(batch %in% local(rv$filters$batch))
-    }
-
-    sql <- inner_join(sql, tbl(con, "location") %>% dplyr::rename(location_id = id) %>% select(location_id, name, level_I, level_II), by = c("location_id"))
-
-    if (!is.null(filters$location)) {
-      if (!is.null(filters$location[['name']]) & !is.null(filters$location[['level_I']]) & !is.null(filters$location[['level_II']])) {
-        sql <- filter(sql, name == local(filters$location[['name']]) & level_I == local(filters$location[['level_I']]) & level_II == local(filters$location[['level_II']]))
-      } else if (!is.null(filters$location[['name']]) & !is.null(filters$location[['level_I']])) {
-        sql <- filter(sql, name == local(filters$location[['name']]) & level_I == local(filters$location[['level_I']]))
-      } else if (!is.null(filters$location[['name']])) {
-        sql <- filter(sql, name == local(filters$location[['name']]))
-      }
-    }
-
-    ## now grab the bag / location information
-
-    df = df %>% inner_join(tbl(con, "dbs_control"), by = c("control_id"))
-    df = df %>% inner_join(tbl(con, "dbs_control_sheet") %>% dplyr::rename(dbs_control_sheet_id=id), by = c("dbs_control_sheet_id"))
-    df = df %>% inner_join(tbl(con, "dbs_bag") %>% dplyr::rename(bag_id=id, bag_name=name), by = c("bag_id"))
-    df = df %>% inner_join(tbl(con, "location") %>% dplyr::rename(location_id=id, location_name=name), by = c("location_id"))
-
-    rv$table = df %>% select(control_uid, batch, density, strain, percentage, bag_name, location_name, level_I, level_II) %>% collect()
-
-    dbDisconnect(con)
+    rv$table <- SearchControls(control_type = 1, filters = filters, include_internal_sample_id = TRUE)
   })
 }
 

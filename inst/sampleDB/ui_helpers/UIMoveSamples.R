@@ -15,7 +15,7 @@ UIMoveSamples <- function(){
       width = 4,
       HTML("<h4><b>Move Samples</b></h4>"),
       HTML("<p>To move samples please select a storage type and fill out the sections below.</p>"),
-      radioButtons("MoveSampleType","1. Sample Storage Type", DBI::dbReadTable(con, "sample_type") %>% pull(id, name = "name"), inline = T),
+      radioButtons("MoveSampleType","1. Sample Storage Type", DBI::dbReadTable(con, "sample_type") %>% filter(is.na(parent_id)) %>% pull(id, name = "name"), inline = T),
       hr(),
       radioButtons("MoveFileType", label = "2. Move File Type", choices = file_type_ids, inline = T),
       

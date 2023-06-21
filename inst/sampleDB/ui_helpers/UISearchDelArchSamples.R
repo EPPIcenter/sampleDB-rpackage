@@ -5,12 +5,9 @@ UISearchDelArchSamples <- function(){
   ui <- sidebarLayout(
     sidebarPanel(
       width = 2,
-      # actionButton("verify_delarch", label = NULL),
       HTML("<h4>Search, Delete and Archive Samples</h4>"),
       hr(),
-      # fileInput("SearchByLabel", label = HTML("Barcode <h6>Single column named \"barcode\"</h6>")), actionButton("ClearSearchBarcodes", label = "Clear Barcodes"), textOutput("WarnSubjectBarcodeFileColnames"), textOutput("WarnSubjectBarcodeFileColnames2"),
-
-      radioButtons("DelArchSearchBySampleType","Sample Type", choices = c("All" = "all", DBI::dbReadTable(con, "sample_type") %>% filter(is.null(parent_id)) %>% pull(id, name = "name")), selected = "all", inline = T),
+      radioButtons("DelArchSearchBySampleType","Sample Type", choices = c("All" = "all", DBI::dbReadTable(con, "sample_type") %>% filter(is.na(parent_id)) %>% pull(id, name = "name")), selected = "all", inline = T),
       hr(),
       actionButton("DelArchSearchReset", width = '100%', label = "Reset Search Criteria", style="color: #fff; background-color: #337ab7; border-color: #2e6da4"),
       hr(),

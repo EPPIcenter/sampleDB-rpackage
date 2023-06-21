@@ -28,8 +28,6 @@ SearchByType <- function(sample_storage_type=NULL, control_type=NULL, filters = 
     stop("Only one of sample_storage_type and control_type may be set at a time.")
   }
 
-  browser()
-
   search.results <- NULL
   if (!is.null(sample_storage_type)) {
     search.results = SearchSamples(
@@ -48,7 +46,7 @@ SearchByType <- function(sample_storage_type=NULL, control_type=NULL, filters = 
       database = database,
       config_yml = config_yml,
       include_internal_sample_id = include_internal_sample_id
-    )      
+    )
   }
 
   return(search.results)
@@ -56,61 +54,73 @@ SearchByType <- function(sample_storage_type=NULL, control_type=NULL, filters = 
 
 
 SearchControls <- function(control_type, filters = NULL, format = NULL, database = Sys.getenv("SDB_PATH"), config_yml = Sys.getenv("SDB_CONFIG"), include_internal_sample_id = FALSE) {
-  
-  db.results <- NULL
 
+  db.results <- NULL
   tryCatch({
+
     con <- dbConnect(RSQLite::SQLite(), Sys.getenv("SDB_PATH"))
 
-    df = tbl(con, "control_strain") %>%
+    sql = tbl(con, "control_strain") %>%
       left_join(tbl(con, "strain") %>% dplyr::rename(strain_id = id, strain = name), by = c("strain_id")) %>%
       left_join(tbl(con, "control") %>% dplyr::rename(control_id = id), by = c("control_id")) %>%
       left_join(tbl(con, "study_subject") %>% dplyr::rename(study_subject_id = id, control_uid = name), by = c("control_id"="study_subject_id")) %>%
-      left_join(tbl(con, "study") %>% dplyr::rename(study_id = id, batch_creation_date=created) %>% filter(!is.na(control_collection_id)), by = c("study_id")) %>%
-      # select(control_uid, control_id, short_code, density, strain_id, strain, percentage) %>%
-      dplyr::rename(batch=short_code) %>%
+      left_join(tbl(con, "study") %>% dplyr::rename(study_id = id, batch_creation_date=created, batch=short_code) %>% filter(!is.na(control_collection_id)), by = c("study_id")) %>%
       distinct()
 
-    if (!is.null(rv$filters$strain) && rv$filters$strain != "") {
-      df = df %>% filter(strain_id %in% local(rv$filters$strain))
+    ## Get the counts
+    sql = sql %>%
+      group_by(batch, density, percentage, strain) %>%
+      dplyr::mutate(count = n()) %>%
+      ungroup
+
+    if (!is.null(filters$strain) && filters$strain != "") {
+      sql = sql %>% filter(strain %in% local(filters$strain))
     }
 
-    if (!is.null(rv$filters$density) && rv$filters$density != "") {
-      df = df %>% filter(density %in% local(rv$filters$density))
+    if (!is.null(filters$density) && filters$density != "") {
+      sql = sql %>% filter(density %in% local(filters$density))
     }
 
-    if (!is.null(rv$filters$percentage) && rv$filters$percentage != "") {
-      df = df %>% filter(percentage %in% local(rv$filters$percentage))
+    if (!is.null(filters$percentage) && filters$percentage != "") {
+      sql = sql %>% filter(percentage %in% local(filters$percentage))
     }
 
-    if (!is.null(rv$filters$batch) && rv$filters$batch != "") {
-      df = df %>% filter(batch %in% local(rv$filters$batch))
+    if (!is.null(filters$batch) && filters$batch != "") {
+      sql = sql %>% filter(batch %in% local(filters$batch))
     }
 
     ## now grab the bag / location information
 
-    df = df %>% inner_join(tbl(con, "dbs_control"), by = c("control_id"))
-    df = df %>% inner_join(tbl(con, "dbs_control_sheet") %>% dplyr::rename(dbs_control_sheet_id=id), by = c("dbs_control_sheet_id"))
-    df = df %>% inner_join(tbl(con, "dbs_bag") %>% dplyr::rename(bag_id=id, bag_name=name), by = c("bag_id"))
-    df = df %>% inner_join(tbl(con, "location") %>% dplyr::rename(location_id=id, location_name=name), by = c("location_id"))
+    sql = sql %>% inner_join(tbl(con, "dbs_control"), by = c("control_id"))
+    sql = sql %>% inner_join(tbl(con, "dbs_control_sheet") %>% dplyr::rename(dbs_control_sheet_id=id), by = c("dbs_control_sheet_id"))
+    sql = sql %>% inner_join(tbl(con, "dbs_bag") %>% dplyr::rename(bag_id=id, bag_name=name), by = c("bag_id"))
+    sql = sql %>% inner_join(tbl(con, "location") %>% dplyr::rename(location_id=id, location_name=name), by = c("location_id"))
 
-    rv$table = df %>% select(control_uid, batch, density, strain, percentage, bag_name, location_name, level_I, level_II) %>% collect()
+    sql = sql %>%
+      collect() %>%
+      group_by(batch, density, percentage, strain) %>%
+      dplyr::mutate(control_uid = list(control_uid)) %>%
+      group_by(bag_id) %>%
+      dplyr::mutate(uid=list(uid)) %>%
+      ungroup() %>%
+      select(batch_creation_date, count, control_uid, uid, batch, density, strain, percentage, bag_name, location_name, level_I, level_II) %>%
+      distinct()
 
     if (include_internal_sample_id) {
 
       ## Do date collection here because lubridate and purrr::map (used by dplyr sql backend) is not cooperating
-      db.results <- sql %>% select("", names(dbmap)) %>% collect() %>% dplyr::mutate(batch_creation_date = as_date(batch_creation_date))
+      db.results <- sql %>% dplyr::mutate(batch_creation_date = as_date(batch_creation_date))
 
-      if (!is.null(filters$collection_date) && sum(is.na(filters$collection_date)) == 0) {
-        if (!is.null(filters$collection_date$date.from) && !is.null(filters$collection_date$date.to)) {
+      if (!is.null(filters$dates) && sum(is.na(filters$dates)) == 0) {
+        if (!is.null(filters$dates$date.from) && !is.null(filters$dates$date.to)) {
           intervals <- list()
-          for (i in 1:length(filters$collection_date$date.from)) {
+          for (i in 1:length(filters$dates$date.from)) {
             intervals <- append(
               intervals,
               list(
                 interval(
-                  lubridate::as_date(local(filters$collection_date$date.from[i])),
-                  lubridate::as_date(local(filters$collection_date$date.to[i]))
+                  lubridate::as_date(local(filters$dates$date.from[i])),
+                  lubridate::as_date(local(filters$dates$date.to[i]))
                 )
               )
             )
@@ -125,23 +135,23 @@ SearchControls <- function(control_type, filters = NULL, format = NULL, database
       }
 
     } else {
-      db.results <- sql %>% select("", names(dbmap)) %>% collect() %>% dplyr::mutate(batch_creation_date = as_date(batch_creation_date))
+      db.results <- sql %>% dplyr::mutate(batch_creation_date = as_date(batch_creation_date))
 
-      if (!is.null(filters$collection_date) && sum(is.na(filters$collection_date)) == 0) {      
-        if (!is.null(filters$collection_date$date.from) && !is.null(filters$collection_date$date.to)) {
+      if (!is.null(filters$dates) && sum(is.na(filters$dates)) == 0) {
+        if (!is.null(filters$dates$date.from) && !is.null(filters$dates$date.to)) {
           intervals <- list()
-          for (i in 1:length(filters$collection_date$date.from)) {
+          for (i in 1:length(filters$dates$date.from)) {
             intervals <- append(
               intervals,
               list(
                 interval(
-                  lubridate::as_date(local(filters$collection_date$date.from[i])),
-                  lubridate::as_date(local(filters$collection_date$date.to[i]))
+                  lubridate::as_date(local(filters$dates$date.from[i])),
+                  lubridate::as_date(local(filters$dates$date.to[i]))
                 )
               )
             )
           }
-          db.results <- filter(db.results, batch_creation_date %within% intervals) 
+          db.results <- filter(db.results, batch_creation_date %within% intervals)
         }
       }
 
@@ -149,8 +159,6 @@ SearchControls <- function(control_type, filters = NULL, format = NULL, database
         colnames(db.results) <- unname(dbmap)
       }
     }
-
-    dbDisconnect(con)
   },
   error = function(e) {
     message(e$message)
@@ -164,8 +172,7 @@ SearchControls <- function(control_type, filters = NULL, format = NULL, database
 
 
 SearchSamples <- function(sample_storage_type, filters = NULL, format = NULL, database = Sys.getenv("SDB_PATH"), config_yml = Sys.getenv("SDB_CONFIG"), include_internal_sample_id = FALSE) {
-  
-  browser()
+
   db.results <- NULL
 
   tryCatch({
@@ -263,7 +270,7 @@ SearchSamples <- function(sample_storage_type, filters = NULL, format = NULL, da
 
     # note: dbs does not have a barcode
     if (!is.null(filters$barcode) && sample_storage_type != 3) {
-      sql <- filter(sql, barcode %in% local(filters$barcode)) 
+      sql <- filter(sql, barcode %in% local(filters$barcode))
     }
 
 
@@ -405,7 +412,7 @@ SearchSamples <- function(sample_storage_type, filters = NULL, format = NULL, da
       ## Do date collection here because lubridate and purrr::map (used by dplyr sql backend) is not cooperating
       db.results <- sql %>% select("storage_container_id", names(dbmap)) %>% collect() %>% dplyr::mutate(collection_date = as_date(collection_date))
 
-      if (!is.null(filters$collection_date) && sum(is.na(filters$collection_date)) == 0) {      
+      if (!is.null(filters$collection_date) && sum(is.na(filters$collection_date)) == 0) {
         if (!is.null(filters$collection_date$date.from) && !is.null(filters$collection_date$date.to)) {
           intervals <- list()
           for (i in 1:length(filters$collection_date$date.from)) {
@@ -431,7 +438,7 @@ SearchSamples <- function(sample_storage_type, filters = NULL, format = NULL, da
     } else {
       db.results <- sql %>% select(names(dbmap)) %>% collect() %>% dplyr::mutate(collection_date = as_date(collection_date))
 
-      if (!is.null(filters$collection_date) && sum(is.na(filters$collection_date)) == 0) {      
+      if (!is.null(filters$collection_date) && sum(is.na(filters$collection_date)) == 0) {
         if (!is.null(filters$collection_date$date.from) && !is.null(filters$collection_date$date.to)) {
           intervals <- list()
           for (i in 1:length(filters$collection_date$date.from)) {
@@ -445,7 +452,7 @@ SearchSamples <- function(sample_storage_type, filters = NULL, format = NULL, da
               )
             )
           }
-          db.results <- filter(db.results, collection_date %within% intervals) 
+          db.results <- filter(db.results, collection_date %within% intervals)
         }
       }
 
