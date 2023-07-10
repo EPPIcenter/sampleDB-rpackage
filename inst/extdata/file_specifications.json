@@ -16,7 +16,7 @@
   ],
   "sample_type": [
     {
-      "id": "micronix",
+      "id": 1,
       "name": "Micronix",
       "file_types": [
         "na",
@@ -25,14 +25,14 @@
       ]
     },
     {
-      "id": "cryovial",
+      "id": 2,
       "name": "Cryovial",
       "file_types": [
         "na"
       ]
     },
     {
-      "id": "dbs",
+      "id": 3,
       "name": "DBS",
       "file_types": [
         "na"
@@ -46,7 +46,7 @@
       "description": "Custom file that is user-created and not output by any software packages.",
       "sample_type": [
         {
-          "id": "micronix",
+          "id": 1,
           "actions": {
             "upload": {
               "required": [
@@ -70,7 +70,7 @@
           }
         },
         {
-          "id": "cryovial",
+          "id": 2,
           "actions": {
             "upload": {
               "required": [
@@ -97,7 +97,7 @@
           }
         },
         {
-          "id": "dbs",
+          "id": 3,
           "actions": {
             "upload": {
               "required": [
@@ -125,7 +125,7 @@
       "description": null,
       "sample_type": [
         {
-          "id": "micronix",
+          "id": 1,
           "actions": {
             "upload": {
               "required": [
@@ -154,7 +154,7 @@
       "description": null,
       "sample_type": [
         {
-          "id": "micronix",
+          "id": 1,
           "actions": {
             "upload": {
               "required": [
@@ -207,7 +207,7 @@
     },
     "sample_type": [
       {
-        "id": "micronix",
+        "id": 1,
         "location": {
           "description": "Micronix sample location column names",
           "name": "FreezerName",
@@ -220,7 +220,7 @@
         }
       },
       {
-        "id": "cryovial",
+        "id": 2,
         "location": {
           "description": "Cryovial sample location column names",
           "name": "FreezerName",
@@ -233,7 +233,7 @@
         }
       },
       {
-        "id": "dbs",
+        "id": 3,
         "location": {
           "description": "DBS sample location column names",
           "name": "FreezerName",

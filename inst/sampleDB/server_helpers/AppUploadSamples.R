@@ -152,7 +152,7 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
           user_csv = dataset$datapath,
           user_action = "upload",
           file_type = input$UploadFileType,
-          sample_storage_type = storage.type.id.map[[input$UploadSampleType]]
+          sample_storage_type = input$UploadSampleType
         )
       },
       message = function(m) {
@@ -295,7 +295,7 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
             user_csv = dataset$datapath,
             user_action = "upload",
             file_type = input$UploadFileType,
-            sample_storage_type = storage.type.id.map[[input$UploadSampleType]],
+            sample_storage_type = input$UploadSampleType,
             container_name = container_name,
             freezer_address = location_parameters
           )
@@ -617,7 +617,7 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
     ## Required Column Names
 
     file_index <- which(lapply(file_specs_json$file_types, function(x) x$id) == input$UploadFileType)
-    sample_storage_type_index <- which(lapply(file_specs_json$file_types[[file_index]]$sample_type, function(x) x$id) == storage.type.id.map[[input$UploadSampleType]])
+    sample_storage_type_index <- which(lapply(file_specs_json$file_types[[file_index]]$sample_type, function(x) x$id) == input$UploadSampleType)
 
     if (length(sample_storage_type_index) == 0) {
       message("Unimplemented file specifications for this sample storage type.")

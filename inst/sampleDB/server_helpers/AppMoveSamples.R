@@ -411,7 +411,7 @@ AppMoveSamples <- function(session, input, output, database) {
             user_csv = dataset[i,]$datapath,
             user_action = "move",
             file_type = input$MoveFileType,
-            sample_storage_type = storage.type.id.map[[input$MoveSampleType]], # the input needs to be converted!
+            sample_storage_type = input$MoveSampleType,
             container_name = manifest_name
           )
 
@@ -562,7 +562,7 @@ AppMoveSamples <- function(session, input, output, database) {
     ## Required Column Names
 
     file_index <- which(lapply(file_specs_json$file_types, function(x) x$id) == input$MoveFileType)
-    sample_storage_type_index <- which(lapply(file_specs_json$file_types[[file_index]]$sample_type, function(x) x$id) == storage.type.id.map[[input$MoveSampleType]])
+    sample_storage_type_index <- which(lapply(file_specs_json$file_types[[file_index]]$sample_type, function(x) x$id) == input$MoveSampleType)
 
     if (length(sample_storage_type_index) == 0) {
       message("Unimplemented file specifications for this sample storage type.")
