@@ -33,6 +33,8 @@
 
 
 ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type = NULL, container_name = NULL, freezer_address = NULL, file_type = "na", validate = TRUE, database = Sys.getenv("SDB_PATH"), config_yml = Sys.getenv("SDB_CONFIG")) {
+  
+  browser()
   df.error.formatting <- data.frame(column = NULL, reason = NULL, trigger = NULL)
 
   if (!require(dplyr)) {
@@ -212,14 +214,12 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
       )
   }
 
-
   ## Throw if any of the required columns are missing
   # since the application is retrofitting the already released shiny application, there is only a subset of fields checked. This
   # should be expanded upon.
   if (nrow(df.error.formatting)) {
     stop_formatting_error(df = df.error.formatting)
   }
-
 
   # include a row number column to let users know where problems are occuring. this should be done here,
   # after the correct columns are found and chosen
@@ -228,7 +228,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
     user_file <- select(user_file, all_of(required_user_column_names), any_of(conditional_user_column_names), any_of(optional_user_column_names))
   } else if (user_action %in% c("move", "search")) {
     user_file <- select(user_file, all_of(required_user_column_names))
-  }
+  } # no need to have an else because action input validation is done above!
 
   message("Required columns detected.")
 
@@ -247,24 +247,24 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
       if (user_action %in% c("upload", "move")) {
 
         ## Micronix
-        if (sample_storage_type == 1 && file_type == "na") {
+        if (sample_storage_type == "micronix" && file_type == "na") {
           dbmap$barcode <- "Barcode"
           dbmap$position <- c("Row", "Column")
-        } else if (sample_storage_type == 1 && file_type == "traxcer") {
+        } else if (sample_storage_type == "micronix" && file_type == "traxcer") {
           dbmap$barcode <- "Tube ID"
           dbmap$position <- traxcer_position
-        } else if (sample_storage_type == 1 && file_type == "visionmate") {
+        } else if (sample_storage_type == "micronix" && file_type == "visionmate") {
           dbmap$barcode <- "Tube Row"
           dbmap$position <- c("LocationRow", "LocationColumn")
         }
 
         ## Cryovial
-        else if (sample_storage_type == 2) {
+        else if (sample_storage_type == "cryovial") {
           dbmap$barcode <- "Barcode"
           dbmap$position <- c("BoxRow", "BoxColumn")
 
         ## DBS
-        } else if (sample_storage_type == 3) {
+        } else if (sample_storage_type == "dbs") {
           dbmap$position <- c("Row", "Column")
         } else {
           stop("Unimplemented position formatting code for this sample type.")
@@ -308,7 +308,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
         user_file <- user_file[!is.na(user_file$`Tube ID`),]
       }
 
-      user_file <- .CheckFormattedFileData(
+      user_file <- CheckFormattedFileData(
         database = database,
         formatted_csv = user_file,
         file_type = file_type,
@@ -345,7 +345,8 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
   return(user_file)
 }
 
-.CheckFormattedFileData <- function(database, formatted_csv, file_type, sample_storage_type, user_action, dbmap) {
+
+CheckFormattedFileData <- function(database, formatted_csv, file_type, sample_storage_type, user_action, dbmap) {
 
   #NOTE: dbmap is unused right now and should probably be removed from the function
 
@@ -353,16 +354,16 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
   required_names <- requires_data <- container_metadata <- NULL
   if (user_action %in% c("upload", "move")) {
     required_names <- switch(sample_storage_type,
-        "1" = c(
+        "micronix" = c(
           "position",
           "barcode",
           "manifest_name"
         ),
-        "2" = c(
+        "cryovial" = c(
           "position",
           "manifest_name"
         ),
-        "3" = c(
+        "dbs" = c(
           "position",
           "manifest_name"
         )
@@ -443,7 +444,6 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
 
       ## check to make sure there are no duplicated values
       # 1. Make sure that two samples aren't being uploaded to the same place
-      # df = CheckSampleLocationUnique(formatted_csv)
       if (!is.null(formatted_csv[["position"]])) {
         df = formatted_csv %>%
           group_by(manifest_name, position) %>%
@@ -457,14 +457,18 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
           } else {
             df <- formatted_csv[df$n > 1, ] %>% select(row_number, position1, position2, manifest_name)
           }
-          .maybe_add_err(err, df, "Uploading at least two samples to the same position in a manifest", dbmap)
+          .maybe_add_err(err, df, "Uploading at least two samples to the same position", dbmap)
         }
       }
+
+      ###################################################################
+      ### Micronix And Cryovial Barcode Checks (In Memory validation) ###
+      ###################################################################
 
       df = CheckDuplicatedBarcodes(formatted_csv, sample_storage_type)
       err <- .maybe_add_err(err, df, "Uploading at least two samples with identical barcodes", dbmap)
 
-      if (sample_storage_type %in% c(1)) {
+      if (sample_storage_type %in% c("micronix")) {
         df.1 = formatted_csv %>%
           group_by(row_number) %>%
           reframe(
@@ -485,7 +489,7 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
         df <- formatted_csv[formatted_csv$row_number %in% rn, c("row_number", "barcode")]
         err <- .maybe_add_err(err, df, "Micronix Barcodes must be 10 digits long", dbmap)
 
-      } else if (sample_storage_type %in% c(2)) {
+      } else if (sample_storage_type %in% c("cryovial")) {
         df.1 = formatted_csv %>%
           group_by(row_number) %>%
           reframe(
@@ -556,14 +560,6 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
       con <- DBI::dbConnect(RSQLite::SQLite(), database)
       copy_to(con, formatted_csv)
 
-      if (user_action %in% c("upload")) {
-
-        # assign back a text version of the dates to the in-memory file. This will
-        # be used for parsing validation. This implementation is due to the date type
-        # conversion not working with dplyrs lazy-SQL generation.
-        formatted_csv$collection_date = as.character(lubridate::as_date(formatted_csv$collection_date))
-      }
-
       #########################
       ## Database validation ##
       #########################
@@ -572,82 +568,145 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
       ## The formatted csv is queried to  build the error table when invalid rows
       ## are detected (failed to meet criteria)
 
+      ## This is for all uploads regardless of type
       if (user_action %in% c("upload")) {
 
         ## check that dates exist for longitudinal studies
-        rn <- tbl(con, "formatted_csv") %>%
+        df <- tbl(con, "formatted_csv") %>%
           dplyr::inner_join(
             tbl(con, "study") %>%
               select(short_code, is_longitudinal)
             , by = c("study_short_code" = "short_code")
           ) %>%
           filter(is_longitudinal == 1 & is.na(collection_date)) %>%
-          pull(row_number)
+          select(row_number, study_short_code, collection_date) %>%
+          collect()
 
-        df <- formatted_csv[formatted_csv$row_number %in% rn, c("row_number", "study_short_code", "collection_date")]
+        df$collection_date = as.character(lubridate::as_date(df$collection_date))
 
         err <- .maybe_add_err(err, df, "Missing collection date found for sample in longitudinal study", dbmap)
       }
 
+      ## This is for all moves regardless of type
       if (user_action == "move") {
 
         ## check that the barcodes in the move file exist in the database
-        rn <- tbl(con, "formatted_csv") %>%
+        df <- tbl(con, "formatted_csv") %>%
           filter(!is.na(barcode)) %>% # cryovials sometimes don't have barcodes
           left_join(tbl(con, container_tables[["container_class"]]), by = c("barcode")) %>%
           filter(is.na(id)) %>%
-          pull(row_number)
-
-        df <- formatted_csv[formatted_csv$row_number %in% rn, c("row_number", "barcode")]
+          select(row_number, barcode) %>%
+          collect()
 
         err <- .maybe_add_err(err, df, "Barcode not found in database", dbmap)
 
         ## check if the container exists in the database
-        rn <- tbl(con, "formatted_csv") %>%
+        df <- tbl(con, "formatted_csv") %>%
           left_join(tbl(con, container_tables[["manifest"]]) %>% dplyr::rename(manifest_barcode = barcode), by = c("manifest_name" = "name")) %>%
           filter(is.na(id)) %>%
-          pull(row_number)
-
-        df <- formatted_csv[formatted_csv$row_number %in% rn, c("row_number", "manifest_name")]
+          select(row_number, manifest_name) %>%
+          collect()
 
         err <- .maybe_add_err(err, df, "Container not found", dbmap)
 
         ## only micronix and cryovial have barcodes (right now)
-        if (sample_storage_type %in% c(1,2)) {
-          rn <- tbl(con, "formatted_csv") %>%
+        if (sample_storage_type %in% c("micronix", "cryovial")) {
+          df <- tbl(con, "formatted_csv") %>%
             inner_join(tbl(con, container_tables[["container_class"]]) %>%
               dplyr::rename(container_position = position), by = c("barcode")) %>%
             filter(is.na(id)) %>%
-            pull(row_number)
-
-          df <- formatted_csv[formatted_csv$row_number %in% rn, c("row_number", "barcode")]
+            select(row_number, barcode) %>%
+            collect()
 
           err <- .maybe_add_err(err, df, "Barcodes not found in the database", dbmap)
         }
       }
 
+      ##################################################################
+      ### Micronix And Cryovial Barcode Checks (Database validation) ###
+      ##################################################################
+
+      ## Barcode checks only occur when uploading a file
       if (user_action == "upload") {
+
+        ## Check for duplicated barcodes in-file (could be done in db..)
+        df = CheckDuplicatedBarcodes(formatted_csv, sample_storage_type)
+        err <- .maybe_add_err(err, df, "Uploading at least two samples with identical barcodes", dbmap)
 
         ## check if the barcodes already exist
         ## only micronix and cryovial have barcodes (right now)
-        if (sample_storage_type %in% c(1,2)) {
+        if (sample_storage_type %in% c("micronix", "cryovial")) {
+
+          if (sample_storage_type %in% c("micronix")) {
+
+            ## Check that micronix barcodes are 10 digits long and the 
+            ## first position character starts with a letter
+
+            df = tbl(con, "formatted_csv") %>%
+              group_by(row_number) %>%
+              dplyr::mutate(
+                letter_check = substr(position, 1, 1) %in% LETTERS,
+                barcode_check = nchar(barcode) == 10
+              ) 
+
+            if (file_type %in% c("traxcer", "visionmate")) {
+              df.1 <- df %>%
+                filter(letter_check == FALSE) %>%
+                select(row_number, position) %>%
+                collect()
+            } else {
+              df.1 <- df %>%
+                filter(letter_check == FALSE) %>%
+                select(row_number, position1, position2) %>%
+                collect()
+            }
+
+            err <- .maybe_add_err(err, df.1, "Rows must use letters", dbmap)
+
+            df.1 = df %>%
+              filter(barcode_check == FALSE) %>%
+              select(row_number, barcode_check) %>%
+              collect()
+
+            err <- .maybe_add_err(err, df.1, "Micronix Barcodes must be 10 digits long", dbmap)
+
+          } else if (sample_storage_type %in% c("cryovial")) {
+            df = formatted_csv %>%
+              group_by(row_number) %>%
+              reframe(
+                letter_check = substr(position, 1, 1) %in% LETTERS
+              )
+
+            if (file_type %in% c("traxcer", "visionmate")) {
+              df = df %>% 
+                filter(letter_check == FALSE) %>%
+                select(row_number, position) %>%
+                collect()
+
+            } else {
+              df = df %>% 
+                filter(letter_check == FALSE) %>%
+                select(row_number, position1, position2) %>%
+                collect()
+            }
+            err <- .maybe_add_err(err, df, "Rows must use letters", dbmap)
+          }
 
           # Micronix barcodes are univesally unique
-          if (sample_storage_type == 1) {
-            rn <- tbl(con, "formatted_csv") %>%
+          if (sample_storage_type == "micronix") {
+            df <- tbl(con, "formatted_csv") %>%
               inner_join(tbl(con, container_tables[["container_class"]]) %>%
                 dplyr::rename(container_position = position), by = c("barcode")) %>%
               filter(!is.na(id)) %>%
-              pull(row_number)
-
-            df <- formatted_csv[formatted_csv$row_number %in% rn, c("row_number", "barcode")]
+              select(row_number, barcode) %>%
+              collect()
 
             err <- .maybe_add_err(err, df, "Barcodes already exist in the database", dbmap)
 
           } else {
 
             # Cryovial barcodes are unique by study - they are also allowed to be left out
-            rn <- tbl(con, "formatted_csv") %>%
+            df <- tbl(con, "formatted_csv") %>%
               filter(!is.na(barcode)) %>%  # Only check barcodes that exist in the upload
               inner_join(tbl(con, container_tables[["container_class"]]) %>%
               dplyr::rename(container_position = position, storage_container_id = id), by = c("barcode")) %>%
@@ -655,106 +714,91 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
               inner_join(tbl(con, "specimen") %>% dplyr::rename("specimen_id" = "id"), by = c("specimen_id")) %>%
               inner_join(tbl(con, "study_subject") %>% dplyr::rename("study_subject_id" = "id"), by = c("study_subject_id")) %>%
               inner_join(tbl(con, "study") %>% dplyr::rename("study_id" = "id"), by = c("study_id", "study_short_code" = "short_code")) %>%
-              pull(row_number)
-
-            df <- formatted_csv[formatted_csv$row_number %in% rn, c("row_number", "barcode", "study_short_code")]
+              select(row_number, barcode, study_short_code) %>%
+              collect()
 
             err <- .maybe_add_err(err, df, "Barcodes found that already exist with current study", dbmap)
           }
         }
 
+        ############################################################
+        ### Addtl. Cryovial Upload Constraints (annotated below) ###
+        ############################################################
 
-        ###################################
-        ### Micronix Upload Constraints ###
-        ###################################
-
-
-        ###################################
-        ### Cryovial Upload Constraints ###
-        ###################################
-
-        if (user_action == "upload" && sample_storage_type == 2) {
+        if (user_action == "upload" && sample_storage_type == "cryovial") {
 
           ## if the study is not longitudinal, StudySubject must be unique within the study
-          rn <- tbl(con, "formatted_csv") %>%
+          df <- tbl(con, "formatted_csv") %>%
             inner_join(tbl(con, "study") %>% dplyr::rename("study_id" = "id"), by = c("study_short_code" = "short_code")) %>%
             inner_join(tbl(con, "study_subject") %>% dplyr::rename(study_subject_id=id, study_subject=name), by = c("study_subject", "study_id")) %>%
             filter(is_longitudinal == 0) %>%
-            pull(row_number)
-
-          df <- formatted_csv[formatted_csv$row_number %in% rn, c("row_number", "study_short_code", "study_subject")]
+            select(row_number, study_short_code, study_subject) %>%
+            collect()
 
           err <- .maybe_add_err(err, df, "Study subjects must be unique in studies that are not longitudinal", dbmap)
 
-
           ## If the study is longitudinal, the study subject and collection date must be unique within the study
-          rn <- tbl(con, "formatted_csv") %>%
+          df <- tbl(con, "formatted_csv") %>%
             inner_join(tbl(con, "study") %>% dplyr::rename("study_id" = "id"), by = c("study_short_code" = "short_code")) %>%
             inner_join(tbl(con, "study_subject") %>% dplyr::rename(study_subject_id=id, study_subject=name), by = c("study_subject", "study_id")) %>%
             inner_join(tbl(con, "specimen") %>% dplyr::rename(specimen_id=id), by = c("study_subject_id", "collection_date")) %>%
             inner_join(tbl(con, "specimen_type") %>% dplyr::rename(specimen_type_id=id, specimen_type=name), by = c("specimen_type_id")) %>%
             filter(is_longitudinal == 1 & !is.na(collection_date)) %>%
-            pull(row_number)
-
-          df <- formatted_csv[formatted_csv$row_number %in% rn, c("row_number", "study_subject", "collection_date", "study_short_code")]
+            select(row_number, study_subject, collection_date, study_short_code) %>%
+            collect()
 
           err <- .maybe_add_err(err, df, "Study subject and collection date must be unique within a longitudinal study", dbmap)
 
           ## Cryovials are required to have collection dates if they have no barcode and there is already a sample from the study subject in the study
-          rn = tbl(con, "formatted_csv") %>%
+          df = tbl(con, "formatted_csv") %>%
             inner_join(tbl(con,"study") %>% dplyr::rename(study_id=id), by = c("study_short_code"="short_code")) %>%
             inner_join(tbl(con, "study_subject") %>% dplyr::rename(study_subject_id=id, study_subject=name), by = c("study_subject", "study_id")) %>%
             filter(is.na(barcode) & is.na(collection_date)) %>%
-            pull(row_number)
-
-          df <- formatted_csv[formatted_csv$row_number %in% rn, c("row_number", "study_subject", "study_short_code", "collection_date")]
+            select(row_number, study_subject, study_short_code, collection_date) %>%
+            collect()
 
           err <- .maybe_add_err(err, df, "Sample must have a collection date if there is no barcode provided and there is already a sample from this study subject.", dbmap)
         }
 
-        ## Check the references
+        ###########################################################
+        ### Check Study, Specimen Type, and Location References ###
+        ###########################################################
 
-        rn <- tbl(con, "formatted_csv") %>%
+        df <- tbl(con, "formatted_csv") %>%
           left_join(tbl(con, "study"), by = c("study_short_code" = "short_code")) %>%
           filter(is.na(id)) %>%
-          pull(row_number)
-
-        df <- formatted_csv[formatted_csv$row_number %in% rn, c("row_number", "study_short_code")]
+          select(row_number, study_short_code) %>%
+          collect()
 
         err <- .maybe_add_err(err, df, "Study not found", dbmap)
 
-        rn <- tbl(con, "formatted_csv") %>%
+        df <- tbl(con, "formatted_csv") %>%
           left_join(tbl(con, "specimen_type"), by = c("specimen_type" = "name")) %>%
           filter(is.na(id)) %>%
-          pull(row_number)
+          select(row_number, specimen_type) %>%
+          collect()
 
-        df <- formatted_csv[formatted_csv$row_number %in% rn, c("row_number", "specimen_type")]
+        err <- .maybe_add_err(err, df, "Specimen type not found", dbmap)
 
-        err <- .maybe_add_err(err, df, "Specimen type not found",dbmap)
-
-        rn <- tbl(con, "formatted_csv") %>%
+        df <- tbl(con, "formatted_csv") %>%
           left_join(tbl(con, "location") %>%
             dplyr::rename(location_id = id), by = c('name', 'level_I', 'level_II')) %>%
           filter(is.na(location_id)) %>%
-          pull(row_number)
-
-        df <- formatted_csv[formatted_csv$row_number %in% rn, c("row_number", "name", "level_I", "level_II")]
+          select(row_number, name, level_I, level_II) %>%
+          collect()
 
         errstring = sprintf("The following %s, %s and / or %s are not found in the database", dbmap["name"], dbmap["level_I"], dbmap["level_II"])
         err <- .maybe_add_err(err, df, errstring, dbmap)
       }
 
-      ## Validation shared by more than one action
+      ########################################################
+      ### Micronix And Cryovial Upload to Empty Well Check ###
+      ########################################################
+
       if (user_action %in% c("upload")) {
 
-        action <- switch(
-          user_action,
-          "move" = "Moving",
-          "upload" = "Uploading"
-        )
-
-        if (sample_storage_type %in% c(1,2)) {
-          rn <- tbl(con, "storage_container") %>%
+        if (sample_storage_type %in% c("micronix", "cryovial")) {
+          df <- tbl(con, "storage_container") %>%
             select(status_id, id) %>%
             filter(status_id == 1) %>%
             inner_join(tbl(con, container_tables[["container_class"]]) %>% dplyr::rename(container_class_barcode = barcode), by = c("id" = "id")) %>%
@@ -763,39 +807,19 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
                                manifest_name = name,
                                manifest_barcode = barcode
                            ), by = c("manifest_id" = "id")) %>%
-            inner_join(tbl(con, "formatted_csv"), by = c("manifest_name", "position")) %>%
-            pull(row_number)
+            inner_join(tbl(con, "formatted_csv"), by = c("manifest_name", "position"))
 
           if (file_type %in% c("traxcer", "visionmate")) {
-            df <- formatted_csv[formatted_csv$row_number %in% rn, c("row_number", "position", "manifest_name")]
+            df = df %>%
+              select(row_number, position, manifest_name) %>%
+              collect()
           } else {
-            df <- formatted_csv[formatted_csv$row_number %in% rn, c("row_number", "position1", "position2", "manifest_name")]
+            df = df %>%
+              select(row_number, position1, position2, manifest_name) %>%
+              collect()
           }
 
-          err <- .maybe_add_err(err, df, paste0(action, " sample to well location that already has an active sample"), dbmap)
-
-        } else if (sample_storage_type %in% c(3)) {
-
-          # The only difference between this sql and the lines for micronix and cryovial is the barcode rename - dbs does not have a barcode.
-          rn <- tbl(con, "storage_container") %>%
-            select(status_id, id) %>%
-            filter(status_id == 1) %>%
-            inner_join(tbl(con, container_tables[["container_class"]]), by = c("id" = "id")) %>%
-            inner_join(tbl(con, container_tables[["manifest"]]) %>%
-                           dplyr::rename(
-                               manifest_name = name,
-                               manifest_barcode = barcode
-                           ), by = c("manifest_id" = "id")) %>%
-            inner_join(tbl(con, "formatted_csv"), by = c("manifest_name", "position")) %>%
-            pull(row_number)
-
-          if (file_type %in% c("traxcer", "visionmate")) {
-            df <- formatted_csv[formatted_csv$row_number %in% rn, c("row_number", "position")]
-          } else {
-            df <- formatted_csv[formatted_csv$row_number %in% rn, c("row_number", "position1", "position2")]
-          }
-
-          err <- .maybe_add_err(err, df, paste0(action, " sample to well location that already has an active sample"), dbmap)
+          err <- .maybe_add_err(err, df, "Uploading sample to well location that already has an active sample", dbmap)
         }
       }
     },
@@ -892,7 +916,7 @@ stop_validation_error <- function(message, data) {
 CheckDuplicatedBarcodes <- function(formatted_csv, sample_storage_type) {
 
   # right now only accept Micronix and Cryovial storage types
-  if (sample_storage_type %in% c(1)) {
+  if (sample_storage_type %in% c("micronix")) {
     df <- formatted_csv %>%
       filter(!is.na(barcode)) %>%
       group_by(barcode) %>%
