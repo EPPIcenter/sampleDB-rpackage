@@ -35,7 +35,12 @@ UIUploadSamples <- function() {
       conditionalPanel(
         condition = "input.UploadType == 'Controls'",
         h4("Upload Controls"),
-        shinyjs::hidden(selectizeInput("UploadControlStudy", label = "Control Study", choices = dbReadTable(con, "study") %>% filter(!is.na("control_collection_id")) %>% pull(id, name = "short_code"))),
+        radioButtons("UploadControlType","Control Storage Type", choices = c("DBS Sheet" = "dbs_sheet", "Extracted P.falciparum DNA" = "malaria_dna"), inline = TRUE),
+        conditionalPanel( ## Show extraction methods if DNA is selected
+          condition = "input.UploadControlType == 'malaria_dna'",
+          radioButtons("InputControlExtraction", label = "Extracted From", choices = c("Whole Blood" = "extracted_wb", "Dry Blood Spot" = "extracted_dbs"))
+        ),
+        shinyjs::hidden(selectizeInput("UploadControlStudy", label = "Control Study", choices = dbReadTable(con, "study") %>% pull(id, name = "short_code"))),
         fileInput("InputUploadControls", label = "Upload DBS Control Sheet", accept = c("text/csv", "text/comma-separated-values,text/plain", ".csv"))
       ),
       hr(),

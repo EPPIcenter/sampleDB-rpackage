@@ -62,9 +62,9 @@ SearchControls <- function(control_type, filters = NULL, format = NULL, database
 
     sql = tbl(con, "control_strain") %>%
       left_join(tbl(con, "strain") %>% dplyr::rename(strain_id = id, strain = name), by = c("strain_id")) %>%
-      left_join(tbl(con, "control") %>% dplyr::rename(control_id = id), by = c("control_id")) %>%
-      left_join(tbl(con, "study_subject") %>% dplyr::rename(study_subject_id = id, control_uid = name), by = c("control_id"="study_subject_id")) %>%
-      left_join(tbl(con, "study") %>% dplyr::rename(study_id = id, batch_creation_date=created, batch=short_code) %>% filter(!is.na(control_collection_id)), by = c("study_id")) %>%
+      left_join(tbl(con, "malaria_blood_control") %>% dplyr::rename(malaria_blood_control_id = id), by = c("malaria_blood_control_id")) %>%
+      left_join(tbl(con, "study_subject") %>% dplyr::rename(study_subject_id = id, control_uid = name), by = c("study_subject_id")) %>%
+      left_join(tbl(con, "study") %>% dplyr::rename(study_id = id, batch_creation_date=created, batch=short_code), by = c("study_id")) %>%
       distinct()
 
     ## Get the counts
@@ -91,19 +91,20 @@ SearchControls <- function(control_type, filters = NULL, format = NULL, database
 
     ## now grab the bag / location information
 
-    sql = sql %>% inner_join(tbl(con, "dbs_control"), by = c("control_id"))
+    sql = sql %>% inner_join(tbl(con, "blood_spot_collection") %>% dplyr::rename(blood_spot_collection_id=id), by=c("study_subject_id"))
     sql = sql %>% inner_join(tbl(con, "dbs_control_sheet") %>% dplyr::rename(dbs_control_sheet_id=id), by = c("dbs_control_sheet_id"))
     sql = sql %>% inner_join(tbl(con, "dbs_bag") %>% dplyr::rename(bag_id=id, bag_name=name), by = c("bag_id"))
-    sql = sql %>% inner_join(tbl(con, "location") %>% dplyr::rename(location_id=id, location_name=name), by = c("location_id"))
+    sql = sql %>% inner_join(tbl(con, "location") %>% dplyr::rename(location_id=id), by = c("location_id"))
 
+    ## organize search results to display the control types that are found on each sheet
     sql = sql %>%
       collect() %>%
       group_by(batch, density, percentage, strain) %>%
-      dplyr::mutate(control_uid = list(control_uid)) %>%
+      dplyr::mutate(study_subject_id = list(study_subject_id)) %>%
       group_by(bag_id) %>%
-      dplyr::mutate(uid=list(uid)) %>%
+      dplyr::mutate(sheet_uid=list(sheet_uid)) %>%
       ungroup() %>%
-      select(batch_creation_date, count, control_uid, uid, batch, density, strain, percentage, bag_name, location_name, level_I, level_II) %>%
+      select(batch_creation_date, count, study_subject_id, sheet_uid, batch, density, strain, percentage, bag_name, location_root, level_I, level_II) %>%
       distinct()
 
     if (include_internal_sample_id) {
@@ -243,7 +244,7 @@ SearchSamples <- function(sample_storage_type, filters = NULL, format = NULL, da
     if (sample_storage_type == "all") {
 
       # Rf. https://stackoverflow.com/questions/53806023/row-bind-tables-in-sql-with-differing-columns
-      list_of_tables <- c("micronix_tube", "cryovial_tube", "dbs_spot")
+      list_of_tables <- c("micronix_tube", "cryovial_tube")
       eachnames <- sapply(list_of_tables, function(a) DBI::dbQuoteIdentifier(con, DBI::dbListFields(con, a)), simplify = FALSE)
       allnames <- unique(unlist(eachnames, use.names=FALSE))
       allnames <- allnames[1:4] # c("id", "manifest_id", "barcode", "position")
@@ -276,7 +277,7 @@ SearchSamples <- function(sample_storage_type, filters = NULL, format = NULL, da
 
     if (sample_storage_type == "all") {
 
-      list_of_tables <- c("micronix_plate", "cryovial_box", "dbs_paper")
+      list_of_tables <- c("micronix_plate", "cryovial_box")
 
       # This is needed because the container tables do not explitly keep track of the sample types they keep.
       # Thus, table order is important here!!!
@@ -311,15 +312,15 @@ SearchSamples <- function(sample_storage_type, filters = NULL, format = NULL, da
       sql <- filter(sql, manifest == local(filters$manifest))
     }
 
-    sql <- inner_join(sql, tbl(con, "location") %>% dplyr::rename(location_id = id) %>% select(location_id, name, level_I, level_II), by = c("location_id"))
+    sql <- inner_join(sql, tbl(con, "location") %>% dplyr::rename(location_id = id) %>% select(location_id, location_root, level_I, level_II), by = c("location_id"))
 
     if (!is.null(filters$location)) {
-      if (!is.null(filters$location[['name']]) & !is.null(filters$location[['level_I']]) & !is.null(filters$location[['level_II']])) {
-        sql <- filter(sql, name == local(filters$location[['name']]) & level_I == local(filters$location[['level_I']]) & level_II == local(filters$location[['level_II']]))
-      } else if (!is.null(filters$location[['name']]) & !is.null(filters$location[['level_I']])) {
-        sql <- filter(sql, name == local(filters$location[['name']]) & level_I == local(filters$location[['level_I']]))
-      } else if (!is.null(filters$location[['name']])) {
-        sql <- filter(sql, name == local(filters$location[['name']]))
+      if (!is.null(filters$location[['location_root']]) & !is.null(filters$location[['level_I']]) & !is.null(filters$location[['level_II']])) {
+        sql <- filter(sql, location_root == local(filters$location[['location_root']]) & level_I == local(filters$location[['level_I']]) & level_II == local(filters$location[['level_II']]))
+      } else if (!is.null(filters$location[['location_root']]) & !is.null(filters$location[['level_I']])) {
+        sql <- filter(sql, location_root == local(filters$location[['location_root']]) & level_I == local(filters$location[['level_I']]))
+      } else if (!is.null(filters$location[['location_root']])) {
+        sql <- filter(sql, location_root == local(filters$location[['location_root']]))
       }
     }
 
@@ -375,28 +376,28 @@ SearchSamples <- function(sample_storage_type, filters = NULL, format = NULL, da
     dbmap$specimen_type <- "Specimen Type"
     dbmap$collection_date <- "Collection Date"
 
-    dbmap$name <- "Location"
+    dbmap$location_root <- "Location"
     if (sample_storage_type == 1) {
-      dbmap$name <- "Freezer Name"
+      dbmap$location_root <- "Freezer Name"
       dbmap$level_I <- "Shelf Name"
       dbmap$level_II <- "Basket Name"
       dbmap$manifest <- "Plate Name"
       dbmap$manifest_barcode <- "Plate Barcode"
     } else if (sample_storage_type == 2) {
-      dbmap$name <- "Freezer Name"
+      dbmap$location_root <- "Freezer Name"
       dbmap$level_I <- "Rack Number"
       dbmap$level_II <- "Rack Position"
       dbmap$manifest <- "Box Name"
       dbmap$manifest_barcode <- "Box Barcode"
     } else if (sample_storage_type == 3) {
-      dbmap$name <- "Freezer Name"
+      dbmap$location_root <- "Freezer Name"
       dbmap$level_I <- "Rack Number"
       dbmap$level_II <- "Rack Position"
       dbmap$manifest <- "Container Label"
       dbmap$manifest_barcode <- "Paper Barcode"
     } else {
       # Defaults
-      dbmap$name <- "Location"
+      dbmap$location_root <- "Location"
       dbmap$level_I <- "Level I"
       dbmap$level_II <- "Level II"
       dbmap$manifest <- "Manifest Name"

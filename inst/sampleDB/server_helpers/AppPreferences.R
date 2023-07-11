@@ -36,7 +36,7 @@ AppPreferencesPanel <- function(session, input, output, database) {
 
     output$PrefVersionTable <- renderTable({
     	con <- RSQLite::dbConnect(RSQLite::SQLite(), Sys.getenv("SDB_PATH"))
-    	versions <- sort(tbl(con, "version") %>% pull('name'))
+    	versions <- sort(tbl(con, "version") %>% pull('location_root'))
 
     	df <- data.frame(
     		Component = c("Database", "User Configuration"),

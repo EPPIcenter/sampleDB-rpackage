@@ -50,128 +50,16 @@
 #' @import RSQLite
 #' @import lubridate
 #' @export
-
+#'
 UploadControls <- function(user_data, control_type, database = Sys.getenv("SDB_PATH")) {
 	tryCatch({
 
-		con <- DBI::dbConnect(RSQLite::SQLite(), database)
+		msg=NULL
 
-		dbBegin(con)
-		now = as.character(lubridate::now())
-		user_data=dplyr::rename(user_data, location_name=name)
-
-		## In the database, controls are stored as "study_subjects". This allows for extractions to be linked back to the original control.
-		## With the current database schema, we need to uniquely identify each study_subject under a single study. Instead of changing this rule,
-		## use the density, strain and percentage to start, and then index the control between [1:count]. If for whatever reason there are
-		## controls that exist under this study already, then "base.count" will be used to offset the indexing so that each appended number
-		## is +1 the second largest number under the study (ie. we always increment by 1).
-
-		df.payload = dbReadTable(con, "study") %>%
-		  dplyr::rename(batch=short_code) %>%
-			dplyr::mutate(study_id=id) %>%
-			filter(!is.na(control_collection_id)) %>%
-			dplyr::inner_join(user_data, by = c("batch")) %>%
-		  dplyr::left_join(dbReadTable(con, "study_subject") %>% dplyr::rename(study_subject_id=id), by=c("study_id")) %>%
-		  group_by(density,strain,percentage,batch) %>%
-		  dplyr::mutate(base.count=sum(!is.na(study_subject_id))) %>%
-		  dplyr::mutate(count = as.integer(count), count = sum(base.count + count)) %>%
-		  distinct() %>%
-		  dplyr::mutate(count = paste(1:count, collapse=";")) %>%
-			dplyr::mutate(count = strsplit(count, ";")) %>%
-			tidyr::unnest(cols=c("count")) %>%
-		  ungroup() %>%
-			dplyr::mutate(count=as.character(count)) %>%
-			tidyr::unite(control, c(density,strain,percentage,count), remove = FALSE) %>%
-		  mutate(created = now) %>%
-		  mutate(last_updated = now) %>%
-	    select(created, last_updated, control, study_id, all_of(colnames(user_data)))
-
-		df.payload$sheet_id = user_data %>%
-		  dplyr::mutate(count=as.integer(count)) %>%
-		  dplyr::mutate(sheet_id=row_number()) %>%
-		  tidyr::uncount(count) %>%
-		  pull(sheet_id)
-
-		## Add the new study subjects here
-		res <- dbAppendTable(con, "study_subject", df.payload %>% select(created, last_updated, study_id, control) %>% dplyr::rename(name = control))
-
-		## Rejoin to get the study_subject_id
-		df.payload = df.payload %>%
-			inner_join(dbReadTable(con, "study_subject") %>% dplyr::rename(study_subject_id=id), by = c("control"="name", "created", "last_updated", "study_id")) %>%
-		  select(created,last_updated,control,study_subject_id,sheet_id,all_of(colnames(user_data)))
-
-		## Find the locations and bags and join
-		df.payload = df.payload %>%
-		  inner_join(dbReadTable(con, "location") %>%
-		               select(-c(created, last_updated)) %>%
-		               dplyr::rename(location_id=id, location_name=name)
-		             , by = c("location_name", "level_I", "level_II")) %>%
-		  dplyr::left_join(dbReadTable(con, "dbs_bag") %>%
-		                     select(-c(created, last_updated)) %>%
-		                     dplyr::rename(dbs_bag_id=id), by=c("manifest_name"="name", "location_id")) %>%
-		  filter(is.na(dbs_bag_id)) %>%
-		  select(created,last_updated,control,study_subject_id,location_id,dbs_bag_id,sheet_id, all_of(colnames(user_data)))
-
-		## if the bag does not exist (dbs_bag_id == `NA`), then create it
-		res <- dbAppendTable(con, "dbs_bag", df.payload %>%
-		                       filter(is.na(dbs_bag_id)) %>%
-		                       select(created, last_updated, location_id, manifest_name) %>%
-		                       dplyr::rename(name = manifest_name) %>%
-		                       distinct())
-
-		df.payload=dbReadTable(con, "dbs_bag") %>% dplyr::rename(bag_id=id) %>%
-		  inner_join(df.payload %>% select(-c(created,last_updated)), by = c("location_id", "name"="manifest_name")) %>%
-		  dplyr::rename(manifest_name=name) %>%
-		  select(created,last_updated,control, study_subject_id,location_id,bag_id,sheet_id,all_of(colnames(user_data)))
-
-		## Multiple sheets can go into a bag. Instead of identifying them uniquely, add a unique integer
-		## for each control sheet in the background
-
-		## Use a separate payload to subset sheet_ids
-		df.payload.1=df.payload %>%
-		  left_join(dbReadTable(con, "dbs_control_sheet")  %>% dplyr::rename(dbs_control_sheet_id=id), by=c("bag_id")) %>%
-		  select(sheet_id,bag_id, uid) %>%
-		  distinct() %>%
-		  group_by(bag_id) %>%
-		  dplyr::mutate(base.uid=ifelse(is.na(max(uid)), 0, max(uid))) %>%
-		  group_by(bag_id, sheet_id) %>%
-	    dplyr::mutate(sheet_id=as.integer(sheet_id), uid=sheet_id + base.uid) %>%
-		  ungroup() %>%
-		  distinct()
-
-		## add the control sheet
-		res <- dbAppendTable(con, "dbs_control_sheet", df.payload.1 %>% ungroup() %>% select(bag_id,uid))
-
-		df.payload = df.payload.1 %>%
-		  select(bag_id,uid,sheet_id) %>%
-		  distinct() %>%
-		  inner_join(df.payload, by=c("bag_id", "sheet_id"))
-
-		## Read back in to get the dbs control sheet IDs
-		df.payload=dbReadTable(con, "dbs_control_sheet") %>%
-		  dplyr::rename(dbs_control_sheet_id=id) %>%
-		  inner_join(df.payload, by = c("bag_id", "uid"))
-
-		res <- dbAppendTable(con, "control", df.payload %>% dplyr::mutate(state_id=1, status_id=1) %>% select(density, state_id, status_id))
-
-		df.payload = df.payload %>%
-			mutate(
-			  strain2 = strsplit(strain, ";"),
-			  percentage2 = strsplit(percentage, ";")
-			) %>%
-			tidyr::unnest(cols = c("strain2","percentage2")) %>%
-			left_join(dbReadTable(con, "strain") %>% dplyr::rename(strain_id = id, strain = name), by = c("strain2"="strain")) %>%
-			left_join(dbReadTable(con, "control") %>% dplyr::rename(study_subject_id = id), by = c("study_subject_id", "density")) %>%
-			rename(control_id = study_subject_id)
-
-		res <- dbAppendTable(con, "control_strain", df.payload %>% select(control_id, strain_id, percentage2) %>% dplyr::rename(percentage=percentage2))
-
-		res <- dbAppendTable(con, "dbs_control", df.payload %>% select(dbs_control_sheet_id, control_id))
-
-		msg=sprintf("Successfully uploaded %s DBS Controls!", res)
-
-		dbCommit(con)
-		message(msg)
+		if (control_type=="dbs_sheet") {
+			n.uploaded = UploadDBSSheet(user_data, database) ## PUSH CON DOWN
+			msg=sprintf("Uploaded %d DBS Sheet Controls!", n.uploaded)
+		}
 	},
 	error = function(e) {
 		message(e$message)
@@ -179,7 +67,116 @@ UploadControls <- function(user_data, control_type, database = Sys.getenv("SDB_P
 		# need to record error globally here
 	},
 	finally = {
-		dbDisconnect(con)
+
 	})
 }
 
+#' Upload DBS Sheet Controls
+#'
+#' `UploadDBSSheet()` can be used to upload controls to the sampleDB database.
+#'
+#' @param con A dplyr dbConnect() connection object
+#' @param user_data A dataframe of SampleDB Upload data.
+#'
+#' @import dplyr
+#' @import RSQLite
+#' @import lubridate
+#'
+UploadDBSSheet <- function(user_data, database) {
+
+	con <- DBI::dbConnect(RSQLite::SQLite(), database)
+
+	now = as.character(lubridate::now())
+
+	## In the database, controls are stored as "study_subjects". This allows for extractions to be linked back to the original control.
+	## With the current database schema, we need to uniquely identify each study_subject under a single study. Instead of changing this rule,
+	## use the density, strain and percentage to start, and then index the control between [1:count]. If for whatever reason there are
+	## controls that exist under this study already, then "base.count" will be used to offset the indexing so that each appended number
+	## is +1 the second largest number under the study (ie. we always increment by 1).
+
+
+	df.payload = dbReadTable(con, "study") %>%
+		dplyr::rename(study_short_code=short_code) %>%
+		dplyr::mutate(study_id=id) %>%
+		dplyr::inner_join(user_data, by = c("study_short_code")) %>%
+		dplyr::left_join(dbReadTable(con, "study_subject") %>% dplyr::rename(study_subject_id=id), by=c("study_id")) %>%
+		# group_by(density,strain,percentage,study_short_code) %>%
+		tidyr::unite(control, c(density,strain,percentage), remove = FALSE) %>%
+		dplyr::mutate(count = as.integer(count), count = sum(count)) %>% # note: could sum here if we want to keep reduce blood spot collections on sheets
+		mutate(created = now) %>%
+		mutate(last_updated = now) %>%
+		ungroup() %>%
+		select(created, last_updated, control, study_id, study_subject_id, all_of(colnames(user_data))) %>%
+		distinct()
+
+	## Add the new study subjects here
+	res <- dbAppendTable(con, "study_subject", df.payload %>%
+		filter(is.na(study_subject_id)) %>%
+		select(created, last_updated, study_id, control) %>%
+		dplyr::rename(name = control))
+
+	## Rejoin to get the study_subject_id
+	df.payload = df.payload %>%
+	  select(-c(study_subject_id)) %>%
+		inner_join(dbReadTable(con, "study_subject") %>% dplyr::rename(study_subject_id=id), by = c("control"="name", "created", "last_updated", "study_id")) %>%
+	  select(created,last_updated,control,study_subject_id,all_of(colnames(user_data)))
+
+	## Find the locations and bags and join
+	df.payload = df.payload %>%
+	  inner_join(dbReadTable(con, "location") %>%
+	               select(-c(created, last_updated)) %>%
+	               dplyr::rename(location_id=id)
+	             , by = c("location_root", "level_I", "level_II")) %>%
+	  dplyr::left_join(dbReadTable(con, "dbs_bag") %>%
+	                     select(-c(created, last_updated)) %>%
+	                     dplyr::rename(dbs_bag_id=id), by=c("manifest_name"="name", "location_id")) %>%
+	  filter(is.na(dbs_bag_id)) %>%
+	  select(created,last_updated,control,study_subject_id,location_id,dbs_bag_id, all_of(colnames(user_data)))
+
+	## if the bag does not exist (dbs_bag_id == `NA`), then create it
+	res <- dbAppendTable(con, "dbs_bag", df.payload %>%
+	                       filter(is.na(dbs_bag_id)) %>%
+	                       select(created, last_updated, location_id, manifest_name) %>%
+	                       dplyr::rename(name = manifest_name) %>%
+	                       distinct())
+
+	df.payload=dbReadTable(con, "dbs_bag") %>% dplyr::rename(bag_id=id) %>%
+	  inner_join(df.payload %>% select(-c(created,last_updated)), by = c("location_id", "name"="manifest_name")) %>%
+	  dplyr::rename(manifest_name=name) %>%
+	  select(created,last_updated,control, study_subject_id,location_id,bag_id,all_of(colnames(user_data)))
+
+	## add the control sheet
+	res <- dbAppendTable(con, "dbs_control_sheet", df.payload %>% select(bag_id,sheet_uid))
+
+	df.payload = df.payload %>%
+	  select(bag_id,sheet_uid) %>%
+	  distinct() %>%
+	  inner_join(df.payload, by=c("bag_id", "sheet_uid"))
+
+	## Read back in to get the dbs control sheet IDs
+	df.payload=dbReadTable(con, "dbs_control_sheet") %>%
+	  dplyr::rename(dbs_control_sheet_id=id) %>%
+	  inner_join(df.payload, by = c("bag_id", "sheet_uid"))
+
+
+	res <- dbAppendTable(con, "malaria_blood_control", df.payload %>% select(density, study_subject_id))
+
+	res <- dbAppendTable(con, "blood_spot_collection", df.payload %>%
+	                       dplyr::rename(total=count) %>%
+	                       select(study_subject_id, dbs_control_sheet_id, total)
+	)
+
+	df.payload = df.payload %>%
+		mutate(
+		  strain2 = strsplit(strain, ";"),
+		  percentage2 = strsplit(percentage, ";")
+		) %>%
+		tidyr::unnest(cols = c("strain2","percentage2")) %>%
+		left_join(dbReadTable(con, "strain") %>% dplyr::rename(strain_id = id, strain = name), by = c("strain2"="strain")) %>%
+		left_join(dbReadTable(con, "malaria_blood_control") %>% dplyr::rename(malaria_blood_control_id=id), by = c("study_subject_id", "density"))
+
+	res <- dbAppendTable(con, "control_strain", df.payload %>% select(malaria_blood_control_id, strain_id, percentage2) %>% dplyr::rename(percentage=percentage2))
+
+	## Return number of dbs controls uploaded - this will be the aggregated counts.
+	return(sum(df.payload$count))
+}

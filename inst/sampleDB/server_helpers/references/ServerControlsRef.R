@@ -13,7 +13,7 @@ ControlReference <- function(session, input, output, database) {
       count = "Count", 
       bag_name = "BagName",
       batch = "Batch", 
-      location_name = "Freezer", 
+      location_root = "Freezer", 
       level_I = "level_I",
       level_II = "level_II"
     ),
@@ -150,7 +150,7 @@ ControlReference <- function(session, input, output, database) {
         date.to = input$InputControlSearchDateRange[2]
       ), 
       location = list(
-        name = input$InputControlSearchByLocation,
+        location_root = input$InputControlSearchByLocation,
         level_I = input$InputControlSearchByLevelI,
         level_II = input$InputControlSearchByLevelII
       )
@@ -265,7 +265,6 @@ ControlReference <- function(session, input, output, database) {
   })
 
   observeEvent(selected.updating.counts(), ignoreInit = TRUE, ignoreNULL = TRUE, {
-    browser()
     if (!is.null(rv$user_selected_rows)) { 
 
       ## if the row has changed 
@@ -413,15 +412,7 @@ ControlReference <- function(session, input, output, database) {
     con <- dbConnect(RSQLite::SQLite(), Sys.getenv("SDB_PATH"))
 
     dbBegin(con)
-    now=lubridate::now()
-
-    df.payload=data.frame(
-      url=input$InputControlUrl
-    )
-
-    last_id=dbReadTable(con, "control_collection") %>% nrow(.)
-
-    res=dbAppendTable(con, "control_collection", df.payload)
+    now=as.character(lubridate::now())
 
     df.payload=data.frame(
       created=now,
@@ -430,11 +421,21 @@ ControlReference <- function(session, input, output, database) {
       short_code=input$InputControlNewStudy,
       description=input$InputControlStudyDesc,
       lead_person=input$InputControlBatchPerson,
-      is_longitudinal=0,
-      control_collection_id=last_id + res
+      is_longitudinal=0
     )
 
-    res=dbAppendTable(con, "study", df.payload)
+    dbAppendTable(con, "study", df.payload)
+
+    study_id=dbReadTable(con, "study") %>%
+      filter(short_code==input$InputControlNewStudy) %>%
+      pull(id)
+
+    df.payload=data.frame(
+      url=input$InputControlUrl,
+      study_id=study_id
+    )
+
+    dbAppendTable(con, "control_collection", df.payload)
 
     dbCommit(con)
     dbDisconnect(con)
@@ -461,6 +462,7 @@ ControlReference <- function(session, input, output, database) {
   })
 
   observe({
+
     filters <- purrr::discard(rv$filters[!names(rv$filters) %in% c("location", "collection_date")], function(x) is.null(x) | "" %in% x | length(x) == 0)
     filters$location <- purrr::discard(rv$filters$location, function(x) is.null(x) | "" %in% x | length(x) == 0)
     filters$location <- if (length(filters$location) > 0) filters$location

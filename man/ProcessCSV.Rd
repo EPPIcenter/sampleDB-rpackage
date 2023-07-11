@@ -9,6 +9,7 @@ ProcessCSV(
   user_action,
   sample_storage_type = NULL,
   control_type = NULL,
+  extraction_method = NULL,
   reference = NULL,
   search_type = NULL,
   container_name = NULL,
@@ -49,7 +50,7 @@ ProcessCSV(
 \examples{
 \dontrun{
  # Format a sample datasheet with micronix samples using the 'na' micronix format that will be added to sampleDB. Add the container name and container location as parameters.
- formatted_csv <- ProcessCSV(
+ user_data <- ProcessCSV(
    user_csv = "/path/to/sample_data.csv",
    user_action = "upload",
    file_type = "na",

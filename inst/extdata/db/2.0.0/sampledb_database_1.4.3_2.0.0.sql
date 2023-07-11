@@ -1,27 +1,19 @@
+--- Convert back to YYYY-MM-DD ---
+UPDATE "specimen" SET collection_date = date(collection_date * 86400, 'unixepoch');
+
+ALTER TABLE "location" RENAME COLUMN "name" TO "location_root";
+
 ALTER TABLE "sample_type" ADD COLUMN "parent_id" INTEGER DEFAULT NULL REFERENCES "sample_type"("id");
-
---- Add shipped status ---
-
-INSERT OR ROLLBACK INTO "status" (name)
-VALUES
-	("Shipped");
-
-INSERT OR ROLLBACK INTO "state_status_relationship" ("status_id", "state_id", "default") 
-VALUES 
-	(5, 2, FALSE);
-
 
 --- Control Collection ---
 CREATE TABLE IF NOT EXISTS "control_collection" (
 	"id"			INTEGER NOT NULL,
+	"study_id"		INTEGER NOT NULL,
 	"url"			VARCHAR NOT NULL,
 	"metadata"		TEXT,
 
 	PRIMARY KEY("id")
 );
-
-
-ALTER TABLE "study" ADD COLUMN "control_collection_id" REFERENCES "control_collection"("id");
 
 --- just remove dbs ---
 DROP TABLE "dbs_spot";
@@ -37,7 +29,7 @@ VALUES
 CREATE TABLE IF NOT EXISTS "dbs_control_sheet" (
 	"id"			INTEGER NOT NULL,
 	"bag_id"		INTEGER NOT NULL,
-	"uid"			INTEGER NOT NULL,
+	"sheet_uid"	INTEGER NOT NULL,
 
 	PRIMARY KEY("id"),
 	FOREIGN KEY("id") REFERENCES "storage_container"("id"),
@@ -88,26 +80,27 @@ CREATE TABLE IF NOT EXISTS "dbs_paper" (
 	CONSTRAINT "dbs_paper_position_bag_id_uc" UNIQUE("position", "bag_id")
 );
 
---- DBS Control - right now don't use position, just point to a control ---
-CREATE TABLE IF NOT EXISTS "dbs_control" (
+--- Blood Spot Collection ---
+CREATE TABLE IF NOT EXISTS "blood_spot_collection" (
 	"id"			INTEGER NOT NULL,
-	"dbs_control_sheet_id"	INTEGER NOT NULL,
-	"control_id" 	INTEGER NOT NULL,
+	"study_subject_id" INTEGER NOT NULL,
+	"dbs_control_sheet_id" INTEGER NOT NULL,
+	"total"			INTEGER NOT NULL CHECK ("total" > 0),
+	"exhausted"		INTEGER	NOT NULL DEFAULT 0 CHECK ("exhausted" <= "total" AND "exhausted" >= 0),
 
-	PRIMARY KEY(id),
-	FOREIGN KEY(control_id) REFERENCES "control"("id"),
-	FOREIGN KEY(dbs_control_sheet_id) REFERENCES "dbs_control_sheet"("id")
+	PRIMARY KEY("id"),
+	FOREIGN KEY("study_subject_id") REFERENCES "study_subject"("id"),
+	FOREIGN KEY("dbs_control_sheet_id") REFERENCES "dbs_control_sheet"("id")
 );
 
 --- Identifier for the control combination ---
-CREATE TABLE IF NOT EXISTS "control" (
+CREATE TABLE IF NOT EXISTS "malaria_blood_control" (
 	"id"		INTEGER NOT NULL,
+	"study_subject_id" INTEGER NOT NULL,
 	"density"	REAL NOT NULL,
-	"state_id"	INTEGER NOT NULL,
-	"status_id"	INTEGER NOT NULL,
 
 	PRIMARY KEY("id"),
-	FOREIGN KEY("id") REFERENCES "study_subject"("id")
+	FOREIGN KEY("study_subject_id") REFERENCES "study_subject"("id")
 );
 
 CREATE TABLE IF NOT EXISTS "strain" (
@@ -120,12 +113,12 @@ CREATE TABLE IF NOT EXISTS "strain" (
 
 CREATE TABLE IF NOT EXISTS "control_strain" (
 	"id"			INTEGER NOT NULL,
-	"control_id"	INTEGER NOT NULL,
+	"malaria_blood_control_id"	INTEGER NOT NULL,
 	"strain_id" 	INTEGER NOT NULL,
 	"percentage"	INTEGER NOT NULL CHECK("percentage" > 0 AND "percentage" <= 100),
 
 	PRIMARY KEY ("id"),
-	FOREIGN KEY ("control_id") REFERENCES "control"("id"),
+	FOREIGN KEY ("malaria_blood_control_id") REFERENCES "malaria_blood_control"("id"),
 	FOREIGN KEY ("strain_id") REFERENCES "strain"("id")
 );
 

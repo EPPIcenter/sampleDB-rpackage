@@ -151,7 +151,9 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
         user_csv = dataset$datapath,
         user_action = "upload",
         file_type = input$UploadFileType,
-        control_type = 1 # dbs sheets
+        sample_storage_type = input$UploadSampleType,
+        control_type = input$UploadControlType,
+        extraction_method = input$InputControlExtraction
       )
     },
     formatting_error = function(e) {
@@ -212,7 +214,8 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
           user_csv = dataset$datapath,
           user_action = "upload",
           file_type = input$UploadFileType,
-          sample_storage_type = input$UploadSampleType
+          sample_storage_type = input$UploadSampleType,
+          extraction_method = input$InputControlExtraction
         )
       },
       message = function(m) {
@@ -236,7 +239,7 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
 
       manifest_name <- file_specs_json$shared$sample_type[[sample_type_index]]$manifest$name
       location_parameters <- file_specs_json$shared$sample_type[[sample_type_index]]$location
-      location_parameters <- unlist(location_parameters[c("name", "level_I", "level_II")])
+      location_parameters <- unlist(location_parameters[c("location_root", "level_I", "level_II")])
       required_elements <- c()
 
       columns <- e$df$column
@@ -342,7 +345,7 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
 
           location_parameters <- NULL
           if (typeof(input$UploadLocationRoot) == "character" && input$UploadLocationRoot != "") {
-            location_parameters <- c(location_parameters, list(name = input$UploadLocationRoot))
+            location_parameters <- c(location_parameters, list(location_root = input$UploadLocationRoot))
           }
           if (typeof(input$UploadLocationLevelI) == "character" && input$UploadLocationLevelI != "") {
             location_parameters <- c(location_parameters, list(level_I = input$UploadLocationLevelI))
@@ -371,9 +374,11 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
               user_csv = dataset$datapath,
               user_action = "upload",
               file_type = input$UploadFileType,
-              control_type = 1,
+              control_type = input$UploadControlType,
               container_name = container_name,
-              freezer_address = location_parameters
+              freezer_address = location_parameters,
+              extraction_method = input$InputControlExtraction,
+              sample_storage_type = input$UploadSampleType
             )            
           }
 
@@ -496,10 +501,12 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
 
         shinyjs::reset("UploadAction")
 
-        if (input$UploadType == "Samples") {
-          UploadSamples(sample_type_id = as.integer(input$UploadSampleType), upload_data = rv$user_file)
+        if (input$UploadType == "Samples" || (input$UploadType == "Controls" && input$UploadControlType == "malaria_dna")) {
+          storage_type_id=ifelse(input$InputControlExtraction == "extracted_wb", 2, 1)
+          control_extraction=ifelse(input$InputControlExtraction == "extracted_wb", "DNA (WB)", "DNA (DBS)")
+          UploadSpecimens(storage_type_id = storage_type_id, control_extraction=control_extraction, user_data = rv$user_file)
         } else {
-          UploadControls(user_data=rv$user_file, control_type=1)
+          UploadControls(user_data=rv$user_file, control_type=input$UploadControlType)
         }
       },
       message = function(m) {
@@ -517,8 +524,9 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
       rv$error <- TRUE
     },
     finally = {
-      if (b_use_wait_dialog)
+      if (b_use_wait_dialog) {
         remove_modal_spinner()
+      }
 
       rv$user_file <- NULL
       rv$console_verbatim <- FALSE
@@ -535,11 +543,12 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
       filter(id == sample_type_id) %>%
       pull(name)
 
+    # UNUSED FOR NOW
     updateSelectizeInput(
       session,
       "UploadControlStudy",
       selected = input$UploadControlStudy,
-      choices = dbReadTable(con, "study") %>% filter(!is.null(control_collection_id)) %>% pull(id, name = "short_code")
+      choices = dbReadTable(con, "study") %>% pull(id, name = "short_code")
     )
 
 
@@ -549,7 +558,7 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
       selected = input$UploadLocationRoot,
       choices = c("", tbl(con, "location") %>%
         collect() %>% 
-        pull(name) %>%
+        pull(location_root) %>%
         unique(.)
       )
     )
@@ -659,7 +668,7 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
       selected = "",
       choices = c("", tbl(con, "location") %>%
         collect() %>% 
-        pull(name) %>%
+        pull(location_root) %>%
         unique(.)
       )
     )
@@ -723,30 +732,33 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
     file_specs_json <- rjson::fromJSON(file = system.file(
       "extdata", "file_specifications.json", package = .sampleDB$pkgname))
 
+    upload_type=switch(
+      input$UploadType,
+      "Controls"="controls",
+      "Samples"="sample_type"
+    )
+
     ## Required Column Names
 
     file_index <- which(lapply(file_specs_json$file_types, function(x) x$id) == input$UploadFileType)
-    sample_storage_type_index <- which(lapply(file_specs_json$file_types[[file_index]]$sample_type, function(x) x$id) == input$UploadSampleType)
+    if (upload_type=="controls") {
+      storage_type_index <- which(lapply(file_specs_json$file_types[[file_index]][[upload_type]], function(x) x$id) == input$UploadControlType)
+    } else {
+      storage_type_index <- which(lapply(file_specs_json$file_types[[file_index]][[upload_type]], function(x) x$id) == input$UploadSampleType)      
+    }
 
-    if (length(sample_storage_type_index) == 0) {
+    if (length(storage_type_index) == 0) {
       message("Unimplemented file specifications for this sample storage type.")
     } else {
-      upload_type=switch(
-        input$UploadType,
-        "Controls"="controls",
-        "Samples"="sample_type"
-      )
 
-      actions <- file_specs_json$file_types[[file_index]][[upload_type]][[sample_storage_type_index]]$actions[['upload']]
+      actions <- file_specs_json$file_types[[file_index]][[upload_type]][[storage_type_index]]$actions[['upload']]
       required_user_column_names <- actions[['required']]
       conditional_user_column_names <- actions[['conditional']]
       optional_user_column_names <- actions[['optional']]
 
       ## Shared fields
 
-      sample_type_index <- which(lapply(file_specs_json$shared[[upload_type]], function(x) x$id) == input$UploadSampleType)
-
-      if (upload_type == "Samples") {
+      if (upload_type == "sample_type") {
         required_user_column_names <- c(required_user_column_names, file_specs_json$shared$upload[['required']])
 
         if (input$UploadFileType == "traxcer") {
@@ -761,6 +773,8 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
       example_data$required <- required_user_column_names
 
       if (upload_type == "sample_type") {
+        sample_type_index <- which(lapply(file_specs_json$shared[[upload_type]], function(x) x$id) == input$UploadSampleType)
+
         example_data$conditional <- conditional_user_column_names <- c(conditional_user_column_names, file_specs_json$shared$upload[['conditional']])
         optional_user_column_names <- c(optional_user_column_names, file_specs_json$shared$upload[['optional']])
 
@@ -772,9 +786,11 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
         example_data$user_input <- c(manifest_name, unname(location_parameters))
         example_data$optional <- c(optional_user_column_names, c(manifest_barcode_name))
       } else {
-        manifest_name <- file_specs_json$shared[[upload_type]][[sample_type_index]]$manifest$name
-        manifest_barcode_name <- file_specs_json$shared[[upload_type]][[sample_type_index]]$manifest$barcode
-        location_parameters <- file_specs_json$shared[[upload_type]][[sample_type_index]]$location
+        control_type_index <- which(lapply(file_specs_json$shared[[upload_type]], function(x) x$id) == input$UploadControlType)
+
+        manifest_name <- file_specs_json$shared[[upload_type]][[control_type_index]]$manifest$name
+        manifest_barcode_name <- file_specs_json$shared[[upload_type]][[control_type_index]]$manifest$barcode
+        location_parameters <- file_specs_json$shared[[upload_type]][[control_type_index]]$location
         location_parameters <- unlist(location_parameters[c("name", "level_I", "level_II")])
 
         example_data$user_input <- c(manifest_name, unname(location_parameters))
@@ -787,6 +803,7 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
   observe({
     output$UploadFileExampleRequired <- renderReactable({
       rt <- NULL
+
       if (input$UploadFileType == "na") {
 
         if (input$UploadType == "Samples") {
@@ -799,12 +816,7 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
           example <- paste(c(sample_type_name, input$UploadFileType), collapse="_")
           rt <- reactable(eval(as.symbol(example))[, example_data$required], defaultColDef = colDef(minWidth = 120, html = TRUE, sortable = FALSE, resizable = FALSE))
         } else {
-          control_type_name <- switch(
-            input$UploadSampleType,
-            "1" = "dbs_sheet"
-          )
-
-          example <- paste(c(control_type_name, input$UploadFileType), collapse="_")
+          example <- paste(c(input$UploadControlType, input$UploadFileType), collapse="_")
           rt <- reactable(eval(as.symbol(example))[, example_data$required], defaultColDef = colDef(minWidth = 120, html = TRUE, sortable = FALSE, resizable = FALSE))
         }
       } else {
@@ -831,12 +843,7 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
           rt <- reactable(eval(as.symbol(example)) %>% select(example_data$user_input), defaultColDef = colDef(minWidth = 120, html = TRUE, sortable = FALSE, resizable = FALSE))
         
         } else {
-          control_type_name <- switch(
-            input$UploadSampleType,
-            "1" = "dbs_sheet"
-          )
-
-          example <- paste(c(control_type_name, input$UploadFileType), collapse="_")
+          example <- paste(c(input$UploadControlType, input$UploadFileType), collapse="_")
           rt <- reactable(eval(as.symbol(example))[, example_data$user_input], defaultColDef = colDef(minWidth = 120, html = TRUE, sortable = FALSE, resizable = FALSE))
         }
       } else {
@@ -909,7 +916,7 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
       "UploadLocationLevelI",
       selected = "",
       choices = c("", tbl(con, "location") %>%
-        filter(name == local(input$UploadLocationRoot)) %>%
+        filter(location_root == local(input$UploadLocationRoot)) %>%
         collect() %>% 
         pull(level_I)
       )
@@ -927,7 +934,7 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
       "UploadLocationLevelII",
       selected = "",
       choices = c("", tbl(con, "location") %>%
-        filter(name == local(input$UploadLocationRoot) && level_I == local(input$UploadLocationLevelI)) %>%
+        filter(location_root == local(input$UploadLocationRoot) && level_I == local(input$UploadLocationLevelI)) %>%
         collect() %>% 
         pull(level_II)
       )

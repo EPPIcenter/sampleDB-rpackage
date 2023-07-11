@@ -21,14 +21,14 @@ UIControlsReference <- function() {
     ),
     mainPanel(
       fluidRow(
-        column(width = 2, selectizeInput("InputControlSearchBatch", width = '100%', label = "Batch", choices = tbl(con, "study") %>% filter(!is.na(control_collection_id)) %>% pull(short_code), selected=FALSE)),
+        column(width = 2, selectizeInput("InputControlSearchBatch", width = '100%', label = "Batch", choices = tbl(con, "study") %>% pull(short_code), selected=FALSE)),
         column(width = 2, selectizeInput("InputControlSearchStrain", width = '100%', label = "Strain", choices = tbl(con, "strain") %>% pull(name), selected=FALSE)),
-        column(width = 2, selectizeInput("InputControlSearchDensity", width = '100%', label = "Density", choices = tbl(con, "control") %>% pull(density) %>% unique(.), selected=FALSE)),
+        column(width = 2, selectizeInput("InputControlSearchDensity", width = '100%', label = "Density", choices = tbl(con, "malaria_blood_control") %>% pull(density) %>% unique(.), selected=FALSE)),
         column(width = 2, selectizeInput("InputControlSearchPercentage", width = '100%', label = "Percentage", choices = tbl(con, "control_strain") %>% pull(percentage) %>% unique(.), selected=FALSE)),
         column(width = 2, dateRangeInput("InputControlSearchDateRange", label = "Dates", start = NA, end = NA)),
       ),
       fluidRow(
-        column(width = 2, selectInput("InputControlLocationRoot", label = "Freezer", choices = tbl(con, "location") %>% pull(name) %>% unique(.))),        
+        column(width = 2, selectInput("InputControlLocationRoot", label = "Freezer", choices = tbl(con, "location") %>% pull(location_root) %>% unique(.))),        
         column(width = 2, selectInput("InputControlLocationLevelI", label = "Shelf Name", choices = c())),
         column(width = 2, selectInput("InputControlLocationLevelII", label = "Basket Name", choices = c()))
       ),

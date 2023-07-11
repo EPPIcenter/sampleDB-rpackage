@@ -45,7 +45,7 @@ AppMoveSamples <- function(session, input, output, database) {
       label = "Upload Location",
       choices = c("", tbl(con, "location") %>%
         collect() %>%
-        pull(name) %>%
+        pull(location_root) %>%
         unique(.)
       )
     )

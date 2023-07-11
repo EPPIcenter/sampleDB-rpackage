@@ -249,7 +249,7 @@ SmartFreezerDropdownFilter <- function(database, session, input = input, locatio
 
   observe({
     if(!is.null(input[[location_ui]]) && input[[location_ui]] != ""){
-      tmp_table.location <- filter(CheckTable(database = database, "location"), name == input[[location_ui]])
+      tmp_table.location <- filter(CheckTable(database = database, "location"), location_root == input[[location_ui]])
       updateSelectInput(session, levelI_ui, label = NULL, choices = c("", tmp_table.location$level_I) %>% sort())
       levelII_choices <- list(`working baskets` = grep("working", tmp_table.location$level_II, value = T) %>% sort(),
                               `non-working baskets` = grep("working", tmp_table.location$level_II, value = T, invert = T) %>% sort())
@@ -355,8 +355,8 @@ UpdateFreezerDropdowns <- function(database, session){
   shinyjs::reset("AddFreezerLevel_I")
   shinyjs::reset("AddFreezerLevel_II")
   shinyjs::reset("RenameFreezerName2")
-  updateSelectInput(session = session, inputId = "RenameFreezerName1", choices = c("", CheckTable(database = database, "location")$name))
-  updateSelectInput(session = session, inputId = "DeleteFreezerName", choices = c("", CheckTable(database = database, "location")$name))
+  updateSelectInput(session = session, inputId = "RenameFreezerName1", choices = c("", CheckTable(database = database, "location")$location_root))
+  updateSelectInput(session = session, inputId = "DeleteFreezerName", choices = c("", CheckTable(database = database, "location")$location_root))
 }
 
 UpdateSpecimenTypeDropdowns <- function(database, session){
@@ -397,7 +397,7 @@ heckUploadContainerBarcodeDuplication <- function(plate_barcode, database){
 CheckFreezerNameIsUnique <- function(input, database, freezer_address){
 
   freezer_address_dup_test <- filter(CheckTable("location"),
-                                     name == freezer_address$freezer_name,
+                                     location_root == freezer_address$freezer_name,
                                      level_I == freezer_address$freezer_levelI,
                                      level_II == freezer_address$freezer_levelII) %>% nrow()
 
@@ -413,7 +413,7 @@ CheckFreezerDeletion <- function(input, database, freezer_address){
   num_items_at_address <- 0
 
   freezer_address <- filter(CheckTable(database = database, "location"),
-                            name == freezer_address$freezer_name,
+                            location_root == freezer_address$freezer_name,
                             level_I == freezer_address$freezer_levelI,
                             level_II == freezer_address$freezer_levelII)
   if(length(freezer_address$id) > 0){

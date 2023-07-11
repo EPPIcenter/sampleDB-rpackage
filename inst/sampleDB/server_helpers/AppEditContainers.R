@@ -61,7 +61,7 @@ EditWetlabContainers <- function(session, input, database, output, dbUpdateEvent
       "ContainerLocationRoot",
       choices = c("", tbl(con, "location") %>%
         collect() %>% 
-        pull(name) %>%
+        pull(location_root) %>%
         unique(.)
       ),
       selected = input$ContainerLocationRoot
@@ -128,7 +128,7 @@ EditWetlabContainers <- function(session, input, database, output, dbUpdateEvent
       "ContainerLocationRoot",
       choices = c("", tbl(con, "location") %>%
         collect() %>% 
-        pull(name) %>%
+        pull(location_root) %>%
         unique(.)
       ),
       selected = ""
@@ -166,7 +166,7 @@ EditWetlabContainers <- function(session, input, database, output, dbUpdateEvent
       "ContainerLocationLevelI",
       selected = "",
       choices = c("", tbl(con, "location") %>%
-        filter(name == local(input$ContainerLocationRoot)) %>%
+        filter(location_root == local(input$ContainerLocationRoot)) %>%
         collect() %>% 
         pull(level_I)
       )
@@ -184,7 +184,7 @@ EditWetlabContainers <- function(session, input, database, output, dbUpdateEvent
       "ContainerLocationLevelII",
       selected = "",
       choices = c("", tbl(con, "location") %>%
-        filter(name == local(input$ContainerLocationRoot) && level_I == local(input$ContainerLocationLevelI)) %>%
+        filter(location_root == local(input$ContainerLocationRoot) && level_I == local(input$ContainerLocationLevelI)) %>%
         collect() %>% 
         pull(level_II)
       )

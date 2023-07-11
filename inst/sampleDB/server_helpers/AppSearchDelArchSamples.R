@@ -89,22 +89,22 @@ SearchDelArchSamples <- function(session, input, database, output, dbUpdateEvent
     dbmap$specimen_type <- "Specimen Type"
     dbmap$collection_date <- "Collection Date"
 
-    dbmap$name <- "Location"
+    dbmap$location_root <- "Location"
     if (input$DelArchSearchBySampleType == 1) {
-      dbmap$name <- "Freezer Name"
+      dbmap$location_root <- "Freezer Name"
       dbmap$level_I <- "Shelf Name"
       dbmap$level_II <- "Basket Name"
       dbmap$manifest <- "Plate Name"
       dbmap$manifest_barcode <- "Plate Barcode"
     } else if (input$DelArchSearchBySampleType == 2) {
-      dbmap$name <- "Freezer Name"
+      dbmap$location_root <- "Freezer Name"
       dbmap$level_I <- "Rack Number"
       dbmap$level_II <- "Rack Position"
       dbmap$manifest <- "Box Name"
       dbmap$manifest_barcode <- "Box Barcode"
     } else {
       # Defaults
-      dbmap$name <- "Location"
+      dbmap$location_root <- "Location"
       dbmap$level_I <- "Level I"
       dbmap$level_II <- "Level II"
       dbmap$manifest <- "Manifest Name"
@@ -170,7 +170,7 @@ SearchDelArchSamples <- function(session, input, database, output, dbUpdateEvent
         date.to = input$DelArchdateRange[2]
       ), 
       location = list(
-        name = input$DelArchSearchByLocation,
+        location_root = input$DelArchSearchByLocation,
         level_I = input$DelArchSearchByLevelI,
         level_II = input$DelArchSearchByLevelII
       ),
@@ -295,7 +295,7 @@ SearchDelArchSamples <- function(session, input, database, output, dbUpdateEvent
         date.to = NA
       ), 
       location = list(
-        name = input$DelArchSearchByLocation,
+        location_root = input$DelArchSearchByLocation,
         level_I = input$DelArchSearchByLevelI,
         level_II = input$DelArchSearchByLevelII
       ),
@@ -426,7 +426,7 @@ SearchDelArchSamples <- function(session, input, database, output, dbUpdateEvent
     short_codes = unique(tbl(con, "study") %>% pull(short_code))
     study_subjects = unique(tbl(con, "study_subject") %>% pull(name))
     specimen_types = unique(tbl(con, "specimen_type") %>% pull(name))
-    locations = unique(tbl(con, "location") %>% pull(name))
+    locations = unique(tbl(con, "location") %>% pull(location_root))
 
     updateSelectizeInput(
       session,
@@ -704,7 +704,7 @@ SearchDelArchSamples <- function(session, input, database, output, dbUpdateEvent
   short_codes = unique(tbl(con, "study") %>% pull(short_code))
   study_subjects = unique(tbl(con, "study_subject") %>% pull(name))
   specimen_types = unique(tbl(con, "specimen_type") %>% pull(name))
-  locations = unique(tbl(con, "location") %>% pull(name))
+  locations = unique(tbl(con, "location") %>% pull(location_root))
 
   updateSelectizeInput(
     session,

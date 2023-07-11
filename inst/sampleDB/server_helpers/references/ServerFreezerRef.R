@@ -135,8 +135,8 @@ ShowFreezers <- function(output, database){
     data <- tbl(con, "location") %>%
       dplyr::select(-c(created:id, level_III)) %>%
       inner_join(tbl(con, "storage_type") %>% rename(storage_type_name = name), by = c("storage_type_id" = "id")) %>%
-      select(name, storage_type_name, level_I, level_II) %>%
-      rename(`Freezer Name` = name,
+      select(location_root, storage_type_name, level_I, level_II) %>%
+      rename(`Freezer Name` = location_root,
              `Type` = storage_type_name,
              `Level I` = level_I,
              `Level II` = level_II) %>%
