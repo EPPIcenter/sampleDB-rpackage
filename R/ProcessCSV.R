@@ -1,1476 +1,373 @@
-#' Checks the format of a csv file and validates the data given sample type and file type parameters
+#' Read a user CSV file
 #'
-#' `ProcessCSV()` creates an intermediate dataframe from a user provided csv that can then be passed to UploadSamples or MoveSamples:
+#' This function reads a user CSV file.
 #'
-#' @param user_csv The path to the user file on disk
-#' @param user_action  The action that will be taken. This can be 'upload', 'move' or 'search'.
-#' @param sample_storage_type The type of storage the samples are in. This can be '1', '2' or '3', which identify 'Micronix', 'Cryovial' or 'DBS', respectively.
-#' @param reference The reference type that is being uploaded. This can be "control". If this parameter is set, `sample_storage_type` should be NULL.
-#' @param search_type The search method used. Can either be "study_subject" or "barcode".
-#' @param file_type The file type. This usually will be 'na'. The default value is 'na'.
-#' @param container_name Optional parameter to specify the container the samples are being added to. This is not required if the container name is specifed in your file.
-#' @param freezer_address The location of the container as a named list `list(name=NULL, level_I=NULL, level_II=NULL)`. This is not required in the location is specified in file.
-#' @param validate Whether to validate the data. Setting to `FALSE` will skip the validation step and will only check the file format. Default is `TRUE`.
-#' @param database Path to the sampleDB database. Default is `Sys.getenv("SDB_PATH")`.
-#' @param config_yml Path to the user configuration file. Default is `Sys.getenv("SDB_CONFIG")`.
-#'#'
+#' @param user_csv The path to the user's csv file.
+#' @return A data frame containing the user's CSV file.
+#' @noRd
 #' @examples
 #' \dontrun{
-#'  # Format a sample datasheet with micronix samples using the 'na' micronix format that will be added to sampleDB. Add the container name and container location as parameters.
-#'  user_data <- ProcessCSV(
-#'    user_csv = "/path/to/sample_data.csv",
-#'    user_action = "upload",
-#'    file_type = "na",
-#'    sample_storage_type = "micronix",
-#'    container_name="LN2_XXXX",
-#'    freezer_address=list(name="FreezerA", level_I="Shelf1", level_II="BasketC")
-#'   )
+#' read_user_csv("path/to/file.csv")
 #' }
-#' @import lubridate
-#' @import dplyr
-#' @importFrom rlang abort
-#' @import rjson
-#' @import stringr
-#' @export ProcessCSV
+#' @export
+read_user_csv <- function(user_csv) {
+  read.csv(file = user_csv, header = FALSE, na.strings = "", blank.lines.skip = TRUE)
+}
 
 
-ProcessCSV <- function(
-    user_csv, 
-    user_action, 
-    sample_storage_type = NULL, 
-    control_type = NULL,  ## DBS Sheet or Malaria DNA
-    extraction_method = NULL, ## extracted whole blood or extracted dbs
-    reference = NULL, 
-    search_type = NULL, 
-    container_name = NULL, 
-    freezer_address = NULL, 
-    file_type = "na", 
-    validate = TRUE, 
-    database = Sys.getenv("SDB_PATH"), 
-    config_yml = Sys.getenv("SDB_CONFIG")) 
-{
+#' Preprocess a user CSV file
+#'
+#' This function preprocesses a user CSV file.
+#'
+#' @param user_file The user's CSV file.
+#' @param user_action The action the user is performing.
+#' @return A data frame containing the user's CSV file.
+#' @noRd
+#' @examples
+#' \dontrun{
+#' preprocess_csv(user_file, "upload")
+#' }
+#' @export
+preprocess_csv <- function(user_file, user_action) {
 
-  browser()
-  df.error.formatting <- data.frame(column = NULL, reason = NULL, trigger = NULL)
-
-  if (sum(!is.null(c(sample_storage_type, control_type, reference))) > 1) {
-    stop("Only one of `sample_storage_type`, `control_type`, or `reference` can be set at once.")
-  }
-
-  if (sum(is.null(c(sample_storage_type, control_type, reference))) == 3) {
-    stop("One of `sample_storage_type`, `control_type`, or `reference` must be set.")
-  }
-
-  # The control type must be
-  if (!is.null(control_type) && control_type == "malaria_dna" && (is.null(extraction_method) || !extraction_method %in% c("extracted_dbs", "extracted_wb"))) {
-    stop("If specifying control type `dna`, the extraction method must either be `extracted_dbs` or `extracted_wb`")
-  }
-
-  if (!require(dplyr)) {
-    stop("Function requires dplyr for database access!")
-  }
-
-  if(!is.null(container_name) && container_name == "") {
-    container_name <- NULL
-  }
-
-  if (!is.null(freezer_address) && all(freezer_address == "")) {
-    freezer_address <- NULL
-  }
-
-  if (is.null(user_csv) || user_csv == "") {
-    stop("No csv file was provided.")
-  }
-
-  # no header because the header will be identified by the storage type and the expected columns, and the traxcer header can be the second row
-  # na.strings = "" to indicate real empty values. `NA` can be used to indicate that there is data not available. The only time
-  # that this should be allowed is in collection date column for longitudinal studies when there is no date available.
-  user_file <- read.csv(file = user_csv, header = FALSE, na.strings = "", blank.lines.skip = TRUE)
-
-  valid_actions = c("upload", "move", "search")
-  if (!user_action %in% valid_actions) {
-    errmsg <- paste("Action is not valid. Valid actions are:", paste(valid_actions, collapse = ", "))
-    stop_usage_error(errmsg)
-  }
-
-  ## Depending on the csv tool, there may be empty strings or other special characters
   user_file[user_file == ""] <- NA
   user_file[] <- lapply(user_file, function(x) as.character(gsub("[\n\t,]", "", x)))
 
-  ## remove empty rows and columns
-  ## we do select columns below, so removing columns is technically duplicate work
-
-  # note: strange bug with search files, ignore for now
   if (user_action %in% c("move", "upload")) {
     empty_rows <- rowSums(user_file == "" | is.na(user_file) | is.null(user_file)) == ncol(user_file)
     empty_cols <- colSums(user_file == "" | is.na(user_file) | is.null(user_file)) == nrow(user_file)
-
-    if (ncol(user_file) == 1) {
-      user_file <- select(user_file, 1)
-    } else {
-      user_file <- user_file[!empty_rows, !empty_cols]
-    }
-  }
-
-  ## Read File Specification File
-  file_specs_json <- rjson::fromJSON(file = system.file(
-    "extdata", "file_specifications.json", package = .sampleDB$pkgname))
-
-  ## Required Column Names
-  required_user_column_names <- conditional_user_column_names <- optional_user_column_names <- NULL
-  if (!is.null(sample_storage_type) && is.null(control_type)) {
-    if (user_action %in% c("move", "upload")) {
-
-      file_index <- which(lapply(file_specs_json$file_types, function(x) x$id) == file_type)
-      sample_storage_type_index <- which(lapply(file_specs_json$file_types[[file_index]]$sample_type, function(x) x$id) == sample_storage_type)
-
-      if (length(sample_storage_type_index) == 0) {
-        stop("Unimplemented file specifications for this sample storage type")
-      }
-
-      actions <- file_specs_json$file_types[[file_index]]$sample_type[[sample_storage_type_index]]$actions[[user_action]]
-      required_user_column_names <- actions[['required']]
-      conditional_user_column_names <- actions[['conditional']]
-      optional_user_column_names <- actions[['optional']]
-
-      ## Shared fields
-      sample_type_index <- which(lapply(file_specs_json$shared$sample_type, function(x) x$id) == sample_storage_type)
-
-      if (user_action %in% "upload") {
-        required_user_column_names <- c(required_user_column_names, file_specs_json$shared$upload[['required']])
-        conditional_user_column_names <- c(conditional_user_column_names, file_specs_json$shared$upload[['conditional']])
-        optional_user_column_names <- c(optional_user_column_names, file_specs_json$shared$upload[['optional']])
-
-        manifest_name <- file_specs_json$shared$sample_type[[sample_type_index]]$manifest$name
-        manifest_barcode_name <- file_specs_json$shared$sample_type[[sample_type_index]]$manifest$barcode
-        location_parameters <- file_specs_json$shared$sample_type[[sample_type_index]]$location
-        location_parameters <- unlist(location_parameters[c("location_root", "level_I", "level_II")])
-
-        required_user_column_names <- c(required_user_column_names, c(manifest_name, unname(location_parameters)))
-        optional_user_column_names <- c(optional_user_column_names, c(manifest_barcode_name))
-      } else if (user_action %in% "move") {
-        manifest_name <- file_specs_json$shared$sample_type[[sample_type_index]]$manifest$name
-      }
-    } else { ## Search
-      if (search_type %in% c("barcode", "study_subject")) {
-        required_user_column_names <- file_specs_json$shared[[user_action]][[search_type]]$required
-      }
-    }
-
-    if (is.null(required_user_column_names)) {
-      stop(paste("The expected column names for sample type", sample_storage_type, "and file type", file_type, "are not implemented (yet)."))
-    }
-  } else if (!is.null(control_type)) {
-
-    file_index <- which(lapply(file_specs_json$file_types, function(x) x$id) == file_type)
-    if (control_type == "malaria_dna") {
-        control_type_index <- which(lapply(file_specs_json$file_types[[file_index]]$controls, function(x) x$id) == extraction_method)
-    } else {
-        control_type_index <- which(lapply(file_specs_json$file_types[[file_index]]$controls, function(x) x$id) == control_type)
-    }
-
-    if (length(control_type_index) == 0) {
-      stop("Unimplemented file specifications for this control type")
-    }
-
-    ref = required_user_column_names <- file_specs_json$file_types[[file_index]]$controls[[control_type_index]]$actions$upload
-
-    required_user_column_names <- ref[['required']]
-    conditional_user_column_names <- ref[['conditional']]
-    optional_user_column_names <- ref[['optional']]
-
-    if (is.null(required_user_column_names)) {
-      stop(paste("The expected column names for control type", control_type, "and file type", file_type, "are not implemented (yet)."))
-    }
-
-    manifest_name <- file_specs_json$shared$controls[[control_type_index]]$manifest$name
-    manifest_barcode_name <- file_specs_json$shared$controls[[control_type_index]]$manifest$barcode
-    location_parameters <- file_specs_json$shared$controls[[control_type_index]]$location
-    location_parameters <- unlist(location_parameters[c("location_root", "level_I", "level_II")])
-
-    manifest_name <- file_specs_json$shared$controls[[control_type_index]]$manifest$name
-
-    required_user_column_names <- c(required_user_column_names, c(manifest_name, unname(location_parameters)))
-
-  } else {
-
-    reference_type = switch(
-      reference,
-      "strain" = 1
-    )
-
-    if (is.null(reference_type)) {
-      stop("Undefined reference type")
-    }
-
-    file_index <- which(lapply(file_specs_json$file_types, function(x) x$id) == file_type)
-    reference_type_index <- which(lapply(file_specs_json$file_types[[file_index]]$reference, function(x) x$id) == reference_type)
-
-    if (length(reference_type_index) == 0) {
-      stop("Unimplemented file specifications for this reference type")
-    }
-
-    ref = required_user_column_names <- file_specs_json$file_types[[file_index]]$reference[[reference_type_index]]
-
-    required_user_column_names <- ref[['required']]
-    conditional_user_column_names <- ref[['conditional']]
-    optional_user_column_names <- ref[['optional']]
-
-    if (is.null(required_user_column_names)) {
-      stop(paste("The expected column names for reference type", reference, "and file type", file_type, "are not implemented (yet)."))
-    }
-  }
-
-  traxcer_position <- NULL
-  ## If the file type is traxcer, replace with the custom config value
-  if (file_type == "traxcer") {
-
-    ## Read Configuration File and replace with user override from user preferences
-    config <- yaml::read_yaml(config_yml)
-
-    traxcer_position <- ifelse(
-      !is.na(config$traxcer_position$override),
-      config$traxcer_position$override,
-      config$traxcer_position$default
-    )
-
-    if (!is.na(config$traxcer_position$override)) {
-      required_user_column_names <- stringr::str_replace(required_user_column_names, config$traxcer_position$default, config$traxcer_position$override)
-    }
-  }
-
-  ## second row is valid because traxcer will have "plate_label:" in the first row
-  valid_header_rows <- 1:2
-
-  header_row <- .FindHeader(user_file = user_file, required_user_column_names = required_user_column_names, valid_header_rows = valid_header_rows)
-
-  if (is.null(header_row)) {
-    df.error.formatting <- data.frame(
-      column = required_user_column_names,
-      reason = "Always Required",
-      trigger = "Not detected in file"
-    )
-
-    stop_formatting_error(df.error.formatting)
-  }
-
-  colnames(user_file) = user_file[header_row,]
-  user_file = user_file %>%  slice(-c(1:header_row))
-
-  # Check the parameters of the function and see if some of the data points are there (in case called from R package)
-  # then, filter out the columns that could not be resolved, and add to the data frame. This will be a formatting error.
-  missing_columns <- required_user_column_names[!required_user_column_names %in% colnames(user_file)]
-
-  if (user_action %in% "move") {
-    if (!is.null(container_name) && manifest_name %in% missing_columns) {
-      missing_columns <- missing_columns[missing_columns != manifest_name]
-      user_file[manifest_name] <- container_name
-    }
-  }
-  else if (user_action %in% "upload") {
-
-    if (!is.null(sample_storage_type)) {
-
-      ## these are the special case columns that can be added by users
-      if (!is.null(container_name) && manifest_name %in% missing_columns) {
-        missing_columns <- missing_columns[missing_columns != manifest_name]
-        user_file[manifest_name] <- container_name
-      }
-      if (!is.null(freezer_address) && all(location_parameters %in% missing_columns)) {
-        missing_columns <- missing_columns[!location_parameters %in% missing_columns]
-        user_file[location_parameters] <- freezer_address
-      }
-
-      if ("StudyCode" %in% colnames(user_file) && "upload" %in% user_action) {
-        tmp <- CheckTable("study") %>%
-          filter(short_code %in% user_file$StudyCode) %>%
-          inner_join(user_file, by = c("short_code" = "StudyCode"))
-
-        # collection date column must exist for all samples that are part of a longitudinal study
-        if (!"CollectionDate" %in% colnames(user_file) && nrow(filter(tmp, is_longitudinal == 1)) > 0) {
-          df.error.formatting <- rbind(
-            df.error.formatting,
-            data.frame(
-              column = "CollectionDate",
-              reason = "Collection date is required for samples of longitudinal studies.",
-              trigger = filter(tmp, is_longitudinal == 1) %>% pull(short_code)
-            )
-          )
-        }
-      }
-    }
-  }
-
-  if (length(missing_columns) > 0) {
-    df.error.formatting <- rbind(
-      df.error.formatting,
-      data.frame(
-            column = missing_columns,
-            reason = "Always Required",
-            trigger = "Not detected in file"
-          )
-      )
-  }
-
-
-  ## Throw if any of the required columns are missing
-  # since the application is retrofitting the already released shiny application, there is only a subset of fields checked. This
-  # should be expanded upon.
-  if (nrow(df.error.formatting)) {
-    stop_formatting_error(df = df.error.formatting)
-  }
-
-  if (user_action %in% "upload") {
-    user_file <- select(user_file, all_of(required_user_column_names), any_of(conditional_user_column_names), any_of(optional_user_column_names))
-  } else if (user_action %in% c("move", "search")) {
-    user_file <- select(user_file, all_of(required_user_column_names))
-  }
-
-  message("Required columns detected.")
-
-  if (validate) {
-
-    ### Quality check the data now
-    tryCatch({
-
-      # this will map the processed file back to the user file in case there are validation errors
-      dbmap <- NULL
-      dbmap$row_number <- "RowNumber"
-
-      ## pass the row id to link back to the actual user file, so that
-      # we can inform the user if there is an issue with one of their rows
-
-      if (!is.null(sample_storage_type) && is.null(control_type)) {
-        if (user_action %in% c("upload", "move")) {
-
-          ## Micronix
-          if (sample_storage_type == 1 && file_type == "na") {
-            dbmap$barcode <- "Barcode"
-            dbmap$position <- c("Row", "Column")
-          } else if (sample_storage_type == 1 && file_type == "traxcer") {
-            dbmap$barcode <- "Tube ID"
-            dbmap$position <- traxcer_position
-          } else if (sample_storage_type == 1 && file_type == "visionmate") {
-            dbmap$barcode <- "Tube Row"
-            dbmap$position <- c("LocationRow", "LocationColumn")
-          }
-
-          ## Cryovial
-          else if (sample_storage_type == 2) {
-            dbmap$barcode <- "Barcode"
-            dbmap$position <- c("BoxRow", "BoxColumn")
-
-          ## DBS
-          } else if (sample_storage_type == 3) {
-            dbmap$position <- c("Row", "Column")
-          } else {
-            stop("Unimplemented position formatting code for this sample type.")
-          }
-        }
-
-        # conditional and optional columns only apply for uploads.
-        # search files only contain optional columns.
-        # metadata only applies for uploads.
-
-        if ("upload" %in% c(user_action)) {
-
-          dbmap$study_short_code <- "StudyCode"
-          dbmap$study_subject <- "StudySubject"
-          dbmap$specimen_type <- "SpecimenType"
-          dbmap$collection_date <- "CollectionDate"
-          dbmap$comment <- "Comment"
-          dbmap['location_root'] <- unname(location_parameters['location_root'])
-          dbmap['level_I'] <- unname(location_parameters['level_I'])
-          dbmap['level_II'] <- unname(location_parameters['level_II'])
-
-          dbmap$manifest_barcode <- manifest_barcode_name
-        }
-
-        if (user_action %in% c("upload", "move")) {
-          dbmap$manifest_name <- manifest_name
-        }
-
-        # add the container name to the users data if supplied as an argument
-        if (!is.null(container_name)) {
-          user_file[[dbmap[["manifest_name"]]]] = c(container_name)
-        }
-
-        ## In cases where the CSV file was generated by certain software platforms (ie. traxcer),
-        ## empty barcodes show be allowed and simply filtered out
-        if (sample_storage_type == "1" && file_type=="traxcer") {
-          message(sprintf("Removed %d rows with no barcode entries.", sum(is.na(user_file$`Tube ID`))))
-          user_file <- user_file[!is.na(user_file$`Tube ID`),]
-        }
-
-      } else if (!is.null(control_type)) {
-        if (user_action %in% c("upload")) {
-          if (control_type=="dbs_sheet") {
-            dbmap$strain = "Strain"
-            dbmap$percentage <- "Percentage"
-            dbmap$count = "Count"
-            dbmap$density <- "Density"
-            dbmap$study_short_code <- "Batch"
-            dbmap$sheet_uid <- "SheetID"
-            dbmap$manifest_name = "BagName"
-            dbmap['location_root'] <- unname(location_parameters['location_root'])
-            dbmap['level_I'] <- unname(location_parameters['level_I'])
-            dbmap['level_II'] <- unname(location_parameters['level_II'])
-          } else { ## malaria_dna
-            if (extraction_method=="extracted_dbs") {
-              dbmap$barcode <- "Barcode"
-              dbmap$position <- c("Row", "Column")
-              dbmap$study_short_code <- "Batch"
-              dbmap$study_subject = "ControlID"
-              dbmap$sheet_uid <- "SheetID"
-              dbmap$collection_date <- "Created"
-              dbmap$manifest_name = "PlateName"
-              dbmap$manifest_barcode <- manifest_barcode_name
-              dbmap$comment = "Comment"
-              dbmap['location_root'] <- unname(location_parameters['location_root'])
-              dbmap['level_I'] <- unname(location_parameters['level_I'])
-              dbmap['level_II'] <- unname(location_parameters['level_II'])
-            } else {  ## Whole Blood `extracted_wb`
-              dbmap$barcode <- "Barcode"
-              dbmap$position <- c("BoxRow", "BoxColumn")
-              dbmap$study_short_code <- "Batch"
-              dbmap$study_subject = "ControlID"
-              dbmap$sheet_uid <- "SheetID"
-              dbmap$collection_date <- "Created"
-              dbmap$manifest_name = "BoxName"
-              dbmap$comment = "Comment"
-              dbmap$manifest_barcode <- manifest_barcode_name
-              dbmap['location_root'] <- unname(location_parameters['location_root'])
-              dbmap['level_I'] <- unname(location_parameters['level_I'])
-              dbmap['level_II'] <- unname(location_parameters['level_II'])
-            }
-          }
-        }
-      } else {
-        if (user_action %in% c("upload")) {
-          if (reference == "strain") {
-            dbmap$strain <- "Strains"
-          }
-        }
-      }
-
-      if (!is.null(sample_storage_type) && is.null(control_type)) {
-        user_file <- .CheckFormattedFileData(
-          database = database,
-          user_data = user_file,
-          file_type = file_type,
-          sample_storage_type = sample_storage_type,
-          user_action = user_action,
-          dbmap = dbmap
-        )
-      } else if (!is.null(control_type)) {
-        if (control_type=="dbs_sheet") {
-          user_file <- ValidateDBSSheet(
-            database = database,
-            user_data = user_file,
-            dbmap = dbmap
-          )
-        } else {
-          user_file = ValidateExtractedDNA(
-            database = database,
-            user_data = user_file,
-            file_type = file_type,
-            sample_storage_type = sample_storage_type,
-            dbmap = dbmap
-          )
-        }
-      } else {
-        if (reference == "strain") {
-          user_file <- ValidateReferenceStrains(
-            database = database,
-            user_data = user_file,
-            dbmap = dbmap
-          )
-        }
-      }
-
-      user_file$row_number <- NULL
-    },
-    validation_error = function(e) {
-
-      user_file = dplyr::mutate(user_file, RowNumber = row_number())
-
-      # TODO: Make this return the users file with error annotation by row number (allow for multiple errors in cell)
-      data1 <- lapply(1:length(e$data), function(x) {
-        result <- list(Columns = e$data[[x]], CSV = inner_join(e$data[[x]], user_file, by = colnames(e$data[[x]])))
-
-        tmp.2 = colnames(result$CSV)[colnames(result$CSV) != "RowNumber"]
-        colnames(result$CSV) = c("RowNumber", tmp.2)
-
-        tmp.2 = colnames(result$Columns)[colnames(result$Columns) != "RowNumber"]
-        colnames(result$Columns) = c("RowNumber", tmp.2)
-
-        return(result)
-      })
-
-      names(data1) <- names(e$data)
-      stop_validation_error(e$message, data1)
-    })
-
-    message("Validation complete.")
+    user_file <- user_file[!empty_rows, !empty_cols]
   }
 
   return(user_file)
 }
 
-ValidateReferenceStrains <- function(database, user_data, file_type, dbmap) {
+#' Identify the row in a CSV file that matches the header based on required column names.
+#'
+#' @param user_file A data frame representing the CSV file.
+#' @param required_user_column_names A character vector of required column names.
+#' @param valid_header_rows A numeric vector of row numbers to consider as potential header rows.
+#'                          By default, it considers the first two rows.
+#' @return An integer representing the row number where the header was found, or NULL if not found.
+#' @examples
+#' \dontrun{
+#' user_data <- read.csv("path_to_user_file.csv", header = FALSE)
+#' find_header(user_data, c("Name", "Age"))
+#' }
+#' @export
+find_header <- function(user_file, required_user_column_names, valid_header_rows = 1:2) {
 
-  required_names <- requires_data <- NULL
-
-  required_names <- c("strain")
-
-  if (is.null(required_names)) {
-    stop("Invalid reference detected")
+  # Sanity check
+  if (nrow(user_file) <= 1) {
+    stop("File is empty or contains only one row.")
   }
 
-  requires_data <- c(requires_data, required_names)
-
-  bError <- FALSE
-  err <- errmsg <- NULL
-
-  con <- NULL
-  tryCatch({
-
-    for (nm in names(dbmap)) {
-      if (all(dbmap[[nm]] %in% colnames(user_data))) {
-        user_data = dplyr::rename(user_data, unlist(dbmap[nm]))
-      } else {
-        user_data[[nm]] = c(NA)
-      }
-    }
-
-    user_data = dplyr::mutate(user_data, row_number = row_number())
-
-    stopifnot("Required database column names not implemented" = !is.null(required_names))
-
-    matched_columns <- match(required_names, names(user_data))
-    if (any(is.na(matched_columns))) {
-      errmsg <- paste("Required database column is missing:", paste(required_names[is.na(matched_columns)], collapse = ", "))
-      stop(errmsg)
-    }
-
-    ## broad sweep check if missing any data in required fields
-    rs <- sum(is.na(user_data[, requires_data])) > 0
-    rn <- user_data[rs, ] %>% pull(row_number)
-
-    cs <- sum(is.na(user_data[, requires_data])) > 0
-    cols <- colnames(user_data[, requires_data])[cs]
-
-    if (length(cols) > 0) {
-      df <- user_data[rn, c("row_number", cols)]
-      err <- .maybe_add_err(err, df, "Rows found with missing data", dbmap)
-    }
-
-    con <- DBI::dbConnect(RSQLite::SQLite(), database)
-    copy_to(con, user_data)
-
-    ## 1) Ensure that the strain has not already been added
-    df = tbl(con, "user_data") %>%
-      dplyr::mutate(strain = toupper(strain)) %>%
-      left_join(
-        tbl(con, "strain") %>%
-          dplyr::rename(strain = name) %>%
-          dplyr::mutate(strain = toupper(strain))
-        , by = c("strain")
-      ) %>%
-      filter(!is.na(id)) %>%
-      select(all_of(colnames(user_data))) %>%
-      collect()
-
-    err <- .maybe_add_err(err, df, "Strain detected", dbmap)
-
-  },
-  warning = function(w) {
-    bError <<- TRUE
-    errmsg <<- w$message
-  },
-  error = function(e) {
-    bError <<- TRUE
-    errmsg <<- e$message
-  },
-  finally = {
-
-    if (!is.null(con)) {
-      dbDisconnect(con)
-    }
-
-    if (bError) {
-      stop(errmsg)
-    }
-
-    ## throw if bad data found
-    if (!is.null(err) && length(err) > 0) {
-      stop_validation_error("There was a problem with the content of your file.", err)
-    }
-  })
-
-  return(user_data)
-}
-
-
-ConvertToDatabaseNames <- function(user_data, dbmap) {
-
-  for (nm in names(dbmap)) {
-    if (all(dbmap[[nm]] %in% colnames(user_data))) {
-      user_data = dplyr::rename(user_data, unlist(dbmap[nm]))
-    } else {
-      user_data[[nm]] = c(NA)
-    }
-  }
-
-  user_data = dplyr::mutate(user_data, row_number = row_number())
-
-  # these break down the position from A01 to `A` `01` and are used to map back to the original
-  # user file that has the position listed in two columns
-  if (!is.null(user_data[["position1"]]) && !is.null(user_data[["position2"]])) {
-    user_data$position <- sprintf(
-      "%s%02d",
-      user_data[["position1"]],
-      as.integer(user_data[["position2"]])
-    )
-  }
-
-  return(user_data)
-}
-
-
-
-ValidateExtractedDNA <- function(database, user_data, sample_storage_type, file_type, dbmap) {
-  browser()
-  requires_data <- c("barcode", "position1", "position2", "study_short_code", "study_subject", "sheet_uid", "collection_date", "manifest_name", "location_root", "level_I", "level_II")
-  con <- NULL
-  bError <- FALSE
-  err <- errmsg <- NULL
-
-  # todo: this should be read in somewhere
-  container_tables <- list(
-    "manifest" = switch(sample_storage_type,
-      "1" = "micronix_plate",
-      "2" = "cryovial_box",
-      "3" = "dbs_paper"
-    ),
-    "container_class" = switch(sample_storage_type,
-      "1" = "micronix_tube",
-      "2" = "cryovial_tube",
-      "3" = "dbs_spot"
-    )
-  )
-
-  tryCatch({
-    user_data <- ConvertToDatabaseNames(user_data, dbmap)
-    err <- CheckForMissingDataInRequiredColumns(user_data, requires_data, err, dbmap)
-
-    con <- DBI::dbConnect(RSQLite::SQLite(), database)
-    copy_to(con, user_data)
-
-    # check locations, batch, control id, etc.
-    err <- CheckReferences(con, user_data_tbl="user_data", type="control", err=err, dbmap=dbmap)
-
-    # Find columns that are missing data
-    err <- CheckForMissingDataInRequiredColumns(user_data, requires_data=requires_data, err=err, dbmap=dbmap)
-
-    # Find Positions that are not unique in the file.
-    err <- CheckUploadPositionsUniqueInFile(user_data, file_type=file_type, err=err, dbmap=dbmap) # hardcoded "na"
-
-    err < CheckDuplicatedBarcodes(user_data, sample_storage_type=sample_storage_type, err=err, dbmap=dbmap) # `1` is Micronix, which is the default for now
-
-    err <- CheckPositionColumnFormatting(user_data, sample_storage_type=sample_storage_type, file_type=file_type, err=err, dbmap=dbmap) # `1` is Micronix, which is the default for now
-
-    # Make sure there isn't an active sample in the position already
-    err <- CheckIfSamplePositionIsOccupied(con, container_tables, file_type=file_type, user_data_tbl = "user_data", sample_storage_type=sample_storage_type, err=err, dbmap=dbmap)
-  },
-  warning = function(w) {
-    bError <<- TRUE
-    errmsg <<- w$message
-  },
-  error = function(e) {
-    bError <<- TRUE
-    errmsg <<- e$message
-  },
-  finally = {
-
-    if (!is.null(con)) {
-      dbDisconnect(con)
-    }
-
-    if (bError) {
-      stop(errmsg)
-    }
-
-    ## throw if bad data found
-    if (!is.null(err) && length(err) > 0) {
-      stop_validation_error("There was a problem with the content of your file", err)
-    }
-  })
-
-  return(user_data)
-
-}
-
-ValidateDBSSheet <- function(database, user_data, dbmap) {
-
-  requires_data <- c("strain", "percentage", "count", "density", "study_short_code", "manifest_name", "location_root", "level_I", "level_II")
-
-  bError <- FALSE
-  err <- errmsg <- NULL
-
-  con <- NULL
-  tryCatch({
-
-    user_data <- ConvertToDatabaseNames(user_data, dbmap)
-    err <- CheckForMissingDataInRequiredColumns(user_data, requires_data, err, dbmap)
-
-    ## detect `k` or `K` and convert to numeric
-    vb <- grepl('k|K', user_data$density)
-    user_data$density[vb] <- str_replace(user_data$density[vb], "k|K", "")
-    user_data$density <- as.integer(user_data$density)
-    user_data$density[vb] <- user_data$density[vb] * 1000 # convert to numeric
-
-
-    ## check date formatting
-    # allowed_date_formats = c("%Y-%m-%d")
-    # parsed_dates <- lubridate::parse_date_time(user_data$date, allowed_date_formats, quiet = TRUE, exact = TRUE)
-    # err <- .maybe_add_err(err, user_data[is.na(parsed_dates), c("row_number", "date")], "Unrecognized date format.", dbmap)
-
-    user_data.1 = user_data %>%
-      dplyr::mutate(
-        strain2 = strsplit(strain, ";"),
-        percentage2 = strsplit(percentage, ";")
-      ) %>%
-      tidyr::unnest(cols = c(strain2, percentage2))
-
-
-    con <- DBI::dbConnect(RSQLite::SQLite(), database)
-    copy_to(con, user_data.1)
-
-    ## Check that control batch is recorded in the database already
-
-    df = tbl(con, "user_data.1") %>%
-      left_join(tbl(con, "study"), by = c("study_short_code"="short_code")) %>%
-      filter(is.na(id)) %>%
-      select(row_number, study_short_code) %>%
-      collect()
-
-    err <- .maybe_add_err(err, df, "Batch is not yet recorded", dbmap)
-
-    ## check that all strains are found
-    df = tbl(con, "user_data.1") %>%
-      left_join(tbl(con, "strain"), by = c("strain2"="name")) %>%
-      filter(is.na(id)) %>%
-      select(row_number, strain2) %>%
-      distinct() %>%
-      dplyr::rename(strain = strain2) %>%
-      collect()
-
-    err <- .maybe_add_err(err, df, "Strain found that is not recorded in the database", dbmap)
-
-    ## percentage does not equal 100
-
-    df = tbl(con, "user_data.1") %>%
-      select(row_number, percentage, percentage2) %>%
-      group_by(row_number, percentage) %>%
-      dplyr::mutate(percentage2=as.double(percentage2)) %>%
-      dplyr::mutate(percentage2=ifelse(is.na(percentage2), 0, percentage2)) %>%
-      dplyr::mutate(equals_100 = as.logical(sum(percentage2, na.rm=TRUE) == 100)) %>%
-      filter(equals_100 == FALSE) %>%
-      ungroup() %>%
-      select(row_number, percentage) %>%
-      distinct() %>%
-      collect()
-
-    err <- .maybe_add_err(err, df, "Some controls do not sum to 100", dbmap)
-
-    rn <- tbl(con, "user_data.1") %>%
-      left_join(tbl(con, "location") %>%
-        dplyr::rename(location_id = id), by = c('location_root', 'level_I', 'level_II')) %>%
-      filter(is.na(location_id)) %>%
-      pull(row_number)
-
-    df <- user_data[user_data$row_number %in% rn, c("row_number", "location_root", "level_I", "level_II")]
-
-    errstring = sprintf("The following %s, %s and / or %s are not found in the database", dbmap["location_root"], dbmap["level_I"], dbmap["level_II"])
-    err <- .maybe_add_err(err, df, errstring, dbmap)
-
-  },
-  warning = function(w) {
-    bError <<- TRUE
-    errmsg <<- w$message
-  },
-  error = function(e) {
-    bError <<- TRUE
-    errmsg <<- e$message
-  },
-  finally = {
-
-    if (!is.null(con)) {
-      dbDisconnect(con)
-    }
-
-    if (bError) {
-      stop(errmsg)
-    }
-
-    ## throw if bad data found
-    if (!is.null(err) && length(err) > 0) {
-      stop_validation_error("There was a problem with the content of your file", err)
-    }
-  })
-
-  return(user_data)
-}
-
-.CheckFormattedFileData <- function(database, user_data, file_type, sample_storage_type, user_action, dbmap) {
-
-  #NOTE: dbmap is unused right now and should probably be removed from the function
-
-  # this is an internal mapping to the database that should not be exposed to the user
-  required_names <- requires_data <- container_metadata <- NULL
-  if (user_action %in% c("upload", "move")) {
-    required_names <- switch(sample_storage_type,
-        "1" = c(
-          "position",
-          "barcode",
-          "manifest_name"
-        ),
-        "2" = c(
-          "position",
-          "manifest_name"
-        ),
-        "3" = c(
-          "position",
-          "manifest_name"
-        )
-      )
-
-    requires_data <- c(requires_data, required_names)
-  }
-
-  if (user_action %in% c("upload")) {
-    required_names <- c(required_names,
-      c(
-        "study_short_code",
-        "study_subject",
-        "specimen_type",
-        "collection_date",
-        "comment"
-    ))
-
-    requires_data <- c(requires_data,
-      c(
-        "study_short_code",
-        "study_subject",
-        "specimen_type"
-
-    ))
-  }
-
-  con <- DBI::dbConnect(RSQLite::SQLite(), database)
-
-  bError <- FALSE
-  err <- errmsg <- NULL
-  if (user_action %in% c("upload", "move")) {
-
-    tryCatch({
-
-      # This takes the dbmap names and updates the user file with them
-      # The reason for this is to allow an easier time working with database tables
-      user_data <- ConvertToDatabaseNames(user_data, dbmap)
-      copy_to(con, user_data)
-
-      # Find columns that are missing data
-      err <- CheckForMissingDataInRequiredColumns(user_data, requires_data, err=err, dbmap=dbmap)
-
-      # Find Positions that are not unique in the file
-      err <- CheckUploadPositionsUniqueInFile(user_data, file_type, err=err, dbmap=dbmap)
-
-      err < CheckDuplicatedBarcodes(user_data, sample_storage_type, err=err, dbmap=dbmap)
-
-      err <- CheckPositionColumnFormatting(user_data, sample_storage_type, file_type, err=err, dbmap=dbmap)
-
-      ## Deeper validation using database
-
-      container_tables <- list(
-        "manifest" = switch(sample_storage_type,
-          "1" = "micronix_plate",
-          "2" = "cryovial_box",
-          "3" = "dbs_paper"
-        ),
-        "container_class" = switch(sample_storage_type,
-          "1" = "micronix_tube",
-          "2" = "cryovial_tube",
-          "3" = "dbs_spot"
-        )
-      )
-
-      ## check the formats of dates - right now this is hardcoded
-      parsed_dates <- NULL
-      if (user_action %in% c("upload")) {
-
-        allowed_date_formats = c("%Y-%m-%d")
-        tokens = c("unk", "UNK", "unknown", "UNKNOWN")
-
-        ## Start by parsing the string - NAs will appear if the allowed formats could not be detected
-        ## this is a fairly minimal check so we need to confirm in other ways that the user is uploading
-        ## dates in the correct format (ie. MM/DD/YYYY vs DD/MM/YYYY), particulary when there can be ambiguity
-        parsed_dates <- lubridate::parse_date_time(user_data$collection_date, allowed_date_formats, quiet = TRUE, exact = TRUE)
-
-        ## Validate that only dates or NA mask values ("unk", "UNK", "unknown", "UNKNOWN") exist in the column
-        token_mask <- !user_data$collection_date %in% tokens
-
-        ## Invalid formats will appear as NA in "parsed_dates". If they are also unrecognized tokens,
-        ## report back to the user
-        rn <- user_data[!is.na(user_data$collection_date) & is.na(parsed_dates) & token_mask,]$row_number  # Was not left out AND not a recognized date format AND not a recognized token
-        df <- user_data[user_data$row_number %in% rn, c("row_number", "collection_date")]
-        colnames(df) <- c("row_number", "collection_date")
-        string <- paste("Unrecognized strings found in collection date column. Add any of the following if the collection date is unknown:", paste(tokens, collapse=", "))
-        err <- .maybe_add_err(err, df, string, dbmap)
-
-        rn <- user_data[xor(is.na(parsed_dates[token_mask]), is.na(user_data$collection_date[token_mask])),] %>% pull(row_number)
-
-        df <- user_data[user_data$row_number %in% rn, c("row_number", "collection_date")]
-
-        err <- .maybe_add_err(err, df, "Rows found with improperly formatted dates", dbmap)
-        if (length(rn) == 0) {
-          user_data$collection_date <- parsed_dates
-          user_data$collection_date[!token_mask] <- rep(lubridate::origin, sum(!token_mask))
-          user_data$collection_date = as.character(user_data$collection_date)
-        }
-      }
-
-      #########################
-      ## Database validation ##
-      #########################
-
-      ## This is where various constraints are tested that involve querying the database.
-      ## The formatted csv is queried to  build the error table when invalid rows
-      ## are detected (failed to meet criteria)
-
-      if (user_action %in% c("upload")) {
-
-        ## check that dates exist for longitudinal studies
-        df <- tbl(con, "user_data") %>%
-          dplyr::inner_join(
-            tbl(con, "study") %>%
-              select(short_code, is_longitudinal)
-            , by = c("study_short_code" = "short_code")
-          ) %>%
-          filter(is_longitudinal == 1 & is.na(collection_date)) %>%
-          select(row_number, study_short_code, collection_date) %>%
-          collect()
-
-        err <- .maybe_add_err(err, df, "Missing collection date found for sample in longitudinal study", dbmap)
-      }
-
-      if (user_action == "move") {
-
-        ## check that the barcodes in the move file exist in the database
-        df <- tbl(con, "user_data") %>%
-          filter(!is.na(barcode)) %>% # cryovials sometimes don't have barcodes
-          left_join(tbl(con, container_tables[["container_class"]]), by = c("barcode")) %>%
-          filter(is.na(id)) %>%
-          select(row_number, barcode) %>%
-          collect()
-
-        err <- .maybe_add_err(err, df, "Barcode not found in database", dbmap)
-
-        ## check if the container exists in the database
-        df <- tbl(con, "user_data") %>%
-          left_join(tbl(con, container_tables[["manifest"]]) %>% dplyr::rename(manifest_barcode = barcode), by = c("manifest_name" = "name")) %>%
-          filter(is.na(id)) %>%
-          select(row_number, manifest_name) %>%
-          collect()
-
-        err <- .maybe_add_err(err, df, "Container not found", dbmap)
-
-        ## only micronix and cryovial have barcodes (right now)
-        if (sample_storage_type %in% c(1,2)) {
-          df <- tbl(con, "user_data") %>%
-            inner_join(tbl(con, container_tables[["container_class"]]) %>%
-              dplyr::rename(container_position = position), by = c("barcode")) %>%
-            filter(is.na(id)) %>%
-            select(row_number, barcode) %>%
-            collect()
-
-          err <- .maybe_add_err(err, df, "Barcodes not found in the database", dbmap)
-        }
-      }
-
-      if (user_action == "upload") {
-
-        err = CheckSampleBarcodesBySampleType(con, container_tables, user_data_tbl="user_data", sample_storage_type=sample_storage_type, err=err, dbmap=dbmap)
-
-        ###################################
-        ### Cryovial Upload Constraints ###
-        ###################################
-
-        if (user_action == "upload" && sample_storage_type == 2) {
-
-          ## if the study is not longitudinal, StudySubject must be unique within the study
-          df <- tbl(con, "user_data") %>%
-            inner_join(tbl(con, "study") %>% dplyr::rename("study_id" = "id"), by = c("study_short_code" = "short_code")) %>%
-            inner_join(tbl(con, "study_subject") %>% dplyr::rename(study_subject_id=id, study_subject=name), by = c("study_subject", "study_id")) %>%
-            filter(is_longitudinal == 0) %>%
-            select(row_number, study_short_code, study_subject) %>%
-            collect()
-
-          err <- .maybe_add_err(err, df, "Study subjects must be unique in studies that are not longitudinal", dbmap)
-
-
-          ## If the study is longitudinal, the study subject and collection date must be unique within the study
-          df <- tbl(con, "user_data") %>%
-            inner_join(tbl(con, "study") %>% dplyr::rename("study_id" = "id"), by = c("study_short_code" = "short_code")) %>%
-            inner_join(tbl(con, "study_subject") %>% dplyr::rename(study_subject_id=id, study_subject=name), by = c("study_subject", "study_id")) %>%
-            inner_join(tbl(con, "specimen") %>% dplyr::rename(specimen_id=id), by = c("study_subject_id", "collection_date")) %>%
-            inner_join(tbl(con, "specimen_type") %>% dplyr::rename(specimen_type_id=id, specimen_type=name), by = c("specimen_type_id")) %>%
-            filter(is_longitudinal == 1 & !is.na(collection_date)) %>%
-            select(row_number, study_subject, collection_date, study_short_code) %>%
-            collect()
-
-          err <- .maybe_add_err(err, df, "Study subject and collection date must be unique within a longitudinal study", dbmap)
-
-          ## Cryovials are required to have collection dates if they have no barcode and there is already a sample from the study subject in the study
-          df = tbl(con, "user_data") %>%
-            inner_join(tbl(con,"study") %>% dplyr::rename(study_id=id), by = c("study_short_code"="short_code")) %>%
-            inner_join(tbl(con, "study_subject") %>% dplyr::rename(study_subject_id=id, study_subject=name), by = c("study_subject", "study_id")) %>%
-            filter(is.na(barcode) & is.na(collection_date)) %>%
-            select(row_number, study_subject, study_short_code, collection_date) %>%
-            collect()
-
-          err <- .maybe_add_err(err, df, "Sample must have a collection date if there is no barcode provided and there is already a sample from this study subject.", dbmap)
-        }
-
-        ## Check the references
-        err <- CheckReferences(con, user_data_tbl = "user_data", type="sample", err=err, dbmap=dbmap)
-
-        ## Make sure that samples are not uploaded to a well that already contains an active sample
-        err <- CheckIfSamplePositionIsOccupied(con, container_tables, file_type, sample_storage_type = sample_storage_type, user_data_tbl = "user_data", err=err, dbmap=dbmap)
-      }
-    },
-    warning = function(w) {
-      bError <<- TRUE
-      errmsg <<- w$message
-    },
-    error = function(e) {
-      bError <<- TRUE
-      errmsg <<- e$message
-    },
-    finally = {
-      if (!is.null(con)) {
-        DBI::dbDisconnect(con)
-      }
-
-      if (bError) {
-        stop(errmsg)
-      }
-
-      ## throw if bad data found
-      if (!is.null(err) && length(err) > 0) {
-        stop_validation_error("There was a problem with the content of your file", err)
-      }
-    }) # end tryCatch
-
-    return(user_data)
-  }
-}
-
-# Logistical Checks
-.FindHeader <- function(user_file, required_user_column_names, valid_header_rows = valid_header_rows) {
-
-  # sanity check
-  stopifnot("File is empty" = nrow(user_file) > 1)
-
-  # this variable will be set with the valid header row position (if it exists)
-
+  # Check each potential header row for the presence of required column names
   for (colname_ridx in valid_header_rows) {
     row <- user_file[colname_ridx, ]
-    if (any(required_user_column_names %in% row)) {
+    if (all(required_user_column_names %in% row)) {
       return(colname_ridx)
     }
   }
 
+  # Return NULL if no valid header row found
   return(NULL)
 }
 
-.maybe_add_err <- function(err, df, msg, dbmap) {
-  if (!is.null(df) && nrow(df) > 0) {
-    for (nm in colnames(df)) {
-      if (grepl("[0-9]$", nm)) {
-        idx = as.integer(str_extract(nm, "[0-9]$"))
-        nm.1 = sapply(strsplit(nm, "[0-9]$"), "[[", 1)
-        sub.name = dbmap[[nm.1]][idx]
-        colnames(df)[colnames(df) %in% nm] = sub.name
-      } else {
-        colnames(df)[colnames(df) %in% nm] = dbmap[nm]
+
+
+#' Check if the collection date column should be required
+#'
+#' This function checks if the collection date column should be required.
+#'
+#' @param con A database connection.
+#' @param user_file The user's CSV file.
+#' @param study_data The study data from the database.
+#' @return A data frame containing the formatting errors.
+#' @import DBI
+#' @import dplyr
+#' @noRd
+#' @keywords internal
+check_collection_date <- function(con, user_file, study_data = NULL) {
+  df_error <- data.frame(column = character(), reason = character(), trigger = character())
+
+  if (is.null(study_data)) {
+    study_data <- DBI::dbReadTable(con, "study")
+  }
+
+  relevant_studies <- study_data %>%
+    filter(short_code %in% user_file$StudyCode) %>%
+    inner_join(user_file, by = c("short_code" = "StudyCode"))
+
+  # Collection date column must exist for all samples that are part of a longitudinal study
+  if (!"CollectionDate" %in% colnames(user_file) && nrow(filter(relevant_studies, is_longitudinal == 1)) > 0) {
+    df_error <- data.frame(
+      column = "CollectionDate",
+      reason = "Collection date is required for samples of longitudinal studies.",
+      trigger = filter(relevant_studies, is_longitudinal == 1) %>% pull(short_code)
+    )
+  }
+
+  return(df_error)
+}
+
+
+#' Set a Specific Row as the Header
+#'
+#' This function updates the header of the user file based on the specified row number.
+#'
+#' @param user_file A data frame representing the user file.
+#' @param header_row A numeric value indicating which row to set as the header.
+#' @return A data frame with the updated header.
+#' @examples
+#' \dontrun{
+#' user_file <- read.csv("path_to_user_file.csv", header = FALSE)
+#' set_header_row(user_file, 2)
+#' }
+#' @export
+set_header_row <- function(user_file, header_row) {
+  colnames(user_file) <- user_file[header_row,]
+  user_file <- user_file %>% dplyr::slice(-c(1:header_row))
+  return(user_file)
+}
+
+#' Create Formatting Error Data Frame
+#'
+#' This function creates a data frame detailing the formatting errors for required columns that are missing.
+#'
+#' @param required A character vector of required column names that were not detected.
+#' @return A data frame detailing the formatting errors.
+#' @examples
+#' \dontrun{
+#' format_error(c("Name", "Age"))
+#' }
+#' @export
+format_error <- function(required) {
+  df.error.formatting <- data.frame(
+    column = required,
+    reason = c("Always Required"),
+    trigger = c("Not detected in file")
+  )
+  return(df.error.formatting)
+}
+
+
+#' Set the header row for the user CSV file
+#'
+#' This function identifies the valid header row in the user file and sets it as the header.
+#' If no valid header row is found, a formatting error is thrown.
+#'
+#' @param user_file The user's CSV file as a data frame.
+#' @param required_columns A character vector of required column names.
+#' @return A data frame with the appropriate header row set.
+#' @export
+set_user_file_header <- function(user_file, required_columns) {
+  header_row <- find_header(user_file, required_columns, valid_header_rows = 1:2)
+  if (is.null(header_row)) {
+    stop_formatting_error("Could not find required columns", format_error(required_columns))
+  }
+  return(set_header_row(user_file, header_row))
+}
+
+
+#' Detect Missing Columns in User's CSV File
+#'
+#' This function checks for any required columns that are missing from the user's CSV file.
+#' Additionally, it checks special conditions such as the presence of "CollectionDate" for
+#' specific studies that are longitudinal.
+#'
+#' @param user_file A data frame representing the user's CSV file.
+#' @param column_attributes An object containing attributes for columns like required, conditional, and action.
+#' @param database A character string specifying the path to the SQLite database.
+#'
+#' @return A character vector of missing columns from the user's CSV file.
+#' 
+#' @import DBI dplyr
+#' @export
+#' @examples
+#' \dontrun{
+#' user_data <- data.frame(StudyCode = c("ST001"), StudySubject = c("SS001"))
+#' column_attrs <- FileColumnAttributes$new()
+#' database_path <- "path_to_database.sqlite"
+#' detect_missing_columns(user_data, column_attrs, database_path)
+#' }
+#' @keywords internal
+detect_missing_columns <- function(user_file, column_attributes, database = Sys.getenv("SDB_PATH")) {
+  
+  # Retrieve 'required_columns' from 'column_attributes'.
+  required_columns <- column_attributes$required
+  
+  # Detect any columns from 'required_columns' that aren't present in 'user_file'.
+  missing_columns <- setdiff(required_columns, colnames(user_file))
+  
+  # Check for StudyCode in user_file and if 'upload' is part of the attributes.
+  if (!"StudyCode" %in% colnames(user_file) && "CollectionDate" %in% column_attributes$conditional) {
+    
+    # Retrieve relevant records from the study table based on StudyCode.
+    matched_studies <- get_matched_studies(user_file, database)
+    
+    # Conditionally check the CollectionDate column based on longitudinal studies and attributes.
+    if (nrow(filter(matched_studies, is_longitudinal == 1)) > 0) {
+      stop_formatting_error("Samples of longitudinal studies must include a CollectionDate column.", format_error("CollectionDate"))
+    }
+  }
+
+  return(missing_columns)
+}
+
+#' Retrieve Matched Studies from the Database
+#'
+#' This function connects to the specified SQLite database, retrieves study records that match
+#' the `StudyCode` present in the user's file, and returns these matched studies.
+#'
+#' @param user_file A data frame representing the user's CSV file.
+#' @param database A character string specifying the path to the SQLite database.
+#'
+#' @return A data frame containing matched study records.
+#' 
+#' @import DBI dplyr RSQLite
+#' @export
+#' @examples
+#' \dontrun{
+#' user_file <- data.frame(StudyCode = c("ST001", "ST002"))
+#' database_path <- "path_to_database.sqlite"
+#' get_matched_studies(user_file, database_path)
+#' }
+#' @keywords internal
+get_matched_studies <- function(user_file, database) {
+  con <- NULL
+  matched_studies <- data.frame() # Initialize as empty dataframe
+  error <- FALSE
+  
+  tryCatch({
+    print(user_file)
+    con <- dbConnect(RSQLite::SQLite(), database = database)
+    print(con)
+    # matched_studies <- DBI::dbReadTable(con, "study") %>%
+    #   filter(study_short_code %in% user_file$StudyCode) %>%
+    #   inner_join(user_file, by = c("short_code" = "StudyCode"))
+    matched_studies <- DBI::dbReadTable(con, "study")
+    print(matched_studies)
+  },
+  error = function(e) {
+    error <- TRUE
+  },
+  finally = {
+    if (!is.null(con)) {
+      dbDisconnect(con)
+    }
+
+    if (error) {
+      stop("Could not connect to database.")
+    }
+  })
+  
+  return(matched_studies)
+}
+
+
+#' Select relevant columns from the user CSV file
+#'
+#' This function selects the required, conditional, and optional columns from the user file
+#' based on provided file column attributes.
+#'
+#' @param user_file The user's CSV file as a data frame.
+#' @param file_column_attr A list containing attributes of file columns such as required, conditional, and optional columns.
+#' @return A data frame with only the relevant columns selected.
+#' @export
+select_relevant_columns <- function(user_file, file_column_attr) {
+  user_file <- select(
+    user_file,
+    all_of(file_column_attr$required),
+    any_of(file_column_attr$conditional),
+    any_of(file_column_attr$optional)
+  )
+  return(user_file)
+}
+
+
+#' Handle special columns in the user CSV file
+#'
+#' This function handles special cases for columns like `container_name` and `freezer_address`
+#' which might be added by users.
+#'
+#' @param user_file The user's CSV file as a data frame.
+#' @param container_name The name of the container column if provided by the user.
+#' @param freezer_address The address of the freezer column if provided by the user.
+#' @param location_params A character vector of location parameters/columns related to the freezer address.
+#' @return A list containing the modified user_file and an updated vector of missing columns.
+#' @export
+handle_special_columns <- function(user_file, container_name, freezer_address, location_params) {
+  if (!is.null(container_name) && !container_name %in% colnames(user_file)) {
+    user_file[[container_name]] <- rep(container_name, nrow(user_file)) 
+  }
+
+  if (!is.null(freezer_address) && !all(location_params %in% colnames(user_file))) {
+    for (param in location_params) {
+      if (param %in% names(freezer_address)) {
+        user_file[[param]] <- rep(freezer_address[[param]], nrow(user_file))
       }
     }
-
-    idx <- ifelse(is.null(err), 1, length(err) + 1)
-    err[[idx]] <- df
-    names(err)[idx] <- msg
   }
 
-  return(err)
-}
-
-stop_usage_error <- function(message) {
-  rlang::abort("usage_error", message = message)
-}
-
-stop_formatting_error <- function(df) {
-  message <- "There was an issue with the format of the file."
-  rlang::abort("formatting_error", message = message, df = df)
-}
-
-stop_validation_error <- function(message, data) {
-  rlang::abort("validation_error", message = message, data = data)
+  return(user_file)
 }
 
 
 
-#' Checks for duplicated barcodes in users formatted csv file
-#'
-#' This function is internally used to check that positions are unique within the file. Note that this should accept the formatted file produced by ProcessCSV().
-#'
-#' @export CheckUploadPositionsUniqueInFile
-#'
-#' @param user_data The formatted file produced by ProcessCSV()
-#'
-#' @noRd
-CheckUploadPositionsUniqueInFile <- function(user_data, file_type, dbmap, err=NULL) {
-    ## check to make sure there are no duplicated values
-  # 1. Make sure that two samples aren't being uploaded to the same place
-  # df = CheckSampleLocationUnique(user_data)
-  if (!is.null(user_data[["position"]])) {
-    df = user_data %>%
-      group_by(manifest_name, position) %>%
-      count() %>%
-      collect()
 
-    if (any(df$n > 1)) {
+#' Check if the user CSV file meets the requirements
+#'
+#' This function checks if the user CSV file meets specific upload requirements,
+#' including necessary columns and formatting checks. Errors will be thrown if requirements are not met.
+#'
+#' @param user_file The user's CSV file as a data frame.
+#' @param sample_type The sample type associated with the user's CSV file.
+#' @param user_action The action the user is performing, which may have specific checks associated with it.
+#' @param file_type The file format.
+#' @param container_name The name of the container.
+#' @param freezer_address The address of the freezer.
+#' @return A cleaned and checked user_file ready for further processing.
+#' @export
+validate_and_format_specimen_file <- function(user_file, sample_type, user_action, file_type, container_name = NULL, freezer_address = NULL) {
 
-      if (file_type %in% c("traxcer", "visionmate")) {
-        df <- user_data[df$n > 1, ] %>% select(row_number, position, manifest_name)
-      } else {
-        df <- user_data[df$n > 1, ] %>% select(row_number, position1, position2, manifest_name)
-      }
-      .maybe_add_err(err, df, "Uploading at least two samples to the same position in a manifest", dbmap)
-    }
+  # 1. Retrieve column information.
+  file_column_attr <- get_sample_file_columns(sample_type, user_action, file_type)
+
+  # 2. Handle header.
+  user_file <- set_user_file_header(user_file, file_column_attr$required)
+
+  # 3. Handle special columns. These are columns that should be included but may be added by the user.
+  user_file <- handle_special_columns(user_file, container_name, freezer_address, file_column_attr$location)
+
+  # 4. Detect missing columns.
+  missing_columns <- detect_missing_columns(user_file, file_column_attr)
+
+  # If there are any missing columns still, throw!
+  if (length(missing_columns) > 0) {
+    stop_formatting_error("Missing required columns", format_error(missing_columns))
   }
 
-  return (err)
-}
+  # 5. Select relevant columns.
+  user_file <- select_relevant_columns(user_file, file_column_attr)
 
-#' Checks for duplicated barcodes in users formatted csv file
-#'
-#' This function is internally used to check a formatted csv file for duplicated barcodes. Note that this should accept the formatted file produced by ProcessCSV().
-#'
-#' @export CheckDuplicatedBarcodes
-#'
-#' @param user_data The formatted file produced by ProcessCSV()
-#' @param sample_storage_type The type of storage the samples are in. This can be '1', '2' or '3', which identify 'Micronix', 'Cryovial' or 'DBS', respectively.
-#'
-#' @noRd
-CheckDuplicatedBarcodes <- function(user_data, sample_storage_type, dbmap, err=NULL) {
+  # Notify success.
+  message("Required columns detected.")
 
-  # right now only accept Micronix and Cryovial storage types
-  if (sample_storage_type %in% c(1)) {
-    df <- user_data %>%
-      filter(!is.na(barcode)) %>%
-      group_by(barcode) %>%
-      count()
-
-    if (any(df$n > 1)) {
-      df <- df %>%
-        filter(n > 1 & !is.na(barcode)) %>%
-        inner_join(user_data, by = c("barcode")) %>%
-        select(row_number, barcode)
-
-      colnames(df) <- c("RowNumber", "Barcode")
-
-      .maybe_add_err(err, df, "Uploading at least two samples with identical barcodes", dbmap)
-
-      return(err)
-    } else {
-      return(NULL)
-    }
-  } else {
-    return(NULL)
-  }
+  return(user_file)
 }
 
 
-#' Checks for sample barcodes in users formatted csv file
-#'
-#' This function is internally used to check a formatted csv file for duplicated positions. Note that this should accept the formatted file produced by ProcessCSV().
-#'
-#' @export CheckSampleLocationUnique
-#'
-#' @param user_data The formatted file produced by ProcessCSV()
-#'
-#' @noRd
-CheckSampleLocationUnique <- function(user_data, dbmap) {
-  df <- user_data %>%
-    group_by(manifest_name, position) %>%
-    count()
+ProcessSpecimenCSV <- function(user_csv, user_action, sample_type, container_name = NULL, freezer_address = NULL, file_type = "na", validate = TRUE, database = Sys.getenv("SDB_PATH"), config_yml = Sys.getenv("SDB_CONFIG")) {
 
-  if (any(df$n > 1)) {
-    df <- user_data.1[df$n > 1, ] %>% select(row_number, position, manifest_name)
-    colnames(df) <- c(dbmap["row_number"], dbmap["position"], dbmap["manifest_name"])
-    return(df)
-  } else {
-    return(NULL)
+  if (is.null(user_csv) || user_csv == "") {
+    stop("No csv file was provided.")
   }
+
+  # Read and preprocess user CSV
+  user_file <- read_user_csv(user_csv)
+  user_file <- preprocess_csv(user_file, user_action)
+  user_file <- validate_and_format_specimen_file(user_file, user_action, sample_type)
+
 }
 
-
-#' Checks for sample barcodes in users formatted csv file
-#'
-#' This function checks the reference values for samples and controls (locations, study codes, specimen types, control ids). Note that this should accept the formatted file produced by ProcessCSV().
-#'
-#' @export CheckReferences
-#'
-#' @param con A dplyr::dbConnect() connection object.
-#' @param user_data_tbl The formatted file produced by ProcessCSV()
-#' @param type The type of data that is passed in. Options are 'sample' or 'control'.
-#'
-#' @noRd
-CheckReferences <- function(con, user_data_tbl = NULL, type=NULL, err=NULL, dbmap=NULL) {
-
-  if (is.null(type) || !type %in% c("sample", "control")) {
-    stop("Type must be specified with either sample or control")
-  }
-
-  if (is.null(user_data_tbl)) {
-    stop("Must provide the table name that holds the users data in the database (see `dplyr::copy_to()`")
-  }
-
-  if (type=="sample") { ## SAMPLES
-
-    df <- tbl(con, user_data_tbl) %>%
-      left_join(tbl(con, "study"), by = c("study_short_code" = "short_code")) %>%
-      filter(is.na(id)) %>%
-      select(row_number, study_short_code) %>%
-      collect()
-
-    err <- .maybe_add_err(err, df, "Study not found", dbmap)
-
-    df <- tbl(con, user_data_tbl) %>%
-      left_join(tbl(con, "specimen_type"), by = c("specimen_type" = "name")) %>%
-      filter(is.na(id)) %>%
-      select(row_number, specimen_type) %>%
-      collect()
-
-    err <- .maybe_add_err(err, df, "Specimen type not found", dbmap)
-
-  } else { ## CONTROLS BELOW
-
-    df <- tbl(con, user_data_tbl) %>%
-      left_join(tbl(con, "study"), by = c("study_short_code"="short_code")) %>%
-      filter(is.na(id)) %>%
-      select(row_number, study_short_code) %>%
-      collect()
-
-    err <- .maybe_add_err(err, df, "Batch not found", dbmap)
-
-    df <- tbl(con, user_data_tbl) %>%
-      inner_join(tbl(con, "study") %>% dplyr::rename(study_id=id), by = c("study_short_code"="short_code")) %>%
-      left_join(tbl(con, "study_subject") %>% dplyr::rename(study_subject=name, study_subject_id=id), by = c("study_id", "study_subject")) %>%
-      filter(is.na(study_subject_id)) %>%
-      select(row_number, study_subject) %>%
-      collect()
-
-    err <- .maybe_add_err(err, df, "Control ID was not found", dbmap)
-  }
-
-  ## Shared
-  df <- tbl(con, user_data_tbl) %>%
-    left_join(tbl(con, "location") %>%
-      dplyr::rename(location_id = id), by = c('location_root', 'level_I', 'level_II')) %>%
-    select(row_number, location_id, location_root, level_I, level_II) %>%
-    filter(is.na(location_id)) %>%
-    collect()
-
-  errstring = sprintf("The following %s, %s and / or %s are not found in the database", dbmap["location_root"], dbmap["level_I"], dbmap["level_II"])
-  err <- .maybe_add_err(err, df, errstring, dbmap)
-
-  return(err)
-}
-
-
-#' Checks for sample barcodes in users formatted csv file
-#'
-#' This function is internally used to check a formatted csv file for duplicated positions. Note that this should accept the formatted file produced by ProcessCSV().
-#'
-#' @export CheckPositionColumnFormatting
-#'
-#' @param user_data The formatted file produced by ProcessCSV()
-#'
-#' @noRd
-CheckPositionColumnFormatting <- function(user_data, sample_storage_type, file_type, err, dbmap) {
-  if (sample_storage_type %in% c(1)) {
-    df.1 = user_data %>%
-      group_by(row_number) %>%
-      reframe(
-        letter_check = substr(position, 1, 1) %in% LETTERS,
-        barcode_check = nchar(barcode) == 10
-      )
-
-    rn = df.1 %>% select(row_number, letter_check) %>% filter(letter_check == FALSE) %>% pull(row_number)
-
-    if (file_type %in% c("traxcer", "visionmate")) {
-      df <- user_data[user_data$row_number %in% rn, c("row_number", "position")]
-    } else {
-      df <- user_data[user_data$row_number %in% rn, c("row_number", "position1", "position2")]
-    }
-    err <- .maybe_add_err(err, df, "Rows must use letters", dbmap)
-
-    rn = df.1 %>% select(row_number, barcode_check) %>% filter(barcode_check == FALSE) %>% pull(row_number)
-    df <- user_data[user_data$row_number %in% rn, c("row_number", "barcode")]
-    err <- .maybe_add_err(err, df, "Micronix Barcodes must be 10 digits long", dbmap)
-
-  } else if (sample_storage_type %in% c(2)) {
-    df.1 = user_data %>%
-      group_by(row_number) %>%
-      reframe(
-        letter_check = substr(position, 1, 1) %in% LETTERS
-      )
-
-    rn = df.1 %>% select(row_number, letter_check) %>% filter(letter_check == FALSE) %>% pull(row_number)
-    if (file_type %in% c("traxcer", "visionmate")) {
-      df <- user_data[user_data$row_number %in% rn, c("row_number", "position")]
-    } else {
-      df <- user_data[user_data$row_number %in% rn, c("row_number", "position1", "position2")]
-    }
-    err <- .maybe_add_err(err, df, "Rows must use letters", dbmap)
-  }
-  return(err)
-}
-
-
-#' Checks for sample barcodes in users formatted csv file
-#'
-#' This function is internally used to check a formatted csv file for duplicated positions. Note that this should accept the formatted file produced by ProcessCSV().
-#'
-#' @export CheckPositionColumnFormatting
-#'
-#' @param con A dplyr::dbConnect() connection object.
-#' @param user_data_tbl The formatted file produced by ProcessCSV()
-#' @param sample_storage_type Sample storage type to check. Can be 1 (Micronix) or 2 (Cryovial). Ignores other sample types.
-#' @noRd
-CheckSampleBarcodesBySampleType <- function(con, container_tables, user_data_tbl = NULL, sample_storage_type=NULL, err=NULL, dbmap=NULL)  {
-  ## check if the barcodes already exist
-  ## only micronix and cryovial have barcodes (right now)
-  if (sample_storage_type %in% c(1,2)) {
-
-    # Micronix barcodes are univesally unique
-    if (sample_storage_type == 1) {
-      df <- tbl(con, user_data_tbl) %>%
-        inner_join(tbl(con, container_tables[["container_class"]]) %>%
-          dplyr::rename(container_position = position), by = c("barcode")) %>%
-        filter(!is.na(id)) %>%
-        select(row_number, barcode) %>%
-        collect()
-
-      err <- .maybe_add_err(err, df, "Barcodes already exist in the database", dbmap)
-
-    } else {
-
-      # Cryovial barcodes are unique by study - they are also allowed to be left out
-      df <- tbl(con, user_data_tbl) %>%
-        filter(!is.na(barcode)) %>%  # Only check barcodes that exist in the upload
-        inner_join(tbl(con, container_tables[["container_class"]]) %>%
-        dplyr::rename(container_position = position, storage_container_id = id), by = c("barcode")) %>%
-        inner_join(tbl(con, "storage_container") %>% dplyr::rename(storage_container_id = id), by = c("storage_container_id")) %>%
-        inner_join(tbl(con, "specimen") %>% dplyr::rename("specimen_id" = "id"), by = c("specimen_id")) %>%
-        inner_join(tbl(con, "study_subject") %>% dplyr::rename("study_subject_id" = "id"), by = c("study_subject_id")) %>%
-        inner_join(tbl(con, "study") %>% dplyr::rename("study_id" = "id"), by = c("study_id", "study_short_code" = "short_code")) %>%
-        select(row_number,barcode,study_short_code) %>%
-        collect()
-
-      err <- .maybe_add_err(err, df, "Barcodes found that already exist with current study", dbmap)
-    }
-  }
-
-  return(err)
-}
-
-
-#' Checks for sample barcodes in users formatted csv file
-#'
-#' This function is internally used to check a formatted csv file for duplicated positions. Note that this should accept the formatted file produced by ProcessCSV().
-#'
-#' @export CheckIfSamplePositionIsOccupied
-#'
-#' @param con A dplyr::dbConnect() connection object.
-#' @param container_tables List of database tables for quick lookup by index.
-#' @param user_data_tbl The formatted file produced by ProcessCSV()
-#' @param sample_storage_type Sample storage type to check. Can be 1 (Micronix) or 2 (Cryovial). Ignores other sample types.
-#' @noRd
-CheckIfSamplePositionIsOccupied <- function(con, container_tables, file_type, user_data_tbl = NULL, sample_storage_type=NULL, err=NULL, dbmap=NULL) {
-  if (sample_storage_type %in% c(1,2)) {
-    df <- tbl(con, "storage_container") %>%
-      select(status_id, id) %>%
-      filter(status_id == 1) %>%
-      inner_join(tbl(con, container_tables[["container_class"]]) %>% dplyr::rename(container_class_barcode = barcode), by = c("id" = "id")) %>%
-      inner_join(tbl(con, container_tables[["manifest"]]) %>%
-                     dplyr::rename(
-                         manifest_name = name,
-                         manifest_barcode = barcode
-                     ), by = c("manifest_id" = "id")) %>%
-      inner_join(tbl(con, user_data_tbl), by = c("manifest_name", "position"))
-
-
-    if (file_type %in% c("traxcer", "visionmate")) {
-      df = df %>%
-        select(row_number,position,manifest_name) %>%
-        collect()
-    } else {
-      df = df %>%
-        select(row_number,position1,position2,manifest_name) %>%
-        collect()
-    }
-
-    err <- .maybe_add_err(err, df, paste0("Uploading sample to well location that already has an active sample"), dbmap)
-  }
-
-  return(err)
-}
-
-
-#' Checks for sample barcodes in users formatted csv file
-#'
-#' This function is internally used to check a formatted csv file for duplicated positions. Note that this should accept the formatted file produced by ProcessCSV().
-#'
-#' @export CheckForMissingDataInRequiredColumns
-#'
-#' @param con A dplyr::dbConnect() connection object.
-#' @param requires_data Columns that require data
-#' @param err A list to append errors to. This can be left empty.
-#' @param dbmap Map connecting users file columns to database tables and columns. This is used to build the list of errors with the user provided column names. 
-#' @noRd
-CheckForMissingDataInRequiredColumns <- function(user_data, requires_data, err=NULL, dbmap) {
-
-  stopifnot("Required database column names not implemented" = !is.null(requires_data))
-
-  matched_columns <- match(requires_data, names(user_data))
-  if (any(is.na(matched_columns))) {
-    errmsg <- paste("Required database column is missing:", paste(requires_data[is.na(matched_columns)], collapse = ", "))
-    stop(errmsg)
-  }
-
-  ## broad sweep check if missing any data in required fields
-  rs <- rowSums(is.na(user_data[, requires_data])) > 0
-  rn <- user_data[rs, ] %>% pull(row_number)
-
-  cs <- colSums(is.na(user_data[, requires_data])) > 0
-  cols <- colnames(user_data[, requires_data])[cs]
-
-  if (length(cols) > 0) {
-    df <- user_data[rn, c("row_number", cols)]
-    err <- .maybe_add_err(err, df, "Rows found with missing data", dbmap)
-  }
-}

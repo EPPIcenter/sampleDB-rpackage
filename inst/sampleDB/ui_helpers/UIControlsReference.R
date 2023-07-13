@@ -4,35 +4,46 @@ UIControlsReference <- function() {
     sidebarPanel(
       shinyjs::useShinyjs(),
       width = 4,
-      tags$h4("Create a new strain"),
-      textInput("InputControlNewStrain", "Strain", placeholder = "Add new strain here..."),
-      textInput("InputControlStrainDesc", "Description", placeholder = "Optionally add description here..."),
-      actionButton("InputCreateStrain", label = "Create"),
-      fileInput("InputUploadStrains", label = "Upload Strains", accept = c("text/csv", "text/comma-separated-values,text/plain", ".csv")),
-      actionButton("InputUploadStrainAction", label = "Upload"),
-      hr(),
-      tags$h4("Create a Control Batch"), # control batch enter here
-      textInput("InputControlNewStudy", "Batch", placeholder = "Add new batch here..."),
-      dateInput("InputControlDate", "Date"),
-      textInput("InputControlStudyDesc", "Description", placeholder = "Optionally add description here..."),
-      textInput("InputControlUrl", "URL", placeholder = "Add protocol resource locator here..."),
-      textInput("InputControlBatchPerson", "Person", placeholder = "Add person who created the batch..."),
-      actionButton("InputControlStudyAction", label = "Upload")
+      tabsetPanel(
+        # tags$em("Select 'Individual' to upload one strain, or 'Multiple' to upload a csv containing strains", style = "color: grey;font-size: 14px;"),
+        tabPanel("Create a New Strain",
+          br(),
+          radioButtons("InputControlStrainUploadType", "Upload Type", choices=c("Individual" = "individual", "Multiple"="multiple"), selected="individual", inline=TRUE), 
+          conditionalPanel(condition = "input.InputControlStrainUploadType == \"individual\"",
+            textInput("InputControlNewStrain", "Strain", placeholder = "Add new strain here..."),
+            textInput("InputControlStrainDesc", "Description", placeholder = "Optionally add description here..."),
+            actionButton("InputCreateStrain", label = "Create")
+          ),
+          conditionalPanel(condition = "input.InputControlStrainUploadType == \"multiple\"",
+            fileInput("InputUploadStrains", label = "Upload Strains", accept = c("text/csv", "text/comma-separated-values,text/plain", ".csv")),
+            actionButton("InputUploadStrainAction", label = "Upload")
+          ),
+        ),
+        tabPanel("Create Control IDs",
+          br(),
+          fileInput("InputUploadCompositions", label = "Upload Compositions", accept = c("text/csv", "text/comma-separated-values,text/plain", ".csv")),
+          actionButton("InputCompositionUploadAction", label = "Upload")
+        )
+      )
     ),
     mainPanel(
+      radioButtons("InputControlPanelType", "Control Storage Type", choices=c("DBS Collection"="dbs_collection", "Whole Blood DNA"="whole_blood"), selected = "dbs_collection", inline=TRUE),
       fluidRow(
-        column(width = 2, selectizeInput("InputControlSearchBatch", width = '100%', label = "Batch", choices = tbl(con, "study") %>% pull(short_code), selected=FALSE)),
-        column(width = 2, selectizeInput("InputControlSearchStrain", width = '100%', label = "Strain", choices = tbl(con, "strain") %>% pull(name), selected=FALSE)),
-        column(width = 2, selectizeInput("InputControlSearchDensity", width = '100%', label = "Density", choices = tbl(con, "malaria_blood_control") %>% pull(density) %>% unique(.), selected=FALSE)),
-        column(width = 2, selectizeInput("InputControlSearchPercentage", width = '100%', label = "Percentage", choices = tbl(con, "control_strain") %>% pull(percentage) %>% unique(.), selected=FALSE)),
-        column(width = 2, dateRangeInput("InputControlSearchDateRange", label = "Dates", start = NA, end = NA)),
+        column(width = 2, selectizeInput("InputControlSearchBatch", width = '100%', label = "Batch", choices = c("", tbl(con, "study") %>% pull(short_code)), selected="")),
+        column(width = 2, selectizeInput("InputControlSearchStrain", width = '100%', label = "Strain", choices = c("", tbl(con, "strain") %>% pull(name)), selected="")),
+        column(width = 2, selectizeInput("InputControlSearchDensity", width = '100%', label = "Density", choices = c("", tbl(con, "malaria_blood_control") %>% pull(density) %>% unique(.)), selected="")),
+        column(width = 2, selectizeInput("InputControlSearchPercentage", width = '100%', label = "Percentage", choices = c("", tbl(con, "composition_strain") %>% pull(percentage) %>% unique(.)), selected="")),
       ),
       fluidRow(
-        column(width = 2, selectInput("InputControlLocationRoot", label = "Freezer", choices = tbl(con, "location") %>% pull(location_root) %>% unique(.))),        
+        column(width = 2, dateRangeInput("InputControlSearchDateRange", label = "Dates", start = NA, end = NA)),
+        column(width = 2, selectInput("InputControlLocationRoot", label = "Freezer", choices = c("", tbl(con, "location") %>% pull(location_root) %>% unique(.)), selected="")),        
         column(width = 2, selectInput("InputControlLocationLevelI", label = "Shelf Name", choices = c())),
         column(width = 2, selectInput("InputControlLocationLevelII", label = "Basket Name", choices = c()))
       ),
-      reactableOutput("ControlTableOutput"),
+      conditionalPanel(condition = "input.InputControlPanelType == \"dbs_collection\"",
+        reactableOutput("OutputDBSCollectionMainTable"),
+        reactableOutput("OutputDBSCollectionCompositionTable")
+      ),
       downloadButton("DownloadControlData", "Download"),
 
       tags$h3("Control Archival & Deletion Workflows"),

@@ -1,0 +1,47 @@
+{
+  "defaults": {
+    "upload": {
+      "required": {
+        "study_short_code": "StudyCode",
+        "study_subject": "StudySubject",
+        "specimen_type": "SpecimenType"
+      },
+      "conditional": {
+        "collection_date": "CollectionDate"
+      },
+      "optional": {
+        "comment": "Comment"
+      }
+    },
+    "move": {},
+    "container": "micronix_plate",
+    "location": "minus20"
+  },
+  "samples": [
+    {
+      "id": "micronix",
+      "exceptions": {
+        "visionmate": {
+          "container": {
+            "container_name": "PlateName",
+            "container_barcode": "TubeCode",
+            "position": ["LocationRow", "LocationColumn"]
+          }
+        },
+        "traxcer": {
+          "container": {
+            "container_name": "PlateName",
+            "container_barcode": "PlateBarcode",
+            "position": "Position"
+          }
+        }
+      }
+    },
+    {
+      "id": "cryovial",
+      "location": "minus80",
+      "container": "cryovial_box",
+      "exceptions": {}
+    }
+  ]
+}

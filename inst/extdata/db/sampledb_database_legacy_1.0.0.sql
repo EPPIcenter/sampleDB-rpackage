@@ -222,7 +222,7 @@ DROP TABLE study_subject; -- due to schema mismatch
 ALTER TABLE "NEW_study_subject" RENAME TO "study_subject";
 
 
-DROP TABLE tbl1;
+
 CREATE TABLE "tube" (
 	"id"	INTEGER NOT NULL,
 	"box_id"	INTEGER NOT NULL,

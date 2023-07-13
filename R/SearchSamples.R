@@ -52,123 +52,118 @@ SearchByType <- function(sample_storage_type=NULL, control_type=NULL, filters = 
   return(search.results)
 }
 
-
-SearchControls <- function(control_type, filters = NULL, format = NULL, database = Sys.getenv("SDB_PATH"), config_yml = Sys.getenv("SDB_CONFIG"), include_internal_sample_id = FALSE) {
-
-  db.results <- NULL
+#' Get all malaria blood controls
+#'
+#' `SearchControls()` can be used to upload controls to the sampleDB database. This function returns lazy-sql.
+#'
+#' @param con A dplyr dbConnect() connection object
+#'
+#' @import dplyr
+#' @import RSQLite
+#' @import lubridate
+#'
+SearchControls <- function(filters, control_type = NULL, database = Sys.getenv("SDB_PATH")) {
+  results = NULL
+  con <- dbConnect(RSQLite::SQLite(), Sys.getenv("SDB_PATH"))
   tryCatch({
 
-    con <- dbConnect(RSQLite::SQLite(), Sys.getenv("SDB_PATH"))
-
-    sql = tbl(con, "control_strain") %>%
+    ## 
+    sql = tbl(con, "composition_strain") %>%
       left_join(tbl(con, "strain") %>% dplyr::rename(strain_id = id, strain = name), by = c("strain_id")) %>%
-      left_join(tbl(con, "malaria_blood_control") %>% dplyr::rename(malaria_blood_control_id = id), by = c("malaria_blood_control_id")) %>%
+      left_join(tbl(con, "composition") %>% dplyr::rename(composition_id=id), by = c("composition_id")) %>%
+      left_join(tbl(con, "malaria_blood_control") %>% dplyr::rename(malaria_blood_control_id = id), by = c("composition_id")) %>%
       left_join(tbl(con, "study_subject") %>% dplyr::rename(study_subject_id = id, control_uid = name), by = c("study_subject_id")) %>%
       left_join(tbl(con, "study") %>% dplyr::rename(study_id = id, batch_creation_date=created, batch=short_code), by = c("study_id")) %>%
       distinct()
 
-    ## Get the counts
-    sql = sql %>%
-      group_by(batch, density, percentage, strain) %>%
-      dplyr::mutate(count = n()) %>%
-      ungroup
-
+    # Filter by a particular strain
     if (!is.null(filters$strain) && filters$strain != "") {
       sql = sql %>% filter(strain %in% local(filters$strain))
     }
 
+    # Filter by a density
     if (!is.null(filters$density) && filters$density != "") {
       sql = sql %>% filter(density %in% local(filters$density))
     }
 
-    if (!is.null(filters$percentage) && filters$percentage != "") {
-      sql = sql %>% filter(percentage %in% local(filters$percentage))
-    }
-
+    # filter by batch 
     if (!is.null(filters$batch) && filters$batch != "") {
       sql = sql %>% filter(batch %in% local(filters$batch))
     }
 
-    ## now grab the bag / location information
-
-    sql = sql %>% inner_join(tbl(con, "blood_spot_collection") %>% dplyr::rename(blood_spot_collection_id=id), by=c("study_subject_id"))
-    sql = sql %>% inner_join(tbl(con, "dbs_control_sheet") %>% dplyr::rename(dbs_control_sheet_id=id), by = c("dbs_control_sheet_id"))
-    sql = sql %>% inner_join(tbl(con, "dbs_bag") %>% dplyr::rename(bag_id=id, bag_name=name), by = c("bag_id"))
-    sql = sql %>% inner_join(tbl(con, "location") %>% dplyr::rename(location_id=id), by = c("location_id"))
-
-    ## organize search results to display the control types that are found on each sheet
-    sql = sql %>%
-      collect() %>%
-      group_by(batch, density, percentage, strain) %>%
-      dplyr::mutate(study_subject_id = list(study_subject_id)) %>%
-      group_by(bag_id) %>%
-      dplyr::mutate(sheet_uid=list(sheet_uid)) %>%
-      ungroup() %>%
-      select(batch_creation_date, count, study_subject_id, sheet_uid, batch, density, strain, percentage, bag_name, location_root, level_I, level_II) %>%
-      distinct()
-
-    if (include_internal_sample_id) {
-
-      ## Do date collection here because lubridate and purrr::map (used by dplyr sql backend) is not cooperating
-      db.results <- sql %>% dplyr::mutate(batch_creation_date = as_date(batch_creation_date))
-
-      if (!is.null(filters$dates) && sum(is.na(filters$dates)) == 0) {
-        if (!is.null(filters$dates$date.from) && !is.null(filters$dates$date.to)) {
-          intervals <- list()
-          for (i in 1:length(filters$dates$date.from)) {
-            intervals <- append(
-              intervals,
-              list(
-                interval(
-                  lubridate::as_date(local(filters$dates$date.from[i])),
-                  lubridate::as_date(local(filters$dates$date.to[i]))
-                )
-              )
-            )
-          }
-          db.results <- filter(db.results, batch_creation_date %within% intervals)
-        }
-
-      }
-
-      if (!is.null(format)) {
-        colnames(db.results) <- c("Sample ID", unname(dbmap))
-      }
-
+    if (!is.null(control_type) && control_type == "dbs_collection") {
+      sql = sql %>% 
+        inner_join(tbl(con, "blood_spot_collection") %>% dplyr::rename(blood_spot_collection_id=id), by=c("malaria_blood_control_id")) %>%
+        inner_join(tbl(con, "blood_spot_collection_dbs_control_sheet") %>% dplyr::rename(blood_spot_collection_dbs_control_sheet=id), by=c("blood_spot_collection_id")) %>%
+        inner_join(tbl(con, "dbs_control_sheet") %>% dplyr::rename(dbs_control_sheet_id=id), by = c("dbs_control_sheet_id")) %>%
+        inner_join(tbl(con, "dbs_bag") %>% dplyr::rename(dbs_bag_id=id, dbs_bag_label=name), by =c("dbs_bag_id")) 
+    } else if (!is.null(control_type) && control_type == "whole_blood") {
+      sql = sql %>%
+        inner_join(tbl(con, "whole_blood_tube"), by=c("malaria_blood_control_id")) %>%
+        inner_join(tbl(con, "cryovial_box") %>% dplyr::rename(cryovial_box_id=id), by = c("cryovial_box_id"))
     } else {
-      db.results <- sql %>% dplyr::mutate(batch_creation_date = as_date(batch_creation_date))
-
-      if (!is.null(filters$dates) && sum(is.na(filters$dates)) == 0) {
-        if (!is.null(filters$dates$date.from) && !is.null(filters$dates$date.to)) {
-          intervals <- list()
-          for (i in 1:length(filters$dates$date.from)) {
-            intervals <- append(
-              intervals,
-              list(
-                interval(
-                  lubridate::as_date(local(filters$dates$date.from[i])),
-                  lubridate::as_date(local(filters$dates$date.to[i]))
-                )
-              )
-            )
-          }
-          db.results <- filter(db.results, batch_creation_date %within% intervals)
-        }
-      }
-
-      if (!is.null(format)) {
-        colnames(db.results) <- unname(dbmap)
-      }
+      stop("No search implementation for this control type!")
     }
+
+    ## Filter by location
+    sql = FilterByLocation(con, sql, filters$location)
+
+    results = collect(sql)
+
+    results = results %>%
+      group_by(malaria_blood_control_id) %>%
+      dplyr::mutate(n_strain = n()) %>%
+      dplyr::mutate(percentage=list(percentage)) %>%
+      dplyr::mutate(strain=list(strain))
+
+    results = results %>%
+      select(malaria_blood_control_id, batch,batch_creation_date,n_strain,density,percentage,strain,dbs_bag_label,location_root,level_I,level_II) %>%
+      dplyr::rename(
+        ControlID = malaria_blood_control_id,
+        Batch = batch,
+        Created = batch_creation_date,
+        Composition = n_strain,
+        Density = density,
+        Percentage = percentage,
+        Strain = strain,
+        Label = dbs_bag_label,
+        FreezerName = location_root,
+        ShelfName = level_I,
+        BasketName = level_II
+      )
+
+    ## Still need to search by date!!!!
+
   },
   error = function(e) {
-    message(e$message)
-
+    message(sprintf("Error in GetControls(): %s", e$message))
+    stop(e$message)
   }, finally = {
     dbDisconnect(con)
   })
 
-  return (db.results)
+  return (results)
+}
+
+
+FilterByLocation = function(con, sql, location) {
+  sql <- sql %>%
+    inner_join(tbl(con, "location") %>%
+      dplyr::rename(location_id = id) %>%
+      select(location_id, location_root, level_I, level_II)
+    , by = c("location_id"))
+
+  if (!is.null(location)) {
+    if (!is.null(location[['location_root']]) & !is.null(location[['level_I']]) & !is.null(location[['level_II']])) {
+      sql <- filter(sql, location_root == local(location[['location_root']]) & level_I == local(location[['level_I']]) & level_II == local(location[['level_II']]))
+    } else if (!is.null(location[['location_root']]) & !is.null(filters$location[['level_I']])) {
+      sql <- filter(sql, location_root == local(location[['location_root']]) & level_I == local(ocation[['level_I']]))
+    } else if (!is.null(location[['location_root']])) {
+      sql <- filter(sql, location_root == local(location[['location_root']]))
+    }
+  }
+
+  return (sql)
 }
 
 
@@ -176,17 +171,19 @@ SearchSamples <- function(sample_storage_type, filters = NULL, format = NULL, da
 
   db.results <- NULL
 
+  if (is.null(sample_storage_type) || !sample_storage_type %in% c(1,2, "all")) {
+    stop("No search implemenation available for this sample_storage_type")
+  }
+
   tryCatch({
     container_tables <- list(
       "manifest" = switch(sample_storage_type,
         "1" = "micronix_plate",
-        "2" = "cryovial_box",
-        "3" = "dbs_paper"
+        "2" = "cryovial_box"
       ),
       "container_class" = switch(sample_storage_type,
         "1" = "micronix_tube",
-        "2" = "cryovial_tube",
-        "3" = "dbs_spot"
+        "2" = "cryovial_tube"
       )
     )
 
@@ -314,15 +311,7 @@ SearchSamples <- function(sample_storage_type, filters = NULL, format = NULL, da
 
     sql <- inner_join(sql, tbl(con, "location") %>% dplyr::rename(location_id = id) %>% select(location_id, location_root, level_I, level_II), by = c("location_id"))
 
-    if (!is.null(filters$location)) {
-      if (!is.null(filters$location[['location_root']]) & !is.null(filters$location[['level_I']]) & !is.null(filters$location[['level_II']])) {
-        sql <- filter(sql, location_root == local(filters$location[['location_root']]) & level_I == local(filters$location[['level_I']]) & level_II == local(filters$location[['level_II']]))
-      } else if (!is.null(filters$location[['location_root']]) & !is.null(filters$location[['level_I']])) {
-        sql <- filter(sql, location_root == local(filters$location[['location_root']]) & level_I == local(filters$location[['level_I']]))
-      } else if (!is.null(filters$location[['location_root']])) {
-        sql <- filter(sql, location_root == local(filters$location[['location_root']]))
-      }
-    }
+    sql = FilterByLocation(con, sql, filters$location)
 
     ## map results to the final columns
     ## note: order matters here

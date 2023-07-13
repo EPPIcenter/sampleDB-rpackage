@@ -130,7 +130,7 @@ ArchiveAndDeleteSamples <- function(operation, data, comment, status, verificati
   database.tables <- list(table.storage_container = CheckTable(database = database, "storage_container"),
                           table.specimen = CheckTable(database = database, "specimen"),
                           table.cryovial_tube = CheckTable(database = database, "cryovial_tube"),
-                          table.dbs_spot = CheckTable(database = database, "dbs_spot"),
+                          table.whole_blood_tube = CheckTable(database = database, "whole_blood_tube"),
                           table.micronix_tube = CheckTable(database = database, "micronix_tube"))
   return(database.tables)
 }
@@ -167,7 +167,7 @@ ArchiveAndDeleteSamples <- function(operation, data, comment, status, verificati
   #if eval.id is not in matrix id, cryovial id, rdt id or paper id, skip over
   ids <- c(database.tables$table.micronix_tube$id,
            database.tables$table.cryovial_tube$id,
-           database.tables$table.dbs_spot$id)
+           database.tables$table.whole_blood_tube$id)
 
   if (eval.id %in% database.tables$table.micronix_tube$id) {
 
@@ -176,15 +176,6 @@ ArchiveAndDeleteSamples <- function(operation, data, comment, status, verificati
 
     qry<-paste0("UPDATE `micronix_tube` SET `position` = NULL WHERE `id` = ", as.character(eval.id))
     dbExecute(conn, qry)
-    # ModifyTable(conn = conn,
-    #                       table_name = "micronix_tube",
-    #                       info_list = list(position = NA),
-    #                       id = as.character(eval.id))
-
-    # # delete sample
-    # DeleteFromTable(database = database,
-    #                           table_name = "micronix_tube",
-    #                           id = as.character(eval.id))
 
     # delete container if container id is no longer in micronix table
     if(!manifest_id %in% CheckTableTx(conn = conn, "micronix_tube")$manifest_id){
@@ -203,15 +194,6 @@ ArchiveAndDeleteSamples <- function(operation, data, comment, status, verificati
 
     qry<-paste0("UPDATE `cryovial_tube` SET `position` = NULL WHERE `id` = ", as.character(eval.id))
     dbExecute(conn, qry)
-    # ModifyTable(conn = conn,
-    #                       table_name = "cryovial_tube",
-    #                       info_list = list(position = NA),
-    #                       id = as.character(eval.id))
-
-    # # delete sample
-    # DeleteFromTable(database = database,
-    #                           table_name = "micronix_tube",
-    #                           id = as.character(eval.id))
 
     # delete container if container id is no longer in micronix table
     if(!manifest_id %in% CheckTableTx(conn = conn, "cryovial_tube")$manifest_id) {
@@ -223,27 +205,18 @@ ArchiveAndDeleteSamples <- function(operation, data, comment, status, verificati
                                              plate_barcode = NA),
                             id = as.character(manifest_id))
     }
-  } else if (eval.id %in% database.tables$table.dbs_spot$id) {
+  } else if (eval.id %in% database.tables$table.whole_blood_tube$id) {
 
     # get container id before sample deletion
-    manifest_id <- filter(database.tables$table.dbs_spot, id %in% eval.id)$manifest_id
+    manifest_id <- filter(database.tables$table.whole_blood_tube, id %in% eval.id)$manifest_id
 
-    qry<-paste0("UPDATE `dbs_spot` SET `position` = NULL WHERE `id` = ", as.character(eval.id))
+    qry<-paste0("UPDATE `whole_blood_tube` SET `position` = NULL WHERE `id` = ", as.character(eval.id))
     dbExecute(conn, qry)
-    # ModifyTable(conn = conn,
-    #                       table_name = "dbs_spot",
-    #                       info_list = list(position = NA),
-    #                       id = as.character(eval.id))
-
-    # # delete sample
-    # DeleteFromTable(database = database,
-    #                           table_name = "micronix_tube",
-    #                           id = as.character(eval.id))
 
     # delete container if container id is no longer in micronix table
-    if(!manifest_id %in% CheckTableTx(conn = conn, "dbs_spot")$manifest_id) {
+    if(!manifest_id %in% CheckTableTx(conn = conn, "whole_blood_tube")$manifest_id) {
       ModifyTable(conn = conn,
-                            table_name = "dbs_paper",
+                            table_name = "cryovial_box",
                             info_list = list(last_updated = as.character(lubridate::now()),
                                              location_id = NA,
                                              plate_name = NA,
@@ -260,7 +233,7 @@ ArchiveAndDeleteSamples <- function(operation, data, comment, status, verificati
   #if eval.id is not in matrix id, cryovial id, rdt id or paper id, skip over
   ids <- c(database.tables$table.micronix_tube$id,
            database.tables$table.cryovial_tube$id,
-           database.tables$table.dbs_spot$id)
+           database.tables$table.whole_blood_tube$id)
 
   if(eval.id %in% ids){
 
@@ -301,21 +274,21 @@ ArchiveAndDeleteSamples <- function(operation, data, comment, status, verificati
                                   id = as.character(manifest_id))
       }
     }
-    else if(eval.id %in% database.tables$table.dbs_spot$id){
+    else if(eval.id %in% database.tables$table.whole_blood_tube$id){
 
       # get container id before deletion
-      manifest_id <- filter(database.tables$table.dbs_spot, id %in% eval.id)$manifest_id
+      manifest_id <- filter(database.tables$table.whole_blood_tube, id %in% eval.id)$manifest_id
 
       #delete sample
       DeleteFromTable(conn = conn,
-                                table_name = "dbs_spot",
+                                table_name = "whole_blood_tube",
                                 id = as.character(eval.id))
 
       # delete container if container id is no longer in cryovial_tube table
-      if(!manifest_id %in% CheckTableTx(conn = conn, "dbs_spot")$manifest_id) {
+      if(!manifest_id %in% CheckTableTx(conn = conn, "whole_blood_tube")$manifest_id) {
 
         DeleteFromTable(conn = conn,
-                                  table_name = "dbs_paper",
+                                  table_name = "cryovial_box",
                                   id = as.character(manifest_id))
       }
     }

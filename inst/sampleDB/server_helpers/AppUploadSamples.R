@@ -149,11 +149,9 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
       ## format the file
       rv$user_file <- ProcessCSV(
         user_csv = dataset$datapath,
-        user_action = "upload",
+        user_action = input$UploadControlAction,
         file_type = input$UploadFileType,
-        sample_storage_type = input$UploadSampleType,
-        control_type = input$UploadControlType,
-        extraction_method = input$InputControlExtraction
+        control_type = input$UploadControlType
       )
     },
     formatting_error = function(e) {
@@ -170,7 +168,6 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
       rv$error <- TRUE
     },
     validation_error = function(e) {
-
       message("Caught validation error")
       
       rv$error <- TRUE
@@ -180,15 +177,7 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
 
       # TODO: breakup process csv into three stages(but keep calls in global process csv).
       # Just download the error data frame for now.
-      errors <- names(e$data)
-      df <- lapply(1:length(errors), function(idx) {
-        e$data[[idx]]$CSV %>%
-          mutate(Error = errors[idx]) %>%
-          mutate(ErrCol = paste(e$data[[idx]]$Columns, collapse = ",")) %>%
-          select(Error, colnames(e$data[[idx]]$CSV)) 
-      })
-
-      rv$user_file_error_annotated <- do.call("rbind", df) 
+      rv$user_file_error_annotated <- build_annotated_csv(e) 
     },
     error = function(e) {
       print(e)
@@ -214,8 +203,7 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
           user_csv = dataset$datapath,
           user_action = "upload",
           file_type = input$UploadFileType,
-          sample_storage_type = input$UploadSampleType,
-          extraction_method = input$InputControlExtraction
+          sample_storage_type = input$UploadSampleType
         )
       },
       message = function(m) {
@@ -274,7 +262,6 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
       }
     },
     validation_error = function(e) {
-
       message("Caught validation error")
       
       html<-paste0("<font color='red'>", paste0(dataset$name, ": ", e$message), "</font>")
@@ -287,15 +274,7 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
 
       # TODO: breakup process csv into three stages(but keep calls in global process csv).
       # Just download the error data frame for now.
-      errors <- names(e$data)
-      df <- lapply(1:length(errors), function(idx) {
-        e$data[[idx]]$CSV %>%
-          mutate(Error = errors[idx]) %>%
-          mutate(ErrCol = paste(e$data[[idx]]$Columns, collapse = ",")) %>%
-          select(Error, colnames(e$data[[idx]]$CSV)) 
-      })
-
-      rv$user_file_error_annotated <- do.call("rbind", df) 
+      rv$user_file_error_annotated <- build_annotated_csv(e)
     },
     error = function(e) {
       print(e)
@@ -354,7 +333,7 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
             location_parameters <- c(location_parameters, list(level_II = input$UploadLocationLevelII))
           }
 
-          if (!is.null(location_parameters) && !all(c("name", "level_I", "level_II") %in% names(location_parameters))) {
+          if (!is.null(location_parameters) && !all(c("location_root", "level_I", "level_II") %in% names(location_parameters))) {
             stop("Missing location parameter")
           }
 
@@ -372,13 +351,11 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
             ## format the file
             rv$user_file <- ProcessCSV(
               user_csv = dataset$datapath,
-              user_action = "upload",
+              user_action = input$UploadControlAction,
               file_type = input$UploadFileType,
               control_type = input$UploadControlType,
               container_name = container_name,
-              freezer_address = location_parameters,
-              extraction_method = input$InputControlExtraction,
-              sample_storage_type = input$UploadSampleType
+              freezer_address = location_parameters
             )            
           }
 
@@ -400,17 +377,7 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
         error$title <- e$message
         error$list <- e$data
 
-        # TODO: just download the error data frame for now
-        errors <- names(e$data)
-        df <- lapply(1:length(errors), function(idx) {
-          e$data[[idx]]$CSV %>%
-            mutate(Error = errors[idx]) %>%
-            mutate(ErrCol = paste(e$data[[idx]]$Columns, collapse = ",")) %>%
-            select(Error, colnames(e$data[[idx]]$CSV)) 
-        })
-
-        rv$user_file_error_annotated <- do.call("rbind", df) %>%
-          select(-c(RowNumber))
+        rv$user_file_error_annotated <- build_annotated_csv(e)
 
       },
       formatting_error = function(e) {
@@ -482,7 +449,6 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
     if (early_stop) { return() }
 
     message("Starting Upload...")
-
     b_use_wait_dialog <- FALSE
 
     tryCatch({
@@ -500,11 +466,10 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
         }
 
         shinyjs::reset("UploadAction")
-
-        if (input$UploadType == "Samples" || (input$UploadType == "Controls" && input$UploadControlType == "malaria_dna")) {
-          storage_type_id=ifelse(input$InputControlExtraction == "extracted_wb", 2, 1)
-          control_extraction=ifelse(input$InputControlExtraction == "extracted_wb", "DNA (WB)", "DNA (DBS)")
-          UploadSpecimens(storage_type_id = storage_type_id, control_extraction=control_extraction, user_data = rv$user_file)
+        if (input$UploadType == "Samples") {
+          UploadSpecimens(user_data = rv$user_file, storage_type_id=input$UploadSampleType)
+        } else if (input$UploadType == "Controls" && input$UploadControlAction == "extraction") { 
+          UploadExtractedDNA(user_data = rv$user_file, control_extraction=input$UploadControlType)
         } else {
           UploadControls(user_data=rv$user_file, control_type=input$UploadControlType)
         }
@@ -739,12 +704,15 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
     )
 
     ## Required Column Names
-
     file_index <- which(lapply(file_specs_json$file_types, function(x) x$id) == input$UploadFileType)
-    if (upload_type=="controls") {
-      storage_type_index <- which(lapply(file_specs_json$file_types[[file_index]][[upload_type]], function(x) x$id) == input$UploadControlType)
+    if (upload_type=="sample_type") {
+      storage_type_index <- which(lapply(file_specs_json$file_types[[file_index]][[upload_type]], function(x) x$id) == input$UploadSampleType)
     } else {
-      storage_type_index <- which(lapply(file_specs_json$file_types[[file_index]][[upload_type]], function(x) x$id) == input$UploadSampleType)      
+      if (upload_type=="controls" && input$UploadControlType == "extracted_dna") {
+        storage_type_index <- which(lapply(file_specs_json$file_types[[file_index]][[upload_type]], function(x) x$id) == input$InputControlExtraction)
+      } else {
+        storage_type_index <- which(lapply(file_specs_json$file_types[[file_index]][[upload_type]], function(x) x$id) == input$UploadControlType)
+      }
     }
 
     if (length(storage_type_index) == 0) {
@@ -786,6 +754,7 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
         example_data$user_input <- c(manifest_name, unname(location_parameters))
         example_data$optional <- c(optional_user_column_names, c(manifest_barcode_name))
       } else {
+ 
         control_type_index <- which(lapply(file_specs_json$shared[[upload_type]], function(x) x$id) == input$UploadControlType)
 
         manifest_name <- file_specs_json$shared[[upload_type]][[control_type_index]]$manifest$name
@@ -803,7 +772,6 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
   observe({
     output$UploadFileExampleRequired <- renderReactable({
       rt <- NULL
-
       if (input$UploadFileType == "na") {
 
         if (input$UploadType == "Samples") {
@@ -959,4 +927,26 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
 
     rv$user_file <- NULL
   })
+}
+
+
+
+build_annotated_csv <- function(e) {
+  # TODO: breakup process csv into three stages(but keep calls in global process csv).
+  # Just download the error data frame for now.
+  errors <- names(e$data)
+  df <- lapply(1:length(errors), function(idx) {
+    if (all(c("Columns", "CSV") %in% names(e$data[[idx]]))) {
+      e$data[[idx]]$CSV %>%
+        mutate(Error = errors[idx]) %>%
+        mutate(ErrCol = paste(e$data[[idx]]$Columns, collapse = ",")) %>%
+        select(Error, colnames(e$data[[idx]]$CSV)) 
+    } else { 
+      return (NULL)
+    }
+  })
+
+  user_file_error_annotated <- do.call("rbind", df) 
+
+  return (user_file_error_annotated)
 }

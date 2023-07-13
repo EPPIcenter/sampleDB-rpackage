@@ -25,17 +25,6 @@ VALUES
 	("Tube", 3),
 	("Paper", 3);
 
---- DBS Sheet ---
-CREATE TABLE IF NOT EXISTS "dbs_control_sheet" (
-	"id"			INTEGER NOT NULL,
-	"bag_id"		INTEGER NOT NULL,
-	"sheet_uid"	INTEGER NOT NULL,
-
-	PRIMARY KEY("id"),
-	FOREIGN KEY("id") REFERENCES "storage_container"("id"),
-	FOREIGN KEY("bag_id") REFERENCES "dbs_bag"("id")
-);
-
 
 --- create the dbs bag that holds dbs paper ---
 CREATE TABLE IF NOT EXISTS "dbs_bag" (
@@ -80,29 +69,52 @@ CREATE TABLE IF NOT EXISTS "dbs_paper" (
 	CONSTRAINT "dbs_paper_position_bag_id_uc" UNIQUE("position", "bag_id")
 );
 
---- Blood Spot Collection ---
-CREATE TABLE IF NOT EXISTS "blood_spot_collection" (
-	"id"			INTEGER NOT NULL,
-	"study_subject_id" INTEGER NOT NULL,
-	"dbs_control_sheet_id" INTEGER NOT NULL,
-	"total"			INTEGER NOT NULL CHECK ("total" > 0),
-	"exhausted"		INTEGER	NOT NULL DEFAULT 0 CHECK ("exhausted" <= "total" AND "exhausted" >= 0),
-
-	PRIMARY KEY("id"),
-	FOREIGN KEY("study_subject_id") REFERENCES "study_subject"("id"),
-	FOREIGN KEY("dbs_control_sheet_id") REFERENCES "dbs_control_sheet"("id")
-);
-
 --- Identifier for the control combination ---
 CREATE TABLE IF NOT EXISTS "malaria_blood_control" (
 	"id"		INTEGER NOT NULL,
 	"study_subject_id" INTEGER NOT NULL,
+    "composition_id" INTEGER NOT NULL,
 	"density"	REAL NOT NULL,
 
 	PRIMARY KEY("id"),
 	FOREIGN KEY("study_subject_id") REFERENCES "study_subject"("id")
 );
 
+--- Blood Spot Collection ---
+CREATE TABLE IF NOT EXISTS "blood_spot_collection" (
+	"id"			INTEGER NOT NULL,
+	"malaria_blood_control_id" INTEGER NOT NULL,
+	"total"			INTEGER NOT NULL CHECK ("total" > 0),
+	"exhausted"		INTEGER	NOT NULL DEFAULT 0 CHECK ("exhausted" <= "total" AND "exhausted" >= 0),
+
+	PRIMARY KEY("id"),
+	FOREIGN KEY("malaria_blood_control_id") REFERENCES "malaria_blood_control"("id")
+);
+
+--- DBS Control Sheet ---
+CREATE TABLE IF NOT EXISTS "dbs_control_sheet" (
+	"id"			INTEGER NOT NULL,
+	"dbs_bag_id" 	INTEGER NOT NULL,
+	"label"			VARCHAR NOT NULL,
+	"replicates"	INTEGER NOT NULL DEFAULT 1,
+
+	PRIMARY KEY("id"),
+	FOREIGN KEY("dbs_bag_id") REFERENCES "dbs_bag"("id"),
+	CONSTRAINT "dbs_control_sheet_bag_id_uc" UNIQUE("label", "dbs_bag_id")
+);
+
+--- Junction Table ---
+CREATE TABLE IF NOT EXISTS "blood_spot_collection_dbs_control_sheet" (
+	"id"			INTEGER NOT NULL,
+	"blood_spot_collection_id" INTEGER NOT NULL,
+	"dbs_control_sheet_id"	INTEGER NOT NULL,
+
+	PRIMARY KEY("id"),
+	FOREIGN KEY("blood_spot_collection_id") REFERENCES "blood_spot_collection"("id"),
+	FOREIGN KEY("dbs_control_sheet_id") REFERENCES "dbs_control_sheet"("id")
+);
+
+--- Table of strains that can be used with controls ---
 CREATE TABLE IF NOT EXISTS "strain" (
 	"id"			INTEGER NOT NULL,
 	"name"			VARCHAR NOT NULL UNIQUE,
@@ -111,15 +123,25 @@ CREATE TABLE IF NOT EXISTS "strain" (
 	PRIMARY KEY("id")
 );
 
-CREATE TABLE IF NOT EXISTS "control_strain" (
+--- Control composition definition table --- 
+CREATE TABLE IF NOT EXISTS "composition_strain" (
 	"id"			INTEGER NOT NULL,
-	"malaria_blood_control_id"	INTEGER NOT NULL,
+	"composition_id"	INTEGER NOT NULL,
 	"strain_id" 	INTEGER NOT NULL,
-	"percentage"	INTEGER NOT NULL CHECK("percentage" > 0 AND "percentage" <= 100),
+	"percentage"	NUMERIC NOT NULL CHECK("percentage" > 0.0 AND "percentage" <= 1.0),
 
 	PRIMARY KEY ("id"),
-	FOREIGN KEY ("malaria_blood_control_id") REFERENCES "malaria_blood_control"("id"),
 	FOREIGN KEY ("strain_id") REFERENCES "strain"("id")
+);
+
+--- Holds records of different composition of recorded controls ---
+CREATE TABLE IF NOT EXISTS "composition" (
+	"id"			INTEGER NOT NULL,
+    "index"         INTEGER NOT NULL DEFAULT 1, 
+	"label"			VARCHAR NOT NULL UNIQUE,
+	"legacy"		INTEGER,
+
+	PRIMARY KEY("id")
 );
 
 --- update database version ---

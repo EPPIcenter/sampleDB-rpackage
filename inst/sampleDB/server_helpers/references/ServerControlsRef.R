@@ -10,7 +10,8 @@ ControlReference <- function(session, input, output, database) {
       strain = "Strain", 
       percentage = "Percentage", 
       density = "Density", 
-      count = "Count", 
+      total = "Total",
+      exhausted = "Exhausted", 
       bag_name = "BagName",
       batch = "Batch", 
       location_root = "Freezer", 
@@ -25,7 +26,8 @@ ControlReference <- function(session, input, output, database) {
     ),
     user_selected_rows = NULL,
     last_selected_row = NULL,
-    rt = NULL
+    rt = NULL,
+    dbs_collection = NULL
 	)
 
   error <- reactiveValues(
@@ -145,6 +147,8 @@ ControlReference <- function(session, input, output, database) {
       strain = input$InputControlSearchStrain,
       density = input$InputControlSearchDensity,
       percentage = input$InputControlSearchPercentage,
+      control_storage_type = input$InputControlPanelType,
+      extraction = input$InputControlExtractionType,
       dates = list(
         date.from = input$InputControlSearchDateRange[1],
         date.to = input$InputControlSearchDateRange[2]
@@ -167,40 +171,66 @@ ControlReference <- function(session, input, output, database) {
       )
     })
 
-    output$ControlTableOutput <- renderReactable({ 
 
+    output$OutputDBSCollectionMainTable <- renderReactable({
       rt = NULL
-      if (!is.null(rv$table)) {
-
-        df = rv$table
-        df = select(df, names(rv$dbmap))
-        colnames(df) = unname(rv$dbmap)
-
-        rt = reactable(
-          df,
-          defaultColDef = colDef(minWidth = 95, html = TRUE, sortable = TRUE, resizable = FALSE, na = "-", align = "center"),
-          searchable = TRUE,
-          selection = "multiple", onClick = "select",
-          columns = list(
-            .selection = colDef(
-              headerStyle = list(pointerEvents = "none")
-            )
-          ),
-          striped = TRUE,
-          showPageSizeOptions = TRUE,
-          theme = reactableTheme(
-            headerStyle = list(
-              "& input[type='checkbox']" = list(display = "none"),
-              "&:hover[aria-sort]" = list(background = "hsl(0, 0%, 96%)"),
-              "&[aria-sort='ascending'], &[aria-sort='descending']" = list(background = "hsl(0, 0%, 96%)"),
-              borderColor = "#555"
+      if (!is.null(rv$dbs_collection)) {
+        data <- unique(rv$dbs_collection[, c("ControlID", "Batch", "Created", "Composition", "Density")])
+        cols.dont.want <- c("ControlID")
+        rt = reactable(data[, !names(data) %in% cols.dont.want], details = function(index) {
+          location_data <- rv$dbs_collection[rv$dbs_collection$ControlID == data$ControlID[index], c("Label", "FreezerName", "ShelfName", "BasketName")]
+          htmltools::div(style = "padding: 1rem",
+            reactable(
+              location_data,
+              outlined = TRUE, 
+              striped = TRUE,
+              theme = reactableTheme(
+                headerStyle = list(
+                  "&:hover[aria-sort]" = list(background = "hsl(0, 0%, 96%)"),
+                  "&[aria-sort='ascending'], &[aria-sort='descending']" = list(background = "hsl(0, 0%, 96%)"),
+                  borderColor = "#555"
+                )
+              ),
+              defaultColDef = colDef(na = "-", align = "center")
             )
           )
-        )
-        return (rt)
+        },
+        selection = "single", onClick = "select")
       }
+
+      return (rt)
+    })
+
+
+    dbs_collection_selected <- reactive(getReactableState("OutputDBSCollectionMainTable", "selected"))
+
+    output$OutputDBSCollectionCompositionTable <- renderReactable({ 
+      data = rv$dbs_collection[dbs_collection_selected(), c("Strain", "Percentage")]
+      rt = NULL
+
+      if (nrow(data) > 0) {
+        data = data.frame (
+          Strain = unlist(data$Strain),
+          Percentage = unlist(data$Percentage)
+        )
+      }
+
+      rt = reactable(
+        data,
+        outlined = TRUE, 
+        striped = TRUE,
+        theme = reactableTheme(
+          headerStyle = list(
+            "&:hover[aria-sort]" = list(background = "hsl(0, 0%, 96%)"),
+            "&[aria-sort='ascending'], &[aria-sort='descending']" = list(background = "hsl(0, 0%, 96%)"),
+            borderColor = "#555"
+          )
+        ),
+        defaultColDef = colDef(na = "-", align = "center")
+      )
     })
   })
+
 
   ###### Delarch specific functionality
 
@@ -280,9 +310,6 @@ ControlReference <- function(session, input, output, database) {
     }
   })
 
-  observeEvent(input$ControlInputNumControls, ignoreInit = TRUE, {
-
-  })
 
   observeEvent(input$InputUploadStrainAction, ignoreInit = TRUE, {
 
@@ -408,6 +435,118 @@ ControlReference <- function(session, input, output, database) {
     })
   })
 
+
+  ## # CONTROL IDs
+  observeEvent(input$InputCompositionUploadAction, ignoreInit = TRUE, {
+    browser()
+    dataset <- input$InputUploadCompositions
+    if (is.null(dataset) || is.null(dataset$datapath)) {
+      message("Aborting upload - no file uploaded")
+      return()
+    }
+
+    b_use_wait_dialog <- FALSE
+    early_stop <- FALSE
+    if (is.null(rv$user_file)) {
+
+      tryCatch({
+
+        ## format the file
+        rv$user_file <- ProcessCSV(
+          user_csv = dataset$datapath,
+          user_action = "upload",
+          file_type = "na",
+          reference = "composition"
+        )
+      },
+      formatting_error = function(e) {
+        message("Caught formatting error")
+        print(e$df)
+
+        error$type <- "formatting"
+
+        ## Read File Specification File
+        error$title = "Invalid File Detected"
+        error$message = e$message
+        error$list = e$df
+
+        rv$error <- TRUE
+        early_stop <<- TRUE
+      },
+      validation_error = function(e) {
+
+        message("Caught validation error")
+        
+        rv$error <- TRUE
+        error$type <- "validation"
+        error$title <- e$message
+        error$list <- e$data
+        early_stop <<- TRUE
+
+        # TODO: breakup process csv into three stages(but keep calls in global process csv).
+        # Just download the error data frame for now.
+        errors <- names(e$data)
+        df <- lapply(1:length(errors), function(idx) {
+          e$data[[idx]]$CSV %>%
+            mutate(Error = errors[idx]) %>%
+            mutate(ErrCol = paste(e$data[[idx]]$Columns, collapse = ",")) %>%
+            select(Error, colnames(e$data[[idx]]$CSV)) 
+        })
+
+        rv$user_file_error_annotated <- do.call("rbind", df) 
+      },
+      error = function(e) {
+        print(e)
+
+        early_stop <<- TRUE
+
+        error$title = "Unknown Error"
+        error$type = "unknown"
+        error$message = e$message
+        error$list = NULL
+        rv$error = TRUE
+      })
+    }
+
+    browser()
+
+    if (early_stop) return()
+
+    message("Starting Upload...")
+
+    tryCatch({
+
+      # simple way to add a dialog or not
+      b_use_wait_dialog <- nrow(rv$user_file) > 5
+
+      if (b_use_wait_dialog) {
+        show_modal_spinner(
+          spin = "double-bounce",
+          color = "#00bfff",
+          text = paste("Uploading", nrow(rv$user_file), "strains, please be patient...")
+        )
+      }
+
+      shinyjs::reset("InputCompositionUploadAction")
+      UploadCompositions(rv$user_file)
+    },
+    error = function(e) {
+      message(e)
+      error$title = "Unknown Error"
+      error$type = "unknown"
+      error$message = e$message
+      error$list = NULL
+      rv$error <- TRUE
+    },
+    finally = {
+      if (b_use_wait_dialog)
+        remove_modal_spinner()
+
+      rv$user_file <- NULL
+    })
+  })
+
+
   observeEvent(input$InputControlStudyAction, ignoreInit=TRUE, {
     con <- dbConnect(RSQLite::SQLite(), Sys.getenv("SDB_PATH"))
 
@@ -462,7 +601,6 @@ ControlReference <- function(session, input, output, database) {
   })
 
   observe({
-
     filters <- purrr::discard(rv$filters[!names(rv$filters) %in% c("location", "collection_date")], function(x) is.null(x) | "" %in% x | length(x) == 0)
     filters$location <- purrr::discard(rv$filters$location, function(x) is.null(x) | "" %in% x | length(x) == 0)
     filters$location <- if (length(filters$location) > 0) filters$location
@@ -470,7 +608,7 @@ ControlReference <- function(session, input, output, database) {
     filters$dates <- purrr::discard(rv$filters$dates, function(x) is.null(x) | "" %in% x | length(x) == 0)
     filters$dates <- if (length(filters$dates) > 0) filters$dates
 
-    rv$table <- SearchControls(control_type = 1, filters = filters, include_internal_sample_id = TRUE)
+    rv$dbs_collection <- SearchControls(filters = filters, control_type = input$InputControlPanelType)
   })
 }
 
