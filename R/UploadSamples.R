@@ -93,10 +93,10 @@ UploadSamples <- function(sample_type_id, upload_data) {
     )
 
     if(is.na(upload_data[i, ]$"collection_date")){
-      eval.collection_date <- as.double(lubridate::as_date(NA))
+      eval.collection_date <- as.character(lubridate::as_date(NA))
     }else{
       eval.collection_date <- ymd(upload_data[i, ]$"collection_date")
-      eval.collection_date <- as.double(lubridate::as_date(paste(year(eval.collection_date), month(eval.collection_date), day(eval.collection_date), sep = "-")))
+      eval.collection_date <- as.character(lubridate::as_date(paste(year(eval.collection_date), month(eval.collection_date), day(eval.collection_date), sep = "-")))
     }
 
     #get a database id for a upload item's specimen_type and study

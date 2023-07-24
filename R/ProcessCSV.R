@@ -556,7 +556,7 @@ CheckFormattedFileData <- function(database, formatted_csv, file_type, sample_st
         if (length(rn) == 0) {
           formatted_csv$collection_date <- parsed_dates
           formatted_csv$collection_date[!token_mask] <- rep(lubridate::origin, sum(!token_mask))
-          formatted_csv$collection_date = as.double(lubridate::as_date(formatted_csv$collection_date))
+          formatted_csv$collection_date = as.character(lubridate::as_date(formatted_csv$collection_date))
         }
       }
 
