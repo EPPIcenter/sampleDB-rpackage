@@ -47,7 +47,7 @@ docker build -t eppicenter/sampledb:v2.0.0 .
 This is the final step. The host `localhost` and port `8080` will be used to access the application within the container, and all volumes needed to run the container are passed in on the command line. Notice that the sampleDB database volume is also include in the list of volumes.
 
 ```bash
-docker run -d -p 8080:3838 -v /srv/shinyapps/:/srv/shiny-server -v /srv/shinylog/:/var/log/shiny-server -v sampledb_database:/usr/local/share/sampleDB --name sampleDB eppicenter/sampledb:v2.0.0
+docker run -d -p 8080:3838 -v /srv/shinyapps/:/srv/shiny-server -v /srv/shinylog/:/var/log/shiny-server -v sampledb_database:/usr/local/share/sampleDB --restart unless-stopped --name sampleDB eppicenter/sampledb:v2.0.0
 ```
 
 #### 4. Access sampleDB 
