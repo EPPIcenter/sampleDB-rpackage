@@ -497,3 +497,101 @@ ViewArchiveStatuses <- function(database) {
   RSQLite::dbDisconnect(conn)
   return(out_table)
 }
+
+
+
+# You can now call handle_formatting_error whenever you encounter a formatting error.
+
+
+show_formatting_error_modal <- function(error) {
+  df <- error$list %>%
+    dplyr::rename(
+      Column = column, 
+      Reason = reason,
+      `Triggered By` = trigger
+    ) %>%
+    reactable(.)
+  
+  showModal(
+    modalDialog(
+      size = "m",
+      title = error$title,
+      error$message,
+      tags$hr(),
+      renderReactable({ df }),
+      footer = modalButton("Exit")
+    )
+  )
+}
+
+show_validation_error_modal <- function(error) {
+  
+  # Extracting unique error descriptions
+  errors <- unique(sapply(error$error_data_list, function(x) x$description))
+  errors_df <- data.frame(Error = errors)
+
+  # Define the reactable for displaying errors
+  main_table <- reactable(
+    errors_df, 
+    details = function(index) {
+      
+      # Get the specific ErrorData object from the ValidationErrorCollection for this error
+      specific_error <- error$error_data_list[[index]]
+      
+      # Extract details from the ErrorData object
+      error_details <- data.frame(
+        Description = rep(specific_error$description, length(specific_error$rows)),
+        Column = specific_error$columns,
+        Row = specific_error$rows,
+        stringsAsFactors = FALSE
+      )
+      
+      # Display the error details using reactable
+      htmltools::div(
+        style = "padding: 1rem",
+        reactable(
+          error_details,
+          outlined = TRUE,
+          striped = TRUE,
+          theme = reactableTheme(
+            headerStyle = list(
+              "&:hover[aria-sort]" = list(background = "hsl(0, 0%, 96%)"),
+              "&[aria-sort='ascending'], &[aria-sort='descending']" = list(background = "hsl(0, 0%, 96%)"),
+              borderColor = "#555"
+            ),
+            defaultColDef = colDef(na = "-", align = "center")
+          )
+        )
+      )
+    }
+  )
+  
+  # Display the modal with the main error table
+  showModal(
+    modalDialog(
+      size = "l",
+      title = error$title,
+      tags$p("One or more rows had invalid or missing data. See the errors below and expand them to see which rows caused this error."),
+      tags$p("Press the button below to download your file with annotations"),
+      downloadButton("ErrorFileDownload"),
+      tags$hr(),
+      renderReactable({ main_table }),
+      footer = modalButton("Exit")
+    )
+  )
+}
+
+
+show_general_error_modal <- function(error) {
+  errmsg = ifelse(is.null(error$message), "No message available", error$message)
+  showModal(
+    modalDialog(
+      size = "l",
+      title = error$title,
+      tags$p("Something went wrong - contact the app author, and report the error message below."),
+      tags$hr(),
+      tags$p(errmsg),
+      footer = modalButton("Exit")
+    )
+  )
+}

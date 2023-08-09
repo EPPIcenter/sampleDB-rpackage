@@ -407,7 +407,7 @@ AppMoveSamples <- function(session, input, output, database) {
           }
 
           ## format the file
-          result <- ProcessCSV(
+          result <- validate_specimens_csv(
             user_csv = dataset[i,]$datapath,
             user_action = "move",
             file_type = input$MoveFileType,
@@ -519,28 +519,12 @@ AppMoveSamples <- function(session, input, output, database) {
   })
 
   observeEvent(input$MoveSampleType, {
-
-    con <- dbConnect(SQLite(), Sys.getenv("SDB_PATH"))
-    sample_type_id <- as(local(input$MoveSampleType), "integer")
-
-    ## Read File Specification File
-    file_specs_json <- rjson::fromJSON(file = system.file(
-      "extdata", "file_specifications.json", package = .sampleDB$pkgname))
-
-    sample_type_index <- which(lapply(file_specs_json$sample_type, function(x) x$id) == input$MoveSampleType)
-    sample_file_types <- file_specs_json$sample_type[[sample_type_index]]$file_types
-    file_type_indexes <- which(lapply(file_specs_json$file_types, function(x) x$id) %in% sample_file_types)
-    file_type_names <- lapply(file_type_indexes, function(x) file_specs_json$file_types[[x]]$name)
-    names(sample_file_types) <- file_type_names
-
     updateRadioButtons(
       session,
       "MoveFileType",
-      choices = sample_file_types,
+      choices = global_sample_names_ids_list,
       inline = TRUE
     )
-
-    DBI::dbDisconnect(con)
   })
 
   observeEvent(input$ClearMoveForm, ignoreInit = TRUE, {
@@ -555,31 +539,7 @@ AppMoveSamples <- function(session, input, output, database) {
 
   ## create the example data to display and to download
   observe({
-    ## Read File Specification File
-    file_specs_json <- rjson::fromJSON(file = system.file(
-      "extdata", "file_specifications.json", package = .sampleDB$pkgname))
-
-    ## Required Column Names
-
-    file_index <- which(lapply(file_specs_json$file_types, function(x) x$id) == input$MoveFileType)
-    sample_storage_type_index <- which(lapply(file_specs_json$file_types[[file_index]]$sample_type, function(x) x$id) == input$MoveSampleType)
-
-    if (length(sample_storage_type_index) == 0) {
-      message("Unimplemented file specifications for this sample storage type.")
-    } else {
-      actions <- file_specs_json$file_types[[file_index]]$sample_type[[sample_storage_type_index]]$actions[['move']]
-      required_user_column_names <- actions[['required']]
-      if (input$MoveFileType == "traxcer") {
-        ## Read Configuration File and replace with user override from user preferences
-        config <- yaml::read_yaml(Sys.getenv("SDB_CONFIG"))
-        if (!is.na(config$traxcer_position$override)) {
-          required_user_column_names <- stringr::str_replace(
-            required_user_column_names,
-            config$traxcer_position$default,
-            config$traxcer_position$override
-          )
-        }
-      }
+      get_
       example_data$required <- required_user_column_names
     }
   })

@@ -4,12 +4,12 @@
 \alias{set_user_file_header}
 \title{Set the header row for the user CSV file}
 \usage{
-set_user_file_header(user_file, required_columns)
+set_user_file_header(user_file, file_column_attr)
 }
 \arguments{
 \item{user_file}{The user's CSV file as a data frame.}
 
-\item{required_columns}{A character vector of required column names.}
+\item{file_column_attr}{A colum attribute object containing required columns.}
 }
 \value{
 A data frame with the appropriate header row set.

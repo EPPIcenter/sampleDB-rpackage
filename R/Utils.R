@@ -1,0 +1,339 @@
+#' Concatenate Position from Column and Row Information
+#'
+#' This function takes a column (character) and a row (numeric) and returns a formatted string by concatenating the column and row values.
+#'
+#' @param col A character vector indicating the column.
+#' @param row A numeric vector indicating the row.
+#'
+#' @return A character vector of the concatenated position.
+#' @examples
+#' concat_position("A", 5) # "A05"
+#' concat_position("B", 1) # "B01"
+#' concat_position("AA", 23) # "AA23"
+#' @export
+concat_position <- function(col, row) {
+  sprintf("%s%02d", col, row)
+}
+
+#' Validate study references
+#'
+#' This function checks if the study reference provided in the dataset exists in the database.
+#'
+#' @param con A database connection object.
+#' @param table_name The name of the formatted CSV table in the database.
+#' @param row_number_col The name of the row number column.
+#' @param study_short_code_col The name of the study short code column.
+#'
+#' @keywords validation
+#' @return ErrorData object indicating any studies not found.
+validate_study_reference <- function(con, table_name, row_number_col, study_short_code_col) {
+
+  df <- tbl(con, table_name) %>%
+    left_join(tbl(con, "study"), by = setNames("short_code", study_short_code_col)) %>%
+    filter(is.na(id)) %>%
+    select(all_of(c(row_number_col, study_short_code_col))) %>%
+    collect()
+
+  if (nrow(df) > 0) {
+    return(ErrorData$new(description = "Study Reference Validation", data_frame = df))
+  }
+
+  return(NULL)
+}
+
+
+#' Validate specimen type references
+#'
+#' This function checks if the specimen type reference provided in the dataset exists in the database.
+#'
+#' @param con A database connection object.
+#' @param table_name The name of the formatted CSV table in the database.
+#' @param row_number_col The name of the row number column.
+#' @param specimen_type_col The name of the specimen type column.
+#'
+#' @keywords validation
+#' @return ErrorData object indicating any specimen types not found.
+validate_specimen_type <- function(con, table_name, row_number_col, specimen_type_col) {
+  df <- tbl(con, table_name) %>%
+    left_join(tbl(con, "specimen_type"), by = setNames("name", specimen_type_col)) %>%
+    filter(is.na(id)) %>%
+    select(all_of(c(row_number_col, specimen_type_col))) %>%
+    collect()
+
+  if (nrow(df) > 0) {
+    return(ErrorData$new(description = "Specimen Type Reference Validation", data_frame = df))
+  }
+
+  return(NULL)
+}
+
+#' Validate location references
+#'
+#' This function checks if the location reference provided in the dataset exists in the database.
+#'
+#' @param con A database connection object.
+#' @param table_name The name of the formatted CSV table in the database.
+#' @param row_number_col The name of the row number column.
+#' @param name_col The name of the name column for locations.
+#' @param level_I_col The name of the Level I column for locations.
+#' @param level_II_col The name of the Level II column for locations.
+#'
+#' @keywords validation
+#' @return ErrorData object indicating any locations not found.
+validate_location_reference <- function(con, table_name, row_number_col, name_col, level_I_col, level_II_col) {
+
+  # Directly define the join conditions using named vectors
+  user_table_joins <- setNames(
+    c("location_root", "level_I", "level_II"),
+    c(name_col, level_I_col, level_II_col)
+  )
+
+  df <- tbl(con, table_name) %>%
+    left_join(tbl(con, "location") %>%
+                dplyr::rename(location_id = id),
+              by = user_table_joins) %>%
+    filter(is.na(location_id)) %>%
+    select(all_of(c(row_number_col, name_col, level_I_col, level_II_col))) %>%
+    collect()
+
+  if (nrow(df) > 0) {
+    errstring <- sprintf("The following %s, %s, and/or %s are not found in the database", name_col, level_I_col, level_II_col)
+    return(ErrorData$new(description = errstring, data = df))
+  }
+
+  return(NULL)
+}
+
+#' Validate Date Format
+#'
+#' @description Validates the date column in the provided data frame and ensures the dates are in a recognized format.
+#' @param data A data frame.
+#' @param date_col The name of the date column.
+#' @param allowed_date_formats A character vector of allowed date formats.
+#' @return An ErrorData object or NULL if no errors.
+validate_date_format <- function(data, date_col, allowed_date_formats) {
+
+  # Parse the collection dates
+  parsed_dates <- lubridate::parse_date_time(data[[date_col]], allowed_date_formats, quiet = TRUE, exact = TRUE)
+  
+  # Find rows with invalid dates
+  invalid_rows <- which(!is.na(data[[date_col]]) & is.na(parsed_dates))
+  
+  if (length(invalid_rows) > 0) {
+    return(ErrorData$new(description = "Unrecognized strings found in collection date column. Use recognized date formats.", columns = date_col, rows = invalid_rows))
+  }
+  return(NULL) 
+}
+
+#' Validate Dates with Tokens
+#'
+#' @description Validates the date column in the provided data frame. It ensures the dates are in a recognized format or a set of allowed tokens indicating the date is unknown.
+#' @param data A data frame.
+#' @param date_col The name of the date column.
+#' @param allowed_date_formats A character vector of allowed date formats.
+#' @param tokens Recognized tokens indicating unknown dates.
+#' @return A list with elements `error_data` (an ErrorData object or NULL if no errors), `parsed_dates` (a vector of parsed dates), and `token_mask` (a logical mask identifying rows with recognized tokens indicating unknown dates).
+validate_dates_with_tokens <- function(data, date_col, allowed_date_formats, tokens) {
+  
+  # Parse the collection dates
+  parsed_dates <- lubridate::parse_date_time(data[[date_col]], allowed_date_formats, quiet = TRUE, exact = TRUE)
+  
+  # Mask for recognized tokens
+  token_mask <- data[[date_col]] %in% tokens
+
+  # Find rows with invalid dates
+  invalid_rows <- which(!is.na(data[[date_col]]) & is.na(parsed_dates) & !token_mask)
+  
+  error_data <- NULL
+  if (length(invalid_rows) > 0) {
+    string <- paste("Unrecognized strings found in collection date column. Use recognized date formats or add any of the following if the collection date is unknown:", paste(tokens, collapse=", "))
+    return(ErrorData$new(description = string, columns = date_col, rows = invalid_rows))
+  }
+
+  return(list(error_data = error_data, parsed_dates = parsed_dates, token_mask = token_mask))
+}
+
+
+#' Handle Unknown Date Tokens
+#'
+#' @description Adjusts the date column for rows where the user signified with tokens that the dates are unknown.
+#' @param data A data frame.
+#' @param date_col The name of the date column.
+#' @param parsed_dates A vector of parsed dates.
+#' @param token_mask A logical mask identifying rows with recognized tokens indicating unknown dates.
+#' @keywords utils
+#' @return The adjusted data frame.
+handle_unknown_date_tokens <- function(data, date_col, parsed_dates, token_mask) {
+  data[[date_col]] <- parsed_dates
+  data[[date_col]][!token_mask] <- rep(lubridate::origin, sum(!token_mask))
+  data[[date_col]] <- as.character(lubridate::as_date(data[[date_col]]))
+
+  return(data)
+}
+
+#' Check for missing data in required fields
+#'
+#' @param formatted_csv The user provided dataframe to check.
+#' @param col_attributes A named list of expected column attributes.
+#' @return An ErrorData object if any required data is missing, otherwise NULL.
+check_missing_data <- function(formatted_csv, col_attributes) {
+
+  requires_data <- c(
+    col_attributes$get_required_colnames(),
+    col_attributes$get_location_colnames(),
+    col_attributes$get_container_colnames()
+  )
+
+  missing_rows <- which(rowSums(is.na(formatted_csv[, requires_data])) > 0)
+  missing_cols <- colnames(formatted_csv[, requires_data])[colSums(is.na(formatted_csv[, requires_data])) > 0]
+
+  if (length(missing_cols) > 0) {
+    description <- "Rows found with missing data"
+    return(ErrorData$new(description = description, columns = missing_cols, rows = missing_rows))
+  }
+
+  return(NULL)
+}
+
+#' Add row numbers to a dataframe
+#'
+#' @param df A dataframe.
+#' @return A dataframe with an additional 'RowNumber' column.
+#' @keywords utility
+#' @export
+add_row_numbers <- function(df) {
+  df %>% dplyr::mutate(RowNumber = row_number())
+}
+
+#' Add a position column based on column attributes
+#'
+#' @param df A dataframe to modify.
+#' @param col_attributes A named list of column attributes for exceptions.
+#' @return A dataframe, potentially with a new 'position' column.
+#' @keywords utility
+#' @export
+add_position_column <- function(df, col_attributes) {
+  position_keys <- col_attributes$position
+
+  # No position specified
+  if (is.null(position_keys)) {
+    return(df)
+  }
+
+  # When position is a single column
+  if (is.character(position_keys)) {
+    df %>%
+      dplyr::mutate(position = df[[position_keys]])
+  }
+  # When position is split across two columns
+  else if (length(position_keys) == 2) {
+    position1_key <- position_keys[1]
+    position2_key <- position_keys[2]
+
+    df %>%
+      dplyr::mutate(
+        position = sprintf(
+          "%s%02d",
+          df[[position1_key]],
+          as.integer(df[[position2_key]])
+        )
+      )
+  } else {
+    stop("Unexpected structure for position keys.")
+  }
+}
+
+#' Add an Error to the Error List
+#'
+#' This utility function checks if an error exists and, if so, appends it to the provided error list.
+#'
+#' @param errors A list object that contains the current errors.
+#' @param err An error object to be added to the error list. It can be NULL, in which case no action is taken.
+#'
+#' @return The updated errors list.
+#' @examples
+#' \dontrun{
+#'   errors <- list()  
+#'   new_error <- list(description = "Some error")  # Hypothetical error structure.
+#'   errors <- add_to_errors(errors, new_error)
+#' }
+#' @export
+add_to_errors <- function(errors, err) {
+
+  if (is.null(err)) {
+    return(errors)
+  }
+
+  if (!is.null(err) && is.null(err$description)) {
+    stop("Error object must have a description field.")
+  }
+
+  if (!is.null(err) && !is.null(err$description)) {  # Check that error data is present
+    errors[[length(errors) + 1]] <- err
+  }
+
+  return(errors)
+}
+
+#' Initialize Database Connection and Copy User Data
+#'
+#' This function initializes a connection to a specified database and copies user data to a predefined table in the database.
+#'
+#' @param database The path or name of the SQLite database to connect to.
+#' @param user_data A dataframe containing the user data to be copied to the database.
+#'
+#' @return A connection object representing the active database connection.
+#' @examples
+#' \dontrun{
+#'   database_path <- Sys.getenv("DB_PATH")
+#'   user_df <- data.frame(id = 1:3, name = c("Alice", "Bob", "Charlie"))
+#'   conn <- init_and_copy_to_db(database_path, user_df)
+#' }
+#' @export
+init_and_copy_to_db <- function(database, user_data) {
+  con <- init_db_conn(database)
+  copy_to(con, user_data) 
+  return(con)
+}
+
+#' Get the Relevant Table Name Based on Container Class
+#'
+#' This function returns the name of the relevant database table
+#' based on the provided container class.
+#'
+#' @param container_class A string representing the container class. 
+#'   Currently supports "micronix_tube" and "cryovial_tube".
+#'
+#' @return A string representing the name of the relevant table.
+#'   Will stop and throw an error for invalid or unsupported container classes.
+#'
+#' @examples
+#' get_container_table_name("micronix_tube") # Should return "micronix_plate"
+#' get_container_table_name("cryovial_tube") # Should return "cryovial_plate"
+#'
+#' @export
+get_container_table_name <- function(container_class) {
+  switch(container_class,
+         micronix_tube = "micronix_plate", # replace with actual table name
+         cryovial_tube = "cryovial_plate", # replace with actual table name
+         stop("Invalid container_class")
+  )
+}
+
+
+
+process_sample_data_set <- function(dataset, fileType, sampleType) {
+  withCallingHandlers({
+    ## format the file
+    rv$user_file <- process_specimen_csv(
+      user_csv = dataset$datapath,
+      user_action = "upload",
+      file_type = fileType,
+      sample_storage_type = sampleType
+    )
+  },
+  message = function(m) {
+    shinyjs::html(id = "UploadOutputConsole", html = paste0(dataset$name, ": ", m$message), add = rv$console_verbatim)
+    rv$console_verbatim <- TRUE
+  })
+}

@@ -7,6 +7,7 @@
 This class represents an individual error found in the data.
 It includes the error description and the row numbers and column names where the error was found.
 }
+\keyword{error-handling}
 \section{Public fields}{
 \if{html}{\out{<div class="r6-fields">}}
 \describe{
@@ -29,24 +30,38 @@ It includes the error description and the row numbers and column names where the
 \if{html}{\out{<a id="method-ErrorData-new"></a>}}
 \if{latex}{\out{\hypertarget{method-ErrorData-new}{}}}
 \subsection{Method \code{new()}}{
-This method is used to initialize the ErrorData object.
+Initialize method for the ErrorData class.
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{ErrorData$new(description = NULL, columns = NULL, rows = NULL)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{ErrorData$new(
+  description = NULL,
+  columns = NULL,
+  rows = NULL,
+  data_frame = NULL
+)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{description}}{The description of the error.}
+\item{\code{description}}{A character string describing the error. Default is NULL.}
 
-\item{\code{columns}}{The columns where the error was found.}
+\item{\code{columns}}{A character vector of column names where the error was found. Default is NULL.}
 
-\item{\code{rows}}{The rows where the error was found.}
+\item{\code{rows}}{An integer vector of row numbers where the error was found. Default is NULL.}
+
+\item{\code{data_frame}}{A data.frame with all of the invalid data. Can be used instead of providing rows and columns.
+Default is NULL.}
 }
 \if{html}{\out{</div>}}
 }
+\subsection{Details}{
+This method sets up a new ErrorData object. If a data.frame is provided, it will use its column names
+and the 'RowNumber' column for columns and rows, respectively. If not, the columns and rows arguments
+should be used. It will stop with an error if neither a data.frame is provided nor both columns and rows.
+}
+
 \subsection{Returns}{
-An ErrorData object
+An initialized ErrorData object.
 }
 }
 \if{html}{\out{<hr>}}

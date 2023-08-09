@@ -23,104 +23,6 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
     upload_template = NULL # template file to download
   )
 
-  error <- reactiveValues(
-    title = "",
-    type = "",
-    message = "",
-    table = NULL
-  )
-
-  observe({
-    output$ErrorFileDownload <- downloadHandler(
-      filename = function() {
-        paste(paste(c(input$UploadSampleDataSet$name, "annotated"), collapse="_"), '.csv', sep='')
-      },
-      content = function(con) {
-        write.csv(rv$user_file_error_annotated, con, row.names = FALSE, quote=FALSE)
-      }
-    )
-  })
-
-  observeEvent(rv$error, ignoreInit = TRUE, {
-    message("Running error workflow")
-    df <- error$list
-    modal_size <- "m"
-    if (!is.null(error$type) && error$type == "formatting") {
-      df <- error$list %>%
-        dplyr::rename(
-          Column = column, 
-          Reason = reason,
-          `Triggered By` = trigger
-        ) %>%
-        reactable(.)
-
-      showModal(
-        modalDialog(
-          size = "m",
-          title = error$title,
-          error$message,
-          tags$hr(),
-          renderReactable({ df }),
-          footer = modalButton("Exit")
-        )
-      )
-    } else if (!is.null(error$type) && error$type == "validation") {
-      errors <- unique(names(error$list))
-      errors <- data.frame(errors)
-      colnames(errors) <- "Error"
-      df <- reactable(errors, details = function(index) {
-        data <- error$list[[index]]$Columns
-        htmltools::div(style = "padding: 1rem",
-          reactable(
-            data, 
-            outlined = TRUE, 
-            striped = TRUE,
-            # rownames = TRUE,
-            theme = reactableTheme(
-            headerStyle = list(
-              "&:hover[aria-sort]" = list(background = "hsl(0, 0%, 96%)"),
-              "&[aria-sort='ascending'], &[aria-sort='descending']" = list(background = "hsl(0, 0%, 96%)"),
-              borderColor = "#555"
-            )),
-            defaultColDef = colDef(na = "-", align = "center")
-          )
-        )
-      })
-
-      showModal(
-        modalDialog(
-          size = "l",
-          title = error$title,
-          tags$p("One or more rows had invalid or missing data. See the errors below and expand them to see which rows caused this error."),
-          tags$p("Press the button below to download your file with annotations"),
-          downloadButton("ErrorFileDownload"),
-          tags$hr(),
-          renderReactable({ df }),
-          footer = modalButton("Exit")
-        )
-      )
-    } else {
-      errmsg = ifelse(is.null(error$message), "No message available", error$message)
-      showModal(
-        modalDialog(
-          size = "l",
-          title = error$title,
-          tags$p("Something went wrong - contact the app author, and report the error message below."),
-          tags$hr(),
-          tags$p(errmsg),
-          footer = modalButton("Exit")
-        )
-      )
-    }
-
-    rv$error <- NULL
-    error$title <- ""
-    error$message <- ""
-    error$type <- ""
-    error$list <- NULL
-  })
-
-
   # Download a complete upload template
   observe({
     output$UploadFileTemplate <- downloadHandler(
@@ -155,38 +57,13 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
       )
     },
     formatting_error = function(e) {
-      message("Caught formatting error")
-      print(e$df)
-
-      error$type <- "formatting"
-
-      ## Read File Specification File
-      error$title = "Invalid File Detected"
-      error$message = e$message
-      error$list = e$df
-
-      rv$error <- TRUE
+      check_if_special_columns_missing(e, rv, input)
     },
     validation_error = function(e) {
-      message("Caught validation error")
-      
-      rv$error <- TRUE
-      error$type <- "validation"
-      error$title <- e$message
-      error$list <- e$data
-
-      # TODO: breakup process csv into three stages(but keep calls in global process csv).
-      # Just download the error data frame for now.
-      rv$user_file_error_annotated <- build_annotated_csv(e) 
+      show_validation_error_modal(e)
     },
     error = function(e) {
-      print(e)
-
-      error$title = "Unknown Error"
-      error$type = "unknown"
-      error$message = e$message
-      error$list = NULL
-      rv$error = TRUE
+      show_general_error_modal(e)
     })
   })
 
@@ -199,7 +76,7 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
       withCallingHandlers({
 
         ## format the file
-        rv$user_file <- ProcessCSV(
+        rv$user_file <- process_specimen_csv(
           user_csv = dataset$datapath,
           user_action = "upload",
           file_type = input$UploadFileType,
@@ -212,80 +89,13 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
       })
     },
     formatting_error = function(e) {
-      message("Caught formatting error")
-      print(e$df)
-
-      error$type <- "formatting"
-
-      ## Read File Specification File
-      file_specs_json <- rjson::fromJSON(file = system.file(
-        "extdata", "file_specifications.json", package = .sampleDB$pkgname))
-
-      sample_type_index <- which(lapply(file_specs_json$shared$sample_type, function(x) x$id) == input$UploadSampleType)
-
-      ## UI components that are put in place to fill missing data go here
-
-      manifest_name <- file_specs_json$shared$sample_type[[sample_type_index]]$manifest$name
-      location_parameters <- file_specs_json$shared$sample_type[[sample_type_index]]$location
-      location_parameters <- unlist(location_parameters[c("location_root", "level_I", "level_II")])
-      required_elements <- c()
-
-      columns <- e$df$column
-
-      missing <- columns[!columns %in% c(location_parameters, manifest_name)]
-      if (length(missing) > 0) {
-        rv$error <- TRUE
-        error$title = "Invalid File Detected"
-        error$message = e$message
-        error$list = e$df
-      } else {
-        if (manifest_name %in% columns) {
-          shinyjs::show("UploadManifestName")
-          required_elements <- c(required_elements, "UploadManifestName")
-        }
-
-        # should be all or none
-        if (all(location_parameters %in% columns)) {
-          shinyjs::show("UploadLocationRoot")
-          shinyjs::show("UploadLocationLevelI")
-          shinyjs::show("UploadLocationLevelII")
-          required_elements <- c(required_elements, c("UploadManifestName", "UploadLocationLevelI", "UploadLocationLevelII"))
-
-        }
-
-        shinyjs::disable("UploadSampleType")
-        shinyjs::disable("UploadFileType")
-
-        rv$required_elements <- required_elements
-        rv$user_action_required <- FALSE
-        rv$user_file <- NULL # sanity check
-      }
+      check_if_special_columns_missing(e)
     },
     validation_error = function(e) {
-      message("Caught validation error")
-      
-      html<-paste0("<font color='red'>", paste0(dataset$name, ": ", e$message), "</font>")
-      shinyjs::html(id = "UploadOutputConsole", html = html, add = rv$console_verbatim)
-
-      rv$error <- TRUE
-      error$type <- "validation"
-      error$title <- e$message
-      error$list <- e$data
-
-      # TODO: breakup process csv into three stages(but keep calls in global process csv).
-      # Just download the error data frame for now.
-      rv$user_file_error_annotated <- build_annotated_csv(e)
+      show_validation_error_modal(e)
     },
     error = function(e) {
-      print(e)
-      html<-paste0("<font color='red'>", paste0(dataset$name, ": ", e$message), "</font>")
-      shinyjs::html(id = "UploadOutputConsole", html = html, add = rv$console_verbatim)
-
-      error$title = "Unknown Error"
-      error$type = "unknown"
-      error$message = e$message
-      error$list = NULL
-      rv$error = TRUE
+      show_general_error_modal(e)
     })
 
     rv$console_verbatim <- FALSE
@@ -293,12 +103,7 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
 
   observeEvent(input$UploadAction, ignoreInit = TRUE, {
 
-    if (isTRUE(rv$user_action_required)) {
-      message("Upload action halted - user action required")
-      return()
-    }
-
-    if(input$UploadType == "Controls") {
+    if(input$UploadType == "controls") {
       dataset = input$InputUploadControls
     } else {
       dataset = input$UploadSampleDataSet
@@ -309,7 +114,6 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
       return()
     }
 
-    early_stop <- FALSE
     if (is.null(rv$user_file)) {
       # dataset <- input$UploadSampleDataSet
       message(paste("Loaded", dataset$name))
@@ -339,7 +143,7 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
 
           if (input$UploadType == "Samples") {
             ## format the file
-            rv$user_file <- ProcessCSV(
+            rv$user_file <- process_specimen_csv(
               user_csv = dataset$datapath,
               user_action = "upload",
               file_type = input$UploadFileType,
@@ -349,7 +153,7 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
             )
           } else {
             ## format the file
-            rv$user_file <- ProcessCSV(
+            rv$user_file <- process_control_csv(
               user_csv = dataset$datapath,
               user_action = input$UploadControlAction,
               file_type = input$UploadFileType,
@@ -366,87 +170,15 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
         })
       },
       validation_error = function(e) {
-        message("Caught validation error")
-        early_stop <<- TRUE
-        html<-paste0("<font color='red'>", paste0(dataset$name, ": ", e$message), "</font>")
-        shinyjs::html(id = "UploadOutputConsole", html = html, add = rv$console_verbatim)
-        rv$console_verbatim <- FALSE
-
-        rv$error <- TRUE
-        error$type <- "validation"
-        error$title <- e$message
-        error$list <- e$data
-
-        rv$user_file_error_annotated <- build_annotated_csv(e)
-
+        show_validation_error_modal(e)
       },
       formatting_error = function(e) {
-        message("Caught formatting error")
-        print(e$df)
-
-        error$type <- "formatting"
-        early_stop <<- TRUE
-
-        ## Read File Specification File
-        file_specs_json <- rjson::fromJSON(file = system.file(
-          "extdata", "file_specifications.json", package = .sampleDB$pkgname))
-
-        sample_type_index <- which(lapply(file_specs_json$shared$sample_type, function(x) x$id) == input$UploadSampleType)
-
-        ## UI components that are put in place to fill missing data go here
-
-        manifest_name <- file_specs_json$shared$sample_type[[sample_type_index]]$manifest$name
-        location_parameters <- file_specs_json$shared$sample_type[[sample_type_index]]$location
-        location_parameters <- unlist(location_parameters[c("name", "level_I", "level_II")])
-        required_elements <- c()
-
-        columns <- e$df$column
-
-        missing <- columns[!columns %in% c(location_parameters, manifest_name)]
-        if (length(missing) > 0) {
-          rv$error <- TRUE
-          error$title = "Invalid File Detected"
-          error$message = e$message
-          error$list = e$df
-        } else {
-          if (manifest_name %in% columns) {
-            shinyjs::show("UploadManifestName")
-            required_elements <- c(required_elements, "UploadManifestName")
-          }
-
-          # should be all or none
-          if (all(location_parameters %in% columns)) {
-            shinyjs::show("UploadLocationRoot")
-            shinyjs::show("UploadLocationLevelI")
-            shinyjs::show("UploadLocationLevelII")
-            required_elements <- c(required_elements, c("UploadManifestName", "UploadLocationLevelI", "UploadLocationLevelII"))
-
-          }
-
-          shinyjs::disable("UploadSampleType")
-          shinyjs::disable("UploadFileType")
-
-          rv$required_elements <- required_elements
-          rv$user_action_required <- FALSE
-          rv$user_file <- NULL # sanity check
-        }
+        check_if_special_columns_missing(e)
       },
       error = function(e) {
-        early_stop <<- TRUE
-        html<-paste0("<font color='red'>", paste0(dataset$name, ": ", e$message), "</font>")
-        shinyjs::html(id = "UploadOutputConsole", html = html, add = rv$console_verbatim)
-        rv$console_verbatim <- FALSE
-
-        rv$error <- TRUE
-        error$title = "Unknown Error"
-        error$type = "unknown"
-        error$message = e$message
-        error$list = NULL
+        show_general_error_modal(e)
       })
-
     }
-
-    if (early_stop) { return() }
 
     message("Starting Upload...")
     b_use_wait_dialog <- FALSE
@@ -466,7 +198,7 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
         }
 
         shinyjs::reset("UploadAction")
-        if (input$UploadType == "Samples") {
+        if (input$UploadType == "samples") {
           UploadSpecimens(user_data = rv$user_file, storage_type_id=input$UploadSampleType)
         } else if (input$UploadType == "Controls" && input$UploadControlAction == "extraction") { 
           UploadExtractedDNA(user_data = rv$user_file, control_extraction=input$UploadControlType)
@@ -479,14 +211,7 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
       })
     },
     error = function(e) {
-      message(e)
-      html<-paste0("<font color='red'>", paste0(dataset$name, ": ", e$message), "</font>")
-      shinyjs::html(id = "UploadOutputConsole", html = html, add = rv$console_verbatim)
-      error$title = "Unknown Error"
-      error$type = "unknown"
-      error$message = e$message
-      error$list = NULL
-      rv$error <- TRUE
+      show_general_error_modal(e)
     },
     finally = {
       if (b_use_wait_dialog) {
@@ -692,189 +417,94 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
   )
 
   ## create the example data to display and to download
+
   observe({
-    ## Read File Specification File
-    file_specs_json <- rjson::fromJSON(file = system.file(
-      "extdata", "file_specifications.json", package = .sampleDB$pkgname))
-
-    upload_type=switch(
-      input$UploadType,
-      "Controls"="controls",
-      "Samples"="sample_type"
+    # Initialize attributes based on UploadType
+    file_column_attributes <- switch(input$UploadType,
+      controls = get_control_file_columns(input$UploadControlType, "create"),
+      samples = get_sample_file_columns(input$UploadSampleType, "upload"),
+      NULL  # Default case
     )
-
-    ## Required Column Names
-    file_index <- which(lapply(file_specs_json$file_types, function(x) x$id) == input$UploadFileType)
-    if (upload_type=="sample_type") {
-      storage_type_index <- which(lapply(file_specs_json$file_types[[file_index]][[upload_type]], function(x) x$id) == input$UploadSampleType)
-    } else {
-      if (upload_type=="controls" && input$UploadControlType == "extracted_dna") {
-        storage_type_index <- which(lapply(file_specs_json$file_types[[file_index]][[upload_type]], function(x) x$id) == input$InputControlExtraction)
-      } else {
-        storage_type_index <- which(lapply(file_specs_json$file_types[[file_index]][[upload_type]], function(x) x$id) == input$UploadControlType)
-      }
+    
+    # Ensure we've got attributes to work with
+    if (!is.null(file_column_attributes)) {
+      # Populate example_data using the FileColumnAttributes methods
+      example_data$required <- file_column_attributes$get_required_colnames()
+      example_data$conditional <- file_column_attributes$get_conditional_colnames()
+      example_data$optional <- file_column_attributes$get_optional_colnames()
+      example_data$location <- file_column_attributes$get_location_colnames()
+      example_data$container <- file_column_attributes$get_container_colnames()
     }
 
-    if (length(storage_type_index) == 0) {
-      message("Unimplemented file specifications for this sample storage type.")
-    } else {
-
-      actions <- file_specs_json$file_types[[file_index]][[upload_type]][[storage_type_index]]$actions[['upload']]
-      required_user_column_names <- actions[['required']]
-      conditional_user_column_names <- actions[['conditional']]
-      optional_user_column_names <- actions[['optional']]
-
-      ## Shared fields
-
-      if (upload_type == "sample_type") {
-        required_user_column_names <- c(required_user_column_names, file_specs_json$shared$upload[['required']])
-
-        if (input$UploadFileType == "traxcer") {
-          ## Read Configuration File and replace with user override from user preferences
-          config <- yaml::read_yaml(Sys.getenv("SDB_CONFIG"))
-          if (!is.na(config$traxcer_position$override)) {
-            required_user_column_names <- stringr::str_replace(required_user_column_names, config$traxcer_position$default, config$traxcer_position$override)
-          }
-        }
-      }
-
-      example_data$required <- required_user_column_names
-
-      if (upload_type == "sample_type") {
-        sample_type_index <- which(lapply(file_specs_json$shared[[upload_type]], function(x) x$id) == input$UploadSampleType)
-
-        example_data$conditional <- conditional_user_column_names <- c(conditional_user_column_names, file_specs_json$shared$upload[['conditional']])
-        optional_user_column_names <- c(optional_user_column_names, file_specs_json$shared$upload[['optional']])
-
-        manifest_name <- file_specs_json$shared[[upload_type]][[sample_type_index]]$manifest$name
-        manifest_barcode_name <- file_specs_json$shared[[upload_type]][[sample_type_index]]$manifest$barcode
-        location_parameters <- file_specs_json$shared[[upload_type]][[sample_type_index]]$location
-        location_parameters <- unlist(location_parameters[c("name", "level_I", "level_II")])
-
-        example_data$user_input <- c(manifest_name, unname(location_parameters))
-        example_data$optional <- c(optional_user_column_names, c(manifest_barcode_name))
-      } else {
- 
-        control_type_index <- which(lapply(file_specs_json$shared[[upload_type]], function(x) x$id) == input$UploadControlType)
-
-        manifest_name <- file_specs_json$shared[[upload_type]][[control_type_index]]$manifest$name
-        manifest_barcode_name <- file_specs_json$shared[[upload_type]][[control_type_index]]$manifest$barcode
-        location_parameters <- file_specs_json$shared[[upload_type]][[control_type_index]]$location
-        location_parameters <- unlist(location_parameters[c("name", "level_I", "level_II")])
-
-        example_data$user_input <- c(manifest_name, unname(location_parameters))
-        example_data$conditional <- conditional_user_column_names
-        example_data$optional <- c(optional_user_column_names, c(manifest_barcode_name)) 
-      }
+    create_template <- function(file_column_attributes) {
+      # Additional code to create a template for user download
+      cols <- file_column_attributes$all_fields()
+      template <- matrix(ncol = length(cols), nrow = 0)
+      colnames(template) <- cols
+      return(template)
     }
+
+    # create template for the user to download
+    rv$template <- create_template(file_column_attributes)
+
   })
 
   observe({
-    output$UploadFileExampleRequired <- renderReactable({
-      rt <- NULL
-      if (input$UploadFileType == "na") {
-
-        if (input$UploadType == "Samples") {
-          sample_type_name <- switch(
-            input$UploadSampleType,
-            "1" = "micronix",
-            "2" = "cryovial",
-            "3" = "dbs"
-          )
-          example <- paste(c(sample_type_name, input$UploadFileType), collapse="_")
-          rt <- reactable(eval(as.symbol(example))[, example_data$required], defaultColDef = colDef(minWidth = 120, html = TRUE, sortable = FALSE, resizable = FALSE))
-        } else {
-          example <- paste(c(input$UploadControlType, input$UploadFileType), collapse="_")
-          rt <- reactable(eval(as.symbol(example))[, example_data$required], defaultColDef = colDef(minWidth = 120, html = TRUE, sortable = FALSE, resizable = FALSE))
-        }
+    # Helper functions
+    get_example_name <- function(type, sample_type, control_type, file_type) {
+      if (type == "samples") {
+        return(paste0(sample_type, "_", file_type))
       } else {
-        mat <- matrix(nrow = 0, ncol = length(example_data$required))
-        colnames(mat) <- example_data$required
-        rt <- reactable(mat, defaultColDef = colDef(minWidth = 120, html = TRUE, sortable = FALSE, resizable = FALSE))
+        return(paste0(control_type, "_", file_type))
       }
+    }
 
-      return(rt)
+    create_empty_reactable <- function(columns) {
+      mat <- matrix(nrow = 0, ncol = length(columns))
+      colnames(mat) <- columns
+      reactable(mat, defaultColDef = colDef(minWidth = 120, html = TRUE, sortable = FALSE, resizable = FALSE))
+    }
+
+    create_reactable_from_example <- function(example, columns) {
+      reactable(
+        eval(as.symbol(example))[, columns], 
+        defaultColDef = colDef(minWidth = 120, html = TRUE, sortable = FALSE, resizable = FALSE)
+      )
+    }
+
+    # Reactables
+    generate_reactable_output <- function(data_columns) {
+      if (input$UploadFileType != "na") {
+        return(create_empty_reactable(data_columns))
+      }
+      
+      example <- get_example_name(input$UploadType, input$UploadSampleType, input$UploadControlType, input$UploadFileType)
+      create_reactable_from_example(example, data_columns)
+    }
+
+    output$UploadFileExampleRequired<- renderReactable({
+      generate_reactable_output(example_data$user_input)
     })
 
     output$UploadFileExampleUserInput <- renderReactable({
-      rt <- NULL
-      if (input$UploadFileType == "na") {
-        if (input$UploadType == "Samples") {
-          sample_type_name <- switch(
-            input$UploadSampleType,
-            "1" = "micronix",
-            "2" = "cryovial",
-            "3" = "dbs"
-          )
-
-          example <- paste(c(sample_type_name, input$UploadFileType), collapse="_")
-          rt <- reactable(eval(as.symbol(example)) %>% select(example_data$user_input), defaultColDef = colDef(minWidth = 120, html = TRUE, sortable = FALSE, resizable = FALSE))
-        
-        } else {
-          example <- paste(c(input$UploadControlType, input$UploadFileType), collapse="_")
-          rt <- reactable(eval(as.symbol(example))[, example_data$user_input], defaultColDef = colDef(minWidth = 120, html = TRUE, sortable = FALSE, resizable = FALSE))
-        }
-      } else {
-        mat <- matrix(nrow = 0, ncol = length(example_data$user_input))
-        colnames(mat) <- example_data$user_input
-        rt <- reactable(mat, defaultColDef = colDef(minWidth = 120, html = TRUE, sortable = FALSE, resizable = FALSE))
-      }
-      return(rt)
+      generate_reactable_output(example_data$user_input)
     })
 
     output$UploadFileExampleConditional <- renderReactable({
-      rt <- data.frame()
       if (!is.null(example_data$conditional)) {
-        if (input$UploadFileType == "na") {
-
-          sample_type_name <- switch(
-            input$UploadSampleType,
-            "1" = "micronix",
-            "2" = "cryovial",
-            "3" = "dbs"
-          )
-          example <- paste(c(sample_type_name, input$UploadFileType), collapse="_")
-          rt <- reactable(eval(as.symbol(example)) %>% select(example_data$conditional), defaultColDef = colDef(minWidth = 120, html = TRUE, sortable = FALSE, resizable = FALSE))
-        } else {
-          mat <- matrix(nrow = 0, ncol = length(example_data$conditional))
-          colnames(mat) <- example_data$conditional
-          rt <- reactable(mat, defaultColDef = colDef(minWidth = 120, html = TRUE, sortable = FALSE, resizable = FALSE))
-        }
+        generate_reactable_output(example_data$conditional)
+      } else {
+        data.frame() # Empty dataframe
       }
-      return(rt)
     })
 
     output$UploadFileExampleOptional <- renderReactable({
-      rt <- data.frame()
       if (!is.null(example_data$optional)) {
-        if (input$UploadFileType == "na") {
-
-          sample_type_name <- switch(
-            input$UploadSampleType,
-            "1" = "micronix",
-            "2" = "cryovial",
-            "3" = "dbs"
-          )
-          example <- paste(c(sample_type_name, input$UploadFileType), collapse="_")
-          rt <- reactable(eval(as.symbol(example)) %>% select(example_data$optional), defaultColDef = colDef(minWidth = 120, html = TRUE, sortable = FALSE, resizable = FALSE))
-        } else {
-          mat <- matrix(nrow = 0, ncol = length(example_data$optional))
-          colnames(mat) <- example_data$optional
-          rt <- reactable(mat, defaultColDef = colDef(minWidth = 120, html = TRUE, sortable = FALSE, resizable = FALSE))
-        }
+        generate_reactable_output(example_data$optional)
+      } else {
+        data.frame() # Empty dataframe
       }
-      return(rt)
     })
-
-    cols <- c(
-      example_data$required, 
-      example_data$user_input,
-      example_data$conditional,
-      example_data$optional
-    )
-    template <- matrix(ncol = length(cols), nrow = 0)
-    colnames(template) <- cols
-    rv$upload_template <- template
   })
 
   observeEvent(input$UploadLocationRoot, {
@@ -949,4 +579,44 @@ build_annotated_csv <- function(e) {
   user_file_error_annotated <- do.call("rbind", df) 
 
   return (user_file_error_annotated)
+}
+
+# This is function to handle any formatting errors that happen during processing.
+# Error handling should be improved upon in the future to be done at the server level.
+check_if_special_columns_missing <- function(e, rv, input) {
+
+  # Use the get_sample_file_columns function to retrieve file column attributes
+  file_column_attr <- get_sample_file_columns(input$UploadSampleType, input$UploadAction, input$UploadFileType)
+
+  locations <- file_column_attr$locations[['location_root']] # Assuming manifest name is the first element in location colnames
+  location_parameters <- file_column_attr$get_location_colnames()
+
+  required_elements <- c()
+
+  columns <- e$df$column
+
+  missing <- columns[!columns %in% c(location_parameters, manifest_name)]
+  if (length(missing) > 0) {
+    show_formatting_error_modal(e)
+  } else {
+    if (manifest_name %in% columns) {
+      shinyjs::show("UploadManifestName")
+      required_elements <- c(required_elements, "UploadManifestName")
+    }
+
+    # should be all or none
+    if (all(location_parameters %in% columns)) {
+      shinyjs::show("UploadLocationRoot")
+      shinyjs::show("UploadLocationLevelI")
+      shinyjs::show("UploadLocationLevelII")
+      required_elements <- c(required_elements, c("UploadManifestName", "UploadLocationLevelI", "UploadLocationLevelII"))
+    }
+
+    shinyjs::disable("UploadSampleType")
+    shinyjs::disable("UploadFileType")
+
+    rv$required_elements <- required_elements
+    rv$user_action_required <- FALSE
+    rv$user_file <- NULL # sanity check
+  }
 }

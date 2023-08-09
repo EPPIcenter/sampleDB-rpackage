@@ -417,7 +417,7 @@ UploadCompositions <- function(user_data, database = Sys.getenv("SDB_PATH")) {
 
 		# modify the user data so that it can be comapared with strains
 		user_data = user_data %>%
-			dplyr::mutate(rownumber=row_number()) %>%
+			dplyr::mutate(rownumber=RowNumber()) %>%
 	    	dplyr::mutate(
 	    		strain=strsplit(strain, ";"),
 	    		percentage=strsplit(percentage, ";")

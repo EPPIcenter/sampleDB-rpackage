@@ -49,7 +49,7 @@
       "exceptions": {
         "create": {
           "required": {
-            "collection_date": "Created"
+            "created": "Created"
           },
           "loc_dest": "minus80"
         },

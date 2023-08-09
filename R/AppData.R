@@ -396,6 +396,21 @@ FileColumnAttributes <- R6::R6Class(
     },
     all_fields = function() {
       return (c(self$required, self$conditional, self$optional, self$location, self$container))
+    },
+    get_required_colnames = function() {
+      return(unname(unlist(self$required)))
+    },
+    get_conditional_colnames = function() {
+      return(unname(unlist(self$conditional)))
+    },
+    get_optional_colnames = function() {
+      return(unname(unlist(self$optional)))
+    },
+    get_location_colnames = function() {
+      return(unname(unlist(self$location)))
+    },
+    get_container_colnames = function() {
+      return(unname(unlist(self$container)))
     }
   )
 )
@@ -458,7 +473,7 @@ get_sample_file_columns <- function(sample_type, user_action, file_type, config_
 #' @return A FileColumnAttributes object with fields for the user action for controls
 #' @keywords appdata
 #' @export
-get_controls_file_columns <- function(control_type, user_action) {
+get_control_file_columns <- function(control_type, user_action) {
   ## Get fields for the action
   fields <- get_fields_from_json("controls", control_type, user_action)
 
@@ -478,32 +493,68 @@ get_controls_file_columns <- function(control_type, user_action) {
   return(file_column_attr)
 }
 
-#' Get user action fields for references
+#' Retrieve File Column Attributes for a Given Category and Reference Type
 #'
-#' This function gets all the fields for a given user action related to references.
+#' This function gets all the fields for a given user action related to references 
+#' and returns a `FileColumnAttributes` object populated with those fields. 
+#' It supports different reference categories in the JSON, such as locations, strains, compositions, etc. 
+#' Depending on the category and the reference type (if provided), 
+#' the function will fetch fields categorized as `required`, `optional`, or directly if no sub-categories are present.
 #'
-#' @param reference_type The reference to get fields for
-#' @return A FileColumnAttributes object with fields for the user action for references
-#' @keywords appdata
+#' @param category A string specifying the category of reference, e.g., "locations", "strains".
+#' @param reference_type An optional string specifying the specific type within the category, e.g., "minus20". Default is NULL.
+#' 
+#' @return A `FileColumnAttributes` object populated with the fields related to the given category and reference type.
+#' 
+#' @examples
+#' \dontrun{
+#' # For categories with a specific type
+#' attributes <- get_reference_file_columns("locations", "minus20")
+#'
+#' # For categories without a specific type
+#' attributes <- get_reference_file_columns("strains")
+#' }
+#' 
 #' @export
-get_references_file_columns <- function(reference_type) {
-  ## Get fields for the action
-  fields <- get_fields_from_json("references", reference_type)
+get_reference_file_columns <- function(category, reference_type = NULL) {
+  # Get fields for the action
+  fields <- get_fields_from_json("references", category, reference_type)
 
-  ## Initialize the output fields
-  required_column_names <- fields[['required']]
-  conditional_column_names <- fields[['conditional']]
-  optional_column_names <- fields[['optional']]
+  # Initialize the output fields
+  required_column_names <- NULL
+  conditional_column_names <- NULL
+  optional_column_names <- NULL
 
-  ## Create an R6 object of the FileColumnAttributes class
+  # If fields for the type are sub-categorized as 'required', 'optional', etc.
+  if ('required' %in% names(fields)) {
+    required_column_names <- fields[['required']]
+  }
+  
+  if ('conditional' %in% names(fields)) {
+    conditional_column_names <- fields[['conditional']]
+  }
+  
+  if ('optional' %in% names(fields)) {
+    optional_column_names <- fields[['optional']]
+  }
+
+  # If no sub-categories, then assign fields directly
+  if (is.null(required_column_names) && is.null(conditional_column_names) && is.null(optional_column_names)) {
+    required_column_names <- fields
+  }
+
+  # Create an R6 object of the FileColumnAttributes class
   file_column_attr <- FileColumnAttributes$new(
     required = required_column_names,
     conditional = conditional_column_names,
-    optional = optional_column_names
+    optional = optional_column_names,
+    location = NULL,   
+    container = NULL   
   )
 
   return(file_column_attr)
 }
+
 
 #' Extract Actions, File Types, and Sample Types from JSON Content
 #'
@@ -538,4 +589,28 @@ extract_sample_from_json <- function(json_content) {
   # Return as a list
   return(list(actions = actions, file_types = file_types, sample_types = sample_types))
 }
+
+#' Extract sample IDs from JSON
+#'
+#' This function loads the provided JSON and returns the sample IDs from the "samples" section.
+#'
+#' @param file_path The path to the JSON file.
+#' @return A vector of sample IDs.
+#' @examples
+#' \dontrun{
+#' sample_ids <- get_sample_ids_from_json("your_json_file_name.json")
+#' print(sample_ids)
+#' }
+#' @keywords internal
+#' @export
+get_sample_ids_from_json <- function(file_path) {
+  # Load the JSON data
+  json_data <- load_parse_json(file_path)
+  
+  # Extract sample IDs from the "samples" section
+  sample_ids <- sapply(json_data$samples, function(sample) sample$id)
+  
+  return(sample_ids)
+}
+
 

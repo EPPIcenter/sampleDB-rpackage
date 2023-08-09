@@ -11,74 +11,160 @@ for(server_helper in list.files(path = "server_helpers", full.names = T, recursi
 }
 
 function(input, output, session) {
+
+
+  # Unified function for database operations
+  handle_database_operation <- function(operation) {
+    # Variables (Replace with actual sources/values as needed)
+    pkgname <- "sampleDB"
+    database <- Sys.getenv("SDB_PATH")
+
+    tryCatch({
+      expected_versions <- get_expected_versions("sampleDB")
+
+      setup_database(expected_versions$database, pkgname, database)
+
+      # After successful setup or upgrade
+      update_required(FALSE)  # Set update_required to FALSE
+
+      # Close the modal
+      removeModal()
+
+      # Prompt for session restart
+      showModal(modalDialog(
+        title = "Restart Needed",
+        "Operation completed successfully. Please restart the session for changes to take effect.",
+        footer = actionButton("restartBtn", "Restart Session")
+      ))
+
+    }, error = function(e) {
+      # Display any errors in a modal for feedback
+      showModal(modalDialog(
+        title = "Error",
+        paste("Failed to", operation, "the database:", e$message)
+      ))
+    })
+  }
  
-    dbUpdateEvent <- reactivePoll(1000 * 5, NULL,
-      function() file.mtime(Sys.getenv("SDB_PATH")),
-      function() TRUE
-    )
-  
-    # Back up database when app is fired up... supplementary files such as the backup generator are stored in /extdata
-    # for (i in system("bash /sampleDB_backup_generator.sh", intern = TRUE)) message(i)
-    Backup_SampleDB(checksum = TRUE) 
+  dbUpdateEvent <- reactivePoll(1000 * 5, NULL,
+    function() file.mtime(Sys.getenv("SDB_PATH")),
+    function() TRUE
+  )
 
-    data("micronix_na")
-    data("cryovial_na")
+  # Reactive value to track if the database update is required
+  update_required <- reactiveVal(FALSE)
 
+  # Check the database version initially and set update_required if needed
+  observe({
     # Set path to .sqlite database
     database <- Sys.getenv("SDB_PATH")
-    backups <- list.files(file.path(dirname(database), "backups"))
-    if (length(backups) > 10) {
-      oldest_backup <- file.path(dirname(database), "backups", head(backups, 1))
-      message(paste0("Removing oldest backup: ", oldest_backup))
-      file.remove(file.path(dirname(database), "backups", head(backups, 1)))
+    expected_versions <- get_expected_versions("sampleDB")
+    current_version <- get_db_version(database)
+
+    if (is.na(current_version) || !file.exists(database)) {
+      showModal(modalDialog(
+        title = "Clean Install Detected",
+        "It appears this is a clean install. Setting up the database...",
+        footer = actionButton("btn_setup", "Setup New Database"),
+        easyClose = FALSE # Prevents dismissing the modal without action
+      ))
+    } else if (current_version != expected_versions$database) {
+      update_required(TRUE)
+
+      # Display modal dialog if update is required
+      showModal(modalDialog(
+        title = "Database Version Mismatch",
+        "The database version is incorrect. Please upgrade to ensure the application functions correctly.",
+        footer = actionButton("btn_upgrade", "Upgrade"),
+        easyClose = FALSE # This ensures the modal cannot be dismissed without pressing "Upgrade"
+      ))
+    } else {
+      update_required(FALSE)
     }
+  })
 
-    # --------- Upload Samples -------------
+  # Handle the database setup for a clean install
+  observeEvent(input$btn_setup, {
+    handle_database_operation("setup")
+  })
 
-    # Upload Micronix Samples
-    AppUploadSamples(session, input, output, database, dbUpdateEvent)
-    
-    # Upload Cryo Samples
-    # CryoUpload(session, output, input, database)
+  # # Handle the database update when the action button is clicked
+  observeEvent(input$btn_upgrade, {
+    handle_database_operation("upgrade")
+  })
 
-    # Upload RDT Samples
-    # RDTUpload(session, output, input, database)
+  # Restart the session when the restart button is clicked
+  observeEvent(input$restartBtn, {
+    removeModal()
+    session$reload()
+  })
 
-    # Upload Paper Samples
-    # PaperUpload(session, output, input, database)
-    
-    # -------- Search, Archive and Delete Samples -------------
-    
-    SearchDelArchSamples(session, input, database, output, dbUpdateEvent)    
-    
-    # -------- Move Samples -------------
+  # Conditionally load main app logic if update is not required
+  observe({
+    # Set path to .sqlite database
+    database <- Sys.getenv("SDB_PATH")
 
-    AppMoveSamples(session, input, output, database)
+    if (!update_required()) {
 
-    # -------- Edit Containers --------
-    
-    EditWetlabContainers(session, input, database, output, dbUpdateEvent)  
+      # Back up database when app is fired up... supplementary files such as the backup generator are stored in /extdata
+      # for (i in system("bash /sampleDB_backup_generator.sh", intern = TRUE)) message(i)
+      Backup_SampleDB(checksum = TRUE) 
 
-    # -------- Delete Empty Container --------
-    
-    # DeleteEmptyWetlabContainers(session, input, database, output)
-    
-    # -------- Update References ---------------
-    
-    # Update Freezers
-    UpdateLabFreezers(session, input, output, database)
-    
-    # Update Specimen Types
-    UpdateSpecimenTypes(session, input, output, database)
-    
-    # Update EPPIcenter Lab Studies
-    UpdateLabStudies(session, input, output, database)
+      data("micronix_na")
+      data("cryovial_na")
 
-    # Controls
-    ControlReference(session, input, output, database)
+      backups <- list.files(file.path(dirname(database), "backups"))
+      if (length(backups) > 10) {
+        oldest_backup <- file.path(dirname(database), "backups", head(backups, 1))
+        message(paste0("Removing oldest backup: ", oldest_backup))
+        file.remove(file.path(dirname(database), "backups", head(backups, 1)))
+      }
 
-    # Configuration panel
-    AppPreferencesPanel(session, input, output, database)
+      # --------- Upload Samples -------------
 
-    # --------------- About ------------
+      # Upload Micronix Samples
+      AppUploadSamples(session, input, output, database, dbUpdateEvent)
+      
+      # Upload Cryo Samples
+      # CryoUpload(session, output, input, database)
+
+      # Upload RDT Samples
+      # RDTUpload(session, output, input, database)
+
+      # Upload Paper Samples
+      # PaperUpload(session, output, input, database)
+      
+      # -------- Search, Archive and Delete Samples -------------
+      
+      SearchDelArchSamples(session, input, database, output, dbUpdateEvent)    
+      
+      # -------- Move Samples -------------
+
+      AppMoveSamples(session, input, output, database)
+
+      # -------- Edit Containers --------
+      
+      EditWetlabContainers(session, input, database, output, dbUpdateEvent)  
+
+      # -------- Delete Empty Container --------
+      
+      # DeleteEmptyWetlabContainers(session, input, database, output)
+      
+      # -------- Update References ---------------
+      
+      # Update Freezers
+      UpdateLabFreezers(session, input, output, database)
+      
+      # Update Specimen Types
+      UpdateSpecimenTypes(session, input, output, database)
+      
+      # Update EPPIcenter Lab Studies
+      UpdateLabStudies(session, input, output, database)
+
+      # Configuration panel
+      AppPreferencesPanel(session, input, output, database)
+
+      # --------------- About ------------
+    }
+  })
 }

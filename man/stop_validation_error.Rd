@@ -23,3 +23,4 @@ stop_formatting_error("This is a validation error!", data.frame(x = 1:5))
 }
 
 }
+\keyword{error-handling}

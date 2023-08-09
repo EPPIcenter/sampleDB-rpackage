@@ -36,6 +36,7 @@ stop_app_error <- function(type, message, data = NULL) {
 #' }
 #'
 #' @export
+#' @keywords error-handling
 stop_formatting_error <- function(message, data) {
   stop_app_error("formatting_error", message, data)
 }
@@ -55,6 +56,7 @@ stop_formatting_error <- function(message, data) {
 #' }
 #'
 #' @export
+#' @keywords error-handling
 stop_validation_error <- function(message, data) {
   stop_app_error("validation_error", message, data)
 }
@@ -67,7 +69,8 @@ stop_validation_error <- function(message, data) {
 #' @field description A character string describing the error.
 #' @field columns A character vector of column names where the error was found.
 #' @field rows An integer vector of row numbers where the error was found.
-#'
+#' @export
+#' @keywords error-handling
 ErrorData <- R6::R6Class(
   "ErrorData",
   public = list(
@@ -75,40 +78,52 @@ ErrorData <- R6::R6Class(
     columns = NULL,
     rows = NULL,
 
-    #' @method ErrorData initialize
-    #' @description This method is used to initialize the ErrorData object.
-    #' @param description The description of the error.
-    #' @param columns The columns where the error was found.
-    #' @param rows The rows where the error was found.
-    #' @return An ErrorData object
-    initialize = function(description = NULL, columns = NULL, rows = NULL) {
+    #' @description Initialize method for the ErrorData class.
+    #' @details This method sets up a new ErrorData object. If a data.frame is provided, it will use its column names
+    #' and the 'RowNumber' column for columns and rows, respectively. If not, the columns and rows arguments
+    #' should be used. It will stop with an error if neither a data.frame is provided nor both columns and rows.
+    #' @param description A character string describing the error. Default is NULL.
+    #' @param columns A character vector of column names where the error was found. Default is NULL.
+    #' @param rows An integer vector of row numbers where the error was found. Default is NULL.
+    #' @param data_frame A data.frame with all of the invalid data. Can be used instead of providing rows and columns.
+    #' Default is NULL.
+    #' @return An initialized ErrorData object.
+    initialize = function(description = NULL, columns = NULL, rows = NULL, data_frame = NULL) {
+      if (!is.null(data_frame)) {
+        self$columns = colnames(data_frame)
+        self$rows = data_frame$RowNumber
+      } else if (!is.null(columns) && !is.null(rows)) {
+        self$columns <- columns
+        self$rows <- rows
+      } else {
+        stop("Either provide a data.frame or both columns and rows.")
+      }
       self$description <- description
-      self$columns <- columns
-      self$rows <- rows
     }
   )
 )
 
-
-#' ErrorDataList class
+#' ValidationErrorCollection class
 #'
 #' @description This class manages a collection of ErrorData objects.
 #' It can be used to add new ErrorData objects, and to export the collection of errors to a CSV file.
 #'
 #' @field error_data_list A list of ErrorData objects representing the collection of errors.
 #' @field user_data The original data frame where the errors were found.
-#'
-ErrorDataList <- R6::R6Class(
-  "ErrorDataList",
+#' @export
+#' @keywords error-handling
+ValidationErrorCollection <- R6::R6Class(
+  "ValidationErrorCollection",
   public = list(
     error_data_list = list(),
     user_data = NULL,
 
-    #' @method ErrorDataList initialize
-    #' @description This method is used to initialize the ErrorDataList object.
-    #' @param user_data The original data where the errors were found.
-    initialize = function(user_data = NULL) {
-      self$error_data_list = list()
+    #' @method ValidationErrorCollection initialize
+    #' @description This method receives a list of ErrorData objects.
+    #' @param errors The list of ErrorData objects to be added.
+    #' @param user_data The user data where the error data came from.
+    initialize = function(errors = list(), user_data = NULL) {
+      self$error_data_list = errors
       self$user_data = user_data
     },
 
@@ -139,31 +154,40 @@ ErrorDataList <- R6::R6Class(
     #' @description This method is used to export the errors to a CSV file.
     #' @param filename The name of the CSV file.
     to_csv = function(filename) {
-      if (length(self$error_data_list) == 0) {
-        stop("No errors have been added.")
-      }
+        if (length(self$error_data_list) == 0) {
+            stop("No errors have been added.")
+        }
+        # Here, we're aggregating all the errors from the list into a single data frame.
+        error_df <- do.call(rbind, lapply(self$error_data_list, function(error) {
+            data.frame(
+                row = error$rows,
+                column = error$columns,
+                description = rep(error$description, length(error$rows)),
+                stringsAsFactors = FALSE
+            )
+        }))
 
-      error_df <- do.call(rbind, lapply(self$error_data_list, function(error) {
-        data.frame(
-          row = error$rows,
-          column = error$columns,
-          description = rep(error$description, length(error$rows)),
-          stringsAsFactors = FALSE
-        )
-      }))
+        # Group by row and collapse descriptions
+        error_df <- aggregate(description ~ row + column, data = error_df, FUN = function(x) paste(x, collapse = ";"))
 
-      # Group by row and collapse descriptions
-      error_df <- aggregate(description ~ row, data = error_df, FUN = function(x) paste(x, collapse = ";"))
+        # Now, we're aggregating descriptions by row number. This is in case there are multiple
+        # descriptions for a single row.
+        extracted_data <- mapply(function(row, col) {
+            # Directly access the column using the `[[]]` operator and then access the specific row.
+            return(self$user_data[[col]][row])
+        }, error_df$row, error_df$column, SIMPLIFY = TRUE)
 
-      error_df$data <- mapply(function(row, col) {
-        self$user_data[row, col]
-      }, error_df$row, error_df$column, SIMPLIFY = FALSE)
+        # The extracted goes in the `error_df`.
+        error_df[["data"]] <- as.character(extracted_data)
 
-      write.csv(error_df, file = filename, row.names = FALSE)
+        # Finally, write the csv.
+        write.csv(error_df, file = filename, row.names = FALSE)
+    },
+
+    #' @method ErrorDataList length
+    #' @description This method returns the number of ErrorData objects in the list.
+    length = function() {
+      return(length(self$error_data_list))
     }
   )
 )
-
-
-
-

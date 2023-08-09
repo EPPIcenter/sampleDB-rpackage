@@ -2,6 +2,7 @@
   "defaults": {
     "upload": {
       "required": {
+        "barcode": "Barcode",
         "study_short_code": "StudyCode",
         "study_subject": "StudySubject",
         "specimen_type": "SpecimenType"
@@ -22,13 +23,19 @@
       "id": "micronix",
       "exceptions": {
         "visionmate": {
+          "required": {
+            "barcode": "TubeCode"
+          },
           "container": {
             "container_name": "PlateName",
-            "container_barcode": "TubeCode",
+            "container_barcode": "PlateBarcode",
             "position": ["LocationRow", "LocationColumn"]
           }
         },
         "traxcer": {
+          "required": {
+            "barcode": "Tube ID"
+          },
           "container": {
             "container_name": "PlateName",
             "container_barcode": "PlateBarcode",
