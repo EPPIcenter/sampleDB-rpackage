@@ -6,24 +6,17 @@ UIUploadSamples <- function() {
   
   con <- DBI::dbConnect(RSQLite::SQLite(), Sys.getenv("SDB_PATH"))
 
-  file_specs_json <- rjson::fromJSON(file = system.file(
-    "extdata", "file_specifications.json", package = .sampleDB$pkgname))
-
-  file_type_ids <- lapply(file_specs_json$file_types, function(x) x$id)
-  names(file_type_ids) <- lapply(file_specs_json$file_types, function(x) x$name)
-
   ui <- sidebarLayout(
     sidebarPanel(
       shinyjs::useShinyjs(),
       width = 3,
-      radioButtons("UploadType", "Choose Your Upload Type", choices = c("Samples", "Controls"), selected = c("Samples")),
+      radioButtons("UploadType", "Choose Your Upload Type", choices = global_upload_type_list),
       conditionalPanel(
-        condition = "input.UploadType == 'Samples'",
+        condition = "input.UploadType == 'samples'",
         h4("Upload Samples"),
-        radioButtons("UploadSampleType","Sample Storage Type", choices = DBI::dbReadTable(con, "sample_type") %>% filter(is.na(parent_id)) %>% pull(id, name = "name"), inline = TRUE),
-        shinyjs::hidden(radioButtons("UploadSampleSubType", "Derived Sample Storage Types", choices = DBI::dbReadTable(con, "sample_type") %>% filter(!is.na(parent_id)) %>% pull(id, name = "name"), inline = TRUE)),
+        radioButtons("UploadSampleType","Sample Storage Type", choices = global_sample_names_ids_list, inline = TRUE),
         hr(),
-        radioButtons("UploadFileType", "Choose a file type", choices = file_type_ids, inline = TRUE),
+        radioButtons("UploadFileType", "Choose a file type", choices = global_sample_file_types[["micronix"]], inline = TRUE),
         #upload data
         fileInput("UploadSampleDataSet", "Upload Samples File", accept = c("text/csv", "text/comma-separated-values,text/plain", ".csv")),
         #add freezer infor

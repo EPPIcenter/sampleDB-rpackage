@@ -537,51 +537,99 @@ AppMoveSamples <- function(session, input, output, database) {
   })
 
 
-  ## create the example data to display and to download
   observe({
-      get_
-      example_data$required <- required_user_column_names
+    # Initialize attributes based on UploadType
+    file_column_attributes <- switch(input$UploadType,
+      controls = get_control_file_columns(input$UploadControlType, "create"),
+      samples = get_sample_file_columns(input$UploadSampleType, "upload"),
+      NULL  # Default case
+    )
+    
+    # Ensure we've got attributes to work with
+    if (!is.null(file_column_attributes)) {
+      # Populate example_data using the FileColumnAttributes methods
+      example_data$required <- file_column_attributes$get_required_colnames()
+      example_data$conditional <- file_column_attributes$get_conditional_colnames()
+      example_data$optional <- file_column_attributes$get_optional_colnames()
+      example_data$location <- file_column_attributes$get_location_colnames()
+      example_data$container <- file_column_attributes$get_container_colnames()
     }
+
+    create_template <- function(file_column_attributes) {
+      # Additional code to create a template for user download
+      cols <- file_column_attributes$all_fields()
+      template <- matrix(ncol = length(cols), nrow = 0)
+      colnames(template) <- cols
+      return(template)
+    }
+
+    # create template for the user to download
+    rv$template <- create_template(file_column_attributes)
+
   })
 
   observe({
-    output$MoveFileExampleRequired <- renderReactable({
-      rt <- NULL
-
-      if (input$MoveFileType == "na") {
-
-        sample_type_name <- switch(
-          input$MoveSampleType,
-          "1" = "micronix",
-          "2" = "cryovial",
-          "3" = "dbs"
-        )
-        example <- paste(c(sample_type_name, input$MoveFileType), collapse="_")
-        rt <- reactable(eval(as.symbol(example)) %>% select(example_data$required), defaultColDef = colDef(minWidth = 120, html = TRUE, sortable = FALSE, resizable = FALSE))
+    # Helper functions
+    get_example_name <- function(type, sample_type, control_type, file_type) {
+      if (type == "samples") {
+        return(paste0(sample_type, "_", file_type))
       } else {
-        mat <- matrix(nrow = 0, ncol = length(example_data$required))
-        colnames(mat) <- example_data$required
-        rt <- reactable(mat, defaultColDef = colDef(minWidth = 120, html = TRUE, sortable = FALSE, resizable = FALSE))
+        return(paste0(control_type, "_", file_type))
       }
+    }
 
-      return (rt)
+    create_empty_reactable <- function(columns) {
+      mat <- matrix(nrow = 0, ncol = length(columns))
+      colnames(mat) <- columns
+      reactable(mat, defaultColDef = colDef(minWidth = 120, html = TRUE, sortable = FALSE, resizable = FALSE))
+    }
+
+    create_reactable_from_example <- function(example, columns) {
+      reactable(
+        eval(as.symbol(example))[, columns], 
+        defaultColDef = colDef(minWidth = 120, html = TRUE, sortable = FALSE, resizable = FALSE)
+      )
+    }
+
+    # Reactables
+    generate_reactable_output <- function(data_columns) {
+      if (input$UploadFileType != "na") {
+        return(create_empty_reactable(data_columns))
+      }
+      
+      example <- get_example_name(input$UploadType, input$UploadSampleType, input$UploadControlType, input$UploadFileType)
+      create_reactable_from_example(example, data_columns)
+    }
+
+    output$UploadFileExampleRequired<- renderReactable({
+      generate_reactable_output(example_data$required)
     })
 
-    template <- matrix(ncol = length(example_data$required), nrow = 0)
-    colnames(template) <- example_data$required
-    rv$template <- template
-  })
+    output$UploadFileExampleUserInput <- renderReactable({
+      generate_reactable_output(example_data$user_input)
+    })
 
+    output$UploadFileExampleConditional <- renderReactable({
+      if (!is.null(example_data$conditional)) {
+        generate_reactable_output(example_data$conditional)
+      } else {
+        data.frame() # Empty dataframe
+      }
+    })
+
+    output$UploadFileExampleOptional <- renderReactable({
+      if (!is.null(example_data$optional)) {
+        generate_reactable_output(example_data$optional)
+      } else {
+        data.frame() # Empty dataframe
+      }
+    })
+  })
   # Download a complete move template
   observe({
     output$MoveFileTemplate <- downloadHandler(
       filename = function() {
-        storage_type <- switch(
-          input$MoveSampleType,
-          "1" = "micronix",
-          "2" = "cryovial"
-        )
-        paste(paste(c(storage_type, input$MoveFileType, "move", "template"), collapse="_"), '.csv', sep='')
+        paste(paste(c(input$MoveSampleType, input$MoveFileType, "move", "template"), collapse="_"), '.csv', sep='')
       },
       content = function(con) {
         write.csv(rv$template, con, row.names = FALSE, quote=FALSE)

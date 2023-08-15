@@ -21,6 +21,7 @@
   "samples": [
     {
       "id": "micronix",
+      "name": "Micronix",
       "exceptions": {
         "visionmate": {
           "required": {
@@ -46,6 +47,7 @@
     },
     {
       "id": "cryovial",
+      "name": "Cryovial",
       "location": "minus80",
       "container": "cryovial_box",
       "exceptions": {}

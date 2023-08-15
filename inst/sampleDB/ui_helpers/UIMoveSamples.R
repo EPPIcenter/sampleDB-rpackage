@@ -4,20 +4,14 @@ UIMoveSamples <- function(){
 
   con <- DBI::dbConnect(RSQLite::SQLite(), Sys.getenv("SDB_PATH"))
 
-  file_specs_json <- rjson::fromJSON(file = system.file(
-    "extdata", "file_specifications.json", package = .sampleDB$pkgname))
-
-  file_type_ids <- lapply(file_specs_json$file_types, function(x) x$id)
-  names(file_type_ids) <- lapply(file_specs_json$file_types, function(x) x$name)
-
   ui <- sidebarLayout(
     sidebarPanel(
       width = 4,
       HTML("<h4><b>Move Samples</b></h4>"),
       HTML("<p>To move samples please select a storage type and fill out the sections below.</p>"),
-      radioButtons("MoveSampleType","1. Sample Storage Type", DBI::dbReadTable(con, "sample_type") %>% filter(is.na(parent_id)) %>% pull(id, name = "name"), inline = T),
+      radioButtons("MoveSampleType","1. Sample Storage Type", global_sample_names_ids_list, inline = T),
       hr(),
-      radioButtons("MoveFileType", label = "2. Move File Type", choices = file_type_ids, inline = T),
+      radioButtons("MoveFileType", label = "2. Move File Type", choices = c("NA"="na"), inline = T),
       
       conditionalPanel(
         condition = "input.MoveFileType == 'traxcer'",

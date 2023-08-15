@@ -15,7 +15,6 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
 
   rv <- reactiveValues(
     user_file = NULL, # this holds a file that is ready for upload
-    user_file_error_annotated = NULL,
     console_verbatim = FALSE, # whether to print mulitple lines to the console
     error = FALSE, # whether to start an error workflow
     user_action_required = FALSE, # whether the user needs to add additional inputs
@@ -27,13 +26,7 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
   observe({
     output$UploadFileTemplate <- downloadHandler(
         filename = function() {
-          storage_type <- switch(
-            input$UploadSampleType,
-            "1" = "micronix",
-            "2" = "cryovial",
-            "3" = "dbs"
-          )
-          paste(paste(c(storage_type, input$UploadFileType, "upload", "template"), collapse="_"), '.csv', sep='')
+          paste(paste(c(input$UploadSampleType, input$UploadFileType, "upload", "template"), collapse="_"), '.csv', sep='')
         },
         content = function(con) {
           write.csv(rv$upload_template, con, row.names = FALSE, quote=FALSE)
@@ -141,7 +134,7 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
             stop("Missing location parameter")
           }
 
-          if (input$UploadType == "Samples") {
+          if (input$UploadType == "samples") {
             ## format the file
             rv$user_file <- process_specimen_csv(
               user_csv = dataset$datapath,
@@ -227,11 +220,6 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
   observeEvent(dbUpdateEvent(), {
 
     con <- dbConnect(SQLite(), Sys.getenv("SDB_PATH"))
-      sample_type_id <- as(local(input$UploadSampleType), "integer")
-
-    sample_type_name <- DBI::dbReadTable(con, "sample_type") %>%
-      filter(id == sample_type_id) %>%
-      pull(name)
 
     # UNUSED FOR NOW
     updateSelectizeInput(
@@ -254,10 +242,9 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
     )
 
     manifest <- switch(
-      sample_type_name,
-      "Micronix" = "micronix_plate",
-      "Cryovial" = "cryovial_box",
-      "DBS" = "dbs_paper"
+      input$UploadSampleType,
+      "micronix" = "micronix_plate",
+      "cryovial" = "cryovial_box"
     )
 
 
@@ -265,10 +252,9 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
       session,
       "UploadManifestName",
       label = switch(
-        sample_type_name,
-        "Micronix" = "Plate Name",
-        "Cryovial" = "Box Name",
-        "DBS" = "Paper Name"
+        input$UploadSampleType,
+        "micronix" = "Plate Name",
+        "cryovial" = "Box Name"
       ),
       selected = input$UploadManifestName,
       choices = c("", DBI::dbReadTable(con, manifest) %>% pull(name)),
@@ -280,10 +266,9 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
       "UploadLocationLevelI",
       selected = input$UploadLocationLevelI,
       label = switch(
-        sample_type_name,
-        "Micronix" = "Shelf Name", 
-        "Cryovial" = "Rack Number",
-        "DBS" = "To Be Implemented"
+        input$UploadSampleType,
+        "micronix" = "Shelf Name", 
+        "cryovial" = "Rack Number"
       )
     )
 
@@ -292,10 +277,9 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
       "UploadLocationLevelII",
       selected = input$UploadLocationLevelII,
       label = switch(
-        sample_type_name,
-        "Micronix" = "Basket Name",
-        "Cryovial" = "Rack Position",
-        "DBS" = "To Be Implemented"
+        input$UploadSampleType,
+        "micronix" = "Basket Name",
+        "cryovial" = "Rack Position"
       )
     )
 
@@ -305,51 +289,20 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
 
   observeEvent(input$UploadSampleType, {
 
+
+    browser()
     shinyjs::reset("UploadLocationRoot")
     shinyjs::reset("UploadLocationLevelI")
     shinyjs::reset("UploadLocationLevelII")
 
     con <- dbConnect(SQLite(), Sys.getenv("SDB_PATH"))
-    sample_type_id <- as(local(input$UploadSampleType), "integer")
-
-    ## Read File Specification File
-    file_specs_json <- rjson::fromJSON(file = system.file(
-      "extdata", "file_specifications.json", package = .sampleDB$pkgname))
-
-    sample_type_index <- which(lapply(file_specs_json$sample_type, function(x) x$id) == input$UploadSampleType)
-    sample_file_types <- file_specs_json$sample_type[[sample_type_index]]$file_types
-    file_type_indexes <- which(lapply(file_specs_json$file_types, function(x) x$id) %in% sample_file_types)
-    file_type_names <- lapply(file_type_indexes, function(x) file_specs_json$file_types[[x]]$name)
-    names(sample_file_types) <- file_type_names
-
-    subtype_ids = tbl(con, "sample_type") %>% filter(parent_id == local(input$UploadSampleType)) %>% pull(id, name = "name")
-
-    if (length(subtype_ids) > 0) {
-      storage_types = tbl(con, "sample_type") %>% filter(is.na(parent_id)) %>% pull(name)
-      updateRadioButtons(
-        session,
-        "UploadFileSubType",
-        label = sprintf("%s Derived Sample Types", storage_types[as.integer(local(input$UploadSampleType))]),
-        choices = subtype_ids,
-        inline = TRUE
-      )
-      shinyjs::show("UploadSampleSubType")
-    } else {
-      shinyjs::hide("UploadSampleSubType")
-      updateRadioButtons(
-        session,
-        label = NULL,
-        "UploadFileSubType",
-        choices = c(""),
-        inline = TRUE
-      )
-    }
 
     updateRadioButtons(
       session,
       "UploadFileType",
-      choices = sample_file_types,
-      inline = TRUE
+      choices = global_sample_file_types[[input$UploadSampleType]],
+      inline = TRUE,
+      selected = dplyr::first(global_sample_file_types[[input$UploadSampleType]])
     )
 
     updateSelectInput(
@@ -365,9 +318,8 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
 
     manifest <- switch(
       input$UploadSampleType,
-      "1" = "micronix_plate",
-      "2" = "cryovial_box",
-      "3" = "dbs_bag"
+      "micronix" = "micronix_plate",
+      "cryovial" = "cryovial_box"
     )
 
     updateSelectizeInput(
@@ -375,9 +327,8 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
       "UploadManifestName",
       label = switch(
         input$UploadSampleType,
-        "1" = "Plate Name",
-        "2" = "Box Name",
-        "3" = "DBS Bag"
+        "micronix" = "Plate Name",
+        "cryovial" = "Box Name"
       ),
       selected = FALSE,
       choices = DBI::dbReadTable(con, manifest) %>% pull(name),
@@ -389,9 +340,8 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
       "UploadLocationLevelI",
       label = switch(
         input$UploadSampleType,
-        "1" = "Shelf Name", 
-        "2" = "Rack Number",
-        "3" = "Rack Number"
+        "micronix" = "Shelf Name", 
+        "cryovial" = "Rack Number"
       )
     )
 
@@ -400,9 +350,8 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
       "UploadLocationLevelII",
       label = switch(
         input$UploadSampleType,
-        "1" = "Basket Name",
-        "2" = "Rack Position",
-        "3" = "Rack Position"
+        "micronix" = "Basket Name",
+        "cryovial" = "Rack Position"
       )
     )
 
@@ -419,12 +368,24 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
   ## create the example data to display and to download
 
   observe({
+
     # Initialize attributes based on UploadType
     file_column_attributes <- switch(input$UploadType,
-      controls = get_control_file_columns(input$UploadControlType, "create"),
-      samples = get_sample_file_columns(input$UploadSampleType, "upload"),
+      controls = {
+        get_control_file_columns(input$UploadControlType, "create")
+      },
+      samples = {
+        # Check if the UploadSampleType is valid and the UploadFileType exists for the given UploadSampleType
+        if (!is.null(global_sample_file_types[[input$UploadSampleType]]) && 
+            input$UploadFileType %in% global_sample_file_types[[input$UploadSampleType]]) {
+          get_sample_file_columns(input$UploadSampleType, "upload", input$UploadFileType)
+        } else {
+          stop(paste("Invalid UploadFileType:", input$UploadFileType, "for UploadSampleType:", input$UploadSampleType))
+        }
+      },
       NULL  # Default case
     )
+
     
     # Ensure we've got attributes to work with
     if (!is.null(file_column_attributes)) {
@@ -454,9 +415,8 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
     get_example_name <- function(type, sample_type, control_type, file_type) {
       if (type == "samples") {
         return(paste0(sample_type, "_", file_type))
-      } else {
-        return(paste0(control_type, "_", file_type))
-      }
+      } 
+      return(paste0(control_type, "_", file_type))
     }
 
     create_empty_reactable <- function(columns) {
@@ -466,8 +426,15 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
     }
 
     create_reactable_from_example <- function(example, columns) {
+      # Check if the data exists and has columns
+      data_to_use <- if (exists(example, mode = "data.frame") && ncol(eval(as.symbol(example))) > 0) {
+        eval(as.symbol(example))[, columns]
+      } else {
+        return(create_empty_reactable(columns))  # return an empty reactable if data isn't valid
+      }
+
       reactable(
-        eval(as.symbol(example))[, columns], 
+        data_to_use,
         defaultColDef = colDef(minWidth = 120, html = TRUE, sortable = FALSE, resizable = FALSE)
       )
     }
@@ -482,19 +449,25 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
       create_reactable_from_example(example, data_columns)
     }
 
-    output$UploadFileExampleRequired<- renderReactable({
-      generate_reactable_output(example_data$user_input)
+    output$UploadFileExampleRequired <- renderReactable({
+      generate_reactable_output(example_data$required)
     })
 
-    output$UploadFileExampleUserInput <- renderReactable({
-      generate_reactable_output(example_data$user_input)
-    })
+    # output$UploadFileExampleUserInput <- renderReactable({
+    #   # Combine example_data$location and example_data$container
+    #   if (!is.null(example_data$location) && !is.null(example_data$container)) {
+    #     combined_data <- c(example_data$location, example_data$container)
+    #     create_reactable_from_example(combined_data, names(combined_data))
+    #   } else {
+    #     create_empty_reactable(NULL)  # Modify create_empty_reactable to handle NULL if needed
+    #   }
+    # })
 
     output$UploadFileExampleConditional <- renderReactable({
       if (!is.null(example_data$conditional)) {
         generate_reactable_output(example_data$conditional)
       } else {
-        data.frame() # Empty dataframe
+        create_empty_reactable(NULL)  # Modify create_empty_reactable to handle NULL if needed
       }
     })
 
@@ -502,7 +475,7 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
       if (!is.null(example_data$optional)) {
         generate_reactable_output(example_data$optional)
       } else {
-        data.frame() # Empty dataframe
+        create_empty_reactable(NULL)  # Modify create_empty_reactable to handle NULL if needed
       }
     })
   })

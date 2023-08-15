@@ -136,33 +136,33 @@ function(input, output, session) {
       
       # -------- Search, Archive and Delete Samples -------------
       
-      SearchDelArchSamples(session, input, database, output, dbUpdateEvent)    
+      # SearchDelArchSamples(session, input, database, output, dbUpdateEvent)    
       
-      # -------- Move Samples -------------
+      # # -------- Move Samples -------------
 
-      AppMoveSamples(session, input, output, database)
+      # AppMoveSamples(session, input, output, database)
 
-      # -------- Edit Containers --------
+      # # -------- Edit Containers --------
       
-      EditWetlabContainers(session, input, database, output, dbUpdateEvent)  
+      # EditWetlabContainers(session, input, database, output, dbUpdateEvent)  
 
-      # -------- Delete Empty Container --------
+      # # -------- Delete Empty Container --------
       
-      # DeleteEmptyWetlabContainers(session, input, database, output)
+      # # DeleteEmptyWetlabContainers(session, input, database, output)
       
-      # -------- Update References ---------------
+      # # -------- Update References ---------------
       
-      # Update Freezers
-      UpdateLabFreezers(session, input, output, database)
+      # # Update Freezers
+      # UpdateLabFreezers(session, input, output, database)
       
-      # Update Specimen Types
-      UpdateSpecimenTypes(session, input, output, database)
+      # # Update Specimen Types
+      # UpdateSpecimenTypes(session, input, output, database)
       
-      # Update EPPIcenter Lab Studies
-      UpdateLabStudies(session, input, output, database)
+      # # Update EPPIcenter Lab Studies
+      # UpdateLabStudies(session, input, output, database)
 
-      # Configuration panel
-      AppPreferencesPanel(session, input, output, database)
+      # # Configuration panel
+      # AppPreferencesPanel(session, input, output, database)
 
       # --------------- About ------------
     }

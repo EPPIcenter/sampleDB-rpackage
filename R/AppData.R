@@ -595,22 +595,77 @@ extract_sample_from_json <- function(json_content) {
 #' This function loads the provided JSON and returns the sample IDs from the "samples" section.
 #'
 #' @param file_path The path to the JSON file.
-#' @return A vector of sample IDs.
+#' @return A named list where each item's name is a capitalized version of the sample ID, 
+#'   and the item's value is the original sample ID.
+#'
 #' @examples
 #' \dontrun{
 #' sample_ids <- get_sample_ids_from_json("your_json_file_name.json")
 #' print(sample_ids)
 #' }
+#' @importFrom jsonlite fromJSON
+#' @seealso \code{\link{load_parse_json}}
 #' @keywords internal
 #' @export
-get_sample_ids_from_json <- function(file_path) {
+get_sample_ids_from_json <- function(file_path="samples.json") {
   # Load the JSON data
   json_data <- load_parse_json(file_path)
   
   # Extract sample IDs from the "samples" section
   sample_ids <- sapply(json_data$samples, function(sample) sample$id)
   
+  # Explicit naming
+  explicit_names <- c("Micronix" = "micronix", "Cryovial" = "cryovial")
+  names(sample_ids) <- c("Micronix", "Cryovial")
+  
   return(sample_ids)
 }
 
 
+#' Retrieve File Types for Each Sample from JSON
+#'
+#' This function extracts the available file types for each sample defined in the provided JSON file.
+#' "NA" will always be returned as one of the file types for each sample.
+#'
+#' @param json_path A character string representing the path to the JSON file.
+#'
+#' @return A named list where each item's name is a sample ID, and the item's value is a named vector 
+#'   of file types available for that sample, with the name being the capitalized version and the value
+#'   being the original file type. Each vector always includes "NA" as one of the options.
+#'
+#' @examples
+#' \dontrun{
+#' file_types <- get_sample_file_types("samples.json")
+#' print(file_types)
+#' }
+#'
+#' @importFrom jsonlite fromJSON
+#' @seealso \code{\link{load_parse_json}}
+#' @export
+get_sample_file_types <- function(json_path="samples.json") {
+  # Load the JSON data
+  json_data <- load_parse_json(json_path)
+  
+  # Extract sample data
+  sample_data <- json_data$samples
+  
+  # For each sample, extract its file types
+  file_types_list <- lapply(sample_data, function(sample) {
+    # Get the names of exceptions as they represent file types
+    exception_types <- names(sample$exceptions)
+    
+    # Always include 'na' as an option
+    file_types <- c("na", exception_types)
+    
+    # Create named version
+    names(file_types) <- sapply(file_types, function(ft) if(ft == "na") "NA" else tools::toTitleCase(ft))
+    
+    return(file_types)
+  })
+  
+  # Convert list to named vector
+  names_vec <- sapply(sample_data, function(x) x$id)
+  names(file_types_list) <- names_vec
+  
+  return(file_types_list)
+}
