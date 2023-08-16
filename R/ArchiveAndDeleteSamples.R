@@ -28,6 +28,7 @@
 
 ArchiveAndDeleteSamples <- function(operation, data, comment, status, verification = TRUE){
 
+  print(data)
   database <- Sys.getenv("SDB_PATH")
   conn <-  RSQLite::dbConnect(RSQLite::SQLite(), database)
   RSQLite::dbBegin(conn)

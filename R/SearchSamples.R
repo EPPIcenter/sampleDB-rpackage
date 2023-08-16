@@ -22,7 +22,9 @@
 #' @export
 
 
-SearchSamples <- function(sample_storage_type, filters = NULL, format = NULL, database = Sys.getenv("SDB_PATH"), config_yml = Sys.getenv("SDB_CONFIG"), include_internal_sample_id = FALSE) {
+SearchSamples <- function(sample_storage_type, filters = NULL, format = "na", database = Sys.getenv("SDB_PATH"), config_yml = Sys.getenv("SDB_CONFIG"), include_internal_sample_id = FALSE) {
+  
+  message("searching...")
   db.results <- NULL
   tryCatch({
     container_tables <- list(
@@ -255,6 +257,7 @@ SearchSamples <- function(sample_storage_type, filters = NULL, format = NULL, da
     dbmap$comment <- "Comment"
     dbmap$state <- "State"
     dbmap$status <- "Status"
+
 
     if (include_internal_sample_id) {
 
