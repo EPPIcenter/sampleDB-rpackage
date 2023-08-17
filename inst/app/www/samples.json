@@ -1,56 +1,66 @@
 {
-  "defaults": {
-    "upload": {
-      "required": {
-        "barcode": "Barcode",
-        "study_short_code": "StudyCode",
-        "study_subject": "StudySubject",
-        "specimen_type": "SpecimenType"
-      },
-      "conditional": {
-        "collection_date": "CollectionDate"
-      },
-      "optional": {
-        "comment": "Comment"
-      }
-    },
-    "move": {},
-    "container": "micronix_plate",
-    "location": "minus20"
-  },
-  "samples": [
-    {
-      "id": "micronix",
+  "samples": {
+    "micronix": {
+      "id": 1, 
       "name": "Micronix",
-      "exceptions": {
-        "visionmate": {
-          "required": {
-            "barcode": "TubeCode"
-          },
-          "container": {
-            "container_name": "PlateName",
-            "container_barcode": "PlateBarcode",
-            "position": ["LocationRow", "LocationColumn"]
-          }
-        },
-        "traxcer": {
-          "required": {
-            "barcode": "Tube ID"
-          },
-          "container": {
-            "container_name": "PlateName",
-            "container_barcode": "PlateBarcode",
-            "position": "Position"
-          }
-        }
+      "file_types": ["na", "visionmate", "traxcer"],
+      "actions": ["upload", "move"],
+      "location_key": "minus20",
+      "container_key": "micronix_plate"
+    },
+    "cryovial": {
+      "id": 2,
+      "name": "Cryovial",
+      "file_types": ["na"],
+      "actions": ["upload"],
+      "location_key": "minus80",
+      "container_key": "cryovial_box"
+    }
+  },
+  "action_requirements": {
+    "upload": {
+      "shared": {
+        "required_keys": ["position_keys", "study_short_code", "study_subject", "specimen_type", "location_key", "container_key"],
+        "conditional_keys": ["collection_date"],
+        "optional_keys": ["comment"]
+      },
+      "micronix": {
+        "required_keys": ["barcode"]
+      },
+      "cryovial": {
+        "conditional_keys": ["barcode"]
       }
     },
-    {
-      "id": "cryovial",
-      "name": "Cryovial",
-      "location": "minus80",
-      "container": "cryovial_box",
-      "exceptions": {}
+    "move": {
+      "shared": {
+        "required_keys": ["position_keys"]
+      },
+      "micronix": {
+        "required_keys": ["barcode"]
+      },
+      "cryovial": {
+        "conditional_keys": ["barcode"]
+      }
     }
-  ]
+  },
+  "sample_key_associations": {
+    "shared": {
+      "barcode": "Barcode",
+      "study_short_code": "StudyCode",
+      "study_subject": "StudySubject",
+      "specimen_type": "SpecimenType",
+      "collection_date": "CollectionDate",
+      "comment": "Comment"
+    },
+    "micronix": {
+      "visionmate": {
+        "barcode": "TubeCode",
+        "position_keys": ["LocationRow", "LocationColumn"]
+      },
+      "traxcer": {
+        "barcode": "Tube ID",
+        "position_keys": "Position"
+      }
+    }
+  }
 }

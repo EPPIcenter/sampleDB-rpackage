@@ -4,7 +4,7 @@
 \alias{add_row_numbers}
 \title{Add row numbers to a dataframe}
 \usage{
-add_row_numbers(df)
+add_row_numbers(df, row_number_col = "RowNumber")
 }
 \arguments{
 \item{df}{A dataframe.}

@@ -254,7 +254,6 @@ check_micronix_barcodes_exist <- function(con, user_data, row_number_col, micron
 check_cryovial_barcodes_exist <- function(con, user_data, row_number_col, cryovial_col, error_if_exists=TRUE) {
   
   df <- tbl(con, user_data) %>%
-    filter(!is.na(!!sym(cryovial_col))) %>%
     left_join(tbl(con, "cryovial_tube"), by = setNames("barcode", cryovial_col))
   
   if (error_if_exists) {
@@ -265,7 +264,7 @@ check_cryovial_barcodes_exist <- function(con, user_data, row_number_col, cryovi
     error_desc <- "Cryovial barcode not found in database"
   }
   
-  df <- df %>% select(!!sym(row_number_col), !!sym(cryovial_col)) %>% collect()
+  df <- df %>% select(all_of(c(row_number_col, cryovial_col))) %>% collect()
 
   if (nrow(df) > 0) {
     return(ErrorData$new(
@@ -289,7 +288,6 @@ check_cryovial_barcodes_exist <- function(con, user_data, row_number_col, cryovi
 #' @keywords validation, cryovial
 #' @return An instance of the ErrorData class or NULL.
 check_cryovial_barcodes_exist <- function(con, user_data, row_number_col, cryovial_col, error_if_exists=TRUE) {
-  
   df <- tbl(con, user_data) %>%
     filter(!is.na(!!sym(cryovial_col))) %>%
     left_join(tbl(con, "cryovial_tube"), by = setNames("barcode", cryovial_col))
@@ -327,6 +325,7 @@ check_cryovial_barcodes_exist <- function(con, user_data, row_number_col, cryovi
 #' @keywords validation, cryovial
 #' @return An instance of the ErrorData class or NULL.
 validate_existing_barcodes_by_study <- function(con, user_data, row_number_col, barcode_col, study_short_code_col) {
+
   df <- tbl(con, user_data) %>%
     filter(!is.na(!!sym(barcode_col))) %>%
     inner_join(tbl(con, "container"), by = c(barcode_col = "barcode")) %>%
@@ -549,8 +548,8 @@ validate_empty_cryovial_well_upload <- function(con, table_name, row_number_col,
 
   # Directly define the join conditions using named vectors
   user_table_joins <- setNames(
-    c("container_barcode", "container_name", "position"), # some of these are from renames!!!
-    c(container_barcode_col, container_name_col, position_col)
+    c(container_barcode_col, container_name_col, position_col),
+    c("container_barcode", "container_name", "position") # some of these are from renames!!!
   )
 
   # Check empty wells for Cryovial
@@ -565,7 +564,7 @@ validate_empty_cryovial_well_upload <- function(con, table_name, row_number_col,
       ), by = c("manifest_id" = "id")
     ) %>%
     inner_join(tbl(con, table_name), by = user_table_joins) %>% 
-    select(all_of(c(row_number_col, position_col, container_name_col))) %>%
+    select(!!sym(row_number_col), setNames(names(user_table_joins), user_table_joins)) %>%
     collect()
 
   if (nrow(df) > 0) {
@@ -633,22 +632,25 @@ validate_cryovial_tube_exists <- function(con, table_name, row_number_col, posit
 #' @param database The database connection or specification to use for validation.
 #' @return An ErrorDataList object containing validation errors, if any.
 #' @keywords validation, micronix
-validate_micronix <- function(user_data, action, database) {
+validate_micronix <- function(user_data, action, file_type, database) {
   errors <- list()
 
-  result <- validate_micronix_barcode_length(user_data, "Barcode", "RowNumber")
+  variable_colnames <- list()
+  variable_colnames[['barcode_col']] <- find_column_name(user_data, c("Barcode", "Tube ID", "TubeCode"))
+
+  result <- validate_micronix_barcode_length(user_data, variable_colnames[['barcode_col']], "RowNumber")
   if (!is.null(result)) {
-    errors <- add_to_errors(errors, result$error_data)
+    errors <- add_to_errors(errors, result)
   }
 
   result <- validate_micronix_position(user_data, "Position", "RowNumber")
   if (!is.null(result)) {
-    errors <- add_to_errors(errors, result$error_data)
+    errors <- add_to_errors(errors, result)
   }
 
   errors <- c(
     errors,
-    perform_micronix_db_validations(database, user_data, action)
+    perform_micronix_db_validations(database, user_data, action, variable_colnames)
   )
 
   return(errors)
@@ -664,7 +666,7 @@ validate_micronix <- function(user_data, action, database) {
 #' @param action The action being performed, either "upload" or "move".
 #' @return A list containing validation errors, if any.
 #' @keywords validation, micronix
-perform_micronix_db_validations <- function(database, user_data, action) {
+perform_micronix_db_validations <- function(database, user_data, action, variable_colnames) {
   con <- init_and_copy_to_db(database, user_data)
   on.exit(dbDisconnect(con), add = TRUE)
   errors <- list()
@@ -678,9 +680,9 @@ perform_micronix_db_validations <- function(database, user_data, action) {
   }
 
   if (action == "upload") {
-    validate_micronix_uploads(micronix_test)
+    validate_micronix_uploads(micronix_test, variable_colnames)
   } else if (action == "move") {
-    validate_micronix_moves(micronix_test)
+    validate_micronix_moves(micronix_test, variable_colnames)
   }
 
   return(errors)
@@ -740,12 +742,12 @@ perform_cryovial_db_validations <- function(database, user_data, action) {
 #' @return A list containing validation errors, if any.
 #' @export
 #' @keywords validation
-validate_micronix_uploads <- function(micronix_test) {
+validate_micronix_uploads <- function(micronix_test, variable_colnames) {
 
-  micronix_test(check_micronix_barcodes_exist, "Barcode", error_if_exists = FALSE)
-  micronix_test(validate_study_reference, "StudyCode")
-  micronix_test(validate_specimen_type, "SpecimenType")
-  micronix_test(validate_location_reference, "Minus20Freezer", "ShelfName", "BasketName")
+  micronix_test(check_micronix_barcodes_exist, variable_colnames[['barcode_col']], error_if_exists = TRUE)
+  micronix_test(validate_study_reference_db, "StudyCode")
+  micronix_test(validate_specimen_type_db, "SpecimenType")
+  micronix_test(validate_location_reference_db, "Minus20Freezer", "ShelfName", "BasketName")
 
   micronix_test(check_longitudinal_study_dates, "StudyCode", "CollectionDate")
   micronix_test(validate_empty_micronix_well_upload,  "Position", "PlateName", "PlateBarcode")
@@ -759,8 +761,10 @@ validate_micronix_uploads <- function(micronix_test) {
 #' @return A list containing validation errors, if any.
 #' @export
 #' @keywords validation
-validate_micronix_moves <- function(micronix_test) {
-  micronix_test(check_micronix_barcodes_exist, "Barcode", error_if_exists = TRUE)
+validate_micronix_moves <- function(micronix_test, variable_colnames) {
+
+  # todo: pass this information in
+  micronix_test(check_micronix_barcodes_exist, variable_colnames[['barcode_col']], error_if_exists = FALSE)
   micronix_test(check_micronix_plate_exists, "PlateName", "PlateBarcode")
 }
 
@@ -777,9 +781,9 @@ validate_cryovial_uploads <- function(cryovial_test) {
   cryovial_test(validate_non_longitudinal_study_subjects, "StudyCode", "StudySubject")
   cryovial_test(validate_longitudinal_study, "StudyCode", "StudySubject", "CollectionDate")
   cryovial_test(validate_cryovial_collection_dates, "StudyCode", "StudySubject", "Barcode", "CollectionDate")
-  cryovial_test(validate_study_reference, "StudyCode")
-  cryovial_test(validate_specimen_type, "SpecimenType")
-  cryovial_test(validate_location_reference, "Minus80Freezer", "RackName", "RackPosition")
+  cryovial_test(validate_study_reference_db, "StudyCode")
+  cryovial_test(validate_specimen_type_db, "SpecimenType")
+  cryovial_test(validate_location_reference_db, "Minus80Freezer", "RackName", "RackPosition")
   cryovial_test(validate_empty_cryovial_well_upload, "Position", "BoxName", "BoxBarcode")
 }
 
@@ -792,7 +796,7 @@ validate_cryovial_uploads <- function(cryovial_test) {
 #' @return A list object containing validation errors, if any.
 #' @keywords validation
 validate_cryovial_moves <- function(cryovial_test) {
-  cryovial_test(check_cryovial_barcodes_exist, "barcode", error_if_exists = FALSE)
+  cryovial_test(check_cryovial_barcodes_exist, "Barcode", error_if_exists = FALSE)
   cryovial_test(check_cryovial_box_exists, "BoxName", "BoxBarcode")
 }
 
@@ -828,11 +832,11 @@ validate_cryovial_moves <- function(cryovial_test) {
 #'          \code{\link{validate_cryovial}}, \code{\link{validate_dates_with_tokens}},
 #'          \code{\link{handle_unknown_date_tokens}}
 #' @export
-validate_specimens <- function(user_data, sample_type, user_action, database = Sys.getenv("SDB_PATH")) {
+validate_specimens <- function(user_data, sample_type, user_action, file_type, database = Sys.getenv("SDB_PATH")) {
 
   errors <- list()
   if (sample_type == "micronix") {
-    errors <- validate_micronix(user_data, user_action, database)
+    errors <- validate_micronix(user_data, user_action, file_type, database)
   } else if (sample_type == "cryovial") {
     errors <- validate_cryovial(user_data, user_action, database)
   }

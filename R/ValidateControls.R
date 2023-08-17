@@ -17,15 +17,24 @@
 
 check_control_exists <- function(con, table_name, row_number_col, control_col, batch_col, error_if_exists = FALSE) {
   
+  control_joins <- setNames(
+    c("name"),
+    c(control_col)
+  )
+
+  batch_joins <- setNames(
+    c("short_code"),
+    c(batch_col)
+  )
+
   df <- tbl(con, table_name) %>%
     left_join(tbl(con, "study_subject") %>% 
-              dplyr::rename(control_id = id), by = control_col) %>%
-    group_by(all_of(c(batch_col, control_col)))
+              dplyr::rename(control_id = id), by = control_joins) %>%
+    left_join(tbl(con, "study") %>% dplyr::rename(study_id = id), by = batch_joins) 
   
   if (error_if_exists) {
     df <- df %>%
       filter(!is.na(control_id)) %>%
-      ungroup() %>%
       select(all_of(c(row_number_col, control_col, batch_col))) %>%
       collect()
     
@@ -36,7 +45,6 @@ check_control_exists <- function(con, table_name, row_number_col, control_col, b
   } else {
     df <- df %>%
       filter(is.na(control_id)) %>%
-      ungroup() %>%
       select(all_of(c(row_number_col, control_col, batch_col))) %>%
       collect()
     
@@ -49,27 +57,42 @@ check_control_exists <- function(con, table_name, row_number_col, control_col, b
 }
 
 
-
-check_composition_id_exists <- function(con, table_name, row_number_col, composition_id_col, error_if_exists = FALSE) {
+check_composition_id_exists <- function(con, table_name, row_number_col, label_col, index_col, legacy_col, error_if_exists = FALSE) { 
   
-  # Find rows where the composition_id doesn't exist in the composition table
+  composition_joins = setNames(
+    c("label", "index", "legacy"),
+    c(label_col, index_col, legacy_col)
+  )
+
+  # Find rows where the label doesn't exist in the composition table
   df <- tbl(con, table_name) %>%
-    anti_join(tbl(con, "composition"), by = setNames("label", composition_id_col)) %>%
-    select(all_of(c(row_number_col, composition_id_col))) %>%
-    collect()
+    left_join(tbl(con, "composition"), by = composition_joins)
   
   # If any rows are found and error_if_exists is TRUE, throw an error
-  if (error_if_exists && nrow(df) > 0) {
-    stop("Composition IDs are not found in the database.")
+  if (error_if_exists) {
+    df <- df %>% 
+      filter(!is.na(id)) %>%
+      select(row_number_col, "CompositionID") %>%
+      collect()
+
+    description <- "Composition IDs already exist in the database."
+  } else {
+    df <- df %>% 
+      filter(is.na(id)) %>%
+      select(row_number_col, "CompositionID") %>%
+      collect()
+
+    description <- "Composition IDs are not found in the database."
   }
 
   # If any rows are found, return an ErrorData object
   if (nrow(df) > 0) {
-    return(ErrorData$new(description = "Composition IDs are not found in the database.", data_frame = df))
+    return(ErrorData$new(description = description, data_frame = df))
   }
   
   return(NULL)
 }
+
 
 #' Validate DBS Sheet Control Data
 #'
@@ -127,9 +150,9 @@ perform_dbs_sheet_db_validations <- function(database, user_data, action) {
 #' @keywords validation
 validate_dbs_sheet_create <- function(dbs_sheet_test) {
   # References check
-  dbs_sheet_test(check_composition_id_exists, "CompositionID", error_if_exists = FALSE)
-  dbs_sheet_test(validate_study_reference, "Batch")
-  dbs_sheet_test(validate_location_reference, "Minus20Freezer", "ShelfName", "BasketName")
+  dbs_sheet_test(check_composition_id_exists, "Label", "Index", "LegacyLabel", error_if_exists = FALSE)
+  dbs_sheet_test(validate_study_reference_db, "Batch", controls = TRUE)
+  dbs_sheet_test(validate_location_reference_db, "DBS_Minus20", "DBS_ShelfName", "DBS_BasketName")
 }
 
 #' Validate DBS Sheet Extraction
@@ -142,17 +165,17 @@ validate_dbs_sheet_create <- function(dbs_sheet_test) {
 #' @keywords validation
 validate_dbs_sheet_extraction <- function(dbs_sheet_test) {
   dbs_sheet_test(check_micronix_barcodes_exist, "Barcode", error_if_exists = TRUE)
-  dbs_sheet_test(validate_empty_micronix_well_upload, "destination_position", "PlateName", "PlateBarcode")
+  dbs_sheet_test(validate_empty_micronix_well_upload, "ExtractedDNAPosition", "PlateName", "PlateBarcode")
 
   # References check
   dbs_sheet_test(check_control_exists, "ControlID", "Batch", error_if_exists = FALSE)
-  dbs_sheet_test(validate_study_reference, "Batch")
+  dbs_sheet_test(validate_study_reference_db, "Batch")
 
   # Validate source location
-  dbs_sheet_test(validate_location_reference, "Minus20Freezer", "RackName", "RackPosition")
+  dbs_sheet_test(validate_location_reference_db, "DBS_Minus20", "DBS_ShelfName", "DBS_BasketName")
 
   # Validate destination location
-  dbs_sheet_test(validate_location_reference, "Minus20Freezer", "ShelfName", "BasketName")
+  dbs_sheet_test(validate_location_reference_db, "Minus20Freezer", "ShelfName", "BasketName")
 }
 
 #' Validate Whole Blood Control Data
@@ -211,14 +234,13 @@ perform_whole_blood_db_validations <- function(database, user_data, action) {
 #' @keywords validation
 validate_whole_blood_create <- function(whole_blood_test) {
 
-  # Whole blood is stored in cryovials so reuse cryovial tests
-  whole_blood_test(check_cryovial_barcodes_exist, "Barcode", error_if_exists = TRUE)
-  whole_blood_test(validate_empty_cryovial_well_upload, "destination_position", "BoxName", "BoxBarcode")
-
   # References check
-  whole_blood_test(check_composition_id_exists, "CompositionID")
-  whole_blood_test(validate_study_reference, "Batch")
-  whole_blood_test(validate_location_reference, "Minus80Freezer", "RackName", "RackPosition")
+  whole_blood_test(check_composition_id_exists, "Label", "Index", "LegacyLabel")
+  whole_blood_test(validate_study_reference_db, "Batch", controls = TRUE)
+  whole_blood_test(validate_location_reference_db, "WB_Minus80", "WB_RackName", "WB_RackPosition")
+
+  # Whole blood is stored in cryovials so reuse cryovial tests
+  whole_blood_test(validate_empty_cryovial_well_upload, "ControlOriginPosition", "BoxName", "BoxBarcode")
 }
 
 #' Validate Whole Blood Extraction
@@ -233,18 +255,18 @@ validate_whole_blood_extraction <- function(whole_blood_test) {
 
   # Add your validation function calls here
   whole_blood_test(check_micronix_barcodes_exist, "Barcode", error_if_exists = TRUE)
-  whole_blood_test(validate_empty_micronix_well_upload, "destination_position", "PlateName", "PlateBarcode")
-  whole_blood_test(validate_cryovial_tube_exists, "source_position", "BoxName", "BoxBarcode")
+  whole_blood_test(validate_empty_micronix_well_upload, "ExtractedDNAPosition", "PlateName", "PlateBarcode")
+  whole_blood_test(validate_cryovial_tube_exists, "ControlOriginPosition", "BoxName", "BoxBarcode")
 
   # References check
-  whole_blood_test(validate_study_reference, "Batch")
+  whole_blood_test(validate_study_reference_db, "Batch", controls = TRUE)
   whole_blood_test(check_control_exists, "ControlID", "Batch", error_if_exists = TRUE)
 
   # Validate source location
-  whole_blood_test(validate_location_reference, "Minus80Freezer", "RackName", "RackPosition")
+  whole_blood_test(validate_location_reference_db, "WB_Minus80", "WB_RackName", "WB_RackPosition")
 
   # Validate destination location
-  whole_blood_test(validate_location_reference, "Minus20Freezer", "ShelfName", "BasketName")
+  whole_blood_test(validate_location_reference_db, "Minus20Freezer", "ShelfName", "BasketName")
 
 }
 
@@ -255,7 +277,7 @@ validate_whole_blood_extraction <- function(whole_blood_test) {
 #' @param control_type The type of control specimen ('dbs_sheet' or 'whole_blood').
 #' @param user_action The user action taken on the control specimen ('extraction' or 'create').
 #' 
-#' @return Returns the validated user data if no errors are found; stops with validation errors otherwise.
+#' @return Nothing
 validate_controls <- function(database, user_data, control_type, user_action) {
 
   errors <- list()
@@ -275,8 +297,8 @@ validate_controls <- function(database, user_data, control_type, user_action) {
   }
 
   if (length(errors) > 0) {
-    stop_validation_error("Validation error", errors)
+    # Initialize the ValidationErrorCollection with the accumulated errors and the user_data
+    error_collection <- ValidationErrorCollection$new(errors, user_data)
+    stop_validation_error("Validation error", error_collection)
   }
-
-  return(user_data)
 }

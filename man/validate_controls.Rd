@@ -16,7 +16,7 @@ validate_controls(database, user_data, control_type, user_action)
 \item{formatted_csv}{The CSV data formatted for validation.}
 }
 \value{
-Returns the validated user data if no errors are found; stops with validation errors otherwise.
+Nothing
 }
 \description{
 Validate Control Specimens

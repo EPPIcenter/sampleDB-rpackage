@@ -22,7 +22,7 @@ It can be used to add new ErrorData objects, and to export the collection of err
 \itemize{
 \item \href{#method-ValidationErrorCollection-new}{\code{ValidationErrorCollection$new()}}
 \item \href{#method-ValidationErrorCollection-add_error}{\code{ValidationErrorCollection$add_error()}}
-\item \href{#method-ValidationErrorCollection-merge_data_list}{\code{ValidationErrorCollection$merge_data_list()}}
+\item \href{#method-ValidationErrorCollection-get_error_details_by_index}{\code{ValidationErrorCollection$get_error_details_by_index()}}
 \item \href{#method-ValidationErrorCollection-to_csv}{\code{ValidationErrorCollection$to_csv()}}
 \item \href{#method-ValidationErrorCollection-length}{\code{ValidationErrorCollection$length()}}
 \item \href{#method-ValidationErrorCollection-clone}{\code{ValidationErrorCollection$clone()}}
@@ -65,18 +65,18 @@ This method adds an ErrorData object.
 }
 }
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-ValidationErrorCollection-merge_data_list"></a>}}
-\if{latex}{\out{\hypertarget{method-ValidationErrorCollection-merge_data_list}{}}}
-\subsection{Method \code{merge_data_list()}}{
-This method is used to merge the error data from another ErrorDataList into this one.
+\if{html}{\out{<a id="method-ValidationErrorCollection-get_error_details_by_index"></a>}}
+\if{latex}{\out{\hypertarget{method-ValidationErrorCollection-get_error_details_by_index}{}}}
+\subsection{Method \code{get_error_details_by_index()}}{
+Gets an error by index.
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{ValidationErrorCollection$merge_data_list(other)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{ValidationErrorCollection$get_error_details_by_index(index)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{other}}{The other ErrorDataList object.}
+\item{\code{index}}{The index to specify which error.}
 }
 \if{html}{\out{</div>}}
 }

@@ -24,7 +24,7 @@ get_file_column_attr(
 \item{config_yml}{The path to the config.yml file}
 }
 \value{
-A FileColumnAttributes object with required, conditional, and optional fields for the user action
+A ColumnData object with required, conditional, and optional fields for the user action
 }
 \description{
 This function gets all the required, conditional, and optional fields

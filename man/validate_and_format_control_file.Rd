@@ -4,21 +4,14 @@
 \alias{validate_and_format_control_file}
 \title{Check if the user CSV file for control meets the requirements}
 \usage{
-validate_and_format_control_file(
-  user_file,
-  file_column_attr,
-  container_name = NULL,
-  freezer_address = NULL
-)
+validate_and_format_control_file(user_file, file_column_attr, bind_data = NULL)
 }
 \arguments{
 \item{user_file}{The user's CSV file as a data frame.}
 
 \item{file_column_attr}{A list containing attributes of file columns such as required, conditional, and optional columns.}
 
-\item{container_name}{The name of the container (optional).}
-
-\item{freezer_address}{The address of the freezer (optional).}
+\item{bind_data}{Data that should be added to the data frame.}
 }
 \value{
 A cleaned and checked user_file ready for further processing.

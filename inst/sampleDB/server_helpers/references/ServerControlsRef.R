@@ -1,241 +1,83 @@
 ControlReference <- function(session, input, output, database) {
 	rv <- reactiveValues(
 		error = NULL,
-		user_file = NULL,
-		user_file_error_annotated = NULL,
-		table = NULL,
-    filters = NULL,
-    dbmap = c(
-      batch_creation_date = "Created", 
-      strain = "Strain", 
-      percentage = "Percentage", 
-      density = "Density", 
-      total = "Total",
-      exhausted = "Exhausted", 
-      bag_name = "BagName",
-      batch = "Batch", 
-      location_root = "Freezer", 
-      level_I = "level_I",
-      level_II = "level_II"
-    ),
-    update.table = c(
-      "strain",
-      "percentage",
-      "density",
-      "bag_name"
-    ),
-    user_selected_rows = NULL,
-    last_selected_row = NULL,
-    rt = NULL,
-    dbs_collection = NULL
-	)
-
-  error <- reactiveValues(
-    title = "",
-    type = "",
-    message = "",
-    list = NULL
+		user_file = NULL
   )
-
-  observeEvent(rv$error, ignoreInit = TRUE, {
-    message("Running error workflow")
-    df <- error$list
-    modal_size <- "m"
-    if (!is.null(error$type) && error$type == "formatting") {
-      df <- error$list %>%
-        dplyr::rename(
-          Column = column, 
-          Reason = reason,
-          `Triggered By` = trigger
-        ) %>%
-        reactable(.)
-
-      showModal(
-        modalDialog(
-          size = "m",
-          title = error$title,
-          error$message,
-          tags$hr(),
-          renderReactable({ df }),
-          footer = modalButton("Exit")
-        )
-      )
-    } else if (!is.null(error$type) && error$type == "validation") {
-      errors <- unique(names(error$list))
-      errors <- data.frame(errors)
-      colnames(errors) <- "Error"
-      df <- reactable(errors, details = function(index) {
-        data <- error$list[[index]]$Columns
-        htmltools::div(style = "padding: 1rem",
-          reactable(
-            data, 
-            outlined = TRUE, 
-            striped = TRUE,
-            # rownames = TRUE,
-            theme = reactableTheme(
-            headerStyle = list(
-              "&:hover[aria-sort]" = list(background = "hsl(0, 0%, 96%)"),
-              "&[aria-sort='ascending'], &[aria-sort='descending']" = list(background = "hsl(0, 0%, 96%)"),
-              borderColor = "#555"
-            )),
-            defaultColDef = colDef(na = "-", align = "center")
-          )
-        )
-      })
-
-      showModal(
-        modalDialog(
-          size = "l",
-          title = error$title,
-          tags$p("One or more rows had invalid or missing data. See the errors below and expand them to see which rows caused this error."),
-          tags$p("Press the button below to download your file with annotations"),
-          downloadButton("ErrorFileDownload"),
-          tags$hr(),
-          renderReactable({ df }),
-          footer = modalButton("Exit")
-        )
-      )
-  	}
-
-    rv$error <- NULL
-    error$title <- ""
-    error$message <- ""
-    error$type <- ""
-    error$list <- NULL
-	})
 
   observeEvent(input$InputCreateStrain, ignoreInit = TRUE, {
 
-  	con <- NULL
- 		tryCatch({
+    tryCatch({
 
- 			con <- dbConnect(RSQLite::SQLite(), Sys.getenv("SDB_PATH"))
+      if (!is.null(input$InputControlNewStrain) && input$InputControlNewStrain != "") {
 
-      res=0
- 			if (!is.null(input$InputControlNewStrain) && input$InputControlNewStrain != "") {
- 				df.payload = data.frame(name = input$InputControlNewStrain)
- 				res <- dbAppendTable(con, "strain", df.payload)
- 			} 
+        con <- dbConnect(RSQLite::SQLite(), Sys.getenv("SDB_PATH"))  # Adjust database connection path as required
 
- 			msg<-sprintf("%d strain added...", res)
-	    showNotification(msg, id = "ControlCreateStrain", type = "message", action = NULL, duration = 3, closeButton = FALSE)
+        df.payload <- data.frame(name = input$InputControlNewStrain)
+        res <- dbAppendTable(con, "strain", df.payload)
 
- 			updateSelectizeInput(
- 				session,
- 				"InputControlStrain",
- 				selected = FALSE,
- 				choices = tbl(con, "strain") %>% pull(id, name="name"),
-        server = TRUE
- 			)
-    },
-    error = function(e) {
-      message(e)
-      error$title = "Unknown Error"
-      error$type = "unknown"
-      error$message = e$message
-      error$list = NULL
-      rv$error <- TRUE
-    },
-    finally = {
-      dbDisconnect(con)
+        dbDisconnect(con)  # Closing the connection
+
+        msg <- sprintf("%d strain added...", res)
+        showNotification(msg, id = "ControlCreateStrain", type = "message", action = NULL, duration = 3, closeButton = FALSE)
+      }
+
+    }, error = function(e) {
+      show_general_error_modal(e)
     })
   })
 
-  observe({
-    rv$filters <- list(
-      batch = input$InputControlSearchBatch,
-      strain = input$InputControlSearchStrain,
-      density = input$InputControlSearchDensity,
-      percentage = input$InputControlSearchPercentage,
-      control_storage_type = input$InputControlPanelType,
-      extraction = input$InputControlExtractionType,
-      dates = list(
-        date.from = input$InputControlSearchDateRange[1],
-        date.to = input$InputControlSearchDateRange[2]
-      ), 
-      location = list(
-        location_root = input$InputControlSearchByLocation,
-        level_I = input$InputControlSearchByLevelI,
-        level_II = input$InputControlSearchByLevelII
-      )
+
+  observeEvent(input$InputBatchIDUploadAction, {
+
+    # Retrieve the inputs
+    title <- input$InputCreateBatchID
+    batch_date <- input$InputCreateBatchID
+    batch_desc <- input$InputCreateBatchDescription
+    lead_person <- input$InputCreateBatchLeadPerson
+    
+    # Prepare the inputs in a data frame
+    user_data <- data.frame(
+      RowNumber = 1,
+      Title = title,
+      Batch = batch_date,
+      Description = batch_desc,
+      LeadPerson = lead_person,
+      stringsAsFactors = FALSE
     )
+    
+    # We assume you've set up a database connection or reference named "database"
+    tryCatch({
+      validate_references(database, user_data, "batch", "create")
 
-    observe({
-      output$DownloadControlData <- downloadHandler(
-        filename = function() {
-          paste('data-', Sys.Date(), '.csv', sep='')
-        },
-        content = function(con) {
-          write.csv(rv$table, con, row.names = FALSE, quote = FALSE)
-        }
-      )
-    })
+      user_data$RowNumber <- NULL
+      now <- lubridate::now()
 
+      user_data$created <- now
+      user_data$last_updated <- now
+      user_data$is_longitudinal <- 0
 
-    output$OutputDBSCollectionMainTable <- renderReactable({
-      rt = NULL
-      if (!is.null(rv$dbs_collection)) {
-        data <- unique(rv$dbs_collection[, c("ControlID", "Batch", "Created", "Composition", "Density")])
-        cols.dont.want <- c("ControlID")
-        rt = reactable(data[, !names(data) %in% cols.dont.want], details = function(index) {
-          location_data <- rv$dbs_collection[rv$dbs_collection$ControlID == data$ControlID[index], c("Label", "FreezerName", "ShelfName", "BasketName")]
-          htmltools::div(style = "padding: 1rem",
-            reactable(
-              location_data,
-              outlined = TRUE, 
-              striped = TRUE,
-              theme = reactableTheme(
-                headerStyle = list(
-                  "&:hover[aria-sort]" = list(background = "hsl(0, 0%, 96%)"),
-                  "&[aria-sort='ascending'], &[aria-sort='descending']" = list(background = "hsl(0, 0%, 96%)"),
-                  borderColor = "#555"
-                )
-              ),
-              defaultColDef = colDef(na = "-", align = "center")
-            )
-          )
-        },
-        selection = "single", onClick = "select")
-      }
+      colnames(user_data) <- c("title", "short_code", "description", "lead_person", "created", "last_updated", "is_longitudinal")
 
-      return (rt)
-    })
+      user_data$short_code <- as.character(user_data$short_code)
+      user_data$title <- as.character(user_data$title)
 
+      con <- sampleDB::init_db_conn(database)
+      on.exit(dbDisconnect(con), add = TRUE)
+      dbAppendTable(con, "study", user_data)
 
-    dbs_collection_selected <- reactive(getReactableState("OutputDBSCollectionMainTable", "selected"))
+      showNotification("Batch data validated and uploaded successfully!", type = "success", duration = 3)
 
-    output$OutputDBSCollectionCompositionTable <- renderReactable({ 
-      data = rv$dbs_collection[dbs_collection_selected(), c("Strain", "Percentage")]
-      rt = NULL
-
-      if (nrow(data) > 0) {
-        data = data.frame (
-          Strain = unlist(data$Strain),
-          Percentage = unlist(data$Percentage)
-        )
-      }
-
-      rt = reactable(
-        data,
-        outlined = TRUE, 
-        striped = TRUE,
-        theme = reactableTheme(
-          headerStyle = list(
-            "&:hover[aria-sort]" = list(background = "hsl(0, 0%, 96%)"),
-            "&[aria-sort='ascending'], &[aria-sort='descending']" = list(background = "hsl(0, 0%, 96%)"),
-            borderColor = "#555"
-          )
-        ),
-        defaultColDef = colDef(na = "-", align = "center")
-      )
+    },
+    validation_error = function(e) {
+      show_validation_error_modal(e)
+    },
+    error = function(e) {
+      show_general_error_modal(e)
     })
   })
 
 
   ###### Delarch specific functionality
-
-  selected <- reactive(getReactableState("ControlTableOutput", "selected"))
-  selected.updating.counts <- reactive(getReactableState("InputControlsSelectedRows", "selected"))
 
   observeEvent(input$InputControlArchiveAction, ignoreInit = TRUE, {
 
@@ -294,321 +136,183 @@ ControlReference <- function(session, input, output, database) {
     DBI::dbDisconnect(con)
   })
 
-  observeEvent(selected.updating.counts(), ignoreInit = TRUE, ignoreNULL = TRUE, {
-    if (!is.null(rv$user_selected_rows)) { 
-
-      ## if the row has changed 
-      if (is.null(rv$last_selected_row) || (!is.null(rv$last_selected_row) && rv$last_selected_row != selected.updating.counts())) {
-        updateNumericInput(
-          session,
-          "ControlInputNumControls",
-          value = 0
-        )
-
-        rv$last_selected_row = selected.updating.counts()
-      }
-    }
-  })
-
 
   observeEvent(input$InputUploadStrainAction, ignoreInit = TRUE, {
-
+    
+    # Check dataset
     dataset <- input$InputUploadStrains
     if (is.null(dataset) || is.null(dataset$datapath)) {
       message("Aborting upload - no file uploaded")
       return()
     }
 
-    b_use_wait_dialog <- FALSE
-    early_stop <- FALSE
-    if (is.null(rv$user_file)) {
-
-      tryCatch({
-
-        ## format the file
-        rv$user_file <- ProcessCSV(
-          user_csv = dataset$datapath,
-          user_action = "upload",
-          file_type = "na",
-          reference = "strain"
-        )
-      },
-      formatting_error = function(e) {
-        message("Caught formatting error")
-        print(e$df)
-
-        error$type <- "formatting"
-
-        ## Read File Specification File
-        error$title = "Invalid File Detected"
-        error$message = e$message
-        error$list = e$df
-
-        rv$error <- TRUE
-        early_stop <<- TRUE
-      },
-      validation_error = function(e) {
-
-        message("Caught validation error")
-        
-        rv$error <- TRUE
-        error$type <- "validation"
-        error$title <- e$message
-        error$list <- e$data
-        early_stop <<- TRUE
-
-        # TODO: breakup process csv into three stages(but keep calls in global process csv).
-        # Just download the error data frame for now.
-        errors <- names(e$data)
-        df <- lapply(1:length(errors), function(idx) {
-          e$data[[idx]]$CSV %>%
-            mutate(Error = errors[idx]) %>%
-            mutate(ErrCol = paste(e$data[[idx]]$Columns, collapse = ",")) %>%
-            select(Error, colnames(e$data[[idx]]$CSV)) 
-        })
-
-        rv$user_file_error_annotated <- do.call("rbind", df) 
-      },
-      error = function(e) {
-        print(e)
-
-        early_stop <<- TRUE
-
-        error$title = "Unknown Error"
-        error$type = "unknown"
-        error$message = e$message
-        error$list = NULL
-        rv$error = TRUE
-      })
-    }
-
-    if (early_stop) return()
-
-    message("Starting Upload...")
-
-    tryCatch({
-
-      # simple way to add a dialog or not
-      b_use_wait_dialog <- nrow(rv$user_file) > 5
-
-      if (b_use_wait_dialog) {
+    # Function to show spinner if needed
+    show_spinner_if_needed <- function(data) {
+      if (nrow(data) > 5) {
         show_modal_spinner(
           spin = "double-bounce",
           color = "#00bfff",
-          text = paste("Uploading", nrow(rv$user_file), "strains, please be patient...")
+          text = paste("Uploading", nrow(data), "strains, please be patient...")
         )
+        return(TRUE)
       }
+      return(FALSE)
+    }
+    
+    # Format file if user_file is null
+    if (is.null(rv$user_file)) {
+      success <- tryCatch({
+        rv$user_file <- process_reference_csv(
+          user_csv = dataset$datapath,
+          user_action = "upload",
+          reference = "strains"
+        )
+        TRUE
+      },
+      formatting_error = function(e) {
+        show_formatting_error_modal(e)
+        FALSE
+      },
+      validation_error = function(e) {
+        show_validation_error_modal(e)
+        FALSE
+      },
+      error = function(e) {
+        show_general_error_modal(e)
+        FALSE
+      })
 
+      if (!success) return()
+    }
+
+    message("Starting Upload...")
+    
+    b_use_wait_dialog <- show_spinner_if_needed(rv$user_file)
+
+    tryCatch({
       shinyjs::reset("InputUploadStrains")
-
-      ## Upload strains
-
-      con <- dbConnect(RSQLite::SQLite(), Sys.getenv("SDB_PATH"))
-      dbBegin(con)
-      res <- dbAppendTable(con, "strain", rv$user_file %>% select(strain) %>% dplyr::rename(name = strain))
-      dbCommit(con)
-
-      updateSelectizeInput(
-        session,
-        "InputControlNewStrain",
-        selected = input$InputControlNewStrain,
-        choices = tbl(con, "strain") %>% pull(id, name="name"),
-        server = TRUE
-      )
+      res <- append_strains_to_db(rv$user_file)
     },
     error = function(e) {
-      message(e)
-      error$title = "Unknown Error"
-      error$type = "unknown"
-      error$message = e$message
-      error$list = NULL
-      rv$error <- TRUE
+      show_general_error_modal(e)
     },
     finally = {
-      if (b_use_wait_dialog)
+      if (b_use_wait_dialog) {
         remove_modal_spinner()
-
-      rv$user_file <- NULL
-      if (!is.null(con)) {
-        dbDisconnect(con)
       }
+      rv$user_file <- NULL
     })
   })
 
-
-  ## # CONTROL IDs
-  observeEvent(input$InputCompositionUploadAction, ignoreInit = TRUE, {
-    browser()
-    dataset <- input$InputUploadCompositions
+  observeEvent(input$InputCompositionIDUploadAction, ignoreInit = TRUE, {
+    
+    # Check dataset
+    dataset <- input$InputUploadCompositionIDs
     if (is.null(dataset) || is.null(dataset$datapath)) {
       message("Aborting upload - no file uploaded")
       return()
     }
 
-    b_use_wait_dialog <- FALSE
-    early_stop <- FALSE
-    if (is.null(rv$user_file)) {
-
-      tryCatch({
-
-        ## format the file
-        rv$user_file <- ProcessCSV(
-          user_csv = dataset$datapath,
-          user_action = "upload",
-          file_type = "na",
-          reference = "composition"
-        )
-      },
-      formatting_error = function(e) {
-        message("Caught formatting error")
-        print(e$df)
-
-        error$type <- "formatting"
-
-        ## Read File Specification File
-        error$title = "Invalid File Detected"
-        error$message = e$message
-        error$list = e$df
-
-        rv$error <- TRUE
-        early_stop <<- TRUE
-      },
-      validation_error = function(e) {
-
-        message("Caught validation error")
-        
-        rv$error <- TRUE
-        error$type <- "validation"
-        error$title <- e$message
-        error$list <- e$data
-        early_stop <<- TRUE
-
-        # TODO: breakup process csv into three stages(but keep calls in global process csv).
-        # Just download the error data frame for now.
-        errors <- names(e$data)
-        df <- lapply(1:length(errors), function(idx) {
-          e$data[[idx]]$CSV %>%
-            mutate(Error = errors[idx]) %>%
-            mutate(ErrCol = paste(e$data[[idx]]$Columns, collapse = ",")) %>%
-            select(Error, colnames(e$data[[idx]]$CSV)) 
-        })
-
-        rv$user_file_error_annotated <- do.call("rbind", df) 
-      },
-      error = function(e) {
-        print(e)
-
-        early_stop <<- TRUE
-
-        error$title = "Unknown Error"
-        error$type = "unknown"
-        error$message = e$message
-        error$list = NULL
-        rv$error = TRUE
-      })
-    }
-
-    browser()
-
-    if (early_stop) return()
-
-    message("Starting Upload...")
-
-    tryCatch({
-
-      # simple way to add a dialog or not
-      b_use_wait_dialog <- nrow(rv$user_file) > 5
-
-      if (b_use_wait_dialog) {
+    # Function to show spinner if needed
+    show_spinner_if_needed <- function(data) {
+      if (nrow(data) > 5) {
         show_modal_spinner(
           spin = "double-bounce",
           color = "#00bfff",
-          text = paste("Uploading", nrow(rv$user_file), "strains, please be patient...")
+          text = paste("Uploading", nrow(data), "compositions, please be patient...")
         )
+        return(TRUE)
       }
+      return(FALSE)
+    }
 
+    # Format file if user_file is null
+    if (is.null(rv$user_file)) {
+      success <- tryCatch({
+        rv$user_file <- process_reference_csv(
+          user_csv = dataset$datapath,
+          user_action = "upload",
+          reference = "compositions"
+        )
+        TRUE
+      },
+      formatting_error = function(e) {
+        show_formatting_error_modal(e)
+        FALSE
+      },
+      validation_error = function(e) {
+        show_validation_error_modal(e)
+        FALSE
+      },
+      error = function(e) {
+        show_general_error_modal(e)
+        FALSE
+      })
+
+      if (!success) return()
+    }
+
+    message("Starting Upload...")
+
+    b_use_wait_dialog <- show_spinner_if_needed(rv$user_file)
+    
+    tryCatch({
       shinyjs::reset("InputCompositionUploadAction")
-      UploadCompositions(rv$user_file)
+      upload_compositions(rv$user_file)
     },
     error = function(e) {
-      message(e)
-      error$title = "Unknown Error"
-      error$type = "unknown"
-      error$message = e$message
-      error$list = NULL
-      rv$error <- TRUE
+      show_general_error_modal(e)
     },
     finally = {
-      if (b_use_wait_dialog)
+      if (b_use_wait_dialog) {
         remove_modal_spinner()
-
+      }
       rv$user_file <- NULL
     })
+
   })
 
 
   observeEvent(input$InputControlStudyAction, ignoreInit=TRUE, {
-    con <- dbConnect(RSQLite::SQLite(), Sys.getenv("SDB_PATH"))
 
-    dbBegin(con)
-    now=as.character(lubridate::now())
+    database_path <- Sys.getenv("SDB_PATH")
 
-    df.payload=data.frame(
-      created=now,
-      last_updated=now,
-      title=input$InputControlNewStudy,
-      short_code=input$InputControlNewStudy,
-      description=input$InputControlStudyDesc,
-      lead_person=input$InputControlBatchPerson,
-      is_longitudinal=0
+    # Create the study in the database
+    res <- append_study_to_db(
+      title = input$InputControlNewStudy,
+      short_code = input$InputControlNewStudy,
+      description = input$InputControlStudyDesc,
+      lead_person = input$InputControlBatchPerson,
+      is_longitudinal = 0, 
+      database = database_path
     )
 
-    dbAppendTable(con, "study", df.payload)
-
-    study_id=dbReadTable(con, "study") %>%
-      filter(short_code==input$InputControlNewStudy) %>%
-      pull(id)
-
-    df.payload=data.frame(
-      url=input$InputControlUrl,
-      study_id=study_id
-    )
-
-    dbAppendTable(con, "control_collection", df.payload)
-
-    dbCommit(con)
-    dbDisconnect(con)
   })
 
   observeEvent(input$InputControlNewStrain, {
 
-  	con <- dbConnect(RSQLite::SQLite(), Sys.getenv("SDB_PATH"))
-  	if (!is.null(input$InputControlNewStrain) && input$InputControlNewStrain != "") {
-  		df = tbl(con, "strain") %>% 
-  			filter(name %in% local(input$InputControlNewStrain)) %>%
-        collect()
+    # Check if input value is provided
+    if (is.null(input$InputControlNewStrain) || input$InputControlNewStrain == "") {
+      shinyjs::disable("InputCreateStrain")
+      return()
+    }
 
-  		if (nrow(df) == 0) {
-  			shinyjs::enable("InputCreateStrain")
-  		} else {
-  			shinyjs::disable("InputCreateStrain")
-  		}
-  	} else {
-  		shinyjs::disable("InputCreateStrain")
-  	}
+    con <- dbConnect(RSQLite::SQLite(), Sys.getenv("SDB_PATH"))
+    
+    # Check for existing strain
+    existing_strain <- tbl(con, "strain") %>% 
+      filter(name %in% local(input$InputControlNewStrain)) %>%
+      collect()
+
+    # Enable or Disable based on existence
+    if (nrow(existing_strain) == 0) {
+      shinyjs::enable("InputCreateStrain")
+    } else {
+      shinyjs::disable("InputCreateStrain")
+    }
 
     dbDisconnect(con)
   })
 
-  observe({
-    filters <- purrr::discard(rv$filters[!names(rv$filters) %in% c("location", "collection_date")], function(x) is.null(x) | "" %in% x | length(x) == 0)
-    filters$location <- purrr::discard(rv$filters$location, function(x) is.null(x) | "" %in% x | length(x) == 0)
-    filters$location <- if (length(filters$location) > 0) filters$location
-
-    filters$dates <- purrr::discard(rv$filters$dates, function(x) is.null(x) | "" %in% x | length(x) == 0)
-    filters$dates <- if (length(filters$dates) > 0) filters$dates
-
-    rv$dbs_collection <- SearchControls(filters = filters, control_type = input$InputControlPanelType)
-  })
 }
 

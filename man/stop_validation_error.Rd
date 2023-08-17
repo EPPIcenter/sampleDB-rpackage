@@ -4,7 +4,7 @@
 \alias{stop_validation_error}
 \title{Stop with a validation error}
 \usage{
-stop_validation_error(message, data)
+stop_validation_error(message, data, call = rlang::caller_env())
 }
 \arguments{
 \item{message}{The error message. This should be a character string.}

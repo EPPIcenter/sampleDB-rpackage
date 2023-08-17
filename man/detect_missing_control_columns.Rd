@@ -4,7 +4,11 @@
 \alias{detect_missing_control_columns}
 \title{Detect Missing Columns in Control CSV File}
 \usage{
-detect_missing_control_columns(control_file, control_column_attributes)
+detect_missing_control_columns(
+  control_file,
+  control_column_attributes,
+  database = Sys.getenv("SDB_PATH")
+)
 }
 \arguments{
 \item{control_file}{A data frame representing the user's control CSV file.}

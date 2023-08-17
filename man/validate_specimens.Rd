@@ -8,6 +8,7 @@ validate_specimens(
   user_data,
   sample_type,
   user_action,
+  file_type,
   database = Sys.getenv("SDB_PATH")
 )
 }

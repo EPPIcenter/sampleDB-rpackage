@@ -1,44 +1,26 @@
 {
-  "locations": {
-    "minus20": {
-      "location_root": "Minus20Freezer", 
-      "level_I": "ShelfName", 
-      "level_II": "BasketName"
+  "references": {
+    "strains": {
+      "id": 1,
+      "name": "Strains",
+      "required_keys": ["strains"]
     },
-    "minus80": {
-      "location_root": "Minus80Freezer",
-      "level_I": "RackName",
-      "level_II": "RackPosition"
+    "compositions": {
+      "id": 2,
+      "name": "Compositions",
+      "required_keys": ["strains", "percentage"],
+      "optional_keys": ["label"]
     }
   },
-  "strains": {
-    "required": {
+  "reference_key_associations": {
+    "shared": {},
+    "strains": {
       "strains": "Strains"
-    }
-  },
-  "compositions": {
-    "required": {
-      "strains": "Strains", 
-      "percentage": "Percentage"
     },
-    "optional": {
+    "compositions": {
+      "strains": "Strains",
+      "percentage": "Percentages",
       "label": "LegacyLabel"
-    }
-  },
-  "containers": {
-    "micronix_plate": {
-      "position": ["Row", "Column"],
-      "container_name": "PlateName",
-      "container_barcode": "PlateBarcode"
-    },
-    "cryovial_box": {
-      "position": ["BoxRow", "BoxColumn"],
-      "container_name": "BoxName",
-      "container_barcode": "BoxBarcode"
-    },
-    "dbs_sheet": {
-      "container_name": "SheetName",
-      "container_barcode": "SheetBarcode"
     }
   }
 }

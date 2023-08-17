@@ -4,7 +4,7 @@
 \alias{stop_formatting_error}
 \title{Stop with a formatting error}
 \usage{
-stop_formatting_error(message, data)
+stop_formatting_error(message, data, call = rlang::caller_env())
 }
 \arguments{
 \item{message}{The error message. This should be a character string.}

@@ -2,19 +2,20 @@
 % Please edit documentation in R/AppData.R
 \name{get_control_file_columns}
 \alias{get_control_file_columns}
-\title{Get user action fields for controls}
+\title{Retrieve ColumnData for a given control type and action}
 \usage{
-get_control_file_columns(control_type, user_action)
+get_control_file_columns(control_type, action, controls_file = "controls.json")
 }
 \arguments{
-\item{control_type}{The type of control}
+\item{control_type}{Type of the control for which the columns are needed.}
 
-\item{user_action}{The user action to get fields for}
+\item{action}{Desired action.}
+
+\item{controls_file}{(default: "controls.json") Path to the JSON file containing controls data.}
 }
 \value{
-A FileColumnAttributes object with fields for the user action for controls
+A ColumnData S3 object.
 }
 \description{
-This function gets all the fields for a given user action related to controls.
+This function provides the ColumnData S3 object for a specific control type and action.
 }
-\keyword{appdata}

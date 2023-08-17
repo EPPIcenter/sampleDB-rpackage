@@ -4,7 +4,7 @@
 \alias{stop_app_error}
 \title{Stop with an application error}
 \usage{
-stop_app_error(type, message, data = NULL)
+stop_app_error(type, message, data = NULL, call = NULL)
 }
 \arguments{
 \item{type}{The type of the error. This should be a character string.}

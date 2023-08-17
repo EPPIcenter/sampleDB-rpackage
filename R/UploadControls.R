@@ -1,64 +1,28 @@
-#' Upload Controls
+#' Upload Controls to the Database
 #'
-#' `UploadControls()` can be used to upload controls to the sampleDB database.
+#' This function uploads control data to the specified database based on the control type.
+#' Currently supports uploading for 'dbs_sheet' and 'whole_blood' control types.
 #'
-#' @param control_type A string specifying the type of samples that are being uploaded Options include: `micronix`, `cryovial` and `dbs`
-#' @param user_data A dataframe of SampleDB Upload data.\cr
-#' Required `upload_data` columns are:\cr
-#' `position`: the row and column of the sample in the storage housing
-#' `label`: the sample's label or barcode
-#' `study_subject_id`: the StudySubject id of for the subject in the cohort (ie study)
-#' `study_short_code`: the code of the study
-#' `specimen_type`: the sample type
-#' `collection_date`: (optional) the date the sample was first collected from the cohort StudySubject
+#' @param user_data Data to be uploaded. It should match the expected format for the specified control type.
+#' @param control_type The type of control to be uploaded. Valid values are 'dbs_sheet' and 'whole_blood'.
+#' @param database The path to the database. Defaults to the system environment variable "SDB_PATH".
 #'
-#' #' **upload data example without collection_date**
+#' @return NULL. However, the function provides messages to inform the user about the number of uploaded controls or any encountered errors.
 #'
-#' | position | label | study_subject_id | specimen_type | study_short_code |
-#' | ------------- | ----- | ---------------- | ------------- | ---------------- |
-#' | A0            | xxx1  | subject_1        | PLASMA        | KAM06            |
-#' | A1            | xxx2  | subject_2        | PLASMA        | KAM06            |
-#'
-#' **upload data example with collection_date**
-#'
-#' | position | label | study_subject_id | specimen_type | study_short_code | collection_data |
-#' | ------------- | ----- | ---------------- | ------------- | ---------------- | --------------- |
-#' | A0            | xxx1  | subject_1        | PLASMA        | KAM06            | 2022-04-11      |
-#' | A1            | xxx2  | subject_2        | PLASMA        | KAM06            | 2022-04-11      |
-#'
-#' @param container_name A string specifying the name of the container the samples are in. Names must be unique within each sample type.
-#' @param container_barcode A string specifying the barcode for the container the samples are in. Container barcodes are optional. Barcodes must be unique within each sample type.
-#' @param freezer_address A list specifying the freezer address used to store samples. \cr
-#' Required items in the freezer_address list are `name`, `level_I` and `level_II`.
-#' If the freezer_address type is `minus eighty` then `level_I` and `level_II` items specify the rack and position, respecively.
-#' If the freezer_address type is `minus twenty` then `level_I` and `level_II` items specify the shelf and basket, respecively.
 #' @examples
-#' \dontrun{
-#' UploadSamples(sample_type = "micronix",
-#'               upload_data = tibble(position = c("A0"),
-#'                                    label = c("XXX 1"),
-#'                                    study_subject_id = c("1"),
-#'                                    specimen_type = c("PLASMA"),
-#'                                    study_short_code = c("KAM06"),
-#'                                    collection_date = c("2021-04-10")),
-#'                container_name = "test_container",
-#'                freezer_address = list(name = "TBD",
-#'                                       level_I = "TBD",
-#'                                       level_II = "seve's working basket"))
-#' }
-#' @import dplyr
-#' @import RSQLite
-#' @import lubridate
-#' @export
+#' # Assuming you have a data frame called df_dbs_sheet and df_whole_blood:
+#' upload_controls(df_dbs_sheet, control_type = "dbs_sheet")
+#' upload_controls(df_whole_blood, control_type = "whole_blood")
 #'
-UploadControls <- function(user_data, control_type, database = Sys.getenv("SDB_PATH")) {
+#' @export
+upload_controls <- function(user_data, control_type, database = Sys.getenv("SDB_PATH")) {
 
 	tryCatch({
-		if (control_type=="dbs_sheet") {
-			n.uploaded = UploadDBSSheet(user_data, database)
+		if (control_type == "dbs_sheet") {
+			n.uploaded = upload_dbs_sheet(user_data, database)
 			message(sprintf("Uploaded %d DBS Sheet Controls!", n.uploaded))
-		} else if (control_type =="whole_blood") {
-			n.uploaded = UploadWholeBlood(user_data, database) 
+		} else if (control_type == "whole_blood") {
+			n.uploaded = upload_whole_blood(user_data, database)
 			message(sprintf("Uploaded %d Whole Blood Controls!", n.uploaded))
 		} else {
 			stop("No implementation found for the specified control type")
@@ -70,150 +34,722 @@ UploadControls <- function(user_data, control_type, database = Sys.getenv("SDB_P
 }
 
 
-#' Upload DBS Sheet Controls
-#'
-#' `UploadDBSSheet()` can be used to upload controls to the sampleDB database.
-#'
-#' @param con A dplyr dbConnect() connection object
-#' @param user_data A dataframe of SampleDB Upload data.
-#'
-#' @import dplyr
-#' @import RSQLite
-#' @import lubridate
-#'
-UploadWholeBlood <- function(user_data, database) {
-	con <- DBI::dbConnect(RSQLite::SQLite(), database)
+
+
+#' Process Whole Blood Box Data
+#' 
+#' This function will check for locations and add new boxes if they don't exist. It will return the boxes and locations IDs.
+#' 
+#' @param user_data A dataframe containing the payload data.
+#' @param con A database connection object.
+#' @param created_col Column name in user_data for created date.
+#' @param last_updated_col Column name in user_data for last updated date.
+#' @param box_name_col Column name in user_data for box name.
+#' @param box_barcode_col Column name in user_data for box barcode.
+#' @return A dataframe with the location ids and cryovial box ids.
+process_whole_blood_location_container <- function(user_data, con, created_col, last_updated_col, box_name_col, box_barcode_col) {
+
+  # get the boxes ids
+  user_data <- join_locations_and_boxes(con, user_data, box_name_col, box_barcode_col)
+
+  # add the boxes if they don't exist
+  user_data <- append_boxes_if_not_exist(con, user_data, created_col, last_updated_col, box_name_col, box_barcode_col)
+
+  # rejoin to get the box ids
+  user_data <- rejoin_box_ids(con, user_data, box_name_col, box_barcode_col)
+
+  return(user_data)
+}
+
+#' Process Whole Blood Box Data
+#' 
+#' This function will check for locations and add new boxes if they don't exist. It will return the boxes and locations IDs.
+#' 
+#' @param con A database connection object.
+#' @param user_data A dataframe containing the payload data.
+#' @param box_name_col Column name in user_data for box name.
+join_locations_and_boxes <- function(con, user_data, box_name_col, box_barcode_col) {
+
+  joins <- setNames(
+    c("name", "location_id", "cryovial_box_barcode"),
+    c(box_name_col, "location_id", box_barcode_col)
+  )
+
+  ## Find the locations and cryovial box if it already exists
+  df <- user_data %>%
+    inner_join(dbReadTable(con, "location") %>%
+                  select(-c(created, last_updated)) %>%
+                  dplyr::rename(location_id=id)
+                , by = c("location_root", "level_I", "level_II")) %>%
+    dplyr::left_join(dbReadTable(con, "cryovial_box") %>%
+                        select(-c(created, last_updated)) %>%
+                        dplyr::rename(
+                          cryovial_box_id=id,
+                          cryovial_box_barcode=barcode
+                        ), by=joins) %>%
+    select(location_id,cryovial_box_id, all_of(colnames(user_data)))
+
+  return(df)
+
+}
+
+#' Rejoin Whole Blood Box Data
+#' 
+#' @param con A database connection object.
+#' @param user_data A dataframe containing the payload data.
+#' @param box_name_col Column name in user_data for box name.
+#' @param box_barcode_col Column name in user_data for box barcode.
+#' @return A dataframe with the location ids and cryovial box ids.
+#' @keywords internal
+rejoin_box_ids <- function(con, user_data, box_name_col, box_barcode_col) {
+
+  joins <- setNames(
+    c("name", "location_id", "cryovial_box_barcode"),
+    c(box_name_col, "location_id", box_barcode_col)
+  )
+
+  ## Rejoin to get the cryovial box ids
+  df <- dbReadTable(con, "cryovial_box") %>% dplyr::rename(cryovial_box_id=id, cryovial_box_barcode=barcode) %>%
+    inner_join(df.payload %>% select(-c(created,last_updated,cryovial_box_id)), by = joins) %>%
+    dplyr::rename(manifest_name=name) %>%
+    select(location_id,cryovial_box_id,all_of(colnames(user_data)))
+
+  return(df)
+
+}
+
+#' Add whole blood tubes to the database if they don't exist
+#' 
+#' @param con A database connection object.
+#' @param user_data A dataframe containing the payload data.
+#' @param barcode_col Column name in user_data for barcode.
+#' @param position_col Column name in user_data for position.
+#' @return A result from the dbAppendTable indicating if the tubes were added successfully.
+append_whole_blood_tubes <- function(con, user_data, barcode_col, position_col) {
+  ## Add the whole blood tubes
+  res <- dbAppendTable(con, "whole_blood_tube", df.payload %>%
+                dplyr::rename(id=malaria_blood_control_id) %>%
+                select(malaria_blood_control_id, !!sym(barcode_col), cryovial_box_id, !!sym(position_col)) %>%
+                distinct()
+  )
+
+  return(res)
+}
+
+#' Process Whole Blood Box Data
+#' 
+#' This function will check for locations and add new boxes if they don't exist. It will return the boxes and locations IDs.
+#' 
+#' @param con A database connection object.
+#' @param user_data A dataframe containing the payload data.
+#' @param created_col Column name in user_data for created date.
+#' @param last_updated_col Column name in user_data for last updated date.
+#' @param box_name_col Column name in user_data for box name.
+#' @param box_barcode_col Column name in user_data for box barcode.
+#' 
+#' @return A result from the dbAppendTable indicating if the boxes were added successfully.
+#' @keywords internal
+append_boxes_if_not_exist <- function(con, user_data, created_col, last_updated_col, box_name_col, box_barcode_col) {
+
+  ## if the box does not exist (cryovial_box_id == `NA`), then create it
+  res <- dbAppendTable(con, "cryovial_box", df.payload %>%
+                          filter(is.na(cryovial_box_id)) %>%
+                          select(!!sym(created_col), !!sym(last_updated_col), location_id, !!sym(box_name_col), !!sym(box_barcode_col)) %>%
+                          dplyr::rename(name = box_name_col) %>%
+                          distinct())
+
+  return(res)
+
+}
+
+upload_whole_blood <- function(user_data, database) {
+  con <- DBI::dbConnect(RSQLite::SQLite(), database)
 
 	dbBegin(con)
+
+  res <- NULL
 
 	now = as.character(lubridate::now())
 	n.uploaded=0
 
 	tryCatch({
-
-		# calculate how many strains are in each recording
-
-		user_data %>%
-			group_by(density,strain,percentage,study_short_code) %>%
-
-
-		df.payload = user_data %>%
-			group_by(density,strain,percentage,study_short_code) %>%
-			left_join(dbReadTable(con, "study_subject") %>%
-			            dplyr::rename(
-			              study_subject_id=id,
-			              control=name
-			            )
-			          , by = c("control")) %>%
-			  left_join(dbReadTable(con, "study") %>%
-			               dplyr::rename(
-			                 study_short_code=short_code,
-			                 batch_id=id
-			               )
-			             , by = c("study_short_code")) %>%
-				mutate(created = now) %>%
-				mutate(last_updated = now) %>%
-			  select(created, last_updated, control, batch_id, study_subject_id, all_of(colnames(user_data))) %>%
-			  dplyr::rename(study_id=batch_id) %>%
-			  ungroup()
-
-		## Add the new study subjects here
-		res <- dbAppendTable(con, "study_subject", df.payload %>%
-			filter(is.na(study_subject_id)) %>%
-			select(created, last_updated, study_id, control) %>%
-			distinct() %>%
-			dplyr::rename(name = control))
-
-		## Rejoin to get the study_subject_id
-		df.payload = df.payload %>%
-		  select(-c(study_subject_id, created, last_updated)) %>%
-			inner_join(dbReadTable(con, "study_subject") %>% dplyr::rename(study_subject_id=id), by = c("control"="name", "study_id")) %>%
-		  select(created,last_updated,control,study_subject_id,all_of(colnames(user_data)))
-
-
-		## Find the malaria controls and see if they exist already
-		df.payload = df.payload %>%
-			dplyr::left_join(dbReadTable(con, "malaria_blood_control") %>% 
-				dplyr::rename(malaria_blood_control_id=id), by = c("density", "study_subject_id")) %>%
-			dplyr::mutate(density = as.integer(density))
-
-		## Add the blood controls if they do not exist
-		res <- dbAppendTable(con, "malaria_blood_control", df.payload %>% 
-			filter(is.na(malaria_blood_control_id)) %>%
-			select(density, study_subject_id) %>%
-			distinct()
-		)
-
-
-		## Find the locations and cryovial box if it already exists
-		df.payload = df.payload %>%
-		  inner_join(dbReadTable(con, "location") %>%
-		               select(-c(created, last_updated)) %>%
-		               dplyr::rename(location_id=id)
-		             , by = c("location_root", "level_I", "level_II")) %>%
-		  dplyr::left_join(dbReadTable(con, "cryovial_box") %>%
-		                     select(-c(created, last_updated)) %>%
-		                     dplyr::rename(cryovial_box_id=id, cryovial_box_barcode=barcode), by=c("manifest_name"="name", "location_id")) %>%
-		  select(created,last_updated,control,study_subject_id,location_id,cryovial_box_id, all_of(colnames(user_data)))
-
-
-		## if the box does not exist (cryovial_box_id == `NA`), then create it
-		res <- dbAppendTable(con, "cryovial_box", df.payload %>%
-		                       filter(is.na(cryovial_box_id)) %>%
-		                       select(created, last_updated, location_id, manifest_name) %>%
-		                       dplyr::rename(name = manifest_name) %>%
-		                       distinct())
-
-
-		## Rejoin to get the cryovial box ids
-		df.payload=dbReadTable(con, "cryovial_box") %>% dplyr::rename(cryovial_box_id=id, cryovial_box_barcode=barcode) %>%
-		  inner_join(df.payload %>% select(-c(created,last_updated,cryovial_box_id)), by = c("location_id", "name"="manifest_name")) %>%
-		  dplyr::rename(manifest_name=name) %>%
-		  select(created,last_updated,control, study_subject_id,location_id,cryovial_box_id,all_of(colnames(user_data)))
-
-
-		## Add the whole blood tubes
-		res <- dbAppendTable(con, "whole_blood_tube", df.payload %>%
-							   dplyr::rename(malaria_blood_control_id=study_subject_id) %>%
-		                       select(barcode, cryovial_box_id, position, malaria_blood_control_id) %>%
-		                       distinct())
-
-		## Update the table that links control density to strain, and records the percentage of that strain in the control
-		df.payload = df.payload %>%
-			mutate(
-			  strain2 = strsplit(strain, ";"),
-			  percentage2 = strsplit(percentage, ";")
-			) %>%
-			tidyr::unnest(cols = c("strain2","percentage2")) %>%
-			left_join(dbReadTable(con, "strain") %>% dplyr::rename(strain_id = id, strain = name), by = c("strain2"="strain")) %>%
-			left_join(dbReadTable(con, "malaria_blood_control") %>% dplyr::rename(malaria_blood_control_id=id), by = c("study_subject_id", "density"))
-
-		res <- dbAppendTable(con, "composition_strain", df.payload %>% select(malaria_blood_control_id, strain_id, percentage2) %>% dplyr::rename(percentage=percentage2))
-			
+    user_data_with_control_ids <- create_controls_for_batch(user_data, con, "Batch", "Control")
+    user_data_with_container_ids <- process_whole_blood_location_container(user_data_with_blood_control_ids, con, "BoxName", "BoxBarcode")
+    user_data_with_blood_control_ids <- process_malaria_blood_control_data(user_data_with_container_ids, con, "Density", "CompositionID")
+    res <- append_whole_blood_tubes(user_data_with_blood_control_ids, con, "Barcode", "Position")
 		dbCommit(con)
-		n.uploaded=sum(nrow(user_data))
-
 	}, error = function(e) {
+    dbRollback(con)
 		message(e$message)
 	}, finally = {
 		if (!is.null(con)) {
 			dbDisconnect(con)
 		}
 	})
+
+	## Return number of dbs controls uploaded - this will be the aggregated counts.
+	return(res)
 }
 
-#' Upload DBS Sheet Controls
+
+
+
+#' Prepare and Append Study Subjects
 #'
-#' `UploadDBSSheet()` can be used to upload controls to the sampleDB database.
+#' This function prepares user data, appends study subjects to a database table, and rejoins to get the study_subject_id.
 #'
-#' @param con A dplyr dbConnect() connection object
-#' @param user_data A dataframe of SampleDB Upload data.
+#' @param user_data A dataframe containing user data to process.
+#' @param con A database connection object.
+#' @param study_short_code_col Name of the column in user_data corresponding to "Batch".
+#' @param control_col Name of the column in user-dta correspond to "Control" (system made)
+#' @return A dataframe with the study_subject_id added.
+#' @export
+create_controls_for_batch <- function(
+  user_data,
+  con,
+  composition_col,
+  density_col,
+  study_short_code_col,
+  control_col
+) {
+
+  # Join conditions
+  # Directly define the join conditions using named vectors
+  study_subject_joins <- setNames(
+    c("name", "study_id"),
+    c(control_col, "study_id")
+  )
+
+  study_joins <- setNames(
+  	c("short_code"),
+  	c(study_short_code_col)
+  )
+
+  # Preparing data
+  df.payload <- user_data %>%
+    group_by(
+      !!sym(density_col),
+      !!sym(study_short_code_col)
+    ) %>%
+    left_join(
+      dbReadTable(con, "study"),
+      by = study_joins
+    ) %>%
+    dplyr::rename(study_id = id) %>%
+    left_join(
+      dbReadTable(con, "study_subject"),
+      by = study_subject_joins
+    ) %>%
+    dplyr::rename(study_subject_id=id) %>%
+    select(
+      study_id, study_subject_id, all_of(colnames(user_data))
+    ) %>%
+    ungroup()
+
+	# Appending to the database
+	res <- dbAppendTable(con, "study_subject", df.payload %>%
+	                      filter(is.na(study_subject_id)) %>%
+	                      select(Created, LastUpdated, study_id, !!sym(control_col)) %>%
+	                      distinct() %>%
+	                      dplyr::rename(
+                          name = !!sym(control_col),
+                          created = Created,
+                          last_updated = LastUpdated))
+
+	rejoin_by <- setNames(
+		c("name", "study_id"),
+		c(control_col, "study_id")
+	)
+
+	## Rejoin to get the study_subject_id
+	df.payload = df.payload %>%
+	  select(-c(study_subject_id)) %>%
+		inner_join(dbReadTable(con, "study_subject") %>% dplyr::rename(study_subject_id=id), by = rejoin_by) %>%
+	  select(study_subject_id, all_of(colnames(user_data)))
+
+  return(df.payload)
+}
+
+
+#' Join locations and bags from user data to the database
 #'
-#' @import dplyr
-#' @import RSQLite
-#' @import lubridate
+#' @param df.payload A dataframe with payload data.
+#' @param con A database connection object.
+#' @param location_root_col Column name in df.payload for the root location.
+#' @param level_I_col Column name in df.payload for level I location.
+#' @param level_II_col Column name in df.payload for level II location.
+#' @param manifest_name_col Column name in df.payload for manifest name.
+#' @return A dataframe with joined location and bag details.
+join_locations_and_bags <- function(df.payload, con, location_root_col, level_I_col, level_II_col, manifest_name_col) {
+
+  location_joins <- setNames(
+    c("location_root", "level_I", "level_II"),
+    c(location_root_col, level_I_col, level_II_col)
+  )
+
+  bag_joins <- setNames(
+    c("name", "location_id"),
+    c(manifest_name_col, "location_id")
+  )
+
+  df <- df.payload %>%
+    inner_join(
+      dbReadTable(con, "location") %>%
+      select(-c(created, last_updated)) %>%
+      dplyr::rename(location_id = id),
+      by = location_joins
+    ) %>%
+    left_join(
+      dbReadTable(con, "dbs_bag") %>%
+      select(-c(created, last_updated)) %>%
+      dplyr::rename(dbs_bag_id = id),
+      by = bag_joins
+    ) %>%
+    select(location_id, dbs_bag_id, all_of(colnames(df.payload)))
+
+  return(df)
+}
+
+#' Add new bags to the database if they don't exist
 #'
-UploadDBSSheet <- function(user_data, database) {
+#' @param df.payload A dataframe with payload data.
+#' @param con A database connection object.
+#' @param manifest_name_col Column name in df.payload for manifest name.
+#' @return A result from the dbAppendTable indicating if the bags were added successfully.
+add_bags_if_not_exist <- function(df.payload, con, manifest_name_col) {
+  res <- dbAppendTable(con, "dbs_bag", df.payload %>%
+    filter(is.na(dbs_bag_id)) %>%
+    dplyr::select(location_id, Created, LastUpdated, all_of(manifest_name_col)) %>%
+    dplyr::rename(
+      name = all_of(manifest_name_col),
+      created = Created,
+      last_updated = LastUpdated
+    ) %>%
+    distinct())
+  return(res)
+}
+
+#' Rejoin the payload with the database to retrieve bag IDs
+#'
+#' @param df.payload A dataframe with payload data.
+#' @param con A database connection object.
+#' @param manifest_name_col Column name in df.payload for manifest name.
+#' @return A dataframe with updated bag IDs.
+rejoin_to_get_bag_ids <- function(df.payload, con, manifest_name_col) {
+  df <- dbReadTable(con, "dbs_bag") %>%
+    dplyr::rename(dbs_bag_id = id) %>%
+    inner_join(
+      df.payload %>% select(-c(dbs_bag_id)),
+      by = c("location_id", "name" = manifest_name_col)
+    ) %>%
+    dplyr::rename(!!manifest_name_col := "name") %>%
+    select(dbs_bag_id, all_of(colnames(df.payload)))
+
+  return(df)
+}
+
+#' Process user data to handle bag details
+#'
+#' @param df.payload A dataframe with payload data.
+#' @param con A database connection object.
+#' @param location_root_col Column name in df.payload for the root location.
+#' @param level_I_col Column name in df.payload for level I location.
+#' @param level_II_col Column name in df.payload for level II location.
+#' @param manifest_name_col Column name in df.payload for manifest name.
+#' @return A dataframe with processed bag details.
+process_bag_data <- function(df.payload, con, location_root_col, level_I_col, level_II_col, manifest_name_col) {
+
+  # Join with locations and bags
+  df.payload <- join_locations_and_bags(df.payload, con, location_root_col, level_I_col, level_II_col, manifest_name_col)
+
+  # Add bags if they don't exist and update the connection result
+  res <- add_bags_if_not_exist(df.payload, con, manifest_name_col)
+
+  # Rejoin to get the bag IDs
+  df.payload <- rejoin_to_get_bag_ids(df.payload, con, manifest_name_col)
+
+  return(df.payload)
+}
+
+#' Join malaria controls based on density and study subject ID
+#'
+#' @param df.payload A dataframe with payload data.
+#' @param con A database connection object.
+#' @return A dataframe with joined malaria controls.
+join_malaria_controls <- function(df.payload, con) {
+
+  joins <- setNames(
+    c("study_subject_id", "composition_id"),
+    c("study_subject_id", "composition_id")
+  )
+
+  df <- df.payload %>%
+    left_join(
+      dbReadTable(con, "malaria_blood_control") %>%
+        dplyr::rename(malaria_blood_control_id = id),
+      by = joins
+    ) %>%
+    select(malaria_blood_control_id, all_of(colnames(df.payload)))
+
+  return(df)
+}
+
+#' Rejoin malaria controls based on density and study subject ID
+#'
+#' @param df.payload A dataframe with payload data.
+#' @param con A database connection object.
+#' @return A dataframe with joined malaria controls.
+rejoin_malaria_controls <- function(df.payload, con, density_col) {
+  joins <- setNames(
+    c("study_subject_id", "composition_id", "density"),
+    c("study_subject_id", "composition_id", density_col)
+  )
+
+  df <- df.payload %>%
+    select(-c(malaria_blood_control_id)) %>%
+    inner_join(
+      dbReadTable(con, "malaria_blood_control") %>%
+        dplyr::rename(malaria_blood_control_id = id),
+      by = joins
+    ) %>%
+    select(malaria_blood_control_id, all_of(colnames(df.payload)))
+
+  return(df)
+}
+
+#' Add malaria blood controls to the database if they don't exist
+#'
+#' @param df.payload A dataframe with payload data.
+#' @param con A database connection object.
+#' @param density User Data Density Column
+#' @return A result from the dbAppendTable indicating if the controls were added successfully.
+add_malaria_blood_controls_if_not_exist <- function(df.payload, con, density_col) {
+  res <- dbAppendTable(con, "malaria_blood_control", df.payload %>%
+    filter(is.na(malaria_blood_control_id)) %>%
+    select(study_subject_id, density_col, composition_id) %>%
+    distinct()
+  )
+  return(res)
+}
+
+#' Process user data to handle malaria blood control details
+#'
+#' @param df.payload A dataframe with payload data.
+#' @param con A database connection object.
+#' @param composition_id_col Column representing CompositionID.
+#' @return A dataframe with processed malaria blood control details.
+join_composition_ids <- function(df.payload, con, composition_id_col) {
+
+  # Retrieve compositions using the provided function
+  compositions <- retrieve_compositions_by_identifier(con, df.payload[[composition_id_col]])
+  denorm_compositions <- denormalize_composition_ids(compositions, "label", "index", "legacy", composition_id_col)
+  
+  # Join compositions with payload data
+  df <- df.payload %>%
+    left_join(
+      denorm_compositions %>%
+        dplyr::rename(composition_id = id),
+      by = setNames(composition_id_col, composition_id_col)
+    ) %>%
+    select(composition_id, all_of(colnames(df.payload)))
+
+  # Assuming you want to keep all columns from df.payload and any newly joined ones
+  return(df)
+}
+
+#' Process user data to handle malaria blood control details
+#'
+#' @param df.payload A dataframe with payload data.
+#' @param con A database connection object.
+#' @param density_col Column name in df.payload for density value.
+#' @param composition_id_col Column representing CompositionID.
+#' @return A dataframe with processed malaria blood control details.
+process_malaria_blood_control_data <- function(df.payload, con, density_col, composition_id_col) {
+  # Join with malaria controls
+	df.payload <- join_composition_ids(df.payload, con, composition_id_col)
+
+  df.payload <- join_malaria_controls(df.payload, con)
+
+  # Add malaria blood controls if they don't exist
+  res <- add_malaria_blood_controls_if_not_exist(df.payload, con, "Density")
+
+  cat("Malaria Blood Controls Added: ", res, "\n")
+
+  df.payload <- rejoin_malaria_controls(df.payload, con, density_col)
+
+  return(df.payload)
+}
+
+#' Join DBS control sheets based on bag ID and label
+#'
+#' @param df.payload A dataframe with payload data.
+#' @param con A database connection object.
+#' @param dbs_bag_id_col Column name in df.payload for DBS bag ID.
+#' @param label_col Column name in df.payload for label.
+#' @return A dataframe with joined DBS control sheets.
+join_dbs_control_sheets <- function(df.payload, con, sheet_name_col) {
+
+  joins <- setNames(
+    c("dbs_sheet_label", "dbs_bag_id"),
+    c(sheet_name_col, "dbs_bag_id")
+  )
+
+  df <- df.payload %>%
+    left_join(
+      dbReadTable(con, "dbs_control_sheet") %>%
+        dplyr::rename(
+          dbs_control_sheet_id = id,
+          dbs_sheet_label = label
+        ),
+      by = joins
+    ) %>%
+    select(dbs_control_sheet_id, all_of(colnames(df.payload)))
+
+  return(df)
+}
+
+#' Add new DBS control sheets to the database
+#'
+#' @param con A database connection object.
+#' @param df.payload A dataframe with payload data.
+#' @param dbs_sheet_name_col Column name in df.payload for DBS Sheet name.
+#' @return A result from the dbAppendTable indicating if the sheets were added successfully.
+add_new_dbs_control_sheets <- function(con, df.payload, dbs_sheet_name_col) {
+  res <- dbAppendTable(con, "dbs_control_sheet", df.payload %>%
+    filter(is.na(dbs_control_sheet_id)) %>%
+    group_by(dbs_bag_id, !!sym(dbs_sheet_name_col)) %>%
+    dplyr::mutate(replicates = n()) %>%
+    dplyr::select(dbs_bag_id, !!sym(dbs_sheet_name_col), replicates) %>%
+    dplyr::rename(label = !!sym(dbs_sheet_name_col)) %>%
+    select(dbs_bag_id, label, replicates) %>%
+    distinct()
+  )
+  return(res)
+}
+
+
+#' Rejoin to Get New DBS Control Sheet IDs
+#'
+#' @param df.payload A dataframe containing payload data.
+#' @param con A database connection object.
+#' @return A dataframe after rejoining to get the new DBS control sheet IDs.
+rejoin_dbs_control_sheet_ids <- function(df.payload, con, dbs_sheet_name_col) {
+  joins <- setNames(
+    c("dbs_bag_id", "label"),
+    c("dbs_bag_id", dbs_sheet_name_col)
+  )
+
+  df <- df.payload %>%
+    select(-c(dbs_control_sheet_id)) %>%
+    inner_join(
+      dbReadTable(con, "dbs_control_sheet") %>%
+      dplyr::rename(dbs_control_sheet_id = id),
+      by = joins
+    ) %>%
+    select(dbs_control_sheet_id, all_of(colnames(df.payload)))
+
+  return(df)
+}
+
+
+#' Process user data to handle DBS control sheet details
+#'
+#' @param df.payload A dataframe with payload data.
+#' @param con A database connection object.
+#' @param dbs_sheet_name_col Column name in df.payload for DBS Sheet name.
+#' @return A dataframe with processed DBS control sheet details.
+process_dbs_control_sheet_data <- function(df.payload, con, dbs_sheet_name_col) {
+  # Join with DBS control sheets
+
+  df.payload <- join_dbs_control_sheets(df.payload, con, dbs_sheet_name_col)
+
+  # Add new DBS control sheets if they don't exist
+  res <- add_new_dbs_control_sheets(con, df.payload, dbs_sheet_name_col)
+
+  cat("DBS Control Sheets Added: ", res, "\n")
+
+  # Rejoin to get the new DBS control sheet IDs
+  df.payload <- rejoin_dbs_control_sheet_ids(df.payload, con, dbs_sheet_name_col)
+
+  return(df.payload)
+}
+
+#' Join Blood Spot Collections
+#'
+#' @param df.payload A dataframe containing payload data.
+#' @param con A database connection object.
+#' @return A dataframe after joining with blood spot collections.
+join_blood_spot_collections <- function(df.payload, con) {
+  df <- df.payload %>%
+    left_join(
+      dbReadTable(con, "blood_spot_collection") %>%
+      dplyr::rename(blood_spot_collection_id = id),
+      by = setNames("malaria_blood_control_id", "malaria_blood_control_id")
+    ) %>%
+    select(blood_spot_collection_id, total, all_of(colnames(df.payload)))
+
+  return(df)
+}
+
+#' Add New Blood Spot Collections
+#'
+#' @param df.payload A dataframe containing payload data.
+#' @param con A database connection object.
+#' @param study_subject_id_col Column name in df.payload for Controls
+#' @return Result from the dbAppendTable indicating if the collections were added successfully.
+add_new_blood_spot_collections <- function(df.payload, con, study_subject_id_col, count_col) {
+  res <- dbAppendTable(con, "blood_spot_collection", df.payload %>%
+    filter(is.na(blood_spot_collection_id)) %>%
+    group_by(!!sym(study_subject_id_col)) %>%
+    dplyr::mutate(
+      count = as.integer(!!sym(count_col)),
+      total = ifelse(is.na(total), 0, as.integer(total)),
+      count = sum(count) + total
+    ) %>%
+    select(-c(total)) %>%
+    ungroup() %>%
+    distinct() %>%
+    dplyr::rename(total = count) %>%
+    select(malaria_blood_control_id, total)
+  )
+
+  return(res)
+}
+
+#' Re-join with updated blood spot collections
+#'
+#' This function updates the payload dataframe by rejoining with the updated blood spot collections.
+#' It removes the original 'blood_spot_collection_id' from the payload and excludes 'total' and 'exhausted' columns 
+#' from the blood spot collections during the join.
+#'
+#' @param df.payload A dataframe with payload data.
+#' @param con A database connection object.
+#' @return A dataframe with rejoined blood spot collections.
+rejoin_with_updated_blood_spot_collections <- function(df.payload, con) {
+  
+  df.updated <- df.payload %>%
+    dplyr::select(-c(blood_spot_collection_id)) %>%
+    dplyr::inner_join(
+      DBI::dbReadTable(con, "blood_spot_collection") %>%
+        dplyr::rename(blood_spot_collection_id = id) %>%
+        dplyr::select(-c(total, exhausted))
+    ) %>%
+    dplyr::select(blood_spot_collection_id, all_of(colnames(df.payload)))
+  
+  return(df.updated)
+}
+
+#' Process Blood Spot Collection Data
+#'
+#' @param df.payload A dataframe containing payload data.
+#' @param con A database connection object.
+#' @param malaria_blood_control_id Column name in df.payload for study subject ID.
+#' @return A dataframe with processed blood spot collection details.
+process_blood_spot_collection_data <- function(df.payload, con, study_subject_id_col, count_col) {
+
+  # Join with blood spot collections
+  df.payload <- join_blood_spot_collections(df.payload, con)
+
+  # Add new blood spot collections if they don't exist
+  res <- add_new_blood_spot_collections(df.payload, con, study_subject_id_col, count_col)
+
+  cat("Blood Spot Collections Added: ", res, "\n")
+
+  # Re-join with the updated blood spot collections
+  df.payload <- rejoin_with_updated_blood_spot_collections(df.payload, con)
+
+  return(df.payload)
+}
+
+#' Update the junction table for blood spot collections and DBS control sheets
+#'
+#' @param df.payload A dataframe with payload data.
+#' @param con A database connection object.
+#' @return A dataframe after updating the junction table.
+update_blood_spot_collection_dbs_control_sheet <- function(df.payload, con) {
+
+  df <- df.payload %>%
+    left_join(
+      dbReadTable(con, "blood_spot_collection_dbs_control_sheet") %>%
+        dplyr::rename(blood_spot_collection_dbs_control_sheet_id = id),
+      by = c("blood_spot_collection_id", "dbs_control_sheet_id")
+    ) %>%
+    select(blood_spot_collection_dbs_control_sheet_id, all_of(colnames(df.payload)))
+
+  res <- dbAppendTable(con, "blood_spot_collection_dbs_control_sheet", df %>%
+    filter(is.na(blood_spot_collection_dbs_control_sheet_id)) %>%
+    select(blood_spot_collection_id, dbs_control_sheet_id)
+  )
+
+  cat("Blood Spot Collection DBS Control Sheet Junction Updated: ", res, "\n")
+
+  return(df)
+}
+
+#' Create Control Label with Density and Composition Values
+#'
+#' This function takes vectors for density and composition and creates a control label 
+#' by combining the values. Densities greater than 999 are divided
+#' by 1000 and appended with a 'K'.
+#'
+#' @param dens_values A numeric vector specifying the density values.
+#' @param comp_values A character vector specifying the composition values.
+#'
+#' @return A character vector with the control labels.
+#'
+#' @examples
+#' dens <- c(100, 1000, 1500)
+#' comp <- c("S1_1", "S3_2", "S2_2")
+#' create_control_label(dens, comp)
+#'
+#' @export
+create_control_label <- function(dens_values, comp_values) {
+  
+  # Ensure the input vectors have the same length
+  if(length(dens_values) != length(comp_values)) {
+    stop("The lengths of 'dens_values' and 'comp_values' must be the same.")
+  }
+  
+  # Convert densities
+  converted_densities <- ifelse(
+    dens_values > 999,
+    paste0(dens_values / 1000, "K"),
+    as.character(dens_values)
+  )
+  
+  # Create control labels
+  control_labels <- paste0(converted_densities, "_", comp_values)
+  
+  return(control_labels)
+}
+
+#' Prepare DBS Sheet for Upload
+#'
+#' This function prepares a user_data dataframe for upload by adding a 'Control' 
+#' column (generated from Density and CompositionID values), and by adding 'Created' 
+#' and 'LastUpdated' columns with the current timestamp.
+#'
+#' @param user_data A dataframe with user data containing 'Density' and 'CompositionID' columns.
+#' @param now A timestamp indicating the current time.
+#'
+#' @return A dataframe with additional columns 'Control', 'Created', and 'LastUpdated'.
+#'
+#' @examples
+#' test_data <- data.frame(Density = c(100, 1000, 1500),
+#'                         CompositionID = c("S1_1", "S3_2", "S2_2"))
+#' prepare_dbs_sheet_for_upload(test_data, Sys.time())
+#'
+#' @export
+prepare_dbs_sheet_for_upload <- function(user_data, now) {
+  
+  user_data[['Control']] <- create_control_label(user_data$Density, user_data$CompositionID)
+  user_data[['Created']] <- now
+  user_data[['LastUpdated']] <- now
+
+  return(user_data)
+}
+
+upload_dbs_sheet <- function(user_data, database) {
 
 	con <- DBI::dbConnect(RSQLite::SQLite(), database)
 
@@ -222,162 +758,27 @@ UploadDBSSheet <- function(user_data, database) {
 	now = as.character(lubridate::now())
 	n.uploaded=0
 
-	## In the database, controls are stored as "study_subjects". This allows for extractions to be linked back to the original control.
-	## With the current database schema, we need to uniquely identify each study_subject under a single study. Instead of changing this rule,
-	## use the density, strain and percentage to start, and then index the control between [1:count]. If for whatever reason there are
-	## controls that exist under this study already, then "base.count" will be used to offset the indexing so that each appended number
-	## is +1 the second largest number under the study (ie. we always increment by 1).
 	tryCatch({
 
-		df.payload = user_data %>%
-		  group_by(density,strain,percentage,study_short_code) %>%
-		  tidyr::unite(control, c(density,strain,percentage), remove = FALSE) %>% # ex. 1K_W2;DD2;FCR3_20;20;60
-	    left_join(dbReadTable(con, "study_subject") %>%
-	                dplyr::rename(
-	                  study_subject_id=id,
-	                  control=name
-	                )
-	              , by = c("control")) %>%
-		  left_join(dbReadTable(con, "study") %>%
-		               dplyr::rename(
-		                 study_short_code=short_code,
-		                 batch_id=id
-		               )
-		             , by = c("study_short_code")) %>%
-			mutate(created = now) %>%
-			mutate(last_updated = now) %>%
-		  select(created, last_updated, control, batch_id, study_subject_id, all_of(colnames(user_data))) %>%
-		  dplyr::rename(study_id=batch_id) %>%
-		  ungroup()
+    ## Prepare the user data for upload
+    user_data <- prepare_dbs_sheet_for_upload(user_data, now)
 
-
-		## Add the new study subjects here
-		res <- dbAppendTable(con, "study_subject", df.payload %>%
-			filter(is.na(study_subject_id)) %>%
-			select(created, last_updated, study_id, control) %>%
-			distinct() %>%
-			dplyr::rename(name = control))
-
-		## Rejoin to get the study_subject_id
-		df.payload = df.payload %>%
-		  select(-c(study_subject_id, created, last_updated)) %>%
-			inner_join(dbReadTable(con, "study_subject") %>% dplyr::rename(study_subject_id=id), by = c("control"="name", "study_id")) %>%
-		  select(created,last_updated,control,study_subject_id,all_of(colnames(user_data)))
-
-		## Find the locations and bags and join
-		df.payload = df.payload %>%
-		  inner_join(dbReadTable(con, "location") %>%
-		               select(-c(created, last_updated)) %>%
-		               dplyr::rename(location_id=id)
-		             , by = c("location_root", "level_I", "level_II")) %>%
-		  dplyr::left_join(dbReadTable(con, "dbs_bag") %>%
-		                     select(-c(created, last_updated)) %>%
-		                     dplyr::rename(dbs_bag_id=id), by=c("manifest_name"="name", "location_id")) %>%
-		  select(created,last_updated,control,study_subject_id,location_id,dbs_bag_id, all_of(colnames(user_data)))
-
-		## if the bag does not exist (dbs_bag_id == `NA`), then create it
-		res <- dbAppendTable(con, "dbs_bag", df.payload %>%
-		                       filter(is.na(dbs_bag_id)) %>%
-		                       select(created, last_updated, location_id, manifest_name) %>%
-		                       dplyr::rename(name = manifest_name) %>%
-		                       distinct())
-
-		## Rejoin to get the bag ids
-		df.payload=dbReadTable(con, "dbs_bag") %>% dplyr::rename(dbs_bag_id=id) %>%
-		  inner_join(df.payload %>% select(-c(created,last_updated,dbs_bag_id)), by = c("location_id", "name"="manifest_name")) %>%
-		  dplyr::rename(manifest_name=name) %>%
-		  select(created,last_updated,control, study_subject_id,location_id,dbs_bag_id,all_of(colnames(user_data)))
-
-		## Find the malaria controls and see if they exist already
-		df.payload = df.payload %>%
-			dplyr::left_join(dbReadTable(con, "malaria_blood_control") %>% 
-				dplyr::rename(malaria_blood_control_id=id), by = c("density", "study_subject_id")) %>%
-			dplyr::mutate(density = as.integer(density))
-
-		## Add the blood controls if they do not exist
-		res <- dbAppendTable(con, "malaria_blood_control", df.payload %>% 
-			filter(is.na(malaria_blood_control_id)) %>%
-			select(density, study_subject_id) %>%
-			distinct()
-		)
-
-		## Add control sheets here with their identifier (label) and the bag the exist in. If the sheet already exists, bump up the count.
-		df.payload = df.payload %>%
-			left_join(dbReadTable(con, "dbs_control_sheet") %>% dplyr::rename(dbs_control_sheet_id=id), by=c("dbs_bag_id", "label")) %>%
-			select(created,last_updated,dbs_control_sheet_id,study_subject_id,dbs_bag_id,all_of(colnames(user_data)))
-
-
-		## Add new control sheets. We know they are new because no id exists for them.
-		res = dbAppendTable(con, "dbs_control_sheet", df.payload %>%
-			filter(is.na(dbs_control_sheet_id)) %>%
-			group_by(dbs_bag_id, label) %>%
-			dplyr::mutate(replicates = n()) %>% ## This also handles the case where there are 2 sheets with the same name that are uploaded
-			select(dbs_bag_id,label,replicates) %>%
-			distinct())
-
-
-		## Add the blood spot collections
-		df.payload = df.payload %>%
-			dplyr::left_join(dbReadTable(con, "blood_spot_collection") %>% 
-				dplyr::rename(blood_spot_collection_id=id), by = c("study_subject_id"))
-
-		res <- dbAppendTable(con, "blood_spot_collection", df.payload %>%
-							   filter(is.na(blood_spot_collection_id)) %>%
-								group_by(study_short_code,strain,percentage,density) %>%
-											dplyr::mutate(
-												count = as.integer(count),
-												total=ifelse(is.na(total), 0, as.integer(total)),
-												count = sum(count) + total
-											) %>%
-											select(-c(total)) %>%
-											ungroup() %>%
-											distinct() %>%
-					                       dplyr::rename(total=count) %>%
-					                       select(study_subject_id, total)
-		)
-
-		df.payload = df.payload %>%
-			select(-c(blood_spot_collection_id)) %>%
-			dplyr::inner_join(dbReadTable(con, "blood_spot_collection") %>% 
-				select(-c(total, exhausted)) %>%
-				dplyr::rename(blood_spot_collection_id=id), by = c("study_subject_id"))
-
-
-		## Rejoin to get the new IDs
-		df.payload = df.payload %>%
-			select(-c(dbs_control_sheet_id)) %>%
-			inner_join(dbReadTable(con, "dbs_control_sheet") %>% dplyr::rename(dbs_control_sheet_id=id), by=c("dbs_bag_id", "label")) %>%
-			select(created,last_updated,blood_spot_collection_id,dbs_control_sheet_id,study_subject_id,dbs_bag_id,all_of(colnames(user_data)))
+		user_data_with_control_ids <- create_controls_for_batch(user_data, con, "Batch", "Control")
+		user_data_with_bag_ids <- process_bag_data(user_data_with_control_ids, con, "Minus20Freezer", "ShelfName", "BasketName", "SheetName")
+		user_data_with_blood_control_ids <- process_malaria_blood_control_data(user_data_with_bag_ids, con, "Density", "CompositionID")
+		user_data_with_sheet_ids <- process_dbs_control_sheet_data(user_data_with_blood_control_ids, con, "SheetName")
+		user_data_with_blood_spot_collection_ids <- process_blood_spot_collection_data(user_data_with_sheet_ids, con, "Control", "Count")
 
 		## At this point, collapse the user data as we're no longer intereste edin retain specific sheet information
-		df.payload = df.payload %>% distinct()
+		user_data_distinct <- user_data_with_blood_spot_collection_ids %>% distinct()
 
 		## Update the junction table storing which bags blood collections can be found in. This is done so that blood collections from a batch
 		## can span over multiple bags, and bags can contain mulitple types of blood collections (from the same batch or otherwise (this would
 		## be a validation piece)).
-		df.payload = df.payload %>%
-			left_join(dbReadTable(con, "blood_spot_collection_dbs_control_sheet") %>% dplyr::rename(blood_spot_collection_dbs_control_sheet_id=id), by = c("blood_spot_collection_id", "dbs_control_sheet_id")) %>%
-			select(created,last_updated,blood_spot_collection_id,dbs_control_sheet_id,blood_spot_collection_dbs_control_sheet_id,dbs_bag_id,study_subject_id,all_of(colnames(user_data)))
+		user_data_final <- update_blood_spot_collection_dbs_control_sheet(user_data_distinct, con)
 
-		res <- dbAppendTable(con, "blood_spot_collection_dbs_control_sheet", df.payload %>% 
-			filter(is.na(blood_spot_collection_dbs_control_sheet_id)) %>%
-			select(blood_spot_collection_id, dbs_control_sheet_id)
-		)
-
-		## Update the table that links control density to strain, and records the percentage of that strain in the control
-		df.payload = df.payload %>%
-			mutate(
-			  strain2 = strsplit(strain, ";"),
-			  percentage2 = strsplit(percentage, ";")
-			) %>%
-			tidyr::unnest(cols = c("strain2","percentage2")) %>%
-			left_join(dbReadTable(con, "strain") %>% dplyr::rename(strain_id = id, strain = name), by = c("strain2"="strain")) %>%
-			left_join(dbReadTable(con, "malaria_blood_control") %>% dplyr::rename(malaria_blood_control_id=id), by = c("study_subject_id", "density"))
-
-		res <- dbAppendTable(con, "composition_strain", df.payload %>% select(malaria_blood_control_id, strain_id, percentage2) %>% dplyr::rename(percentage=percentage2))
-			
 		dbCommit(con)
-		n.uploaded=sum(as.integer(user_data$count))
+		n.uploaded=sum(as.integer(user_data[["Count"]]))
 
 	}, error = function(e) {
 		message(e$message)
@@ -392,99 +793,284 @@ UploadDBSSheet <- function(user_data, database) {
 }
 
 
-#' UploadCompositions
+#' Format labels for compositions
 #'
-#' @param database Path to the sampleDB database
-#' @param user_data Users data
-#' @noRd
+#' This function formats the labels for the given compositions based on the legacy status and index.
+#'
+#' @param compositions A dataframe containing the compositions to be labeled.
+#'        The dataframe should contain the columns `legacy`, `label`, and `index`.
+#'
+#' @return A character vector containing the formatted labels.
+#'
+#' @examples
+#' df <- data.frame(legacy = c(1, 0), label = c("S1", "S2"), index = c(1, 2))
+#' format_labels(df)
+format_labels <- function(compositions) {
+  compositions %>%
+    dplyr::mutate(
+      label = case_when(
+        (legacy == 1) ~ label,
+        TRUE ~ paste0(label, "_", index)
+      )
+    ) %>%
+    pull(label)
+}
+
+#' Create a unique identifier for compositions
+#'
+#' This function creates a unique identifier for given strains and their respective percentages.
+#' The strains and percentages are sorted based on percentages to ensure consistency in unique ID creation.
+#'
+#' @param strains A character vector containing strain names.
+#' @param percentages A numeric vector containing percentages for each strain.
+#'
+#' @return A character string representing the unique identifier for the composition.
+#'
+#' @examples
+#' strains <- c("D6", "3D7", "HB3")
+#' percentages <- c(0.32, 0.33, 0.35)
+#' create_unique_id(strains, percentages)
+create_unique_id <- function(strains, percentages) {
+  # Sort based on percentages
+  order_idx <- order(percentages)
+  sorted_strains <- strains[order_idx]
+  sorted_percentages <- percentages[order_idx]
+
+  # Create a unique identifier
+  paste(paste(sorted_strains, sorted_percentages, sep = "-"), collapse = ";")
+}
+
+#' Split and sort strains and percentages
+#'
+#' This function splits strains and percentages strings and sorts them based on percentages.
+#'
+#' @param strains A character string with strains separated by semicolons.
+#' @param percentages A character string with percentages separated by semicolons.
+#'
+#' @return A list containing sorted strains and sorted percentages.
+split_and_sort <- function(strains, percentages) {
+    # Split strains and percentages
+    split_strains <- unlist(strsplit(strains, ";"))
+    split_percentages <- as.numeric(unlist(strsplit(percentages, ";")))
+
+    # Sort them based on percentages (ascending) and then strains (ascending)
+    order_idx <- order(split_percentages, split_strains)
+    list(sorted_strains = split_strains[order_idx], sorted_percentages = split_percentages[order_idx])
+}
+
+#' Create a unique identifier from sorted strains and percentages
+#'
+#' This function generates a unique identifier by combining sorted strains and percentages.
+#'
+#' @param sorted_strains A character vector of sorted strains.
+#' @param sorted_percentages A numeric vector of sorted percentages.
+#'
+#' @return A character string representing the unique identifier.
+create_unique_id_from_sorted <- function(sorted_strains, sorted_percentages) {
+    paste(paste(sorted_strains, sorted_percentages, sep = "-"), collapse = ";")
+}
+
+#' Extract identifiers from user data
+#'
+#' This function processes user data to generate a unique identifier based on strains and percentages.
+#'
+#' @param user_data A data frame with at least two columns: 'Strains' and 'Percentages', each containing semicolon-separated values.
+#'
+#' @return A data frame containing unique identifiers for each row of user data.
+get_identifiers_from_user_data <- function(user_data) {
+    user_data %>%
+        rowwise() %>%
+        mutate(split_data = list(split_and_sort(Strains, Percentages))) %>%
+        ungroup() %>%
+        mutate(
+            unique_id = map2_chr(split_data, split_data,
+                                 ~create_unique_id_from_sorted(.x$sorted_strains, .x$sorted_percentages)),
+            composition_num = row_number()
+        ) %>%
+        select(unique_id,Strains,Percentages,LegacyLabel) %>%
+        distinct()
+}
+
+#' Extract identifiers from the database
+#'
+#' This function queries a database to collect and process data, generating a unique identifier based on strains and percentages.
+#'
+#' @param con A database connection object.
+#'
+#' @return A data frame containing unique identifiers for each composition in the database.
+get_identifiers_from_database <- function(con) {
+    local_data <- tbl(con, "composition_strain") %>%
+        dplyr::left_join(tbl(con, "strain") %>% dplyr::rename(strain = name), by = c(strain_id = "id")) %>%
+        dplyr::collect()
+
+    local_data %>%
+        group_by(composition_id) %>%
+        reframe(
+            combined_strains = paste(strain, collapse = ";"),
+            combined_percentages = paste(percentage, collapse = ";")
+        ) %>%
+        mutate(
+            split_data = map2(combined_strains, combined_percentages, ~split_and_sort(.x, .y)),
+            unique_id = map2_chr(split_data, split_data,
+                                 ~create_unique_id_from_sorted(.x$sorted_strains, .x$sorted_percentages))
+        ) %>%
+        inner_join(dbReadTable(con, "composition"), by = c("composition_id" = "id")) %>%
+        mutate(legacy = as.logical(legacy)) %>%  # Convert legacy to logical
+        select(composition_id, unique_id, index, label, legacy)
+}
+
+
+#' Prepare new compositions for database upload
+#'
+#' @param user_data A data frame containing user compositions.
+#'
+#' @return A dataframe with new compositions
+prepare_new_compositions <- function(user_data) {
+
+  user_data %>%
+    mutate(LegacyLabel = as.character(LegacyLabel),
+           legacy = LegacyLabel != "" & LegacyLabel != "NA" & !is.na(LegacyLabel),
+           strain_count = if_else(!legacy, lengths(strsplit(Strains, split=";")), NA_integer_),
+           index = if_else(!is.na(strain_count), ave(strain_count, strain_count, FUN = seq_along, na.rm = TRUE), NA_integer_),
+           label = case_when(
+               legacy ~ LegacyLabel,
+               !is.na(strain_count) ~ paste0("S", strain_count),
+               TRUE ~ NA_character_
+           )
+    )
+}
+
+#' Retrieve compositions from the database by label
+#'
+#' @param con A database connection object.
+#' @param labels A character vector of labels to be matched.
+#'
+#' @return A dataframe of matched compositions
+retrieve_compositions_by_label <- function(con, labels) {
+    tbl(con, "composition") %>%
+        dplyr::filter(label %in% !!labels) %>%
+        collect()
+}
+
+#' Retrieve compositions from the database by identifier
+#'
+#' @description This function accepts an identifier that describes the composition of a control, and retrieves data that matches the identifier from the database.
+#' 
+#' @param con A database connection object.
+#' @param identifiers A character vector of identifiers to be matched.
+#'
+#' @return A dataframe of matched compositions
+retrieve_compositions_by_identifier <- function(con, identifiers) {
+  
+  # Identify standard identifiers
+  standard_ids <- grep("_", identifiers, value = TRUE)
+  
+  # Split standard identifiers
+  split_ids <- strsplit(standard_ids, "_")
+  labels_standard <- sapply(split_ids, `[`, 1)
+  indices_standard <- sapply(split_ids, `[`, 2)
+
+  # Retrieve compositions for standard identifiers
+  result_standard <- tbl(con, "composition") %>%
+    dplyr::filter(label %in% !!labels_standard & index %in% !!indices_standard) %>%
+    collect()
+
+  # Identify non-standard identifiers
+  non_standard_ids <- setdiff(identifiers, standard_ids)
+
+  # Retrieve compositions for non-standard identifiers
+  result_non_standard <- tbl(con, "composition") %>%
+    dplyr::filter(label %in% !!non_standard_ids) %>%
+    collect()
+
+  # Combine results
+  result <- rbind(result_standard, result_non_standard)
+  
+  return(result)
+}
+
+
+#' Process and append new compositions to the database
+#'
+#' @param con A database connection object.
+#' @param user_data A data frame containing user compositions.
+#'
+#' @return Integer number of rows appended.
+process_and_append_compositions <- function(con, user_data) {
+    new_compositions <- prepare_new_compositions(user_data)
+
+    dbAppendTable(con, "composition", new_compositions %>% select(label, index, legacy))
+
+    unique_labels <- unique(new_compositions$label)
+    newly_added_compositions <- retrieve_compositions_by_label(con, unique_labels)
+
+    composition_strain_data <- dplyr::inner_join(new_compositions, newly_added_compositions, by = c("index", "label", "legacy")) %>%
+      select(id, Strains, Percentages)
+
+    composition_strain_data_long <- split_and_unnest_columns(composition_strain_data, "Strains", "Percentages", append = "Long") %>%
+        dplyr::rename(composition_id = id, strain = StrainsLong, percentage = PercentagesLong) %>%
+        dplyr::left_join(dbReadTable(con, "strain") %>% dplyr::rename(strain_id = id), by = c("strain" = "name"))
+
+    appended_rows <- dbAppendTable(con, "composition_strain", composition_strain_data_long %>% select(composition_id, strain_id, percentage))
+
+    new_compositions_return <- new_compositions %>% select(unique_id, label, index, legacy)
+    return(new_compositions_return)
+}
+
+
+#' Upload compositions to the database
+#'
+#' This function uploads user data to the database after generating unique identifiers and matching them with existing entries.
+#'
+#' @param user_data A data frame containing user compositions.
+#' @param database A character string representing the database path. Default is a system environment variable "SDB_PATH".
+#'
+#' @return A formatted list of labels representing the added or matched compositions.
 #' @export
-UploadCompositions <- function(user_data, database = Sys.getenv("SDB_PATH")) {
+upload_compositions <- function(user_data, database = Sys.getenv("SDB_PATH")) {
+    # Initialize the database connection
+    con = init_db_conn(database)
+    # Initialize a vector to hold labels
+    all_labels <- character()
 
-	browser()
-	
-	# filter and arrange the composition table. we'll filter by using the 
-	# calculated strain count from the user data, and then arrange so
-	# that the percentages are ordered. if the largest percentage equals 
-	# the largest percentage found in the user file, check that the strain matches, and if not, keep 
-	# checking the strains until it's found. If the strain is not found or the percentage did not
-	# match from before, terminate early because we now know this is a new composition. 
+    tryCatch({
+        # Extract unique identifiers from user data and the database
+        user_data_identifiers <- get_identifiers_from_user_data(user_data)
+        db_data_identifiers_updated <- get_identifiers_from_database(con)
 
-	# expected columns are strain, percentage and legacy.
-	# strain and percentage will always have data, legacy can have `NA`.
-	con = dbConnect(SQLite(), database)
+        matched_user_data <- inner_join(user_data_identifiers, db_data_identifiers_updated, by= "unique_id")
+        unmatched_user_data <- anti_join(user_data_identifiers, db_data_identifiers_updated, by = "unique_id")
 
-	tryCatch({
+        # Continue if there are matching compositions
+        if(nrow(matched_user_data) > 0) {
+            # Format and append the labels of existing compositions
+            existing_labels <- format_labels(matched_user_data)
+            all_labels <- c(all_labels, existing_labels)
+        }
 
-		# modify the user data so that it can be comapared with strains
-		user_data = user_data %>%
-			dplyr::mutate(rownumber=RowNumber()) %>%
-	    	dplyr::mutate(
-	    		strain=strsplit(strain, ";"),
-	    		percentage=strsplit(percentage, ";")
-	    	) %>%
-	    	tidyr::unnest(cols=c("strain", "percentage"))
+        # If there are unmatched compositions
+        if(nrow(unmatched_user_data) > 0) {
+            # Start a transaction
+            dbBegin(con)
 
-		copy_to(con, user_data)
+            # Process and upload new compositions to the database
+            user_compositions <- process_and_append_compositions(con, unmatched_user_data)
 
-		# arrange the user data so that it is longform. to keep track
-		# of the compositions, add a rownumber beforehand to group on. this
-		# will also be used to easily count he number of strains in the composition.
-		sql.user = tbl(con, "user_data") %>%
-			group_by(rownumber) %>%
-			dplyr::mutate(n_strain = n()) %>%
-			ungroup()
+            # Append labels of the added compositions
+            new_labels <- format_labels(user_compositions) 
+            all_labels <- c(all_labels, new_labels)
 
-		# filter and arrange the composition table to see if the composition
-		# already exists. first, filtering will be done on the strain count, which
-		# is kept in the composition table label column. 
-		df = tbl(con, "composition_strain") %>%
-			dplyr::rename(composition_strain_id=id) %>%
-			dplyr::left_join(tbl(con, "composition") %>% dplyr::rename(composition_id=id), by=c("composition_id")) %>%
-			dplyr::left_join(tbl(con, "strain") %>% dplyr::rename(strain=name, strain_id=id), by=c("strain_id")) %>% #  join the strain table to be used with user data
-			group_by(composition_id) %>%
-			mutate(n_strain=n()) %>%
-			right_join(sql.user, by=c("n_strain", "strain", "percentage", "legacy")) %>%
-			filter(is.na(composition_id)) %>%
-			select(all_of(colnames(user_data)), n_strain, index) %>%
-			collect() %>%
-			dplyr::mutate(label=ifelse(!is.na(legacy), legacy, sprintf("S%d", n_strain))) %>% # `label` is S# for new compositions, `legacy` (from user file)
-			dplyr::mutate(legacy=is.na(legacy)) # `legacy` is TRUE or FALSE (repurposing the column)
-			dplyr::group_by(label) %>% # this is go calculate the index. For the legacy values, the behavior will be that the index will be 1.
-			dplyr::mutate(
-				max.recorded.index=ifelse(is.na(index), 0, max(index)), # get the largest index for this strain count type
-				sum.new.n.strain = sum(!legacy), # indexing new compositions, so filter out legacy labels
-				index=seq(max.recorded.index, max.recorded.index + sum.new.n.strain)
-			) %>%
-			# Create the data for the composition table (index, label, legacy)
-			# To create the index, we need to grab the max(index) for each label, and then 
-			# create a sequence up to the number of new indexes that will be added
-			select(index, label, legacy) %>%
-			distinct() %>%
-			collect()
+	        # Commit changes to the database
+	        dbCommit(con)
+        }
 
-
-		# if there are new compositions, add them here
-		res = dbAppendTable(con, "composition", df.payload)
-
-		# Add the compostion_strain. start by rejoining against the composition table to get the new composition_ids. Next,
-		# add the 
-		df.payload = dbReadTable(con, "composition") %>%
-			dplyr::rename(composition_id=id) %>%
-			dplyr::inner_join(df, by = c("index", "label", "legacy")) %>%
-			select(composition_id, strain_id, percentage)
-
-		res = dbAppendTable(con, "composition_strain", df.payload)
-
-		dbCommit(con)
-
-	},
-	error = function(e) {
-		message(e$message)
-	},
-	finally = {
-		if (!is.null(con)) {
-			dbDisconnect(con)
-		}
-	})
-	return (nrow(user_data))
+        return(all_labels)
+    }, error = function(e) {
+        message(e$message)
+        dbRollback(con)
+    }, finally = {
+        if (!is.null(con)) {
+            dbDisconnect(con)
+        }
+    })
 }

@@ -4,11 +4,9 @@
 \alias{read_and_preprocess_csv}
 \title{Read and Preprocess User CSV File}
 \usage{
-read_and_preprocess_csv(user_csv, user_action)
+read_and_preprocess_csv(user_csv)
 }
 \arguments{
-\item{user_action}{A character string indicating the action the user is taking (e.g., 'upload').}
-
 \item{user_file}{The path to the user's CSV file. This will be read into a data frame.}
 }
 \value{

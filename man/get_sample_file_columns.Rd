@@ -2,29 +2,30 @@
 % Please edit documentation in R/AppData.R
 \name{get_sample_file_columns}
 \alias{get_sample_file_columns}
-\title{Get user column attributes for samples}
+\title{Retrieve ColumnData for a given sample type and action.}
 \usage{
 get_sample_file_columns(
   sample_type,
-  user_action,
-  file_type,
-  config_yml = Sys.getenv("SDB_CONFIG")
+  action,
+  file_type = "na",
+  config_yml = Sys.getenv("SDB_CONFIG"),
+  samples_file = "samples.json"
 )
 }
 \arguments{
-\item{sample_type}{The type of sample}
+\item{sample_type}{Type of the sample for which the columns are needed.}
 
-\item{user_action}{The user action to get fields for}
+\item{action}{Desired action.}
 
-\item{file_type}{The type of file}
+\item{file_type}{The file type being used. Default is 'na'.}
 
-\item{config_yml}{The path to the config.yml file}
+\item{config_yml}{(default: Sys.getenv("SDB_PATH")) Path to the application config file}
+
+\item{samples_file}{(default: "samples.json") Path to the JSON file containing samples data.}
 }
 \value{
-A FileColumnAttributes object with required, conditional, and optional fields for the user action
+A ColumnData S3 object.
 }
 \description{
-This function gets all the required, conditional, and optional fields
-for a given user action. It also takes into account exceptions for the given sample and file types.
+This function provides the ColumnData S3 object for a specific sample type and action.
 }
-\keyword{appdata}

@@ -7,7 +7,7 @@ UISearchDelArchSamples <- function(){
       width = 2,
       HTML("<h4>Search, Delete and Archive Samples</h4>"),
       hr(),
-      radioButtons("DelArchSearchBySampleType","Sample Type", choices = c("All" = "all", global_sample_names_ids_list), selected = "all", inline = T),
+      radioButtons("DelArchSearchBySampleType","Sample Type", choices = c("All" = "all", get_sample_types()), selected = "all", inline = T),
       hr(),
       actionButton("DelArchSearchReset", width = '100%', label = "Reset Search Criteria", style="color: #fff; background-color: #337ab7; border-color: #2e6da4"),
       hr(),

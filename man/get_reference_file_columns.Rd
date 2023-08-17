@@ -2,32 +2,24 @@
 % Please edit documentation in R/AppData.R
 \name{get_reference_file_columns}
 \alias{get_reference_file_columns}
-\title{Retrieve File Column Attributes for a Given Category and Reference Type}
+\title{Retrieve ColumnData for a given reference type.}
 \usage{
-get_reference_file_columns(category, reference_type = NULL)
+get_reference_file_columns(
+  reference_type,
+  config_yml = Sys.getenv("SDB_CONFIG"),
+  references_file = "references.json"
+)
 }
 \arguments{
-\item{category}{A string specifying the category of reference, e.g., "locations", "strains".}
+\item{reference_type}{Type of the reference for which the columns are needed.}
 
-\item{reference_type}{An optional string specifying the specific type within the category, e.g., "minus20". Default is NULL.}
+\item{config_yml}{(default: Sys.getenv("SDB_CONFIG")) Path to the application config file}
+
+\item{references_file}{(default: "references.json") Path to the JSON file containing references data.}
 }
 \value{
-A \code{FileColumnAttributes} object populated with the fields related to the given category and reference type.
+A ColumnData S3 object.
 }
 \description{
-This function gets all the fields for a given user action related to references
-and returns a \code{FileColumnAttributes} object populated with those fields.
-It supports different reference categories in the JSON, such as locations, strains, compositions, etc.
-Depending on the category and the reference type (if provided),
-the function will fetch fields categorized as \code{required}, \code{optional}, or directly if no sub-categories are present.
-}
-\examples{
-\dontrun{
-# For categories with a specific type
-attributes <- get_reference_file_columns("locations", "minus20")
-
-# For categories without a specific type
-attributes <- get_reference_file_columns("strains")
-}
-
+This function provides the ColumnData S3 object for a specific reference type.
 }

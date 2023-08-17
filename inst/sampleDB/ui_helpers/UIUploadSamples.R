@@ -14,9 +14,9 @@ UIUploadSamples <- function() {
       conditionalPanel(
         condition = "input.UploadType == 'samples'",
         h4("Upload Samples"),
-        radioButtons("UploadSampleType","Sample Storage Type", choices = global_sample_names_ids_list, inline = TRUE),
+        radioButtons("UploadSampleType","Sample Storage Type", choices = get_all_sample_types(), selected = "micronix", inline = TRUE),
         hr(),
-        radioButtons("UploadFileType", "Choose a file type", choices = global_sample_file_types[["micronix"]], inline = TRUE),
+        radioButtons("UploadFileType", "Choose a file type", choices = get_file_types_for_sample("micronix"), inline = TRUE),
         #upload data
         fileInput("UploadSampleDataSet", "Upload Samples File", accept = c("text/csv", "text/comma-separated-values,text/plain", ".csv")),
         #add freezer infor
@@ -26,11 +26,11 @@ UIUploadSamples <- function() {
         shinyjs::hidden(selectInput("UploadLocationLevelII", label = "Basket Name", choices = c()))
       ),
       conditionalPanel(
-        condition = "input.UploadType == 'Controls'",
+        condition = "input.UploadType == 'controls'",
         h4("Upload Controls"),
-        radioButtons("UploadControlType","Control Storage Type", choices = c("DBS Sheet" = "dbs_sheet", "Whole Blood" = "whole_blood"), inline = TRUE),
+        radioButtons("UploadControlType","Control Storage Type", choices = get_all_control_types(), selected = "dbs_sheet", inline = TRUE),
         hr(),
-        radioButtons("UploadControlAction", "Action", choices = c("Created" = "create", "Extracted" = "extraction"), inline = TRUE),
+        radioButtons("UploadControlAction", "Action", choices = get_control_action_types("dbs_sheet"), inline = TRUE),
         fileInput("InputUploadControls", label = "Upload DBS Control Sheet", accept = c("text/csv", "text/comma-separated-values,text/plain", ".csv"))
       ),
       hr(),

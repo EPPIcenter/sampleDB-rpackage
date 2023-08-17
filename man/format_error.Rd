@@ -4,7 +4,11 @@
 \alias{format_error}
 \title{Create Formatting Error Data Frame}
 \usage{
-format_error(required)
+format_error(
+  required,
+  reason = "Always Required",
+  trigger = "Not detected in file"
+)
 }
 \arguments{
 \item{required}{A character vector of required column names that were not detected.}

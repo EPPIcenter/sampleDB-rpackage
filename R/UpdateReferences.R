@@ -272,3 +272,85 @@ UpdateReferences <- function(reference, operation, identifier = NULL, update = N
   message(return_message)
   return(return_message)
 }
+
+
+#' Append Strains to the Database Table
+#' 
+#' This function appends new strains to the 'strain' table in the database.
+#' 
+#' @param user_file A data frame containing a column named 'strain'.
+#' @param database The path to the SQLite database.
+#' 
+#' @return A boolean indicating success (TRUE) or failure (FALSE).
+#' @export
+#' 
+#' @examples
+#' # Assuming you have a data frame named user_data with a strain column and a valid SQLite database at "/path/to/db"
+#' result <- append_strains_to_db(user_data, "/path/to/db")
+#' 
+append_strains_to_db <- function(user_file, database = Sys.getenv("SDB_PATH")) {
+  con <- DBI::dbConnect(RSQLite::SQLite(), database)
+  on.exit(DBI::dbDisconnect(con), add = TRUE)  # Ensure connection is closed even if there's an error
+  
+  res <- FALSE
+  
+  tryCatch({
+    DBI::dbBegin(con)
+    res <- DBI::dbAppendTable(con, "strain", user_file %>% select(Strains) %>% dplyr::rename(name = Strains))
+    DBI::dbCommit(con)
+  }, error = function(e) {
+    DBI::dbRollback(con)
+    message("Error appending strains to database: ", e$message)
+  })
+  
+  return(res)
+}
+
+#' Append Studies to the Database Table
+#' 
+#' This function appends new strains to the 'strain' table in the database.
+#' 
+#' @param user_file A data frame containing a column named 'strain'.
+#' @param database The path to the SQLite database. 
+#' 
+#' @return A boolean indicating success (TRUE) or failure (FALSE).
+#' @export
+#' 
+#' @examples
+#' # Assuming you have a data frame named user_data with a strain column and a valid SQLite database at "/path/to/db"
+#' result <- append_strains_to_db(user_data, "/path/to/db")
+#' 
+# Appends a study record to the database
+append_study_to_db <- function(title, short_code, description, lead_person, is_longitudinal, database) {
+
+  con <- DBI::dbConnect(RSQLite::SQLite(), database)
+  on.exit(DBI::dbDisconnect(con), add = TRUE)  # Ensure connection is closed even if there's an error
+  
+  # Begin transaction
+  dbBegin(con)
+  
+  res <- NULL
+  
+  tryCatch({
+    now <- as.character(lubridate::now())
+    df.payload <- data.frame(
+      created = now,
+      last_updated = now,
+      title = title,
+      short_code = short_code,
+      description = description,
+      lead_person = lead_person,
+      is_longitudinal = is_longitudinal
+    )
+
+    res <- dbAppendTable(con, "study", df.payload)
+    dbCommit(con)  # Commit the transaction if everything went fine
+
+  }, error = function(e) {
+    # On error, rollback and propagate the error to the caller
+    dbRollback(con)
+    message("Error appending study to database: ", e$message)
+  })
+  
+  return(res)
+}

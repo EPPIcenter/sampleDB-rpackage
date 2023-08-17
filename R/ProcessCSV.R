@@ -20,7 +20,6 @@ read_user_csv <- function(user_csv) {
 #' This function preprocesses a user CSV file.
 #'
 #' @param user_file The user's CSV file.
-#' @param user_action The action the user is performing.
 #' @return A data frame containing the user's CSV file.
 #' @noRd
 #' @examples
@@ -28,16 +27,14 @@ read_user_csv <- function(user_csv) {
 #' preprocess_csv(user_file, "upload")
 #' }
 #' @export
-preprocess_csv <- function(user_file, user_action) {
+preprocess_csv <- function(user_file) {
 
   user_file[user_file == ""] <- NA
   user_file[] <- lapply(user_file, function(x) as.character(gsub("[\n\t,]", "", x)))
 
-  if (user_action %in% c("move", "upload")) {
-    empty_rows <- rowSums(user_file == "" | is.na(user_file) | is.null(user_file)) == ncol(user_file)
-    empty_cols <- colSums(user_file == "" | is.na(user_file) | is.null(user_file)) == nrow(user_file)
-    user_file <- user_file[!empty_rows, !empty_cols]
-  }
+  empty_rows <- rowSums(user_file == "" | is.na(user_file) | is.null(user_file)) == ncol(user_file)
+  empty_cols <- colSums(user_file == "" | is.na(user_file) | is.null(user_file)) == nrow(user_file)
+  user_file <- user_file[!empty_rows, !empty_cols, drop = FALSE]
 
   return(user_file)
 }
@@ -142,11 +139,11 @@ set_header_row <- function(user_file, header_row) {
 #' format_error(c("Name", "Age"))
 #' }
 #' @export
-format_error <- function(required) {
+format_error <- function(required, reason = "Always Required", trigger = "Not detected in file") {
   df.error.formatting <- data.frame(
-    column = required,
-    reason = c("Always Required"),
-    trigger = c("Not detected in file")
+    column = required,  # 'required' basically dictates the number of rows
+    reason = c(reason),
+    trigger = c(trigger)
   )
   return(df.error.formatting)
 }
@@ -159,18 +156,51 @@ format_error <- function(required) {
 #'
 #' @param user_file The user's CSV file as a data frame.
 #' @param file_column_attr A colum attribute object containing required columns.
+#' @importFrom purrr is_empty
 #' @return A data frame with the appropriate header row set.
 #' @export
 set_user_file_header <- function(user_file, file_column_attr) {
-
   header_row <- find_header(user_file, file_column_attr$required, valid_header_rows = 1:2)
   if (is.null(header_row)) {
     stop_formatting_error("Could not find required columns", format_error(file_column_attr$required))
   }
 
+  duplicated_column_names <- check_for_duplicates_in_row(user_file, header_row)
+  if (!is_empty(duplicated_column_names)) {
+    stop_formatting_error(
+      "Duplicate column names detected, please check your file",
+      format_error(
+        duplicated_column_names,
+        "Duplicated",
+        "Found more than once in your file header"
+      )
+    )
+  }
+
   return(set_header_row(user_file, header_row))
 }
 
+
+#' Check for duplicates in row
+#' 
+#' This function will check if there are duplicated values in a row. This function
+#' is used to identify a if a users file has duplicated column headers before
+#' setting the column names.
+#' 
+#' @param user_data The user data data.frame.
+#' @param row_number Numerical value indicating which row to check for duplicates
+#' @importFrom tidyr pivot_longer
+#' @return A list with the column names that were found more than once.
+#' @keywords internal
+check_for_duplicates_in_row <- function(user_data, row_number) {
+  user_data %>% 
+    slice(row_number) %>%
+    pivot_longer(cols = everything(), names_to = "column", values_to = "value") %>%
+    count(value) %>%
+    filter(n > 1) %>%
+    pull(value) %>%
+    unique()
+}
 
 #' Detect Missing Specimen Columns in User's CSV File
 #'
@@ -183,7 +213,7 @@ set_user_file_header <- function(user_file, file_column_attr) {
 #' @param database A character string indicating the path to the SQLite database for specimen information.
 #'
 #' @return A character vector of specimen columns absent from the user's CSV file.
-#' 
+#'
 #' @import DBI dplyr
 #' @export
 #' @examples
@@ -195,25 +225,46 @@ set_user_file_header <- function(user_file, file_column_attr) {
 #' }
 #' @keywords internal
 detect_missing_specimen_columns <- function(specimen_file, specimen_column_attributes, database = Sys.getenv("SDB_PATH")) {
-  
-  # Retrieve 'required_columns' from 'specimen_column_attributes'.
-  required_columns <- specimen_column_attributes$get_required_colnames()
-  
+
   # Identify any columns from 'required_columns' that are not present in 'specimen_file'.
-  missing_columns <- setdiff(required_columns, colnames(specimen_file))
-  
+  missing_columns <- setdiff(specimen_column_attributes$required, colnames(specimen_file))
+
   # Check for StudyCode in specimen_file and if 'CollectionDate' is part of the specimen column attributes.
   if (!"StudyCode" %in% colnames(specimen_file) && "CollectionDate" %in% specimen_column_attributes$conditional) {
-    
+
     # Retrieve relevant records from the study table based on StudyCode.
     matched_studies <- get_matched_studies(specimen_file, database)
-    
+
     # Conditionally verify the CollectionDate column based on the nature of longitudinal specimen studies.
-    if (nrow(filter(matched_studies, is_longitudinal == 1)) > 0) {
+    if (is.null(matched_studies) || nrow(filter(matched_studies, is_longitudinal == 1)) > 0) {
       stop_formatting_error("Specimens from longitudinal studies must include a CollectionDate column.", format_error("CollectionDate"))
     }
   }
 
+  return(missing_columns)
+}
+
+#' Detect Missing Columns in Reference CSV File
+#'
+#' This function examines the user's control CSV file to identify any essential control columns that may be absent.
+#' It checks against the given control column attributes to ensure all required columns are present in the CSV.
+#'
+#' @param reference_file A data frame representing the user's control CSV file.
+#' @param reference_column_attributes An object containing attributes for control columns, specifically required columns.
+#'
+#' @return A character vector of control columns missing from the user's CSV file.
+#'
+#' @examples
+#' \dontrun{
+#' control_data <- data.frame(ControlCode = c("CT001"), ControlName = c("CTRL_A"))
+#' control_column_attrs <- ControlColumnAttributes$new() # Assuming such an object exists
+#' detect_missing_control_columns(control_data, control_column_attrs)
+#' }
+#' @export
+#' @keywords internal
+detect_missing_reference_columns <- function(control_file, reference_column_attributes) {
+
+  missing_columns <- setdiff(reference_column_attributes$required, colnames(control_file))
   return(missing_columns)
 }
 
@@ -226,7 +277,7 @@ detect_missing_specimen_columns <- function(specimen_file, specimen_column_attri
 #' @param control_column_attributes An object containing attributes for control columns, specifically required columns.
 #'
 #' @return A character vector of control columns missing from the user's CSV file.
-#' 
+#'
 #' @examples
 #' \dontrun{
 #' control_data <- data.frame(ControlCode = c("CT001"), ControlName = c("CTRL_A"))
@@ -235,10 +286,18 @@ detect_missing_specimen_columns <- function(specimen_file, specimen_column_attri
 #' }
 #' @export
 #' @keywords internal
-detect_missing_control_columns <- function(control_file, control_column_attributes) {
-  required_columns <- control_column_attributes$get_required_colnames()
+detect_missing_control_columns <- function(control_file, control_column_attributes, database = Sys.getenv("SDB_PATH")) {
+
+
+  # Retrieve 'required_columns' from 'specimen_column_attributes'.
+  required_columns <- c(
+    control_column_attributes$required,
+    control_column_attributes$conditional
+  )
+
   missing_columns <- setdiff(required_columns, colnames(control_file))
   return(missing_columns)
+
 }
 
 #' Retrieve Matched Studies from the Database
@@ -250,7 +309,7 @@ detect_missing_control_columns <- function(control_file, control_column_attribut
 #' @param database A character string specifying the path to the SQLite database.
 #'
 #' @return A data frame containing matched study records.
-#' 
+#'
 #' @import DBI dplyr RSQLite
 #' @export
 #' @examples
@@ -262,15 +321,13 @@ detect_missing_control_columns <- function(control_file, control_column_attribut
 #' @keywords internal
 get_matched_studies <- function(user_file, database) {
   con <- NULL
-  matched_studies <- data.frame() # Initialize as empty dataframe
+  matched_studies <- NULL
   error <- FALSE
-  
+
   tryCatch({
-    con <- dbConnect(RSQLite::SQLite(), database = database)
-    matched_studies <- DBI::dbReadTable(con, "study") %>%
-      filter(study_short_code %in% user_file$StudyCode) %>%
+    con <- init_db_conn(database)
+    matched_studies <- dbReadTable(con, "study") %>%
       inner_join(user_file, by = c("short_code" = "StudyCode"))
-    matched_studies <- DBI::dbReadTable(con, "study")
   },
   error = function(e) {
     error <- TRUE
@@ -284,7 +341,7 @@ get_matched_studies <- function(user_file, database) {
       stop("Could not connect to database.")
     }
   })
-  
+
   return(matched_studies)
 }
 
@@ -294,7 +351,7 @@ get_matched_studies <- function(user_file, database) {
 #' based on provided file column attributes.
 #'
 #' @param user_file The user's CSV file as a data frame.
-#' @param file_column_attr An instance of FileColumnAttributes containing attributes of file columns.
+#' @param file_column_attr An instance of ColumnData containing attributes of file columns.
 #' @return A data frame with only the relevant columns selected.
 #' @export
 select_relevant_columns <- function(user_file, file_column_attr) {
@@ -302,45 +359,13 @@ select_relevant_columns <- function(user_file, file_column_attr) {
   # Note: For now, use the values and not denormalized names.
   user_file <- user_file %>%
     select(
-      all_of(file_column_attr$get_required_colnames()),
-      all_of(file_column_attr$get_location_colnames()),
-      all_of(file_column_attr$get_container_colnames()),
-      any_of(file_column_attr$get_conditional_colnames()),
-      any_of(file_column_attr$get_optional_colnames())
+      all_of(file_column_attr$required),
+      all_of(file_column_attr$conditional),
+      any_of(file_column_attr$optional)
     )
 
   return(user_file)
 }
-
-
-#' Handle special columns in the user CSV file
-#'
-#' This function handles special cases for columns like `container_name` and `freezer_address`
-#' which might be added by users.
-#'
-#' @param user_file The user's CSV file as a data frame.
-#' @param container_name The name of the container column if provided by the user.
-#' @param freezer_address The address of the freezer column if provided by the user.
-#' @param location_params A character vector of location parameters/columns related to the freezer address.
-#' @return A list containing the modified user_file and an updated vector of missing columns.
-#' @export
-handle_special_columns <- function(user_file, container_name, freezer_address, location_params) {
-  if (!is.null(container_name) && !container_name %in% colnames(user_file)) {
-    user_file[[container_name]] <- rep(container_name, nrow(user_file)) 
-  }
-
-  if (!is.null(freezer_address) && !all(location_params %in% colnames(user_file))) {
-    for (param in location_params) {
-      if (param %in% names(freezer_address)) {
-        user_file[[param]] <- rep(freezer_address[[param]], nrow(user_file))
-      }
-    }
-  }
-
-  return(user_file)
-}
-
-
 
 
 #' Check if the user CSV file meets the requirements
@@ -351,19 +376,19 @@ handle_special_columns <- function(user_file, container_name, freezer_address, l
 #' @param user_file The user's CSV file as a data frame.
 #' @param sample_type The sample type associated with the user's CSV file.
 #' @param file_column_attr The file column attributes.
-#' @param container_name The name of the container.
-#' @param freezer_address The address of the freezer.
 #' @return A cleaned and checked user_file ready for further processing.
 #' @export
-validate_and_format_specimen_file <- function(user_file, sample_type, user_action, file_column_attr, container_name = NULL, freezer_address = NULL) {
+validate_and_format_specimen_file <- function(user_file, sample_type, user_action, file_column_attr, bind_data = NULL) {
 
-  # 2. Handle header.
+  # 1. Handle header.
   user_file <- set_user_file_header(user_file, file_column_attr)
 
-  # 3. Handle special columns. These are columns that should be included but may be added by the user.
-  user_file <- handle_special_columns(user_file, container_name, freezer_address, file_column_attr$location)
+  # 2. Add new column and data to the file
 
-  # 4. Detect missing columns.
+  if (!is.null(bind_data)) {
+    user_file <- bind_new_data(user_file, bind_data)
+  }
+
   missing_columns <- detect_missing_specimen_columns(user_file, file_column_attr)
 
   # If there are any missing columns still, throw!
@@ -380,6 +405,7 @@ validate_and_format_specimen_file <- function(user_file, sample_type, user_actio
   return(user_file)
 }
 
+
 #' Check if the user CSV file for control meets the requirements
 #'
 #' This function checks if the user CSV file for control meets specific upload requirements,
@@ -387,14 +413,18 @@ validate_and_format_specimen_file <- function(user_file, sample_type, user_actio
 #'
 #' @param user_file The user's CSV file as a data frame.
 #' @param file_column_attr A list containing attributes of file columns such as required, conditional, and optional columns.
-#' @param container_name The name of the container (optional).
-#' @param freezer_address The address of the freezer (optional).
+#' @param bind_data Data that should be added to the data frame.
 #' @return A cleaned and checked user_file ready for further processing.
 #' @export
-validate_and_format_control_file <- function(user_file, file_column_attr, container_name = NULL, freezer_address = NULL) {
+validate_and_format_control_file <- function(user_file, file_column_attr, bind_data = NULL) {
 
-  # 2. Handle header.
+  # 1. Handle header.
   user_file <- set_user_file_header(user_file, file_column_attr)
+
+  # 2. Add new column and data to the file
+  if (!is.null(bind_data)) {
+    user_file <- bind_new_data(user_file, bind_data)
+  }
 
   # 3. Detect missing columns.
   missing_columns <- detect_missing_control_columns(user_file, file_column_attr)
@@ -413,19 +443,49 @@ validate_and_format_control_file <- function(user_file, file_column_attr, contai
   return(user_file)
 }
 
+#' Check if the user CSV file for control meets the requirements
+#'
+#' This function checks if the user CSV file for control meets specific upload requirements,
+#' including necessary columns and formatting checks. Errors will be thrown if requirements are not met.
+#'
+#' @param user_file The user's CSV file as a data frame.
+#' @param file_column_attr A list containing attributes of file columns such as required, conditional, and optional columns.
+#' @return A cleaned and checked user_file ready for further processing.
+#' @export
+validate_and_format_reference_file <- function(user_file, file_column_attr) {
+
+  # 2. Handle header.
+  user_file <- set_user_file_header(user_file, file_column_attr)
+
+  # 3. Detect missing columns.
+  missing_columns <- detect_missing_reference_columns(user_file, file_column_attr)
+
+  # If there are any missing columns still, throw!
+  if (length(missing_columns) > 0) {
+    stop_formatting_error("Missing required columns", format_error(missing_columns))
+  }
+
+  # 4. Select relevant columns.
+  user_file <- select_relevant_columns(user_file, file_column_attr)
+
+  # Notify success.
+  message("Required columns detected.")
+
+  return(user_file)
+}
+
 #' Process and Validate Specimen User CSV File
 #'
-#' This function processes and validates a user's specimen CSV file to ensure it meets 
-#' the requirements for a specific action. The process includes reading the file, preprocessing, 
-#' validation, and formatting of the specimens. If the file doesn't meet the specified requirements 
+#' This function processes and validates a user's specimen CSV file to ensure it meets
+#' the requirements for a specific action. The process includes reading the file, preprocessing,
+#' validation, and formatting of the specimens. If the file doesn't meet the specified requirements
 #' for specimens, an error is thrown.
 #'
 #' @param user_csv The path to the user's specimen CSV file. This will be read into a data frame.
 #' @param user_action A character string indicating the action the user is taking with the specimen data (e.g., 'upload').
 #' @param sample_type A character string specifying the type of specimens in the user CSV.
-#' @param container_name (Optional) A character string specifying the name of the specimen container. If provided and not present in the CSV, it will be added to each row.
-#' @param freezer_address (Optional) A list of attributes for the specimen freezer. If provided and any attributes are missing from the CSV, they will be added to each row.
 #' @param file_type A character string indicating the type of file (default is "na").
+#' @param bind_data A named list of data to be added to the user file. The list names will be the new columns and the values to their respective column. Default is NULL, which means that no data will be binded.
 #' @param database A character string indicating the path to the SQLite database used for specimen validation checks. Defaults to the system environment variable 'SDB_PATH'.
 #' @param config_yml A character string indicating the path to a configuration YAML file for specimens. Defaults to the system environment variable 'SDB_CONFIG'.
 #'
@@ -445,26 +505,26 @@ validate_and_format_control_file <- function(user_file, file_column_attr, contai
 #' # Process and validate the user specimen CSV
 #' processed_csv <- process_specimen_csv(user_file_path, action, type)
 #' }
-process_specimen_csv <- function(user_csv, user_action, sample_type, container_name = NULL, freezer_address = NULL, file_type = "na", database = Sys.getenv("SDB_PATH"), config_yml = Sys.getenv("SDB_CONFIG")) {
+process_specimen_csv <- function(user_csv, user_action, sample_type, file_type = "na", bind_data = NULL, database = Sys.getenv("SDB_PATH"), config_yml = Sys.getenv("SDB_CONFIG")) {
+
   if (is.null(user_csv) || user_csv == "") {
     stop("No csv file was provided.")
   }
-
   # Read and preprocess user CSV file
   # Steps:
   # 1. Read the CSV file.
   # 2. Preprocess to remove empty rows or columns.
   # 3. Prepare for validation by checking for empty data points, renaming columns and adding position column if necessary.
   # 4. Validate and format based on requirements.
-  
-  user_data <- read_and_preprocess_csv(user_csv, user_action)
+  user_data <- read_and_preprocess_csv(user_csv)
 
   file_column_attr <- get_sample_file_columns(sample_type, user_action, file_type, config_yml)
-  user_data <- validate_and_format_specimen_file(user_data, user_action, sample_type, file_column_attr, container_name, freezer_address)
+  user_data <- validate_and_format_specimen_file(user_data, user_action, sample_type, file_column_attr, bind_data)
 
-  user_data <- prepare_specimen_data_for_validation(user_data, file_column_attr)
-  user_data <- validate_specimens(user_data, sample_type, user_action, database)
-  
+  user_data <- prepare_specimen_data_for_validation(sample_type, user_data, file_column_attr)
+
+  user_data <- validate_specimens(user_data, sample_type, user_action, file_type, database)
+
   return(user_data)
 }
 
@@ -480,11 +540,8 @@ process_specimen_csv <- function(user_csv, user_action, sample_type, container_n
 #' @param user_csv The path to the user's control CSV file. This will be read into a data frame.
 #' @param user_action A character string indicating the action the user is taking (e.g., 'upload').
 #' @param control_type A character string specifying the type of controls in the user CSV.
-#' @param container_name (Optional) A character string specifying the name of the container.
-#'        If provided and not present in the CSV, it will be added to each row.
-#' @param freezer_address (Optional) A list of attributes for the freezer.
-#'        If provided and any attributes are missing from the CSV, they will be added to each row.
 #' @param file_type A character string indicating the type of file (default is "na").
+#' @param bind_data A named list of data to be added to the user file. The list names will be the new columns and the values to their respective column. Default is NULL, which means that no data will be binded.
 #' @param database A character string indicating the path to the SQLite database
 #'        used for validation checks. Defaults to the system environment variable 'SDB_PATH'.
 #' @param config_yml A character string indicating the path to a configuration YAML file.
@@ -505,7 +562,59 @@ process_specimen_csv <- function(user_csv, user_action, sample_type, container_n
 #' # Process and validate the user CSV
 #' processed_data <- process_control_csv(user_file_path, action, type)
 #' }
-process_control_csv <- function(user_csv, user_action, control_type, container_name = NULL, freezer_address = NULL, file_type = "na", database = Sys.getenv("SDB_PATH"), config_yml = Sys.getenv("SDB_CONFIG")) {
+process_control_csv <- function(user_csv, user_action, control_type, file_type = "na", bind_data = NULL, database = Sys.getenv("SDB_PATH"), config_yml = Sys.getenv("SDB_CONFIG")) {
+  # Ensure a valid CSV is provided
+  if (is.null(user_csv) || user_csv == "") {
+    stop("No csv file was provided.")
+  }
+
+  # Read and preprocess user CSV file
+  user_data <- read_and_preprocess_csv(user_csv)
+
+  # Validate and format the user CSV data
+  file_column_attr <- get_control_file_columns(control_type, user_action)
+  user_data <- validate_and_format_control_file(user_data, file_column_attr, bind_data)
+
+  # Further validate controls - check for empty data points, rename columns and add position column if necessary
+  user_data <- prepare_control_data_for_validation(control_type, user_data, user_action, file_column_attr)
+  validate_controls(database, user_data, control_type, user_action)
+
+  return(user_data)
+}
+
+#' Process and Validate Reference CSV File
+#'
+#' This function processes and validates a user-provided reference CSV file.
+#' The process includes reading the file, preprocessing it to remove empty rows or columns,
+#' and then validating and formatting based on the given reference type and action.
+#' If the file doesn't meet the specific requirements or if any validation rules are violated,
+#' appropriate errors or warnings will be raised.
+#'
+#' @param user_csv The path to the user's reference CSV file. This will be read into a data frame.
+#' @param user_action A character string indicating the action the user is taking (e.g., 'upload').
+#' @param reference_type A character string specifying the type of references in the user CSV. 
+#'        Valid types are 'compositions' of 'strains'.
+#' @param database A character string indicating the path to the SQLite database
+#'        used for validation checks. Defaults to the system environment variable 'SDB_PATH'.
+#' @param config_yml A character string indicating the path to a configuration YAML file.
+#'        Defaults to the system environment variable 'SDB_CONFIG'.
+#'
+#' @return A processed and validated reference CSV as a data frame.
+#'
+#' @seealso
+#' \code{\link{read_and_preprocess_csv}}, \code{\link{validate_and_format_reference_file}}, \code{\link{validate_references}}
+#' @export
+#' @examples
+#' \dontrun{
+#' # Provide the path to the user CSV file and action details
+#' user_file_path <- "path/to/user/reference_file.csv"
+#' action <- "upload"
+#' type <- "compositions"
+#'
+#' # Process and validate the user CSV
+#' processed_data <- process_reference_csv(user_file_path, action, type)
+#' }
+process_reference_csv <- function(user_csv, user_action, reference_type, database = Sys.getenv("SDB_PATH"), config_yml = Sys.getenv("SDB_CONFIG")) {
   
   # Ensure a valid CSV is provided
   if (is.null(user_csv) || user_csv == "") {
@@ -513,28 +622,68 @@ process_control_csv <- function(user_csv, user_action, control_type, container_n
   }
 
   # Read and preprocess user CSV file
-  user_data <- read_and_preprocess_csv(user_csv, user_action)
-  
+  user_data <- read_and_preprocess_csv(user_csv)
+
   # Validate and format the user CSV data
-  file_column_attr <- get_control_file_columns(control_type, user_action)
-  user_data <- validate_and_format_control_file(user_data, file_column_attr, container_name, freezer_address)
+  file_column_attr <- get_reference_file_columns(reference_type)
+  user_data <- validate_and_format_reference_file(user_data, file_column_attr)
+
+  # Further validate references
+  validation_data <- prepare_reference_data_for_validation(user_data, reference_type, file_column_attr)
   
-  # Further validate controls
-  user_data <- prepare_control_data_for_validation(user_data, file_column_attr)
-  user_data <- validate_controls(database, user_data, control_type, user_action)
+  validate_references(database, validation_data, reference_type, user_action)
 
   return(user_data)
 }
 
+#' Add Data to User Data
+#'
+#' This function takes a named list and appends its values as a new column to a dataframe.
+#' The name of the named list is matched with the dataframe's column names.
+#'
+#' @param df The dataframe to which the data will be added.
+#' @param named_list The named list whose elements should be added as a new column to the dataframe.
+#' 
+#' @return The dataframe with the added column.
+#' @examples
+#' df <- data.frame(Name = c("John", "Doe"), Age = c(25, 30))
+#' new_data <- list(Designation = "Manager")
+#' df <- bind_new_data(df, new_data)
+#'
+#' @export
+bind_new_data <- function(df, named_list) {
+  # Check if column name already exists in the dataframe
+  if(any(names(named_list) %in% colnames(df))) {
+    duplicate_column_names <- named_list[names(named_list) %in% colnames(df)]
+    stop_formatting_error(
+      "Column name from the new data already exists in the dataframe.", 
+      format_error(
+        duplicate_column_names,
+        "Cannot have duplicated columns when binding new data",
+        "Duplicate found"
+      )
+    )
+  }
+  
+  # Repeat the value of the named list to match the length of the dataframe
+  repeated_values <- lapply(named_list, function(x) { return(rep(x, nrow(df))) })
+  
+  # Convert named list to dataframe column and append
+  df_new_column <- as.data.frame(repeated_values)
+  df <- cbind(df, df_new_column)
+  
+  return(df)
+}
+
+
 #' Read and Preprocess User CSV File
-#' 
+#'
 #' This function reads the provided user CSV file and then preprocesses it based on the given user action.
-#' 
+#'
 #' @param user_file The path to the user's CSV file. This will be read into a data frame.
-#' @param user_action A character string indicating the action the user is taking (e.g., 'upload').
 #'
 #' @return A preprocessed user CSV as a data frame.
-#' 
+#'
 #' @seealso
 #' \code{\link{read_user_csv}}, \code{\link{preprocess_csv}}
 #' @export
@@ -542,13 +691,83 @@ process_control_csv <- function(user_csv, user_action, control_type, container_n
 #' \dontrun{
 #' user_file_path <- "path/to/user/file.csv"
 #' action <- "upload"
-#' 
+#'
 #' preprocessed_data <- read_and_preprocess_csv(user_file_path, action)
 #' }
-read_and_preprocess_csv <- function(user_csv, user_action) {
+read_and_preprocess_csv <- function(user_csv) {
   user_data <- read_user_csv(user_csv)
-  user_data <- preprocess_csv(user_data, user_action)
+  user_data <- preprocess_csv(user_data)
 
+  return(user_data)
+}
+
+#' Modify the user column for validation purposes
+#' 
+#' @param user_data The users uploaded and formatted data.
+#' @param container_json_object 'containers' object from app.json that has been filtered.
+#' @param position_col The name of the concatenated position to be used with validation
+#' 
+#' @return The users updated data frame.
+#' @importFrom stringr str_pad
+#' @import dplyr
+#' @keywords internal validation
+prepare_matrix_position_column <- function(user_data, container_json_object, position_col) {
+
+  position_keys <- container_json_object$position_keys
+  if (!is.null(position_keys)) {
+    if (is.list(position_keys)) {
+      position_columns <- unlist(position_keys)
+      if (!is.null(position_columns)) {
+
+        rows <- user_data[[position_columns[1]]]
+        cols <- user_data[[position_columns[2]]]
+        
+        # NOTE: allow for reporting granular checks for matrix position. This 
+        # will mean return an error collection since there is code to handle this
+        # in the handle_validation_error function.
+
+        user_data[[position_col]] <- paste0(
+          rows, 
+          str_pad(cols, width = 2, pad = "0"))
+          
+        user_data <- user_data[, !(names(user_data) %in% position_columns)]
+      }
+
+      # NOTE: this is a little dangerous, because we accept NULL as
+      # nothing is wrong. It is internal app data so not going to worry
+      # about it now.
+
+    }
+  }
+
+  return(user_data)
+}
+
+#' Convert Density Representations to Real Numbers
+#'
+#' This function processes a dataframe to convert density values that might be in various 
+#' representations (e.g., "10K", "10k") into their real number equivalents. 
+#' For instance, "10K" or "10k" will be converted to 10000.
+#'
+#' @param user_data A dataframe containing user data with density values.
+#' @param density_col A string specifying the column name of the density values in `user_data`.
+#' 
+#' @return A dataframe with the converted density values.
+#'
+#' @examples
+#' user_df <- data.frame(Density = c("1", "10k", "100K"))
+#' convert_density_representations(user_df, "Density")
+#'
+#' @export
+convert_density_representations <- function(user_data, density_col) {
+  user_data[[density_col]] <- sapply(user_data[[density_col]], function(x) {
+    if (grepl("k$", ignore.case = TRUE, x)) {
+      as.numeric(sub("k$", "", ignore.case = TRUE, x)) * 1000
+    } else {
+      as.numeric(x)
+    }
+  })
+  
   return(user_data)
 }
 
@@ -559,7 +778,7 @@ read_and_preprocess_csv <- function(user_csv, user_action) {
 #' It renames columns and also applies column-specific transformations where needed.
 #'
 #' @param user_data A data frame with columns to be renamed.
-#' @param file_column_attr A FileColumnAttributes object containing the column mappings.
+#' @param file_column_attr A ColumnData object containing the column mappings.
 #'
 #' @return A pre-processed data frame.
 #' @export
@@ -573,15 +792,15 @@ read_and_preprocess_csv <- function(user_csv, user_action) {
 #'   Column = c('A', 'A')
 #' )
 #'
-#' # Assuming file_column_attr is an instantiated FileColumnAttributes object
+#' # Assuming file_column_attr is an instantiated ColumnData object
 #'
 #' new_df <- prepare_specimen_data_for_validation(user_data, file_column_attr)
 #' }
-prepare_specimen_data_for_validation <- function(user_data, file_column_attr) {
+prepare_specimen_data_for_validation <- function(sample_type, user_data, file_column_attr) {
 
-  # Check if file_column_attr is of class FileColumnAttributes
-  if (!inherits(file_column_attr, "FileColumnAttributes")) {
-    stop("file_column_attr must be an object of class 'FileColumnAttributes'")
+  # Check if file_column_attr is of class ColumnData
+  if (!inherits(file_column_attr, "ColumnData")) {
+    stop("file_column_attr must be an object of class 'ColumnData'")
   }
 
   # 1. Check for missing data in required positions
@@ -591,22 +810,9 @@ prepare_specimen_data_for_validation <- function(user_data, file_column_attr) {
     stop_validation_error("There are missing data in required fields.", error)
   }
 
-  # Get column mappings using all_fields method
-  column_mappings <- file_column_attr$all_fields()
+  container_obj <- get_container_by_sample(sample_type)
 
-  if ("position" %in% names(column_mappings)) {    
-
-    position_columns <- unlist(column_mappings$position)
-
-    row <- user_data[[position_columns[1]]]
-    col <- as.integer(user_data[[position_columns[2]]]) # ensure that this is an integer
-
-    user_data$Position <- sprintf("%s%02d", row, col)
-
-    # Drop the original Row and Column columns
-    user_data <- user_data[ , !(names(user_data) %in% position_columns)]
-  }
-
+  user_data <- prepare_matrix_position_column(user_data, container_obj, "Position")
   user_data <- add_row_numbers(user_data)
 
   return(user_data)
@@ -618,7 +824,7 @@ prepare_specimen_data_for_validation <- function(user_data, file_column_attr) {
 #' It renames columns and also applies column-specific transformations where needed.
 #'
 #' @param user_data A data frame with columns to be renamed.
-#' @param file_column_attr A FileColumnAttributes object containing the column mappings.
+#' @param file_column_attr A ColumnData object containing the column mappings.
 #'
 #' @return A pre-processed data frame.
 #' @export
@@ -632,33 +838,126 @@ prepare_specimen_data_for_validation <- function(user_data, file_column_attr) {
 #'   Column = c('A', 'A')
 #' )
 #'
-#' # Assuming file_column_attr is an instantiated FileColumnAttributes object
+#' # Assuming file_column_attr is an instantiated ColumnData object
 #'
 #' new_df <- prepare_control_data_for_validation(user_data, file_column_attr)
 #' }
-prepare_control_data_for_validation <- function(user_data, file_column_attr) {
-  # Check if file_column_attr is of class FileColumnAttributes
-  if (!inherits(file_column_attr, "FileColumnAttributes")) {
-    stop("file_column_attr must be an object of class 'FileColumnAttributes'")
+prepare_control_data_for_validation <- function(control_type, user_data, action, file_column_attr) {
+
+  # Pre-processing the user data up front for the following reasons:
+  # 1. The transformed data aids in various validation functions.
+  # 2. Transformed data is directly copied to the SQL database for validation.
+  # 
+  # By transforming data up front, we reduce the need for in-memory table loading 
+  # and leverage SQL for efficient validations. There also limitations using 
+  # dplyr for database manipulation and querying, so doing these modification upfront
+  # makes it easier to prepare the data frame for validation.
+
+  # Check if file_column_attr is of class ColumnData
+  if (!inherits(file_column_attr, "ColumnData")) {
+    stop("file_column_attr must be an object of class 'ColumnData'")
   }
 
-  # 2. Apply position concatenation for source container
-
-  if ("position" %in% names(file_column_attr$container$container_src)) {
-    position_columns <- unlist(file_column_attr$container_src$position)
-    row <- user_data[[position_columns[1]]]
-    col <- user_data[[position_columns[2]]]
-    user_data$SourcePosition <- sprintf("%s%02d", row, col)
-    user_data <- user_data[, !(names(user_data) %in% position_columns)]
+  # 1. Check for missing data in required positions
+  error <- check_missing_data(user_data, file_column_attr)
+  if (!is.null(error)) {
+    stop_validation_error("There are missing data in required fields.", error)
   }
 
-  # 3. Apply position concatenation for destination container
-  if ("position" %in% names(file_column_attr$container$container_dest)) {
-    position_columns <- unlist(file_column_attr$container_dest$position)
-    row <- user_data[[position_columns[1]]]
-    col <- user_data[[position_columns[2]]]
-    user_data$DestinationPosition <- sprintf("%s%02d", row, col)
-    user_data <- user_data[, !(names(user_data) %in% position_columns)]
+  # get the destination container positions
+
+  ## JSON UPDATE
+  ## update this after json modification
+  storage_container <- get_storage_container_by_control(control_type)
+  user_data <- prepare_matrix_position_column(user_data, storage_container, "ControlOriginPosition")
+  
+  # NOTE: If these checks grow, then make into functions
+  if (action == "extraction") {
+    destination_container <- get_destination_container_by_control(control_type)
+    user_data <- prepare_matrix_position_column(user_data, destination_container, "ExtractedDNAPosition")
+
+    # TODO: make this a function and add to the validation checks
+    # TODO: make the data external and customizable (preferences?)
+    user_data[["SpecimenType"]] <- ifelse(control_type == "whole_blood", "DNA (WB)", "DNA (DBS)")
+
+  }
+
+  if (action == "create") {
+    # Convert Density Representations to Real numbers
+    user_data <- convert_density_representations(user_data, "Density")
+  }
+
+  # Extract the label, legacy, and index from the composition ID provided by the user
+  user_data <- normalize_composition_ids(user_data, "CompositionID", "Label", "Index", "LegacyLabel")
+
+
+  user_data <- add_row_numbers(user_data)
+
+  return(user_data)
+}
+
+#' Normalize Composition IDs from User Data
+#'
+#' This function processes a dataframe to extract and split the composition IDs
+#' into separate columns (Label, Index, and LegacyLabel) based on their format.
+#'
+#' @param user_data A dataframe containing user data with composition IDs.
+#' @param in_composition_id_col A string specifying the column name of the composition IDs in `user_data`.
+#' @param out_label_col A string specifying the name of the new column where the labels will be stored. Default is "Label".
+#' @param out_index_col A string specifying the name of the new column where the indexes will be stored. Default is "Index".
+#' @param out_legacy_col A string specifying the name of the new column where the legacy status (TRUE or FALSE) will be stored. Default is "LegacyLabel".
+#'
+#' @return A dataframe with new columns (specified by label_col, index_col, and legacy_col)
+#' containing the split composition ID components.
+#'
+#' @export
+#' @importFrom purrr map map_chr map_dbl map_lgl
+
+normalize_composition_ids <- function(user_data, in_composition_id_col, out_label_col, out_index_col, out_legacy_col) {
+
+  if (in_composition_id_col %in% colnames(user_data)) {
+    composition_data <- purrr::map(user_data[[in_composition_id_col]], split_composition_id)
+    
+    user_data[[out_label_col]] <- purrr::map_chr(composition_data, "label")
+    user_data[[out_index_col]] <- purrr::map_dbl(composition_data, "index")
+    user_data[[out_legacy_col]] <- purrr::map_lgl(composition_data, "legacy")
+  }
+
+  return(user_data)
+}
+
+#' Denormalize Composition IDs from User Data
+#'
+#' This function processes a dataframe to combine the separate columns (Label, Index, and LegacyLabel)
+#' back into a single composition ID column based on their format.
+#'
+#' @param user_data A dataframe containing user data with split composition IDs.
+#' @param in_label_col A string specifying the column name of the labels in `user_data`. Default is "Label".
+#' @param in_index_col A string specifying the column name of the indexes in `user_data`. Default is "Index".
+#' @param in_legacy_col A string specifying the column name indicating if the composition ID is legacy in `user_data`. Default is "LegacyLabel".
+#' @param out_composition_id_col A string specifying the name of the new column where the combined composition IDs will be stored.
+#'
+#' @return A dataframe with a new column (specified by composition_id_col) containing the combined composition ID.
+#'
+#' @export
+denormalize_composition_ids <- function(user_data, in_label_col, in_index_col, in_legacy_col, out_composition_id_col) {
+  
+  user_data[[out_composition_id_col]] <- ifelse(
+    user_data[[in_legacy_col]], 
+    user_data[[in_label_col]], 
+    paste0(user_data[[in_label_col]], "_", user_data[[in_index_col]])
+  )
+
+  return(user_data)
+}
+
+#' Prepare DataFrame for Reference Validation
+#'
+#' @export
+prepare_reference_data_for_validation <- function(user_data, reference_type, file_column_attr) {
+  # Check if file_column_attr is of class ColumnData
+  if (!inherits(file_column_attr, "ColumnData")) {
+    stop("file_column_attr must be an object of class 'ColumnData'")
   }
 
   # 1. Check for missing data in required positions
@@ -670,5 +969,132 @@ prepare_control_data_for_validation <- function(user_data, file_column_attr) {
   # Assuming rename_columns renames based on given mapping
   user_data <- add_row_numbers(user_data)
 
+  # Unravel the data
+  if (reference_type %in% c("compositions")) {
+
+    error <- check_strain_percentage_match(user_data, "Percentages", "Strains")
+    if (!is.null(error)) {
+      stop_validation_error("Percentages and strains found with different lengths.", error)
+    }
+
+    user_data <- split_and_unnest_columns(user_data, "Strains", "Percentages", append = "Long")
+  }
+
   return(user_data)
+}
+
+
+#' Validate that the strain and percentage columns have matching semicolon counts
+#'
+#' @param data The users data.
+#' @param percentage_col The name of the column containing percentages.
+#' @param strain_col The name of the column containing strains.
+#'
+#' @keywords pre-validation strains compositions
+#' @return NULL or ErrorData.
+check_strain_percentage_match <- function(data, percentage_col, strain_col) {
+  
+  # Find discrepancies in number of splits
+  discrepancies <- sapply(1:nrow(data), function(i) {
+    length(unlist(strsplit(as.character(data[[strain_col]][i]), ";"))) != length(unlist(strsplit(as.character(data[[percentage_col]][i]), ";")))
+  })
+
+  if (any(discrepancies)) {
+    error_rows <- which(discrepancies)
+    error_data <- ErrorData$new(
+      description = "Mismatched count of semicolons between strain and percentage columns",
+      columns = c(strain_col, percentage_col),
+      rows = error_rows
+    )
+    return(list(error = error_data))
+  }
+
+  return(NULL)
+}
+
+
+#' Split and Unnest Strain and Percentage Columns
+#'
+#' This function takes in a data frame and splits the provided strain and percentage columns by a semicolon (;). 
+#' The resulting two lists within each row are then unnested into separate rows. This is commonly used for 
+#' validating strains and their corresponding compositions.
+#'
+#' @param user_data A data frame with the specified strain and percentage columns.
+#' @param strains_col The column name in the data frame containing strain data.
+#' @param percentage_col The column name in the data frame containing percentage data.
+#'
+#' @return A data frame with unnested strain and percentage columns.
+#' 
+#' @examples
+#' \dontrun{
+#' result <- split_and_unnest_columns(user_data, "strain_column_name", "percentage_column_name")
+#' }
+#' 
+#' @export
+#' @keywords pre-validation strains compositions
+split_and_unnest_columns <- function(user_data, strains_col, percentage_col, append = NULL) {
+    df <- user_data %>%
+      dplyr::mutate(
+          strain = strsplit(!!sym(strains_col), ";"),
+          percentage = strsplit(!!sym(percentage_col), ";")
+      ) %>%
+      tidyr::unnest(cols = c("strain", "percentage")) %>%
+      dplyr::mutate(percentage = as.double(percentage)) %>%
+      dplyr::rename_with(
+          ~ if_else(. == "strain", paste0(strains_col, append), 
+                    if_else(. == "percentage", paste0(percentage_col, append), .)), 
+          .cols = c("strain", "percentage")
+      )
+      
+    return(df)
+}
+
+#' Collapse and Nest Strain and Percentage Columns
+#'
+#' This function takes in a data frame and collapses the provided strain and percentage columns using a semicolon (;). 
+#' The individual strains and percentages in each row are combined into single, semicolon-separated strings. 
+#' This is commonly used after manipulating or analyzing strains and their corresponding compositions.
+#'
+#' @param user_data A data frame with the specified strain and percentage columns.
+#' @param strains_col The column name in the data frame containing strain data.
+#' @param percentage_col The column name in the data frame containing percentage data.
+#'
+#' @return A data frame with nested strain and percentage columns.
+#' 
+#' @examples
+#' \dontrun{
+#' result <- collapse_and_nest_columns(df, "strain_column_name", "percentage_column_name")
+#' }
+#' 
+#' @export
+#' @keywords post-processing strains compositions
+collapse_and_nest_columns <- function(user_data, row_number_col, strains_col, percentage_col) {
+    df <- user_data %>%
+      group_by(!!sym(row_number_col)) %>%
+      dplyr::mutate(
+          strain = paste(!!sym(strains_col), collapse = ";"),
+          percentage = paste(!!sym(percentage_col), collapse = ";")
+      ) %>%
+      select(-c(!!sym(strains_col), !!sym(percentage_col))) %>%
+      dplyr::rename_with(~ if_else(. == "strain", strains_col, if_else(. == "percentage", percentage_col, .))) %>%
+      ungroup()
+
+    return(df)
+}
+
+
+# Helper function to split composition IDs
+split_composition_id <- function(composition_id) {
+  if (grepl("^S\\d+_\\d+$", composition_id)) {
+    split_string <- strsplit(composition_id, "_")[[1]]
+    index <- as.numeric(split_string[2])
+    label <- split_string[1]
+    legacy <- FALSE
+  } else {
+    index <- NA_integer_
+    label <- composition_id
+    legacy <- TRUE
+  }
+  
+  list(label = label, index = index, legacy = legacy)
 }

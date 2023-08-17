@@ -11,7 +11,6 @@ UIControlsReference <- function() {
           radioButtons("InputControlStrainUploadType", "Upload Type", choices=c("Individual" = "individual", "Multiple"="multiple"), selected="individual", inline=TRUE), 
           conditionalPanel(condition = "input.InputControlStrainUploadType == \"individual\"",
             textInput("InputControlNewStrain", "Strain", placeholder = "Add new strain here..."),
-            textInput("InputControlStrainDesc", "Description", placeholder = "Optionally add description here..."),
             actionButton("InputCreateStrain", label = "Create")
           ),
           conditionalPanel(condition = "input.InputControlStrainUploadType == \"multiple\"",
@@ -19,15 +18,24 @@ UIControlsReference <- function() {
             actionButton("InputUploadStrainAction", label = "Upload")
           ),
         ),
-        tabPanel("Create Control IDs",
+        # New tabPanel for "Batch IDs"
+        tabPanel("Batch IDs",
           br(),
-          fileInput("InputUploadCompositions", label = "Upload Compositions", accept = c("text/csv", "text/comma-separated-values,text/plain", ".csv")),
-          actionButton("InputCompositionUploadAction", label = "Upload")
+          dateInput("InputCreateBatchID", label = "Batch ID", format = "yyyy-mm-dd"),
+          textInput("InputCreateBatchDescription", label = "Description", placeholder = "Description"),
+          textInput("InputCreateBatchLeadPerson", label = "Lead Person"),
+          actionButton("InputBatchIDUploadAction", label = "Upload")
+        ),
+        # New tabPanel for "Composition IDs"
+        tabPanel("Composition IDs",
+          br(),
+          fileInput("InputUploadCompositionIDs", label = "Upload Compositions", accept = c("text/csv", "text/comma-separated-values,text/plain", ".csv")),
+          actionButton("InputCompositionIDUploadAction", label = "Upload")
         )
       )
     ),
     mainPanel(
-      radioButtons("InputControlPanelType", "Control Storage Type", choices=c("DBS Collection"="dbs_collection", "Whole Blood DNA"="whole_blood"), selected = "dbs_collection", inline=TRUE),
+      radioButtons("InputControlPanelType", "Control Storage Type", choices=get_control_types(), selected = "dbs_collection", inline=TRUE),
       fluidRow(
         column(width = 2, selectizeInput("InputControlSearchBatch", width = '100%', label = "Batch", choices = c("", tbl(con, "study") %>% pull(short_code)), selected="")),
         column(width = 2, selectizeInput("InputControlSearchStrain", width = '100%', label = "Strain", choices = c("", tbl(con, "strain") %>% pull(name)), selected="")),

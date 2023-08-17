@@ -17,7 +17,6 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
     user_file = NULL, # this holds a file that is ready for upload
     console_verbatim = FALSE, # whether to print mulitple lines to the console
     error = FALSE, # whether to start an error workflow
-    user_action_required = FALSE, # whether the user needs to add additional inputs
     required_elements = NULL, # elements on form that need user attention
     upload_template = NULL # template file to download
   )
@@ -40,9 +39,8 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
     message(paste("Loaded", dataset$name))
 
     tryCatch({
-
       ## format the file
-      rv$user_file <- ProcessCSV(
+      rv$user_file <- process_control_csv(
         user_csv = dataset$datapath,
         user_action = input$UploadControlAction,
         file_type = input$UploadFileType,
@@ -50,7 +48,7 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
       )
     },
     formatting_error = function(e) {
-      check_if_special_columns_missing(e, rv, input)
+      show_formatting_error_modal(e)
     },
     validation_error = function(e) {
       show_validation_error_modal(e)
@@ -73,7 +71,7 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
           user_csv = dataset$datapath,
           user_action = "upload",
           file_type = input$UploadFileType,
-          sample_storage_type = input$UploadSampleType
+          sample_type = input$UploadSampleType
         )
       },
       message = function(m) {
@@ -82,7 +80,7 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
       })
     },
     formatting_error = function(e) {
-      check_if_special_columns_missing(e)
+      check_if_special_columns_missing(e, rv, input)
     },
     validation_error = function(e) {
       show_validation_error_modal(e)
@@ -107,6 +105,7 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
       return()
     }
 
+    early_stop <- FALSE
     if (is.null(rv$user_file)) {
       # dataset <- input$UploadSampleDataSet
       message(paste("Loaded", dataset$name))
@@ -114,25 +113,7 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
       tryCatch({
         withCallingHandlers({
 
-          container_name <- NULL
-          if (typeof(input$UploadManifestName) == "character" && input$UploadManifestName != "") {
-            container_name <- input$UploadManifestName 
-          }
-
-          location_parameters <- NULL
-          if (typeof(input$UploadLocationRoot) == "character" && input$UploadLocationRoot != "") {
-            location_parameters <- c(location_parameters, list(location_root = input$UploadLocationRoot))
-          }
-          if (typeof(input$UploadLocationLevelI) == "character" && input$UploadLocationLevelI != "") {
-            location_parameters <- c(location_parameters, list(level_I = input$UploadLocationLevelI))
-          }
-          if (typeof(input$UploadLocationLevelII) == "character" && input$UploadLocationLevelII != "") {
-            location_parameters <- c(location_parameters, list(level_II = input$UploadLocationLevelII))
-          }
-
-          if (!is.null(location_parameters) && !all(c("location_root", "level_I", "level_II") %in% names(location_parameters))) {
-            stop("Missing location parameter")
-          }
+          user_input_data <- collate_user_input_sample_data(input$UploadSampleType, input)
 
           if (input$UploadType == "samples") {
             ## format the file
@@ -140,9 +121,8 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
               user_csv = dataset$datapath,
               user_action = "upload",
               file_type = input$UploadFileType,
-              sample_storage_type = input$UploadSampleType,
-              container_name = container_name,
-              freezer_address = location_parameters
+              sample_type = input$UploadSampleType,
+              bind_data = user_input_data
             )
           } else {
             ## format the file
@@ -151,8 +131,7 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
               user_action = input$UploadControlAction,
               file_type = input$UploadFileType,
               control_type = input$UploadControlType,
-              container_name = container_name,
-              freezer_address = location_parameters
+              bind_data = user_input_data
             )            
           }
 
@@ -164,14 +143,23 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
       },
       validation_error = function(e) {
         show_validation_error_modal(e)
+        early_stop <<- TRUE
       },
       formatting_error = function(e) {
-        check_if_special_columns_missing(e)
+        if (input$UploadType == "samples") {
+          check_if_special_columns_missing(e, rv, input)
+        } else {
+          show_formatting_error_modal(e)
+        }
+        early_stop <<- TRUE
       },
       error = function(e) {
         show_general_error_modal(e)
+        early_stop <<- TRUE
       })
     }
+
+    if (early_stop) return()
 
     message("Starting Upload...")
     b_use_wait_dialog <- FALSE
@@ -193,10 +181,12 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
         shinyjs::reset("UploadAction")
         if (input$UploadType == "samples") {
           UploadSpecimens(user_data = rv$user_file, storage_type_id=input$UploadSampleType)
-        } else if (input$UploadType == "Controls" && input$UploadControlAction == "extraction") { 
-          UploadExtractedDNA(user_data = rv$user_file, control_extraction=input$UploadControlType)
+        } else if (input$UploadType == "controls" && input$UploadControlAction == "upload") { 
+          upload_controls(user_data = rv$user_file, control_type = input$UploadControlType)
+        } else if (input$UploadType == "controls" && input$UploadControlAction == "extraction") {
+          upload_extracted_dna(user_data = rv$user_file, control_extraction = input$UploadControlAction)
         } else {
-          UploadControls(user_data=rv$user_file, control_type=input$UploadControlType)
+          message("Unknown upload type!!!")
         }
       },
       message = function(m) {
@@ -290,7 +280,6 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
   observeEvent(input$UploadSampleType, {
 
 
-    browser()
     shinyjs::reset("UploadLocationRoot")
     shinyjs::reset("UploadLocationLevelI")
     shinyjs::reset("UploadLocationLevelII")
@@ -300,9 +289,9 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
     updateRadioButtons(
       session,
       "UploadFileType",
-      choices = global_sample_file_types[[input$UploadSampleType]],
+      choices = get_file_types_for_sample(input$UploadSampleType),
       inline = TRUE,
-      selected = dplyr::first(global_sample_file_types[[input$UploadSampleType]])
+      selected = FALSE
     )
 
     updateSelectInput(
@@ -356,128 +345,6 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
     )
 
     DBI::dbDisconnect(con)
-  })
-
-  example_data <- reactiveValues(
-    required = NULL,
-    user_input = NULL,
-    conditional = NULL,
-    optional = NULL
-  )
-
-  ## create the example data to display and to download
-
-  observe({
-
-    # Initialize attributes based on UploadType
-    file_column_attributes <- switch(input$UploadType,
-      controls = {
-        get_control_file_columns(input$UploadControlType, "create")
-      },
-      samples = {
-        # Check if the UploadSampleType is valid and the UploadFileType exists for the given UploadSampleType
-        if (!is.null(global_sample_file_types[[input$UploadSampleType]]) && 
-            input$UploadFileType %in% global_sample_file_types[[input$UploadSampleType]]) {
-          get_sample_file_columns(input$UploadSampleType, "upload", input$UploadFileType)
-        } else {
-          stop(paste("Invalid UploadFileType:", input$UploadFileType, "for UploadSampleType:", input$UploadSampleType))
-        }
-      },
-      NULL  # Default case
-    )
-
-    
-    # Ensure we've got attributes to work with
-    if (!is.null(file_column_attributes)) {
-      # Populate example_data using the FileColumnAttributes methods
-      example_data$required <- file_column_attributes$get_required_colnames()
-      example_data$conditional <- file_column_attributes$get_conditional_colnames()
-      example_data$optional <- file_column_attributes$get_optional_colnames()
-      example_data$location <- file_column_attributes$get_location_colnames()
-      example_data$container <- file_column_attributes$get_container_colnames()
-    }
-
-    create_template <- function(file_column_attributes) {
-      # Additional code to create a template for user download
-      cols <- file_column_attributes$all_fields()
-      template <- matrix(ncol = length(cols), nrow = 0)
-      colnames(template) <- cols
-      return(template)
-    }
-
-    # create template for the user to download
-    rv$template <- create_template(file_column_attributes)
-
-  })
-
-  observe({
-    # Helper functions
-    get_example_name <- function(type, sample_type, control_type, file_type) {
-      if (type == "samples") {
-        return(paste0(sample_type, "_", file_type))
-      } 
-      return(paste0(control_type, "_", file_type))
-    }
-
-    create_empty_reactable <- function(columns) {
-      mat <- matrix(nrow = 0, ncol = length(columns))
-      colnames(mat) <- columns
-      reactable(mat, defaultColDef = colDef(minWidth = 120, html = TRUE, sortable = FALSE, resizable = FALSE))
-    }
-
-    create_reactable_from_example <- function(example, columns) {
-      # Check if the data exists and has columns
-      data_to_use <- if (exists(example, mode = "data.frame") && ncol(eval(as.symbol(example))) > 0) {
-        eval(as.symbol(example))[, columns]
-      } else {
-        return(create_empty_reactable(columns))  # return an empty reactable if data isn't valid
-      }
-
-      reactable(
-        data_to_use,
-        defaultColDef = colDef(minWidth = 120, html = TRUE, sortable = FALSE, resizable = FALSE)
-      )
-    }
-
-    # Reactables
-    generate_reactable_output <- function(data_columns) {
-      if (input$UploadFileType != "na") {
-        return(create_empty_reactable(data_columns))
-      }
-      
-      example <- get_example_name(input$UploadType, input$UploadSampleType, input$UploadControlType, input$UploadFileType)
-      create_reactable_from_example(example, data_columns)
-    }
-
-    output$UploadFileExampleRequired <- renderReactable({
-      generate_reactable_output(example_data$required)
-    })
-
-    # output$UploadFileExampleUserInput <- renderReactable({
-    #   # Combine example_data$location and example_data$container
-    #   if (!is.null(example_data$location) && !is.null(example_data$container)) {
-    #     combined_data <- c(example_data$location, example_data$container)
-    #     create_reactable_from_example(combined_data, names(combined_data))
-    #   } else {
-    #     create_empty_reactable(NULL)  # Modify create_empty_reactable to handle NULL if needed
-    #   }
-    # })
-
-    output$UploadFileExampleConditional <- renderReactable({
-      if (!is.null(example_data$conditional)) {
-        generate_reactable_output(example_data$conditional)
-      } else {
-        create_empty_reactable(NULL)  # Modify create_empty_reactable to handle NULL if needed
-      }
-    })
-
-    output$UploadFileExampleOptional <- renderReactable({
-      if (!is.null(example_data$optional)) {
-        generate_reactable_output(example_data$optional)
-      } else {
-        create_empty_reactable(NULL)  # Modify create_empty_reactable to handle NULL if needed
-      }
-    })
   })
 
   observeEvent(input$UploadLocationRoot, {
@@ -554,42 +421,46 @@ build_annotated_csv <- function(e) {
   return (user_file_error_annotated)
 }
 
-# This is function to handle any formatting errors that happen during processing.
+# This is a function to handle any formatting errors that happen during processing.
 # Error handling should be improved upon in the future to be done at the server level.
 check_if_special_columns_missing <- function(e, rv, input) {
 
+  message("Checking whether to ask user for input.")
   # Use the get_sample_file_columns function to retrieve file column attributes
-  file_column_attr <- get_sample_file_columns(input$UploadSampleType, input$UploadAction, input$UploadFileType)
+  file_column_attr <- get_sample_file_columns(
+    sample_type = input$UploadSampleType,
+    action = "upload",
+    file_type = input$UploadFileType
+  )
 
-  locations <- file_column_attr$locations[['location_root']] # Assuming manifest name is the first element in location colnames
-  location_parameters <- file_column_attr$get_location_colnames()
+  locations <- get_location_by_sample(input$UploadSampleType)
+  container <- get_container_by_sample(input$UploadSampleType)
+  columns <- e[['data']]$column
 
-  required_elements <- c()
-
-  columns <- e$df$column
-
-  missing <- columns[!columns %in% c(location_parameters, manifest_name)]
+  missing <- columns[!columns %in% c(locations, container)]
   if (length(missing) > 0) {
     show_formatting_error_modal(e)
   } else {
-    if (manifest_name %in% columns) {
+    if (container[['container_name_key']] %in% columns) {
       shinyjs::show("UploadManifestName")
-      required_elements <- c(required_elements, "UploadManifestName")
     }
 
     # should be all or none
-    if (all(location_parameters %in% columns)) {
+    if (locations$location_root %in% columns) {
       shinyjs::show("UploadLocationRoot")
+    }
+
+    if (locations$level_i %in% columns) {
       shinyjs::show("UploadLocationLevelI")
+    }
+
+    if (locations$level_ii %in% columns) {
       shinyjs::show("UploadLocationLevelII")
-      required_elements <- c(required_elements, c("UploadManifestName", "UploadLocationLevelI", "UploadLocationLevelII"))
     }
 
     shinyjs::disable("UploadSampleType")
     shinyjs::disable("UploadFileType")
 
-    rv$required_elements <- required_elements
-    rv$user_action_required <- FALSE
     rv$user_file <- NULL # sanity check
   }
 }

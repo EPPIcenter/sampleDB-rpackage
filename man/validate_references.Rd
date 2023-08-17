@@ -4,22 +4,20 @@
 \alias{validate_references}
 \title{Validate References}
 \usage{
-validate_references(database, formatted_csv, reference_type, user_action)
+validate_references(database, user_data, reference_type, user_action)
 }
 \arguments{
-\item{database}{The database connection or specification for validation.}
+\item{database}{A database connection or reference.}
 
-\item{formatted_csv}{The user-provided CSV file to be validated.}
+\item{reference_type}{The type of reference ('strains' or 'compositions').}
 
-\item{reference_type}{The type of reference being validated: "strains" or "compositions".}
+\item{user_action}{The user action taken on the control specimen ('extraction' or 'create').}
 
-\item{user_action}{The action being performed, e.g. "upload".}
+\item{formatted_csv}{The CSV data formatted for validation.}
 }
 \value{
-The user data if validation passes or an error if not.
+nothing
 }
 \description{
-The main function to validate references. It can handle different types of references.
-After validation, it will either return the user data or stop the process if errors are found.
+Validate References
 }
-\keyword{validation}

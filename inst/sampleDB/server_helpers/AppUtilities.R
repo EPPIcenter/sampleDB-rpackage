@@ -504,7 +504,10 @@ ViewArchiveStatuses <- function(database) {
 
 
 show_formatting_error_modal <- function(error) {
-  df <- error$list %>%
+
+  message("Preparing format error modal.")
+
+  df <- error$data %>%
     dplyr::rename(
       Column = column, 
       Reason = reason,
@@ -515,7 +518,7 @@ show_formatting_error_modal <- function(error) {
   showModal(
     modalDialog(
       size = "m",
-      title = error$title,
+      title = "Formatting Error Detected",
       error$message,
       tags$hr(),
       renderReactable({ df }),
@@ -525,26 +528,23 @@ show_formatting_error_modal <- function(error) {
 }
 
 show_validation_error_modal <- function(error) {
-  
+
+  message("Preparing validation error modal.")
+
+  error_collection <- error$data
   # Extracting unique error descriptions
-  errors <- unique(sapply(error$error_data_list, function(x) x$description))
+  errors <- unique(sapply(error_collection$error_data_list, function(x) x$description))
   errors_df <- data.frame(Error = errors)
 
   # Define the reactable for displaying errors
   main_table <- reactable(
     errors_df, 
     details = function(index) {
+
+      specific_error <- error_collection$error_data_list[[index]]
+      selected_cols <- c("RowNumber", specific_error$columns)
       
-      # Get the specific ErrorData object from the ValidationErrorCollection for this error
-      specific_error <- error$error_data_list[[index]]
-      
-      # Extract details from the ErrorData object
-      error_details <- data.frame(
-        Description = rep(specific_error$description, length(specific_error$rows)),
-        Column = specific_error$columns,
-        Row = specific_error$rows,
-        stringsAsFactors = FALSE
-      )
+      error_details <- error_collection$get_error_details_by_index(index)
       
       # Display the error details using reactable
       htmltools::div(
@@ -558,9 +558,9 @@ show_validation_error_modal <- function(error) {
               "&:hover[aria-sort]" = list(background = "hsl(0, 0%, 96%)"),
               "&[aria-sort='ascending'], &[aria-sort='descending']" = list(background = "hsl(0, 0%, 96%)"),
               borderColor = "#555"
-            ),
-            defaultColDef = colDef(na = "-", align = "center")
-          )
+            )
+          ),
+          defaultColDef = colDef(na = "-", align = "center")
         )
       )
     }
@@ -583,6 +583,7 @@ show_validation_error_modal <- function(error) {
 
 
 show_general_error_modal <- function(error) {
+  errcall = ifelse(is.null(error$call), "No function call information available", error$call)
   errmsg = ifelse(is.null(error$message), "No message available", error$message)
   showModal(
     modalDialog(
@@ -590,8 +591,61 @@ show_general_error_modal <- function(error) {
       title = error$title,
       tags$p("Something went wrong - contact the app author, and report the error message below."),
       tags$hr(),
+      tags$p(errcall),
       tags$p(errmsg),
       footer = modalButton("Exit")
     )
   )
+}
+
+
+#' Collate User Input for Sample Data
+#'
+#' This function combines the outputs of both `get_location_by_sample` and 
+#' `get_container_by_sample`, and then updates the resultant named list with 
+#' input values.
+#' 
+#' @param sample_type The type of sample to get data for.
+#' @param input A list of user inputs that includes location and container information.
+#' @param sample_file The JSON file that contains sample information.
+#' @param app_file The JSON file that contains app-related data.
+#' 
+#' @return A list that combines location and container data, and updates with user input.
+#' @examples
+#' # With mock input data
+#' input <- list(UploadManifestName = "MyPlate", 
+#'               UploadLocationRoot = "Minus20Freezer", 
+#'               UploadLocationLevelI = "Shelf1", 
+#'               UploadLocationLevelII = "Basket2")
+#' collate_user_input_sample_data("micronix", input)
+#' 
+#' @export
+collate_user_input_sample_data <- function(sample_type, 
+                                           input, 
+                                           sample_file = "samples.json", 
+                                           app_file = "app.json") {
+
+  # Get data from both functions
+  location_data <- get_location_by_sample(sample_type, sample_file, app_file)
+  container_data <- get_container_by_sample(sample_type, sample_file, app_file)
+  
+  collated_user_data <- NULL
+  
+  # Update container name
+  if (is.character(input$UploadManifestName) && input$UploadManifestName != "") {
+    collated_user_data <- setNames(list(input$UploadManifestName), container_data[["container_name_key"]])
+  }
+
+  # Update location data
+  if (is.character(input$UploadLocationRoot) && input$UploadLocationRoot != "") {
+    collated_user_data <- c(collated_user_data,  setNames(list(input$UploadLocationRoot), location_data[["location_root"]]))
+  }
+  if (is.character(input$UploadLocationLevelI) && input$UploadLocationLevelI != "") {
+    collated_user_data <- c(collated_user_data, setNames(list(input$UploadLocationLevelI), location_data[["level_i"]]))
+  }
+  if (is.character(input$UploadLocationLevelII) && input$UploadLocationLevelII != "") {
+    collated_user_data <- c(collated_user_data, setNames(list(input$UploadLocationLevelII), location_data[["level_ii"]]))
+  }
+
+  return(collated_user_data)
 }

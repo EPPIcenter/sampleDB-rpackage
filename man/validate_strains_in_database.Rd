@@ -7,9 +7,10 @@
 validate_strains_in_database(
   con,
   table_name,
-  strain_col,
   row_number_col,
-  check_existence = TRUE
+  strain_col,
+  error_select,
+  error_if_exists = TRUE
 )
 }
 \arguments{
@@ -17,11 +18,13 @@ validate_strains_in_database(
 
 \item{table_name}{The name of the table in the database that contains the user data.}
 
-\item{strain_col}{The column name for strains.}
-
 \item{row_number_col}{The column name for row numbers.}
 
-\item{check_existence}{Logical. If TRUE, checks if the strain exists in the database. If FALSE, checks if it's absent.}
+\item{strain_col}{The column name for strains.}
+
+\item{error_select}{Select which column to report with errors. The column used here will depend on what data you want the user to see regarding strains.}
+
+\item{error_if_exists}{Logical. If TRUE, checks if the strain exists in the database. If FALSE, checks if it's absent.}
 }
 \value{
 An instance of the ErrorData class or NULL.

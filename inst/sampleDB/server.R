@@ -152,17 +152,19 @@ function(input, output, session) {
       
       # # -------- Update References ---------------
       
-      # # Update Freezers
-      # UpdateLabFreezers(session, input, output, database)
+      # Update Freezers
+      UpdateLabFreezers(session, input, output, database)
       
       # # Update Specimen Types
-      # UpdateSpecimenTypes(session, input, output, database)
+      UpdateSpecimenTypes(session, input, output, database)
       
       # # Update EPPIcenter Lab Studies
-      # UpdateLabStudies(session, input, output, database)
+      UpdateLabStudies(session, input, output, database)
+
+      ControlReference(session, input, output, database)
 
       # # Configuration panel
-      # AppPreferencesPanel(session, input, output, database)
+      AppPreferencesPanel(session, input, output, database)
 
       # --------------- About ------------
     }

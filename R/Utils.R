@@ -15,36 +15,56 @@ concat_position <- function(col, row) {
   sprintf("%s%02d", col, row)
 }
 
-#' Validate study references
+#' Validate study references (Database Version)
 #'
 #' This function checks if the study reference provided in the dataset exists in the database.
+#' Note: This function assumes that the data is already present in the database.
 #'
 #' @param con A database connection object.
 #' @param table_name The name of the formatted CSV table in the database.
 #' @param row_number_col The name of the row number column.
 #' @param study_short_code_col The name of the study short code column.
+#' @param controls Whether are not we are validating controls. Controls have 'Batches' instead of studies.
+#' @param error_if_exists Whether to indicate an error if a study / batch is already in the database.
 #'
 #' @keywords validation
 #' @return ErrorData object indicating any studies not found.
-validate_study_reference <- function(con, table_name, row_number_col, study_short_code_col) {
+validate_study_reference_db <- function(con, table_name, row_number_col, study_short_code_col, controls = FALSE, error_if_exists = FALSE) {
 
+  # Left join with the study table
   df <- tbl(con, table_name) %>%
     left_join(tbl(con, "study"), by = setNames("short_code", study_short_code_col)) %>%
-    filter(is.na(id)) %>%
-    select(all_of(c(row_number_col, study_short_code_col))) %>%
+    select(all_of(c(row_number_col, study_short_code_col, "id")))
+    
+  # Depending on error_if_exists flag, filter the results
+  if (error_if_exists) {
+    df <- df %>%
+      filter(!is.na(id))
+    description <- ifelse(controls, "Batch already exists in the database", "Study already exists in the database")
+  } else {
+    df <- df %>%
+      filter(is.na(id))
+    description <- ifelse(controls, "Batch could not be found in the database", "Study could not be found in the database")
+  }
+
+  # Drop the id column as it's not needed for the output
+  df <- df %>%
+    select(-id) %>%
     collect()
 
+  # Check if there are any resulting rows and return appropriate ErrorData
   if (nrow(df) > 0) {
-    return(ErrorData$new(description = "Study Reference Validation", data_frame = df))
+    return(ErrorData$new(description = description, data_frame = df))
   }
 
   return(NULL)
 }
 
 
-#' Validate specimen type references
+#' Validate specimen type references (Database Version)
 #'
 #' This function checks if the specimen type reference provided in the dataset exists in the database.
+#' Note: This function assumes that the data is already present in the database.
 #'
 #' @param con A database connection object.
 #' @param table_name The name of the formatted CSV table in the database.
@@ -53,7 +73,8 @@ validate_study_reference <- function(con, table_name, row_number_col, study_shor
 #'
 #' @keywords validation
 #' @return ErrorData object indicating any specimen types not found.
-validate_specimen_type <- function(con, table_name, row_number_col, specimen_type_col) {
+validate_specimen_type_db <- function(con, table_name, row_number_col, specimen_type_col) {
+
   df <- tbl(con, table_name) %>%
     left_join(tbl(con, "specimen_type"), by = setNames("name", specimen_type_col)) %>%
     filter(is.na(id)) %>%
@@ -67,9 +88,10 @@ validate_specimen_type <- function(con, table_name, row_number_col, specimen_typ
   return(NULL)
 }
 
-#' Validate location references
+#' Validate location references (Database Version)
 #'
 #' This function checks if the location reference provided in the dataset exists in the database.
+#' Note: This function assumes that the data is already present in the database.
 #'
 #' @param con A database connection object.
 #' @param table_name The name of the formatted CSV table in the database.
@@ -80,7 +102,7 @@ validate_specimen_type <- function(con, table_name, row_number_col, specimen_typ
 #'
 #' @keywords validation
 #' @return ErrorData object indicating any locations not found.
-validate_location_reference <- function(con, table_name, row_number_col, name_col, level_I_col, level_II_col) {
+validate_location_reference_db <- function(con, table_name, row_number_col, name_col, level_I_col, level_II_col) {
 
   # Directly define the join conditions using named vectors
   user_table_joins <- setNames(
@@ -178,14 +200,10 @@ handle_unknown_date_tokens <- function(data, date_col, parsed_dates, token_mask)
 #' @return An ErrorData object if any required data is missing, otherwise NULL.
 check_missing_data <- function(formatted_csv, col_attributes) {
 
-  requires_data <- c(
-    col_attributes$get_required_colnames(),
-    col_attributes$get_location_colnames(),
-    col_attributes$get_container_colnames()
-  )
-
-  missing_rows <- which(rowSums(is.na(formatted_csv[, requires_data])) > 0)
-  missing_cols <- colnames(formatted_csv[, requires_data])[colSums(is.na(formatted_csv[, requires_data])) > 0]
+  # Ensure that data frame remains intact with the 'drop = FALSE' argument
+  subset_data <- formatted_csv[, col_attributes$required, drop = FALSE]
+  missing_rows <- which(rowSums(is.na(subset_data)) > 0)
+  missing_cols <- colnames(subset_data)[colSums(is.na(subset_data)) > 0]
 
   if (length(missing_cols) > 0) {
     description <- "Rows found with missing data"
@@ -201,8 +219,8 @@ check_missing_data <- function(formatted_csv, col_attributes) {
 #' @return A dataframe with an additional 'RowNumber' column.
 #' @keywords utility
 #' @export
-add_row_numbers <- function(df) {
-  df %>% dplyr::mutate(RowNumber = row_number())
+add_row_numbers <- function(df, row_number_col = "RowNumber") {
+  df %>% dplyr::mutate(!!sym(row_number_col) := row_number())
 }
 
 #' Add a position column based on column attributes
@@ -320,20 +338,25 @@ get_container_table_name <- function(container_class) {
   )
 }
 
-
-
-process_sample_data_set <- function(dataset, fileType, sampleType) {
-  withCallingHandlers({
-    ## format the file
-    rv$user_file <- process_specimen_csv(
-      user_csv = dataset$datapath,
-      user_action = "upload",
-      file_type = fileType,
-      sample_storage_type = sampleType
-    )
-  },
-  message = function(m) {
-    shinyjs::html(id = "UploadOutputConsole", html = paste0(dataset$name, ": ", m$message), add = rv$console_verbatim)
-    rv$console_verbatim <- TRUE
-  })
+#' Find First Matching Column Name
+#'
+#' This function checks for the presence of potential column names within a data frame 
+#' and returns the first one that matches, or NA_character_ if none is found.
+#'
+#' @param data A data frame or tibble.
+#' @param potential_names A character vector containing potential column names to search for.
+#'
+#' @return A string representing the first matching column name, or NA_character_ if none is found.
+#' @examples
+#' df <- data.frame(
+#'   Barcode = 1:5,
+#'   Minus20Freezer = 6:10
+#' )
+#' find_column_name(df, c("Barcode", "Tube ID", "TubeCode"))
+#' find_column_name(df, c("Minus20Freezer", "Minus80Freezer"))
+#'
+#' @export
+find_column_name <- function(data, potential_names) {
+  intersect(colnames(data), potential_names)[1] %||% NA_character_
 }
+

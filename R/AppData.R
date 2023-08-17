@@ -1,4 +1,19 @@
-# R/AppData.R
+library(jsonlite)
+
+#' Helper function to read JSON files
+#'
+#' Reads the JSON files provided by the filename.
+#' 
+#' @param filename The name of the JSON file to be read.
+#' 
+#' @return A list structure containing the contents of the JSON file.
+#' 
+#' @keywords internal
+#' @noRd
+read_json_file <- function(filename) {
+  file_path <- get_data_file_path(filename)
+  fromJSON(file_path, flatten = TRUE)
+}
 
 #' Get the path to a data file in the inst/app/www directory
 #'
@@ -12,660 +27,741 @@
 #' }
 #' @keywords internal
 #' @export
-get_data_file_path <- function(file_name) {
-  system.file("app/www", file_name, package = "sampleDB")
-}
-
-#' Merge Default Values with Exceptions
-#'
-#' This internal function is used to combine a default set of key-value pairs with
-#' an exceptions set, where the exceptions will override the defaults.
-#'
-#' @param defaults A named list of default values.
-#' @param exceptions A named list of exceptions that will override the defaults.
-#'
-#' @return A merged list with exceptions overriding the defaults.
-#'
-#' @examples
-#' defaults <- list(a = 1, b = 2, c = 3)
-#' exceptions <- list(b = 20, d = 4)
-#' merge_defaults_with_exceptions(defaults, exceptions)
-#'
-#' @keywords internal
-merge_defaults_with_exceptions <- function(defaults, exceptions) {
-  if (is.null(exceptions)) {
-    return(defaults)
-  }
-  
-  for (key in names(exceptions)) {
-    if (is.list(exceptions[[key]]) && !is.null(defaults[[key]]) && is.list(defaults[[key]])) {
-      defaults[[key]] <- merge_defaults_with_exceptions(defaults[[key]], exceptions[[key]])
-    } else {
-      defaults[[key]] <- exceptions[[key]]
-    }
-  }
-  return(defaults)
-}
-
-
-
-#' Get fields for specific action, sample type, and file type
-#'
-#' Extracts the necessary fields for a given action, sample type, and file type from parsed JSON data.
-#' The function considers default configurations and also allows for specific exceptions
-#' based on sample and file types. It has built-in checks to ensure valid input values
-#' for `sample_type`, `action`, and `file_type`.
-#'
-#' @param json_data A list. The parsed JSON data containing sample details and defaults.
-#' @param references_json_data A list. Parsed references JSON data with details about locations, containers, etc.
-#' @param sample_type A character string specifying the type of sample (e.g., "micronix").
-#' @param action A character string indicating the desired action (e.g., "upload").
-#' @param file_type A character string defining the type of the file (e.g., "visionmate"). The default is "na" (application standard).
-#' @return A list containing fields for the specified sample type, action, and file type.
-#'         This includes required, conditional, and optional fields, alongside container and location information.
-#' @examples
-#' \dontrun{
-#' json_data <- load_parse_json("path/to/your/samples.json")
-#' references_data <- load_parse_json("path/to/your/references.json")
-#' fields <- get_fields_for_action_sample(json_data, references_data, "Micronix", "upload", "visionmate")
-#' }
-#' @seealso \link[jsonlite]{fromJSON} for parsing JSON in R.
-#' @keywords internal
-#' @export
-get_fields_for_action_sample <- function(json_data, references_json_data, sample_type, action, file_type = "na") {
-
-  # Ensure non-null parameters
-  if (is.null(sample_type)) {
-    stop("Sample type cannot be NULL")
-  }
-
-  if (is.null(action)) {
-    stop("Action cannot be NULL")
-  }
-
-  if (is.null(file_type)) {
-    stop("File type cannot be NULL")
-  }
-
-  # Get the sample type data
-  sample_type_data <- json_data$samples
-
-  # Check if the provided sample_type is valid
-  valid_sample_types <- sapply(sample_type_data, function(x) x$id)
-
-  if (!(sample_type %in% valid_sample_types)) {
-    stop(paste("Invalid sample type:", sample_type))
-  }
-
-  # Check if the provided action is valid
-  valid_actions <- names(json_data$defaults)
-  if (!(action %in% valid_actions)) {
-    stop(paste("Invalid action:", action))
-  }
-
-  # Find the matching sample type
-  for (sample in sample_type_data) {
-    if (sample$id == sample_type) {
-
-      # Check if the provided file_type is valid for the current sample_type
-      if (file_type != "na" && !is.null(sample$exceptions) && !(file_type %in% names(sample$exceptions))) {
-        stop(paste("Invalid file type:", file_type, "for sample type:", sample_type))
-      }
-
-      # Get the fields for the specific action and file type
-      if (file_type == "na") {
-        # Use defaults for 'na' file type
-        fields <- json_data$defaults[[action]]
-      } else {
-        fields <- merge_defaults_with_exceptions(json_data$defaults[[action]], sample$exceptions[[file_type]])
-      }
-
-      # Append container and location details from the root and sample level
-      fields$container <- sample$container %||% json_data$defaults$container
-      fields$location <- sample$location %||% json_data$defaults$location
-
-      # If a specific container is mentioned in exceptions, it takes precedence over defaults
-      if (!is.null(sample$exceptions[[file_type]]$container)) {
-        fields$container <- sample$exceptions[[file_type]]$container
-      } else {
-        fields$container <- references_json_data$containers[[fields$container]]
-      }
-
-      # Fetch location details from references
-      fields$location <- references_json_data$locations[[fields$location]]
-
-      return(fields)
-    }
-  }
-
-  # If the sample type is not found, return NULL
-  return(NULL)
-}
-
-
-#' Get fields for specific action, control type, and file type
-#'
-#' This function extracts the required, conditional, and optional fields for a specific action,
-#' control type from the parsed JSON data. It also takes into account exceptions for the given control type.
-#'
-#' @param json_data A list containing the parsed JSON data.
-#' @param references_json_data A list containing the parsed references JSON data.
-#' @param control_type The type of the control.
-#' @param action The type of the action.
-#' @return A list containing the required, conditional, and optional fields.
-#' @examples
-#' \dontrun{
-#' json_data <- load_parse_json("path/to/your/file.json")
-#' fields <- get_fields_for_action_control(json_data, "Micronix", "create")
-#' }
-#' @keywords internal
-#' @export
-get_fields_for_action_control <- function(json_data, references_json_data, control_type, action) {
-
-  # Ensure non-null parameters
-  if (is.null(control_type)) {
-    stop("Control type cannot be NULL")
-  }
-
-  if (is.null(action)) {
-    stop("Action cannot be NULL")
-  }
-
-  # Get the control type data
-  control_type_data <- json_data$controls
-
-  # Check if the provided control_type is valid
-  valid_control_types <- sapply(control_type_data, function(x) x$id)
-  if (!(control_type %in% valid_control_types)) {
-    stop(paste("Invalid control type:", control_type))
-  }
-
-  # Check if the provided action is valid
-  valid_actions <- names(json_data$defaults)
-  if (!(action %in% valid_actions)) {
-    stop(paste("Invalid action:", action))
-  }
-
-  # Find the matching control type
-  for (control in control_type_data) {
-    if (control$id == control_type) {
-
-      # Get the fields for the specific action
-      fields <- merge_defaults_with_exceptions(json_data$defaults[[action]], control$exceptions[[action]])
-
-      # Set NULL values to NA for consistency
-      fields <- lapply(fields, function(x) if(is.null(x)) NA else x)
-
-      # Extract location and container details
-      if (!is.null(fields$loc_src) && !is.na(fields$loc_src)) {
-        fields$loc_src <- references_json_data$locations[[fields$loc_src]]
-      }
-
-      if (!is.null(fields$loc_dest) && !is.na(fields$loc_dest)) {
-        fields$loc_dest <- references_json_data$locations[[fields$loc_dest]]
-      }
-
-      if (!is.null(fields$container_src) && !is.na(fields$container_src)) {
-        fields$container_src <- references_json_data$containers[[fields$container_src]]
-      }
-
-      if (!is.null(fields$container_dest) && !is.na(fields$container_dest)) {
-        fields$container_dest <- references_json_data$containers[[fields$container_dest]]
-      }
-
-      return(fields)
-    }
-  }
-
-  # If the control type is not found, return NULL
-  return(NULL)
-}
-
-#' Get fields for specific action, sample type, and file type
-#'
-#' This function extracts the required,
-#' conditional, and optional fields for a specific action,
-#' sample type, and file type from the parsed JSON data.
-#'
-#' @param json_data A list containing the parsed JSON data.
-#' @param sample_type The type of the sample.
-#' @param action The type of the action.
-#' @param file_type The type of the file.
-#' @return A list containing the required, conditional, and optional fields.
-#' @examples
-#' \dontrun{
-#' json_data <- load_parse_json("path/to/your/file.json")
-#' fields <- get_fields_for_action(json_data, "Micronix", "upload", "na")
-#' }
-#' @keywords internal
-#' @export
-get_fields_for_action <- function(json_data, sample_type, action, file_type) {
-  # Get the sample type data
-  sample_type_data <- json_data$samples
-
-  # Find the matching sample type
-  for (sample in sample_type_data) {
-    if (sample$name == sample_type) {
-      # Get the fields for the specific action and file type
-      fields <- sample$actions[[action]]$file_types[[file_type]]
-      return(fields)
-    }
-  }
-
-  # If the sample type is not found, return NULL
-  return(NULL)
-}
-
-#' Load and parse JSON file
-#'
-#' This function reads a JSON file and converts it into a list in R.
-#' The list can then be manipulated using standard R operations.
-#'
-#' @param file_path The path to the JSON file.
-#' @return A list containing the parsed JSON data.
-#' @examples
-#' \dontrun{
-#' json_data <- load_parse_json("path/to/your/file.json")
-#' }
-#' @keywords internal
-#' @export
-load_parse_json <- function(file_path) {
-  # Use jsonlite::fromJSON() to parse the JSON file
-  json_data <- jsonlite::fromJSON(get_data_file_path(file_path), simplifyVector = FALSE)
-
-  return(json_data)
-}
-
-#' Load and parse samples JSON
-#'
-#' This function loads and parses the samples.json file,
-#' extracting the fields for a specific sample type, action,
-#' and file type. It also takes into account exceptions for the given sample and file types.
-#'
-#' @param file_path The path to the JSON file.
-#' @param references_json_path The path to the references JSON file.
-#' @param sample_type The type of sample.
-#' @param action The action to perform on the sample.
-#' @param file_type The type of file.
-#' @return A list with the required, conditional, and optional fields.
-#' @examples
-#' \dontrun{
-#' fields <- get_fields_samples_json("Micronix", "upload", "na")
-#' }
-#' @keywords internal
-#' @export
-get_fields_samples_json <- function(file_path, references_json_path, sample_type, action, file_type) {
-  json_data <- load_parse_json(file_path)
-  references_json_data <- load_parse_json(references_json_path)
-  fields <- get_fields_for_action_sample(json_data, references_json_data, sample_type, action, file_type)
-  return(fields)
-}
-
-#' Load and parse controls JSON
-#'
-#' This function loads and parses the controls.json file.
-#' The list can then be manipulated using standard R operations.
-#'
-#' @param file_path The path to the JSON file.
-#' @param references_json_path The path to the references JSON file.
-#' @param control_type The type of control.
-#' @param action The action to perform on the control.
-#' @return A list with the required and optional fields.
-#' @examples
-#' \dontrun{
-#' fields <- get_fields_controls_json("dbs_sheet", "create")
-#' }
-#' @keywords intenal
-#' @export
-get_fields_controls_json <- function(file_path, references_json_path, control_type, action) {
-  json_data <- load_parse_json(file_path)
-  references_json_data <- load_parse_json(references_json_path)
-  fields <- get_fields_for_action_control(json_data, references_json_data, control_type, action)
-  return(fields)
-}
-
-#' Load and parse references JSON
-#'
-#' This function loads and parses the references.json file.
-#' The list can then be manipulated using standard R operations.
-#'
-#' @param file_path Path to the references.json file.
-#' @param category The category of references.
-#' @param type The specific type within the category (optional).
-#' @return The fields for the given category and type.
-#' @examples
-#' \dontrun{
-#' fields <- get_fields_references_json("references.json", "locations", "minus20")
-#' }
-#' @keywords internal
-#' @export
-get_fields_references_json <- function(file_path, category, type = NULL) {
-
-  # Load and parse the JSON data
-  json_data <- load_parse_json(file_path)
-
-  # Retrieve the fields for the given category
-  fields <- json_data[[category]]
-  if (!is.null(type)) {
-    fields <- fields[[type]]
-  }
-
-  return(fields)
-}
-
-
-
-#' Get fields from JSON file
-#'
-#' This function fetches the fields from a given JSON file based on the file name and additional parameters
-#'
-#' @param appdata The name of JSON file. Must be one of "samples", "controls", or "references"
-#' @param ... Additional parameters required by the specific JSON parsing functions
-#' @return A list with the required, conditional, and optional fields (for "samples" and "controls") or the fields for the given category (for "references")
-#' @keywords internal
-#' @export
-get_fields_from_json <- function(appdata, ...) {
-  if (appdata == "samples") {
-    return(do.call(get_fields_samples_json, list("samples.json", "references.json", ...)))
-  } else if (appdata == "controls") {
-    return(do.call(get_fields_controls_json, list("controls.json", "references.json", ...)))
-  } else if (appdata == "references") {
-    return(do.call(get_fields_references_json, list("references.json", ...)))
-  } else {
-    stop(sprintf("No appdata found for %s.", appdata))
-  }
-}
-
-#' This is an R6 Class for the FileColumnAttributes object
-#'
 #' @noRd
-FileColumnAttributes <- R6::R6Class(
-  "FileColumnAttributes",
-  public = list(
-    required = NULL,
-    conditional = NULL,
-    optional = NULL,
-    location = NULL,
-    container = NULL,
-    initialize = function(required, conditional, optional, location, container) {
-      self$required <- required
-      self$conditional <- conditional
-      self$optional <- optional
-      self$location <- location
-      self$container <- container
-    },
-    all_fields = function() {
-      return (c(self$required, self$conditional, self$optional, self$location, self$container))
-    },
-    get_required_colnames = function() {
-      return(unname(unlist(self$required)))
-    },
-    get_conditional_colnames = function() {
-      return(unname(unlist(self$conditional)))
-    },
-    get_optional_colnames = function() {
-      return(unname(unlist(self$optional)))
-    },
-    get_location_colnames = function() {
-      return(unname(unlist(self$location)))
-    },
-    get_container_colnames = function() {
-      return(unname(unlist(self$container)))
-    }
-  )
-)
-
-#' Get user column attributes for samples
-#'
-#' This function gets all the required, conditional, and optional fields
-#' for a given user action. It also takes into account exceptions for the given sample and file types.
-#'
-#' @param sample_type The type of sample
-#' @param user_action The user action to get fields for
-#' @param file_type The type of file
-#' @param config_yml The path to the config.yml file
-#' @return A FileColumnAttributes object with required, conditional, and optional fields for the user action
-#' @keywords appdata
-#' @export
-get_sample_file_columns <- function(sample_type, user_action, file_type, config_yml = Sys.getenv("SDB_CONFIG")) {
-  ## Get fields for the action - order matters here
-  fields <- get_fields_from_json("samples", sample_type, user_action, file_type)
-
-  ## Initialize the output fields
-  container_fields <- fields[['container']]
-
-  ## If the file type is traxcer, replace with the custom config value
-  if (file_type == "traxcer") {
-    ## Read Configuration File and replace with user override from user preferences
-    config <- yaml::read_yaml(config_yml)
-    traxcer_position <- ifelse(
-      !is.na(config$traxcer_position$override),
-      config$traxcer_position$override,
-      config$traxcer_position$default
-    )
-
-    if (!is.na(config$traxcer_position$override)) {
-      replaced_values <- sapply(container_fields, function(value) {
-        stringr::str_replace(value, config$traxcer_position$default, config$traxcer_position$override)
-      })
-      container_fields <- as.list(replaced_values)
-    }
-  }
-
-  ## Create an R6 object of the FileColumnAttributes class
-  file_column_attr <- FileColumnAttributes$new(
-    required = fields[['required']],
-    conditional = fields[['conditional']],
-    optional = fields[['optional']],
-    location = fields[['location']],
-    container = container_fields
-  )
-
-  return(file_column_attr)
+get_data_file_path <- function(file_name) {
+  system.file(file.path("app", "www"), file_name, package = "sampleDB")
 }
 
-#' Get user action fields for controls
+#' Get sample types from a JSON file
 #'
-#' This function gets all the fields for a given user action related to controls.
-#'
-#' @param control_type The type of control
-#' @param user_action The user action to get fields for
-#' @return A FileColumnAttributes object with fields for the user action for controls
-#' @keywords appdata
-#' @export
-get_control_file_columns <- function(control_type, user_action) {
-  ## Get fields for the action
-  fields <- get_fields_from_json("controls", control_type, user_action)
-
-  ## Initialize the output fields
-  location <- c(fields["loc_src"], fields["loc_dest"])
-  container <- c(fields["container_src"], fields["container_dest"])
-
-  ## Create an R6 object of the FileColumnAttributes class
-  file_column_attr <- FileColumnAttributes$new(
-    required = fields[["required"]],
-    conditional = fields[["conditional"]],
-    optional = fields[["optional"]],
-    location = location[!is.na(names(location))],
-    container = container[!is.na(names(container))]
-  )
-
-  return(file_column_attr)
-}
-
-#' Retrieve File Column Attributes for a Given Category and Reference Type
-#'
-#' This function gets all the fields for a given user action related to references 
-#' and returns a `FileColumnAttributes` object populated with those fields. 
-#' It supports different reference categories in the JSON, such as locations, strains, compositions, etc. 
-#' Depending on the category and the reference type (if provided), 
-#' the function will fetch fields categorized as `required`, `optional`, or directly if no sub-categories are present.
-#'
-#' @param category A string specifying the category of reference, e.g., "locations", "strains".
-#' @param reference_type An optional string specifying the specific type within the category, e.g., "minus20". Default is NULL.
+#' Retrieves a named list for sample types with "name" as the names in the list and "type" as the values.
 #' 
-#' @return A `FileColumnAttributes` object populated with the fields related to the given category and reference type.
+#' @param samples_file Name of the samples JSON file. Default is "samples.json".
 #' 
-#' @examples
-#' \dontrun{
-#' # For categories with a specific type
-#' attributes <- get_reference_file_columns("locations", "minus20")
-#'
-#' # For categories without a specific type
-#' attributes <- get_reference_file_columns("strains")
-#' }
-#' 
+#' @return A named list of sample types.
 #' @export
-get_reference_file_columns <- function(category, reference_type = NULL) {
-  # Get fields for the action
-  fields <- get_fields_from_json("references", category, reference_type)
-
-  # Initialize the output fields
-  required_column_names <- NULL
-  conditional_column_names <- NULL
-  optional_column_names <- NULL
-
-  # If fields for the type are sub-categorized as 'required', 'optional', etc.
-  if ('required' %in% names(fields)) {
-    required_column_names <- fields[['required']]
-  }
-  
-  if ('conditional' %in% names(fields)) {
-    conditional_column_names <- fields[['conditional']]
-  }
-  
-  if ('optional' %in% names(fields)) {
-    optional_column_names <- fields[['optional']]
-  }
-
-  # If no sub-categories, then assign fields directly
-  if (is.null(required_column_names) && is.null(conditional_column_names) && is.null(optional_column_names)) {
-    required_column_names <- fields
-  }
-
-  # Create an R6 object of the FileColumnAttributes class
-  file_column_attr <- FileColumnAttributes$new(
-    required = required_column_names,
-    conditional = conditional_column_names,
-    optional = optional_column_names,
-    location = NULL,   
-    container = NULL   
-  )
-
-  return(file_column_attr)
+get_sample_types <- function(samples_file = "samples.json") {
+  data <- read_json_file(samples_file)
+  types <- setNames(names(data$samples), sapply(data$samples, function(x) x$name))
+  return(types)
 }
 
-
-#' Extract Actions, File Types, and Sample Types from JSON Content
+#' Get control types from a JSON file
 #'
-#' This function parses a given JSON structure to extract the available actions,
-#' file types, and sample types.
-#'
-#' @param json_content A list containing the parsed JSON data.
-#' @return A list containing three vectors: actions, file_types, and sample_types.
-#' @examples
-#' \dontrun{
-#'   json_path <- "path_to_your_json_file.json"
-#'   json_content <- fromJSON(json_path)
-#'   info <- extract_info_from_json(json_content)
-#'   print(info)
-#' }
-#' @keywords appdata
+#' Retrieves a named list for control types with "name" as the names in the list and "type" as the values.
+#' 
+#' @param controls_file Name of the controls JSON file. Default is "controls.json".
+#' 
+#' @return A named list of control types.
 #' @export
-extract_sample_from_json <- function(json_content) {
-
-  # Extract actions from the 'defaults' section
-  actions <- names(json_content$defaults)
-
-  # Extract file types and sample types from the 'samples' section
-  file_types <- unique(unlist(lapply(json_content$samples, function(sample) {
-    return(names(sample$exceptions))
-  })))
-
-  sample_types <- unlist(lapply(json_content$samples, function(sample) {
-    return(sample$id)
-  }))
-
-  # Return as a list
-  return(list(actions = actions, file_types = file_types, sample_types = sample_types))
+get_control_types <- function(controls_file = "controls.json") {
+  data <- read_json_file(controls_file)
+  types <- setNames(names(data$controls), sapply(data$controls, function(x) x$name))
+  return(types)
 }
 
-#' Extract sample IDs from JSON
+#' Helper function to read the app configuration file
 #'
-#' This function loads the provided JSON and returns the sample IDs from the "samples" section.
+#' Reads the app.json file which provides application specific configuration.
 #'
-#' @param file_path The path to the JSON file.
-#' @return A named list where each item's name is a capitalized version of the sample ID, 
-#'   and the item's value is the original sample ID.
-#'
-#' @examples
-#' \dontrun{
-#' sample_ids <- get_sample_ids_from_json("your_json_file_name.json")
-#' print(sample_ids)
-#' }
-#' @importFrom jsonlite fromJSON
-#' @seealso \code{\link{load_parse_json}}
+#' @param app_file (default: "app.json") Path to the JSON file containing application configurations.
+#' 
+#' @return A list structure containing the contents of the app configuration file.
+#' 
 #' @keywords internal
+#' @noRd
+read_app_file <- function(app_file = "app.json") {
+  read_json_file(app_file)
+}
+
+#' Retrieve file types from the app configuration file
+#'
+#' Reads the app.json file and extracts available file type identifiers.
+#'
+#' @param app_file (default: "app.json") Path to the JSON file containing application configurations.
+#' 
+#' @return A named list of file type identifiers where keys from the JSON are values and the values are the names.
+#' 
+#' @keywords internal
+#' @noRd
+get_file_types <- function(app_file = "app.json") {
+  app_data <- read_app_file(app_file)
+  return(setNames(names(app_data$file_type_identifiers), app_data$file_type_identifiers))
+}
+
+#' Retrieve action types from the app configuration file
+#'
+#' Reads the app.json file and extracts available action identifiers.
+#'
+#' @param app_file (default: "app.json") Path to the JSON file containing application configurations.
+#' 
+#' @return A named list of action identifiers where keys from the JSON are values and the values are the names.
+#' 
+#' @keywords internal
+#' @noRd
+get_action_types <- function(app_file = "app.json") {
+  app_data <- read_app_file(app_file)
+  return(setNames(names(app_data$action_identifiers), app_data$action_identifiers))
+}
+
+#' Get action types for a specific sample
+#'
+#' @param sample_type A character string representing the type of the sample.
+#' @param sample_file A character string indicating the path to the samples.json file.
+#' @param app_file A character string indicating the path to the app.json file.
+#' @return A named list of action types or NULL if no actions are defined.
+#' @examples 
+#' get_sample_action_types("micronix")
 #' @export
-get_sample_ids_from_json <- function(file_path="samples.json") {
-  # Load the JSON data
-  json_data <- load_parse_json(file_path)
+get_sample_action_types <- function(sample_type, sample_file = "samples.json", app_file = "app.json") {
+  sample_data <- read_json_file(sample_file)
+  app_data <- read_json_file(app_file)
   
-  # Extract sample IDs from the "samples" section
-  sample_ids <- sapply(json_data$samples, function(sample) sample$id)
+  # Check if the sample_type exists in the samples data
+  if (sample_type %in% names(sample_data$samples)) {
+    action_ids <- sample_data$samples[[sample_type]]$actions
+    # Map the action identifiers to their respective names using the app.json
+    return(setNames(action_ids, app_data$action_identifiers[action_ids]))
+  }
   
-  # Explicit naming
-  explicit_names <- c("Micronix" = "micronix", "Cryovial" = "cryovial")
-  names(sample_ids) <- c("Micronix", "Cryovial")
+  return(NULL)
+}
+
+#' Get file types for a specific sample
+#'
+#' @param sample_type A character string representing the type of the sample.
+#' @param sample_file A character string indicating the path to the samples.json file.
+#' @param app_file A character string indicating the path to the app.json file.
+#' @return A named list of file types or a list with "NA" if not specified.
+#' @examples 
+#' get_file_types_for_sample("micronix")
+#' @export
+get_file_types_for_sample <- function(sample_type, sample_file = "samples.json", app_file = "app.json") {
+  sample_data <- read_json_file(sample_file)
+  app_data <- read_json_file(app_file)
   
-  return(sample_ids)
+  # Check if the sample_type exists in the samples data
+  if (sample_type %in% names(sample_data$samples)) {
+    file_type_ids <- sample_data$samples[[sample_type]]$file_types
+    # Map the file type identifiers to their respective names using the app.json
+    return(setNames(file_type_ids, app_data$file_type_identifiers[file_type_ids]))
+  }
+  
+  return(list("NA" = "na"))
+}
+
+#' Get action types for a specific control
+#'
+#' @param control_type A character string representing the type of the control.
+#' @param control_file A character string indicating the path to the controls.json file.
+#' @param app_file A character string indicating the path to the app.json file.
+#' @return A named list of action types or NULL if no actions are defined.
+#' @examples 
+#' get_control_action_types("dbs_sheet")
+#' @export
+get_control_action_types <- function(control_type, control_file = "controls.json", app_file = "app.json") {
+  control_data <- read_json_file(control_file)
+  app_data <- read_json_file(app_file)
+  
+  # Check if the control_type exists in the controls data
+  if (control_type %in% names(control_data$controls)) {
+    action_ids <- control_data$controls[[control_type]]$actions
+    # Map the action identifiers to their respective names using the app.json
+    return(setNames(action_ids, app_data$action_identifiers[action_ids]))
+  }
+  
+  return(NULL)
 }
 
 
-#' Retrieve File Types for Each Sample from JSON
+#' Get file types for a specific control
 #'
-#' This function extracts the available file types for each sample defined in the provided JSON file.
-#' "NA" will always be returned as one of the file types for each sample.
-#'
-#' @param json_path A character string representing the path to the JSON file.
-#'
-#' @return A named list where each item's name is a sample ID, and the item's value is a named vector 
-#'   of file types available for that sample, with the name being the capitalized version and the value
-#'   being the original file type. Each vector always includes "NA" as one of the options.
-#'
-#' @examples
-#' \dontrun{
-#' file_types <- get_sample_file_types("samples.json")
-#' print(file_types)
-#' }
-#'
-#' @importFrom jsonlite fromJSON
-#' @seealso \code{\link{load_parse_json}}
+#' @param control_type A character string representing the type of the control.
+#' @param control_file A character string indicating the path to the controls.json file.
+#' @param app_file A character string indicating the path to the app.json file.
+#' @return A named list of file types or a list with "NA" if not specified.
+#' @examples 
+#' get_file_types_for_control("dbs_sheet")
 #' @export
-get_sample_file_types <- function(json_path="samples.json") {
-  # Load the JSON data
-  json_data <- load_parse_json(json_path)
+get_file_types_for_control <- function(control_type, control_file = "controls.json", app_file = "app.json") {
+  control_data <- read_json_file(control_file)
+  app_data <- read_json_file(app_file)
   
-  # Extract sample data
-  sample_data <- json_data$samples
+  # Since controls.json doesn't explicitly have a file_types field for each control, we're assuming if there's no field, we should return the ID as the value.
+  # Check if the control_type exists in the controls data
+  if (control_type %in% names(control_data$controls)) {
+    return(list(control_type = app_data$file_type_identifiers[control_type]))
+  }
   
-  # For each sample, extract its file types
-  file_types_list <- lapply(sample_data, function(sample) {
-    # Get the names of exceptions as they represent file types
-    exception_types <- names(sample$exceptions)
-    
-    # Always include 'na' as an option
-    file_types <- c("na", exception_types)
-    
-    # Create named version
-    names(file_types) <- sapply(file_types, function(ft) if(ft == "na") "NA" else tools::toTitleCase(ft))
-    
-    return(file_types)
+  return(list("NA" = "na"))
+}
+
+#' Get all sample types
+#'
+#' @param sample_file A character string indicating the path to the samples.json file.
+#' @param app_file A character string indicating the path to the app.json file.
+#' @return A named list of sample types.
+#' @examples 
+#' get_all_sample_types()
+#' @export
+get_all_sample_types <- function(sample_file = "samples.json", app_file = "app.json") {
+  sample_data <- read_json_file(sample_file)
+  app_data <- read_json_file(app_file)
+  
+  sample_type_names <- sapply(sample_data$samples, function(x) x$name)
+  # Using the names from samples.json as the list names and the types (ids) as the list values
+  sample_type_ids <- names(sample_data$samples)
+  
+  return(setNames(sample_type_ids, sample_type_names))
+}
+
+
+#' Get all control types
+#'
+#' @param control_file A character string indicating the path to the controls.json file.
+#' @param app_file A character string indicating the path to the app.json file.
+#' @return A named list of control types.
+#' @examples 
+#' get_all_control_types()
+#' @export
+get_all_control_types <- function(control_file = "controls.json", app_file = "app.json") {
+  control_data <- read_json_file(control_file)
+  app_data <- read_json_file(app_file)
+  
+  control_type_names <- sapply(control_data$controls, function(x) x$name)
+  # Using the names from controls.json as the list names and the types (ids) as the list values
+  control_type_ids <- names(control_data$controls)
+  
+  return(setNames(control_type_ids, control_type_names))
+}
+
+
+
+#' Create a ColumnData S3 object
+#' 
+#' This function serves as a constructor for the ColumnData S3 class.
+#' It is used to represent column information in a structured manner.
+#'
+#' @param required A vector or NULL. Represents required columns.
+#' @param conditional A vector or NULL. Represents conditional columns.
+#' @param optional A vector or NULL. Represents optional columns.
+#'
+#' @return An S3 object of class 'ColumnData'.
+ColumnData <- function(required = NULL, conditional = NULL, optional = NULL) {
+  out <- list(
+    required = required,
+    conditional = conditional,
+    optional = optional
+  )
+  class(out) <- "ColumnData"
+  return(out)
+}
+
+#' Print method for ColumnData objects
+#' 
+#' This method provides a custom print representation for objects of class 'ColumnData'.
+#' It displays the required, conditional, and optional columns separately.
+#'
+#' @param x An object of class 'ColumnData'.
+#' @param ... Further arguments passed to or from other methods.
+print.ColumnData <- function(x, ...) {
+  cat("Required Columns:\n")
+  print(x$required)
+  cat("\nConditional Columns:\n")
+  print(x$conditional)
+  cat("\nOptional Columns:\n")
+  print(x$optional)
+}
+
+#' Dereference Location and Container Keys
+#' 
+#' Helper function that dereferences 'destination_location' and 'destination_container' keys
+#' in the provided keys list, using the 'app_data' structure.
+#' 
+#' @param keys A list containing the keys to be dereferenced.
+#' @param app_data A list containing application data. This should have 'locations' and 'containers' lists within it.
+#'
+#' @return A vector containing dereferenced keys.
+#' 
+#' @noRd
+dereference_location_container <- function(keys, app_data) {
+  dereferenced <- c()
+  
+  if ("location_key" %in% names(keys) && !is.null(keys$location)) {
+    location_keys <- app_data$locations[[keys$location]]
+    dereferenced <- c(dereferenced, location_keys)
+  }
+
+  if ("container_key" %in% names(keys) && !is.null(keys$container)) {
+    location_keys <- app_data$containers[[keys$container]]
+    dereferenced <- c(dereferenced, location_keys)
+  }
+  
+  return(dereferenced)
+}
+
+#' Dereference Control Location and Container Keys
+#' 
+#' Helper function that dereferences 'extraction_storage_location' and 'storage_container' keys
+#' in the provided control keys list, using the 'app_data' structure.
+#' 
+#' @param header_keys A list containing the control keys to be dereferenced.
+#' @param app_data A list containing application data. This should have 'locations' and 'containers' lists within it.
+#' @param action_keys A list containing the keys that are used in this action for this control.
+#'
+#' @return A vector containing dereferenced control keys.
+#' 
+#' @noRd
+dereference_control_location_container <- function(header_keys, app_data, action_keys) {
+
+  dereferenced <- c()
+  keys <- header_keys[names(header_keys) %in% unlist(action_keys)]
+
+  if ("storage_location" %in% names(keys) && !is.null(keys$storage_location)) {
+    location_keys <- app_data$locations[[keys$storage_location]]
+    dereferenced <- c(dereferenced, location_keys)
+  }
+
+  if ("extraction_target_location" %in% names(keys) && !is.null(keys$extraction_target_location)) {
+    location_keys <- app_data$locations[[keys$extraction_target_location]]
+    dereferenced <- c(dereferenced, location_keys)
+  }
+  
+  if ("storage_container" %in% names(keys) && !is.null(keys$storage_container)) {
+    container_keys <- app_data$containers[[keys$storage_container]]
+    dereferenced <- c(dereferenced, container_keys)
+  }
+
+  if ("extraction_target_container" %in% names(keys) && !is.null(keys$extraction_target_container)) {
+    container_keys <- app_data$containers[[keys$extraction_target_container]]
+    dereferenced <- c(dereferenced, container_keys)
+  }
+  
+  return(dereferenced)
+}
+
+
+#' Get values with priority to sample_values over shared_values.
+#'
+#' This function prioritizes and fetches values from either sample_values or shared_values.
+#'
+#' @param keys List of keys for which values are needed.
+#' @param sample_values List of sample values.
+#' @param shared_values List of shared values.
+#'
+#' @return A vector of values prioritized from sample_values, if available.
+get_values <- function(keys, sample_values, shared_values) {
+  values <- c(sample_values[keys], shared_values[keys])
+  # Remove duplicates keeping only the first occurrence (which would be from sample_values)
+  unique(unlist(values))
+}
+
+#' Get dereferenced values using sample_values and shared_values
+#'
+#' This function retrieves the values based on the keys provided.
+#'
+#' @param dereferenced_keys List of keys to look up.
+#' @param sample_values List of primary values.
+#' @param shared_values List of secondary values.
+#'
+#' @return A flattened list of values.
+get_dereferenced_values <- function(dereferenced_keys, sample_values, shared_values) {
+
+  # Flatten the sample_values for easier look-up
+  flatten_list <- function(x) {
+    if (!is.list(x)) return(list(x))
+    else return(do.call(c, lapply(x, flatten_list)))
+  }
+  flat_sample_values <- flatten_list(sample_values)
+
+  # Lookup function
+  lookup_value <- function(key) {
+    if (key %in% names(flat_sample_values)) {
+      return(flat_sample_values[[key]])
+    } else if (key %in% names(shared_values)) {
+      return(shared_values[[key]])
+    } else {
+      return(key)  # Return the original key if not found in sample_values or shared_values
+    }
+  }
+
+  # Return the looked up values for the dereferenced_keys
+  return(unname(sapply(unlist(dereferenced_keys), lookup_value)))
+}
+
+
+#' Retrieve ColumnData for a given sample type and action.
+#'
+#' This function provides the ColumnData S3 object for a specific sample type and action.
+#'
+#' @param sample_type Type of the sample for which the columns are needed.
+#' @param action Desired action.
+#' @param file_type The file type being used. Default is 'na'.
+#' @param config_yml (default: Sys.getenv("SDB_PATH")) Path to the application config file
+#' @param samples_file (default: "samples.json") Path to the JSON file containing samples data.
+#'
+#' @return A ColumnData S3 object.
+#' @export
+get_sample_file_columns <- function(sample_type, action, file_type = "na", config_yml = Sys.getenv("SDB_CONFIG"), samples_file = "samples.json") {
+
+  sample_data <- read_json_file(samples_file)
+  app_data <- read_app_file()
+  app_config <- yaml::read_yaml(config_yml)
+  
+  # Ensure that sample type and action exists
+  if (!sample_type %in% names(sample_data$samples)) {
+    stop("Invalid sample type provided.")
+  }
+  if (!action %in% names(sample_data$action_requirements)) {
+    stop("Invalid action provided.")
+  }
+
+  header_key <- sample_data$samples[[sample_type]]
+  shared_action_keys <- sample_data$action_requirements[[action]]$shared
+  action_keys <- sample_data$action_requirements[[action]][[sample_type]]
+  shared_values <- sample_data$sample_key_associations$shared
+  sample_values <- sample_data$sample_key_associations[[sample_type]]
+
+  if (!is.null(file_type) && file_type != 'na') {
+    sample_values <- sample_data$sample_key_associations[[sample_type]][[file_type]]
+  }
+
+  # Get locations and containers
+  dereferenced_values <- dereference_location_container(header_key, app_data)
+
+  # Get the union of keys between both shared and sample specific keys
+  required_keys_combined <- unique(c(action_keys$required_keys, shared_action_keys$required_keys))
+
+  # Ignore keys that are in the sample specific required keys
+  value_overrides <- setdiff(names(dereferenced_values), names(sample_values))
+
+  # Keep only the keys that are part of the sample type and action
+  keep_keys <- intersect(value_overrides, required_keys_combined)
+
+  deref_values <- if (!is_empty(keep_keys)) get_dereferenced_values(dereferenced_values[keep_keys], sample_values, shared_values)
+  required_vals <- c( get_values(required_keys_combined, sample_values, shared_values),
+                      deref_values
+  )
+
+  # Check for traxcer position override if file_type is 'traxcer'
+  if (file_type == 'traxcer' && !is.null(app_config$traxcer_position$override) && !is.na(app_config$traxcer_position$override)) {
+    required_vals[required_vals == "Position"] <- app_config$traxcer_position$override
+  }
+
+  conditional_keys_combined <- c(action_keys$conditional_keys, shared_action_keys$conditional_keys)
+  conditional_vals <- get_values(conditional_keys_combined, sample_values, shared_values)
+
+  optional_keys_combined <- c(action_keys$optional_keys, shared_action_keys$optional_keys)
+  optional_vals <- get_values(optional_keys_combined, sample_values, shared_values)
+
+  # Cleaning up null values
+  required_vals <- required_vals[!is.null(required_vals)]
+  conditional_vals <- conditional_vals[!is.null(conditional_vals)]
+  optional_vals <- optional_vals[!is.null(optional_vals)]
+
+  return(ColumnData(
+    required = required_vals,
+    conditional = conditional_vals,
+    optional = optional_vals
+  ))
+}
+
+#' Retrieve ColumnData for a given control type and action
+#'
+#' This function provides the ColumnData S3 object for a specific control type and action.
+#'
+#' @param control_type Type of the control for which the columns are needed.
+#' @param action Desired action.
+#' @param controls_file (default: "controls.json") Path to the JSON file containing controls data.
+#'
+#' @return A ColumnData S3 object.
+#' @export
+get_control_file_columns <- function(control_type, action, controls_file = "controls.json") {
+
+  control_data <- read_json_file(controls_file)
+  app_data <- read_app_file()
+  
+  # Ensure that control type and action exists
+  if (!control_type %in% names(control_data$controls)) {
+    stop("Invalid control type provided.")
+  }
+  if (!action %in% names(control_data$action_requirements)) {
+    stop("Invalid action provided.")
+  }
+
+  header_key <- control_data$controls[[control_type]]
+  action_keys <- control_data$action_requirements[[action]][[control_type]]
+  shared_action_keys <- control_data$action_requirements[[action]]$shared
+  shared_values <- control_data$control_key_associations$shared
+  control_values <- control_data$control_key_associations[[control_type]]
+
+  combined_action_keys <- c(action_keys, shared_action_keys)
+  dereferenced_keys <- dereference_control_location_container(header_key, app_data, combined_action_keys)
+
+  # Get the union of keys between both shared and control specific keys
+  required_keys_combined <- unique(c(action_keys$required_keys, shared_action_keys$required_keys))
+
+  required_vals <- c( get_values(required_keys_combined, control_values, shared_values),
+                      get_dereferenced_values(dereferenced_keys, control_values, shared_values)
+  )
+  
+  conditional_keys_combined <- c(action_keys$conditional_keys, shared_action_keys$conditional_keys)
+  conditional_vals <- get_values(conditional_keys_combined, control_values, shared_values)
+
+  optional_keys_combined <- c(action_keys$optional_keys, shared_action_keys$optional_keys)
+  optional_vals <- get_values(optional_keys_combined, control_values, shared_values)
+
+  # Cleaning up null values
+  required_vals <- required_vals[!is.null(required_vals)]
+  conditional_vals <- conditional_vals[!is.null(conditional_vals)]
+  optional_vals <- optional_vals[!is.null(optional_vals)]
+
+  return(ColumnData(
+    required = required_vals,
+    conditional = conditional_vals,
+    optional = optional_vals
+  ))
+}
+
+
+#' Retrieve ColumnData for a given reference type.
+#'
+#' This function provides the ColumnData S3 object for a specific reference type.
+#'
+#' @param reference_type Type of the reference for which the columns are needed.
+#' @param config_yml (default: Sys.getenv("SDB_CONFIG")) Path to the application config file
+#' @param references_file (default: "references.json") Path to the JSON file containing references data.
+#'
+#' @return A ColumnData S3 object.
+#' @export
+get_reference_file_columns <- function(reference_type, config_yml = Sys.getenv("SDB_CONFIG"), references_file = "references.json") {
+  
+  reference_data <- read_json_file(references_file)
+  app_config <- yaml::read_yaml(config_yml)
+  
+  # Ensure that reference type exists
+  if (!reference_type %in% names(reference_data$references)) {
+    stop("Invalid reference type provided.")
+  }
+
+  header_key <- reference_data$references[[reference_type]]
+  reference_keys <- header_key$required_keys
+  shared_values <- reference_data$reference_key_associations$shared
+  reference_values <- reference_data$reference_key_associations[[reference_type]]
+  
+  required_vals <- get_values(reference_keys, reference_values, shared_values)
+  
+  optional_vals <- NULL
+  if ("optional_keys" %in% names(header_key)) {
+    optional_vals <- get_values(header_key$optional_keys, reference_values, shared_values)
+  }
+  
+  # Cleaning up null values
+  required_vals <- required_vals[!is.null(required_vals)]
+  if (!is.null(optional_vals)) {
+    optional_vals <- optional_vals[!is.null(optional_vals)]
+  }
+
+  return(ColumnData(
+    required = required_vals,
+    optional = optional_vals
+  ))
+}
+
+
+
+#' Get locations by specified sample type
+#'
+#' @param sample_type A character string specifying the type of sample.
+#' @param sample_file A character string indicating the path to the samples.json file.
+#' @param app_file A character string indicating the path to the app.json file.
+#' @return A named list of locations for the specified sample type.
+#' @examples 
+#' get_location_by_sample(sample_type = "micronix")
+#' @export
+get_location_by_sample <- function(sample_type, sample_file = "samples.json", app_file = "app.json") {
+  sample_data <- read_json_file(sample_file)
+  app_data <- read_json_file(app_file)
+  
+  # Check if sample type exists
+  if(!sample_type %in% names(sample_data$samples)) {
+    stop("Specified sample type not found.")
+  }
+  
+  location_keys <- sample_data$samples[[sample_type]]$location
+  # If there's only one location, make it a list for consistency
+  if (!is.list(location_keys)) {
+    location_keys <- list(location_keys)
+  }
+  
+  # Fetch the complete location data from app_data using the keys
+  location_data <- lapply(location_keys, function(loc) {
+    data <- app_data$locations[[loc]]
+    list(location_root = data$location_root, level_i = data$level_i, level_ii = data$level_ii)
   })
   
-  # Convert list to named vector
-  names_vec <- sapply(sample_data, function(x) x$id)
-  names(file_types_list) <- names_vec
+  return(location_data[[1]])
+}
+
+#' Get source location by specified control type
+#'
+#' @param control_type A character string specifying the type of control.
+#' @param control_file A character string indicating the path to the controls.json file.
+#' @param app_file A character string indicating the path to the app.json file.
+#' @return A named list of extraction locations for the specified control type.
+#' @examples 
+#' get_extraction_location_by_control(control_type = "DBS Sheet")
+#' @export
+get_storage_location_by_control <- function(control_type, control_file = "controls.json", app_file = "app.json") {
   
-  return(file_types_list)
+  # Read the data
+  control_data <- read_json_file(control_file)
+  app_data <- read_json_file(app_file)
+  
+  # Check if control type exists
+  if(!control_type %in% names(control_data$controls)) {
+    stop("Specified control type not found.")
+  }
+  
+  # Extract the source location key
+  location_source_key <- control_data$controls[[control_type]]$extraction_storage_location
+  
+  # Fetch the complete location data from app_data using the source key
+  location_source_data <- lapply(location_source_key, function(loc) {
+    data <- app_data$locations[[loc]]
+    list(location_root = data$location_root, level_i = data$level_i, level_ii = data$level_ii)
+  })
+
+  return(location_source_data[[1]])
+}
+
+#' Get destination location by specified control type
+#'
+#' @param control_type A character string specifying the type of control.
+#' @param control_file A character string indicating the path to the controls.json file.
+#' @param app_file A character string indicating the path to the app.json file.
+#' @return A named list of destination locations for the specified control type.
+#' @examples 
+#' get_destination_location_by_control(control_type = "DBS Sheet")
+#' @export
+get_destination_location_by_control <- function(control_type, control_file = "controls.json", app_file = "app.json") {
+  
+  # Read the data
+  control_data <- read_json_file(control_file)
+  app_data <- read_json_file(app_file)
+  
+  # Check if control type exists
+  if(!control_type %in% names(control_data$controls)) {
+    stop("Specified control type not found.")
+  }
+  
+  # Extract the destination location key
+  location_destination_key <- control_data$controls[[control_type]]$extraction_target_location
+  
+  # Fetch the complete location data from app_data using the destination key
+  location_destination_data <- lapply(location_destination_key, function(loc) {
+    data <- app_data$locations[[loc]]
+    list(location_root = data$location_root, level_i = data$level_i, level_ii = data$level_ii)
+  })
+
+  return(location_destination_data[[1]])
+}
+
+#' Get containers by specified sample type
+#'
+#' @param sample_type A character string specifying the type of sample.
+#' @param sample_file A character string indicating the path to the samples.json file.
+#' @param app_file A character string indicating the path to the app.json file.
+#' @return A named list of containers for the specified sample type.
+#' @examples 
+#' get_container_by_sample(sample_type = "micronix")
+#' @export
+get_container_by_sample <- function(sample_type, sample_file = "samples.json", app_file = "app.json") {
+  sample_data <- read_json_file(sample_file)
+  app_data <- read_json_file(app_file)
+  
+  # Check if sample type exists
+  if(!sample_type %in% names(sample_data$samples)) {
+    stop("Specified sample type not found.")
+  }
+  
+  container_keys <- sample_data$samples[[sample_type]]$container
+  # If there's only one container, make it a list for consistency
+  if (!is.list(container_keys)) {
+    container_keys <- list(container_keys)
+  }
+  
+  # Fetch the complete container data from app_data using the keys
+  container_data <- lapply(container_keys, function(cont) {
+    data <- app_data$containers[[cont]]
+    list(position_keys = list(data$position_keys), container_name_key = data$container_name_key, container_barcode_key = data$container_barcode_key)
+  })
+  
+  return(container_data[[1]])
+}
+
+
+#' Get source container by specified control type
+#'
+#' @param control_type A character string specifying the type of control.
+#' @param control_file A character string indicating the path to the controls.json file.
+#' @param app_file A character string indicating the path to the app.json file.
+#' @return A named list of extraction containers for the specified control type.
+#' @examples 
+#' get_extraction_container_by_control(control_type = "DBS Sheet")
+#' @export
+get_storage_container_by_control <- function(control_type, control_file = "controls.json", app_file = "app.json") {
+  
+  # Read the data
+  control_data <- read_json_file(control_file)
+  app_data <- read_json_file(app_file)
+  
+  # Check if control type exists
+  if(!control_type %in% names(control_data$controls)) {
+    stop("Specified control type not found.")
+  }
+  
+  # Extract the source container key
+  container_source_key <- control_data$controls[[control_type]]$storage_container
+  
+  # Fetch the complete container data from app_data using the source key
+  container_source_data <- lapply(container_source_key, function(cont) {
+    data <- app_data$containers[[cont]]
+    list(position_keys = list(data$position_keys), container_name_key = data$container_name_key, container_barcode_key = data$container_barcode_key)
+  })
+
+  return(container_source_data[[1]])
+}
+
+
+#' Get destination container by specified control type
+#'
+#' @param control_type A character string specifying the type of control.
+#' @param control_file A character string indicating the path to the controls.json file.
+#' @param app_file A character string indicating the path to the app.json file.
+#' @return A named list of destination containers for the specified control type.
+#' @examples 
+#' get_destination_container_by_control(control_type = "DBS Sheet")
+#' @export
+get_destination_container_by_control <- function(control_type, control_file = "controls.json", app_file = "app.json") {
+  # Read the data
+
+  control_data <- read_json_file(control_file)
+  app_data <- read_json_file(app_file)
+  
+  # Check if control type exists
+  if(!control_type %in% names(control_data$controls)) {
+    stop("Specified control type not found.")
+  }
+  
+  # Extract the destination container key
+  container_destination_key <- control_data$controls[[control_type]]$extraction_target_container
+  
+  # Fetch the complete container data from app_data using the destination key
+  container_destination_data <- lapply(container_destination_key, function(cont) {
+    data <- app_data$containers[[cont]]
+    list(position_keys = list(data$position_keys), container_name_key = data$container_name_key, container_barcode_key = data$container_barcode_key)
+  })
+
+  return(container_destination_data[[1]])
 }

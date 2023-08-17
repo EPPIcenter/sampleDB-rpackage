@@ -2,15 +2,19 @@
 % Please edit documentation in R/UploadSpecimens.R
 \name{.UploadSpecimens}
 \alias{.UploadSpecimens}
-\title{Update the number of extracted DNA controls after extraction}
+\title{Upload Specimens to SampleDB}
 \usage{
 .UploadSpecimens(upload_data, sample_type_id, conn)
 }
 \arguments{
-\item{user_data}{A dataframe of SampleDB Upload data.}
+\item{upload_data}{A data frame containing the specimen data.}
 
-\item{database}{Path to sampleDB database}
+\item{sample_type_id}{A character or numeric identifier for the sample type.}
+
+\item{conn}{A database connection object.}
 }
 \description{
-\code{UpdateActiveControlCount()}
+This internal function uploads specimen data to the SampleDB database.
+It validates the data and checks for existing entries before updating the database.
 }
+\keyword{internal}

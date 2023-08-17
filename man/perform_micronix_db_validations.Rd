@@ -4,7 +4,7 @@
 \alias{perform_micronix_db_validations}
 \title{Perform Database-Related Validations for Micronix}
 \usage{
-perform_micronix_db_validations(database, user_data, action)
+perform_micronix_db_validations(database, user_data, action, variable_colnames)
 }
 \arguments{
 \item{database}{The database connection or specification for validation.}

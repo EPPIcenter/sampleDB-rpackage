@@ -9,8 +9,7 @@ validate_and_format_specimen_file(
   sample_type,
   user_action,
   file_column_attr,
-  container_name = NULL,
-  freezer_address = NULL
+  bind_data = NULL
 )
 }
 \arguments{
@@ -19,10 +18,6 @@ validate_and_format_specimen_file(
 \item{sample_type}{The sample type associated with the user's CSV file.}
 
 \item{file_column_attr}{The file column attributes.}
-
-\item{container_name}{The name of the container.}
-
-\item{freezer_address}{The address of the freezer.}
 }
 \value{
 A cleaned and checked user_file ready for further processing.

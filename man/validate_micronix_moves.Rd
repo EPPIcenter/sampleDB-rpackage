@@ -4,7 +4,7 @@
 \alias{validate_micronix_moves}
 \title{Validate Micronix Moves}
 \usage{
-validate_micronix_moves(micronix_test)
+validate_micronix_moves(micronix_test, variable_colnames)
 }
 \arguments{
 \item{micronix_test}{The utility function for performing validation checks.}

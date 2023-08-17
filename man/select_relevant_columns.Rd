@@ -9,7 +9,7 @@ select_relevant_columns(user_file, file_column_attr)
 \arguments{
 \item{user_file}{The user's CSV file as a data frame.}
 
-\item{file_column_attr}{An instance of FileColumnAttributes containing attributes of file columns.}
+\item{file_column_attr}{An instance of ColumnData containing attributes of file columns.}
 }
 \value{
 A data frame with only the relevant columns selected.

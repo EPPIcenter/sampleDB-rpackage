@@ -69,21 +69,27 @@ UploadSpecimens <- function(user_data, storage_type_id=NULL, database = Sys.gete
   dbDisconnect(conn)
 }
 
-
-#' Upload Extracted DNA Controls
+#' Upload Extracted DNA Data to SampleDB
 #'
-#' `UploadExtractedDNA()` can be used to upload extracted dbs dna to the sampleDB database.
+#' This function uploads extracted DNA data from a user-provided data frame 
+#' to a SQLite database, specifically to SampleDB. The function also updates the 
+#' active control count and commits the changes to the database.
 #'
-#' @param con A dplyr dbConnect() connection object
-#' @param user_data A dataframe of SampleDB Upload data.
-#' @param control_extraction How the DNA was extracted. Should be "DNA (DBS)" or "DNA (WB)"
+#' @param user_data A data frame containing the DNA extraction data.
+#' @param control_extraction A character string specifying the type of control extraction.
+#' @param database A character string specifying the path to the SampleDB SQLite database. 
+#'   Default value is the system environment variable "SDB_PATH".
 #'
-#' @import dplyr
-#' @import RSQLite
-#' @import lubridate
-#'
+#' @return A message indicating the success of the data upload operation.
+#' @importFrom RSQLite dbConnect SQLite dbBegin dbCommit dbDisconnect
+#' @importFrom dplyr filter inner_join select rename
+#' @seealso \code{\link{.UpdateActiveControlCount}} and \code{\link{.UploadSpecimens}} for helper functions.
 #' @export
-UploadExtractedDNA <- function(user_data, control_extraction, database = Sys.getenv("SDB_PATH")) {
+#' @examples
+#' \dontrun{
+#' upload_extracted_dna(user_data = my_data_frame, control_extraction = "dbs_sheet")
+#' }
+upload_extracted_dna <- function(user_data, control_extraction, database = Sys.getenv("SDB_PATH")) {
 
 # locate the database and connect to it
   con <-  RSQLite::dbConnect(RSQLite::SQLite(), database)
@@ -91,7 +97,7 @@ UploadExtractedDNA <- function(user_data, control_extraction, database = Sys.get
 
   dbBegin(con)
 
-  .UploadSpecimens(user_data, 1, conn = con) # always uploading micronix samples if it's a dna extraction
+  .UploadSpecimens(user_data, "micronix", conn = con) # always uploading micronix samples if it's a dna extraction
 
   .UpdateActiveControlCount(user_data, control_extraction, con = con)
 
@@ -102,17 +108,19 @@ UploadExtractedDNA <- function(user_data, control_extraction, database = Sys.get
 }
 
 
-#' Update the number of extracted DNA controls after extraction
+#' Update the Number of Extracted DNA Controls After Extraction
 #'
-#' `UpdateActiveControlCount()`
+#' This internal function updates the number of active controls for a given type
+#' of DNA extraction after the extraction has been performed.
 #'
-#' @param user_data_tbl A dataframe of SampleDB Upload data.
-#' @param control_extraction The type of extraction
-#' @param database Path to sampleDB database
+#' @param user_data A data frame containing the DNA extraction data.
+#' @param control_extraction A character string specifying the type of control extraction.
+#' @param con A database connection object.
 #'
-#' @import dplyr
-#' @import RSQLite
-#' @noRd
+#' @importFrom dplyr filter inner_join select rename group_by reframe
+#' @importFrom DBI dbExecute
+#' @importFrom RSQLite dbReadTable
+#' @keywords internal
 .UpdateActiveControlCount <- function(user_data, control_extraction, con) {
 
   if ("dbs_sheet" == control_extraction) {
@@ -146,33 +154,54 @@ UploadExtractedDNA <- function(user_data, control_extraction, database = Sys.get
 }
 
 
-#' Update the number of extracted DNA controls after extraction
+#' Upload Specimens to SampleDB
 #'
-#' `UpdateActiveControlCount()`
+#' This internal function uploads specimen data to the SampleDB database. 
+#' It validates the data and checks for existing entries before updating the database.
 #'
-#' @param user_data A dataframe of SampleDB Upload data.
-#' @param database Path to sampleDB database
+#' @param upload_data A data frame containing the specimen data.
+#' @param sample_type_id A character or numeric identifier for the sample type.
+#' @param conn A database connection object.
 #'
-#' @import dplyr
-#' @import RSQLite
-#'
+#' @importFrom dplyr filter inner_join select rename
+#' @importFrom DBI dbReadTable
+#' @importFrom lubridate now as_date ymd
+#' @importFrom RSQLite dbReadTable
+#' @keywords internal
 .UploadSpecimens <- function(upload_data, sample_type_id, conn){
+
+  browser()
+
+  safe_extract <- function(data_row, ...) {
+    potential_cols <- c(...)
+    for (col in potential_cols) {
+      if (col %in% names(data_row) && !is.na(data_row[[col]])) {
+        return(data_row[[col]])
+      }
+    }
+    return(NA_character_)
+  }
+
   for(i in 1:nrow(upload_data)){
-    #1. get upload item's metadata
-    eval.specimen_type <- upload_data[i, ]$"specimen_type" %>% as.character()
-    eval.study_code <- upload_data[i, ]$"study_short_code" %>% as.character()
-    eval.subject <- upload_data[i, ]$"study_subject" %>% as.character()
-    eval.barcode <- upload_data[i,]$"barcode" %>% as.character()
-    eval.position <- upload_data[i,]$"position"
-    eval.comment <- upload_data[i,]$"comment" %>% as.character()
-    eval.plate_barcode <- upload_data[i,]$"manifest_barcode" %>% as.character()
-    eval.container_name <- upload_data[i,]$"manifest_name" %>% as.character()
+    eval.specimen_type <- safe_extract(upload_data[i, ], "SpecimenType")
+    eval.study_code <- safe_extract(upload_data[i, ], "StudyCode", "Batch")
+    eval.subject <- safe_extract(upload_data[i, ], "StudySubject", "ControlID")
+
+    # For fields that might exist under different names
+    eval.barcode <- safe_extract(upload_data[i, ], "Barcode", "Tube ID", "TubeCode") 
+    eval.position <- safe_extract(upload_data[i, ], "Position", "ExtractedDNAPosition")
+    eval.comment <- safe_extract(upload_data[i, ], "Comment")
+
+    eval.plate_barcode <- safe_extract(upload_data[i,], "PlateBarcode", "BoxBarcode")
+    eval.container_name <- safe_extract(upload_data[i,], "PlateName", "BoxName")
+
     eval.freezer_address <- list(
-      location = upload_data[i,]$"name",
-      level_I = upload_data[i,]$"level_I",
-      level_II = upload_data[i,]$"level_II"
+      location = safe_extract(upload_data[i,], "Minus20Freezer", "Minus80Freezer"),
+      level_I = safe_extract(upload_data[i,], "ShelfName", "RackName"),
+      level_II = safe_extract(upload_data[i,], "BasketName", "RackPosition")
     )
-    eval.collection_date <- upload_data[i, ]$"collection_date"
+
+    eval.collection_date <- safe_extract(upload_data[i, ], "CollectionDate", "ExtractedOn")
 
     # if(is.na(upload_data[i, ]$"collection_date")){
     #   eval.collection_date <- as.character(lubridate::as_date(NA))
@@ -278,7 +307,7 @@ UploadExtractedDNA <- function(user_data, control_extraction, database = Sys.get
     # 6. Create new sample housing (if it does not alread exist) and upload samples into housing
 
     # micronix == 1
-    if(sample_type_id == 1){
+    if(sample_type_id == "micronix"){
       # create a new housing (if it does not already exist)
       if(!eval.container_name %in% CheckTableTx(conn = conn, "micronix_plate")$name){
         eval.plate_id <- .UploadPlate(conn = conn, container_name = eval.container_name, container_barcode = eval.plate_barcode, freezer_address = eval.freezer_address, table = "micronix_plate")
@@ -295,7 +324,7 @@ UploadExtractedDNA <- function(user_data, control_extraction, database = Sys.get
                            conn = conn) %>% suppressWarnings()
     }
     # cryovial == 2
-    else if (sample_type_id == 2) {
+    else if (sample_type_id == "cryovial") {
      # create a new housing (if it does not already exist)
       if(!eval.container_name %in% CheckTableTx(conn = conn, "cryovial_box")$name){
         eval.plate_id <- .UploadPlate(conn = conn, container_name = eval.container_name, container_barcode = eval.plate_barcode, freezer_address = eval.freezer_address, table = "cryovial_box")
@@ -375,7 +404,7 @@ UploadExtractedDNA <- function(user_data, control_extraction, database = Sys.get
 
 
 .UploadPlate <- function(conn, container_name, container_barcode, freezer_address, table){
-  eval.location_id <- filter(CheckTableTx(conn = conn, "location"), name == freezer_address$location, level_I == freezer_address$level_I, level_II == freezer_address$level_II)$id
+  eval.location_id <- filter(CheckTableTx(conn = conn, "location"), location_root == freezer_address$location, level_I == freezer_address$level_I, level_II == freezer_address$level_II)$id
   if(is.null(container_barcode) | is.na(container_barcode)) {
     container_barcode <- NA
   }

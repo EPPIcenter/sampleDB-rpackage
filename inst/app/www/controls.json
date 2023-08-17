@@ -1,63 +1,55 @@
 {
-  "defaults": {
-    "create": {
-      "required": {
-        "density": "Density",
-        "composition": "Composition",
-        "study_short_code": "Batch"
-      },
-      "optional": {
-        "comment": "Comment"
-      },
-      "loc_dest": "minus20",
-      "container_dest": "dbs_sheet"
+  "controls": {
+    "dbs_sheet": {
+      "id": 1, 
+      "name": "DBS Sheet",
+      "actions": ["create", "extraction"],
+      "extraction_target_location": "minus20",
+      "extraction_target_container": "micronix_plate",
+      "storage_location": "minus20_dbs_storage",
+      "storage_container": "dbs_sheet"
     },
-    "extraction": {
-      "required": {
-        "barcode": "Barcode", 
-        "study_short_code": "Batch",
-        "study_subject": "ControlID",
-        "extracted_on": "ExtractedOn"
-      },
-      "optional": {
-        "comment": "Comment"
-      },
-      "container_dest": "micronix_plate",
-      "loc_dest": "minus20",
-      "loc_src": null,
-      "container_src": null
+    "whole_blood": {
+      "id": 2,
+      "name": "Whole Blood",
+      "actions": ["create", "extraction"],
+      "extraction_target_location": "minus20",
+      "extraction_target_container": "micronix_plate", 
+      "storage_location": "minus80_wb_storage",
+      "storage_container": "cryovial_box"
     }
   },
-  "controls": [
-    {
-      "id": "dbs_sheet",
-      "exceptions": {
-        "create": {
-          "required": {
-            "sheet_id": "SheetID",
-            "count": "Count"
-          }
-        },
-        "extraction": {
-          "loc_src": "minus20",
-          "container_src": "dbs_sheet"
-        }
+  "action_requirements": {
+    "create": {
+      "shared": {
+        "required_keys": ["density", "composition", "study_short_code", "storage_location", "storage_container", "created"],
+        "optional_keys": ["comment"]
+      },
+      "dbs_sheet": {
+        "required_keys": ["count"]
+      },
+      "whole_blood": {
+        "conditional_keys": ["barcode"]
       }
     },
-    {
-      "id": "whole_blood",
-      "exceptions": {
-        "create": {
-          "required": {
-            "created": "Created"
-          },
-          "loc_dest": "minus80"
-        },
-        "extraction": {
-          "loc_src": "minus80",
-          "container_src": "cryovial_box"
-        }
+    "extraction": {
+      "shared": {
+        "required_keys": ["barcode", "study_short_code", "study_subject", "extracted_on", "extraction_target_location", "extraction_target_container", "storage_location", "storage_container"],
+        "optional_keys": ["comment"]
       }
     }
-  ]
+  },
+  "control_key_associations": {
+    "shared": {
+      "density": "Density",
+      "composition": "CompositionID",
+      "study_short_code": "Batch",
+      "barcode": "Barcode",
+      "study_subject": "ControlID",
+      "extracted_on": "ExtractedOn",
+      "comment": "Comment",
+      "created": "Created",
+      "count": "Count"
+    }
+  }
 }

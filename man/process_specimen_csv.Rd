@@ -8,9 +8,8 @@ process_specimen_csv(
   user_csv,
   user_action,
   sample_type,
-  container_name = NULL,
-  freezer_address = NULL,
   file_type = "na",
+  bind_data = NULL,
   database = Sys.getenv("SDB_PATH"),
   config_yml = Sys.getenv("SDB_CONFIG")
 )
@@ -22,11 +21,9 @@ process_specimen_csv(
 
 \item{sample_type}{A character string specifying the type of specimens in the user CSV.}
 
-\item{container_name}{(Optional) A character string specifying the name of the specimen container. If provided and not present in the CSV, it will be added to each row.}
-
-\item{freezer_address}{(Optional) A list of attributes for the specimen freezer. If provided and any attributes are missing from the CSV, they will be added to each row.}
-
 \item{file_type}{A character string indicating the type of file (default is "na").}
+
+\item{bind_data}{A named list of data to be added to the user file. The list names will be the new columns and the values to their respective column. Default is NULL, which means that no data will be binded.}
 
 \item{database}{A character string indicating the path to the SQLite database used for specimen validation checks. Defaults to the system environment variable 'SDB_PATH'.}
 

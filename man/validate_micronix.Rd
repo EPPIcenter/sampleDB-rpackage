@@ -4,7 +4,7 @@
 \alias{validate_micronix}
 \title{Validate Micronix Specimen Data}
 \usage{
-validate_micronix(user_data, action, database)
+validate_micronix(user_data, action, file_type, database)
 }
 \arguments{
 \item{user_data}{A data frame containing specimen data to validate.}

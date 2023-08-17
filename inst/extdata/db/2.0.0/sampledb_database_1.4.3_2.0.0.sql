@@ -137,11 +137,22 @@ CREATE TABLE IF NOT EXISTS "composition_strain" (
 --- Holds records of different composition of recorded controls ---
 CREATE TABLE IF NOT EXISTS "composition" (
 	"id"			INTEGER NOT NULL,
-    "index"         INTEGER NOT NULL DEFAULT 1, 
-	"label"			VARCHAR NOT NULL UNIQUE,
-	"legacy"		INTEGER,
+    "index"         INTEGER, 
+	"label"			VARCHAR NOT NULL,
+	"legacy"		INTEGER NOT NULL,
 
-	PRIMARY KEY("id")
+	PRIMARY KEY("id"),
+	CONSTRAINT "label_index_legacy_uc" UNIQUE("index","label","legacy")
+);
+
+CREATE TABLE IF NOT EXISTS "whole_blood_tube" (
+	"id"			INTEGER NOT NULL,
+	"barcode"		VARCHAR,
+	"position"		VARCHAR NOT NULL,
+	"cryovial_box_id"	INTEGER NOT NULL,
+
+	PRIMARY KEY ("id"),
+	FOREIGN KEY ("cryovial_box_id") REFERENCES "cryovial_box"("id")
 );
 
 --- update database version ---

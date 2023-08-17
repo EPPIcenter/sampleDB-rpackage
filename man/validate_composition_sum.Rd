@@ -6,17 +6,18 @@
 \usage{
 validate_composition_sum(
   user_data,
-  percentage_col,
   row_number_col,
+  strains_col,
+  percentage_col,
   tolerance = 0.02
 )
 }
 \arguments{
 \item{user_data}{A data frame containing the user data.}
 
-\item{percentage_col}{The column name for percentage in user_data.}
-
 \item{row_number_col}{The column name for row numbers in user_data.}
+
+\item{percentage_col}{The column name for percentage in user_data.}
 
 \item{tolerance}{Tolerance for sum of control compositions.}
 }

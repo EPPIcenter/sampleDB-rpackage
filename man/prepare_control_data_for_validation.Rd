@@ -4,12 +4,17 @@
 \alias{prepare_control_data_for_validation}
 \title{Prepare DataFrame for Control Validation}
 \usage{
-prepare_control_data_for_validation(user_data, file_column_attr)
+prepare_control_data_for_validation(
+  control_type,
+  user_data,
+  action,
+  file_column_attr
+)
 }
 \arguments{
 \item{user_data}{A data frame with columns to be renamed.}
 
-\item{file_column_attr}{A FileColumnAttributes object containing the column mappings.}
+\item{file_column_attr}{A ColumnData object containing the column mappings.}
 }
 \value{
 A pre-processed data frame.
@@ -27,7 +32,7 @@ user_data <- data.frame(
   Column = c('A', 'A')
 )
 
-# Assuming file_column_attr is an instantiated FileColumnAttributes object
+# Assuming file_column_attr is an instantiated ColumnData object
 
 new_df <- prepare_control_data_for_validation(user_data, file_column_attr)
 }

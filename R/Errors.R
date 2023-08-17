@@ -17,8 +17,8 @@
 #' }
 #'
 #' @export
-stop_app_error <- function(type, message, data = NULL) {
-  rlang::abort(type, message = message, data = data)
+stop_app_error <- function(type, message, data = NULL, call = NULL) {
+  rlang::abort(type, message = message, data = data, call = call)
 }
 
 #' Stop with a formatting error
@@ -37,8 +37,8 @@ stop_app_error <- function(type, message, data = NULL) {
 #'
 #' @export
 #' @keywords error-handling
-stop_formatting_error <- function(message, data) {
-  stop_app_error("formatting_error", message, data)
+stop_formatting_error <- function(message, data, call = rlang::caller_env()) {
+  stop_app_error("formatting_error", message, data, call)
 }
 
 #' Stop with a validation error
@@ -57,8 +57,8 @@ stop_formatting_error <- function(message, data) {
 #'
 #' @export
 #' @keywords error-handling
-stop_validation_error <- function(message, data) {
-  stop_app_error("validation_error", message, data)
+stop_validation_error <- function(message, data, call = rlang::caller_env()) {
+  stop_app_error("validation_error", message, data, call)
 }
 
 #' ErrorData class
@@ -137,17 +137,25 @@ ValidationErrorCollection <- R6::R6Class(
       self$error_data_list[[length(self$error_data_list) + 1]] = error_data
     },
 
-    #' @method ErrorDataList merge_data_list
-    #' @description This method is used to merge the error data from another ErrorDataList into this one.
-    #' @param other The other ErrorDataList object.
-    merge_data_list = function(other) {
-      if (!is(other, "ErrorDataList")) {
-        stop("Input must be an ErrorDataList object.")
+    #' @method ErrorDataList get_error_details_by_index
+    #' @description Gets an error by index.
+    #' @param index The index to specify which error.
+    get_error_details_by_index = function(index) {
+
+      if (index < 1 || index > self$length()) {
+        stop("Invalid index.")
       }
-      self$error_data_list <- c(self$error_data_list, other$error_data_list)
-      if(!is.null(other$user_data)){
-        self$user_data <- rbind(self$user_data, other$user_data)
-      }
+
+      specific_error <- self$error_data_list[[index]]
+
+      error_details <- data.frame(
+        RowNumber = specific_error$rows,
+        self$user_data[specific_error$rows, specific_error$columns, drop = FALSE],
+        stringsAsFactors = FALSE
+      )
+      error_details <- error_details[, specific_error$columns] # reorder columns
+      
+      return(error_details)
     },
 
     #' @method ErrorDataList to_csv

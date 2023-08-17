@@ -4,7 +4,7 @@
 \alias{validate_micronix_uploads}
 \title{Validate Micronix Uploads}
 \usage{
-validate_micronix_uploads(micronix_test)
+validate_micronix_uploads(micronix_test, variable_colnames)
 }
 \arguments{
 \item{micronix_test}{The utility function for performing validation checks.}
