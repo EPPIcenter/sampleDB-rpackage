@@ -35,9 +35,8 @@ EditWetlabContainers <- function(session, input, database, output, dbUpdateEvent
   observeEvent(dbUpdateEvent(), {
     manifest <- switch(
       input$ContainerSampleType,
-      "1" = "micronix_plate",
-      "2" = "cryovial_box",
-      "3" = "dbs_paper"
+      "micronix" = "micronix_plate",
+      "cryovial" = "cryovial_box"
     )
 
     database <- Sys.getenv("SDB_PATH")
@@ -48,9 +47,8 @@ EditWetlabContainers <- function(session, input, database, output, dbUpdateEvent
       "ContainerManifestID",
       label = switch(
         input$ContainerSampleType,
-        "1" = "Plate Name",
-        "2" = "Box Name",
-        "3" = "Paper Name"
+        "micronix" = "Plate Name",
+        "cryovial" = "Box Name"
       ),
       choices = c("", DBI::dbReadTable(con, manifest) %>% pull(name)),
       selected = input$ContainerManifestID
@@ -72,9 +70,8 @@ EditWetlabContainers <- function(session, input, database, output, dbUpdateEvent
       "ContainerLocationLevelI",
       label = switch(
         input$ContainerSampleType,
-        "1" = "Shelf Name", 
-        "2" = "Rack Number",
-        "3" = "Shelf Name"
+        "micronix" = "Shelf Name", 
+        "cryovial" = "Rack Number"
       ),
       selected = input$ContainerLocationLevelI
     )
@@ -84,9 +81,8 @@ EditWetlabContainers <- function(session, input, database, output, dbUpdateEvent
       "ContainerLocationLevelII",
       label = switch(
         input$ContainerSampleType,
-        "1" = "Basket Name",
-        "2" = "Rack Position",
-        "3" = "Shelf Position"
+        "micronix" = "Basket Name",
+        "cryovial" = "Rack Position"
       ),
       selected=input$ContainerLocationLevelII
     )
@@ -102,9 +98,8 @@ EditWetlabContainers <- function(session, input, database, output, dbUpdateEvent
 
     manifest <- switch(
       input$ContainerSampleType,
-      "1" = "micronix_plate",
-      "2" = "cryovial_box",
-      "3" = "dbs_paper"
+      "micronix" = "micronix_plate",
+      "cryovial" = "cryovial_box"
     )
 
     database <- Sys.getenv("SDB_PATH")
@@ -115,9 +110,8 @@ EditWetlabContainers <- function(session, input, database, output, dbUpdateEvent
       "ContainerManifestID",
       label = switch(
         input$ContainerSampleType,
-        "1" = "Plate Name",
-        "2" = "Box Name",
-        "3" = "Paper Name"
+        "micronix" = "Plate Name",
+        "cryovial" = "Box Name"
       ),
       choices = c("", DBI::dbReadTable(con, manifest) %>% pull(name)),
       selected = ""
@@ -139,9 +133,8 @@ EditWetlabContainers <- function(session, input, database, output, dbUpdateEvent
       "ContainerLocationLevelI",
       label = switch(
         input$ContainerSampleType,
-        "1" = "Shelf Name", 
-        "2" = "Rack Number",
-        "3" = "Shelf Name"
+        "micronix" = "Shelf Name",
+        "cryovial" = "Rack Number"
       )
     )
 
@@ -150,9 +143,8 @@ EditWetlabContainers <- function(session, input, database, output, dbUpdateEvent
       "ContainerLocationLevelII",
       label = switch(
         input$ContainerSampleType,
-        "1" = "Basket Name",
-        "2" = "Rack Position",
-        "3" = "Shelf Position"
+        "micronix" = "Basket Name",
+        "cryovial" = "Rack Position"
       )
     )
 
@@ -249,9 +241,8 @@ EditWetlabContainers <- function(session, input, database, output, dbUpdateEvent
           if (input$ContainerManifestNewID != "") {
             manifest <- switch(
               input$ContainerSampleType,
-              "1" = "micronix_plate",
-              "2" = "cryovial_box",
-              "3" = "dbs_paper"
+              "micronix" = "micronix_plate",
+              "cryovial" = "cryovial_box"
             )
 
             result <- tbl(con, manifest) %>%

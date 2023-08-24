@@ -127,7 +127,7 @@ function(input, output, session) {
 
       # -------- Search, Archive and Delete Samples -------------
       
-      # SearchDelArchSamples(session, input, database, output, dbUpdateEvent) 
+      AppSearchDelArchSamples(session, input, database, output, dbUpdateEvent) 
       
       # # # -------- Move Samples -------------
 
@@ -135,7 +135,7 @@ function(input, output, session) {
 
       # # # -------- Edit Containers --------
       
-      # EditWetlabContainers(session, input, database, output, dbUpdateEvent)  
+      EditWetlabContainers(session, input, database, output, dbUpdateEvent)  
       
       # # -------- Update References ---------------
       

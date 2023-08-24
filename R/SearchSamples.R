@@ -178,12 +178,12 @@ SearchSamples <- function(sample_storage_type, filters = NULL, format = NULL, da
   tryCatch({
     container_tables <- list(
       "manifest" = switch(sample_storage_type,
-        "1" = "micronix_plate",
-        "2" = "cryovial_box"
+        "micronix" = "micronix_plate",
+        "cryovial" = "cryovial_box"
       ),
       "container_class" = switch(sample_storage_type,
-        "1" = "micronix_tube",
-        "2" = "cryovial_tube"
+        "micronix" = "micronix_tube",
+        "cryovial" = "cryovial_tube"
       )
     )
 

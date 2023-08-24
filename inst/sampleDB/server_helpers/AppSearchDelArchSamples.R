@@ -3,7 +3,7 @@ library(RSQLite)
 library(DBI)
 library(stringr)
 
-SearchDelArchSamples <- function(session, input, database, output, dbUpdateEvent) {
+AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEvent) {
   
   ## Set defaults
   # updateSelectInput(session, "DelArchSearchByState", selected = "Active")
@@ -80,6 +80,7 @@ SearchDelArchSamples <- function(session, input, database, output, dbUpdateEvent
       status = input$DelArchSearchByStatus
     )
 
+    browser()
     # Remove empty or NULL values
     filters <- purrr::map(filters, ~purrr::discard(.x, function(x) is.null(x) | "" %in% x | length(x) == 0))
     filters <- purrr::discard(filters, ~is.null(.x) | length(.x) == 0)
@@ -99,6 +100,7 @@ SearchDelArchSamples <- function(session, input, database, output, dbUpdateEvent
   observe({
     output$DelArchSearchResultsTable <- renderReactable({
       # Get filtered data from our reactive
+      browser()
       search_table <- filtered_data() %>% select(-c(`Sample ID`))
       
       reactable(
@@ -310,9 +312,8 @@ SearchDelArchSamples <- function(session, input, database, output, dbUpdateEvent
 
     manifest_name <- switch(
       input$DelArchSearchBySampleType,
-      "1" = "micronix_plate",
-      "2" = "cryovial_box",
-      "3" = "dbs_paper",
+      "micronix" = "micronix_plate",
+      "cryovial" = "cryovial_box",
       NULL
     )
 
@@ -320,8 +321,7 @@ SearchDelArchSamples <- function(session, input, database, output, dbUpdateEvent
     manifests <- if (is.null(manifest_name)) {
       unique(c(
         tbl(con, "micronix_plate") %>% pull(name),
-        tbl(con, "cryovial_box") %>% pull(name),
-        tbl(con, "dbs_paper") %>% pull(name)
+        tbl(con, "cryovial_box") %>% pull(name)
       ))
     } else {
       unique(tbl(con, manifest_name) %>% pull(name))
@@ -332,7 +332,7 @@ SearchDelArchSamples <- function(session, input, database, output, dbUpdateEvent
       short_codes = tbl(con, "study") %>% pull(short_code),
       study_subjects = tbl(con, "study_subject") %>% pull(name),
       specimen_types = tbl(con, "specimen_type") %>% pull(name),
-      locations = tbl(con, "location") %>% pull(name)
+      locations = tbl(con, "location") %>% pull(location_root)
     )
 
     # Close the database connection
@@ -343,9 +343,8 @@ SearchDelArchSamples <- function(session, input, database, output, dbUpdateEvent
       session, "DelArchSearchByManifest",
       label = switch(
         input$DelArchSearchBySampleType,
-        "1" = "Plate Name",
-        "2" = "Box Name",
-        "3" = "Paper Name",
+        "micronix" = "Plate Name",
+        "cryovial" = "Box Name",
         "all" = "All Containers"
       ),
       choices = manifests,
@@ -570,15 +569,13 @@ UpdateSelections <- function(session, input, keepCurrentSelection = FALSE) {
   con <- DBI::dbConnect(RSQLite::SQLite(), Sys.getenv("SDB_PATH"))
   
   manifest_types <- list(
-    "1" = list(name = "micronix_plate", label = "Plate Name"),
-    "2" = list(name = "cryovial_box", label = "Box Name"),
-    "3" = list(name = "dbs_paper", label = "Paper Name")
+    "micronix" = list(name = "micronix_plate", label = "Plate Name"),
+    "cryovial" = list(name = "cryovial_box", label = "Box Name")
   )
   
   manifests <- if (is.null(manifest_types[[input$DelArchSearchBySampleType]])) {
     c(unique(tbl(con, "micronix_plate") %>% pull(name)),
-      unique(tbl(con, "cryovial_box") %>% pull(name)),
-      unique(tbl(con, "dbs_paper") %>% pull(name)))
+      unique(tbl(con, "cryovial_box") %>% pull(name)))
   } else {
     unique(tbl(con, manifest_types[[input$DelArchSearchBySampleType]]$name) %>% pull(name))
   }
@@ -588,7 +585,7 @@ UpdateSelections <- function(session, input, keepCurrentSelection = FALSE) {
     DelArchSearchByStudy = unique(tbl(con, "study") %>% pull(short_code)),
     DelArchSearchBySubjectUID = unique(tbl(con, "study_subject") %>% pull(name)),
     DelArchSearchBySpecimenType = unique(tbl(con, "specimen_type") %>% pull(name)),
-    DelArchSearchByLocation = unique(tbl(con, "location") %>% pull(name))
+    DelArchSearchByLocation = unique(tbl(con, "location") %>% pull(location_root))
   )
   
   labels_list <- list(

@@ -55,9 +55,8 @@ AppMoveSamples <- function(session, input, output, database) {
       "ManifestLocationRootLevelI",
       label = switch(
         input$MoveSampleType,
-        "1" = "Shelf Name",
-        "2" = "Rack Number",
-        "3" = "To Be Implemented"
+        "micronix" = "Shelf Name",
+        "cryovial" = "Rack Number"
       )
     )
 
@@ -66,9 +65,8 @@ AppMoveSamples <- function(session, input, output, database) {
       "ManifestLocationRootLevelII",
       label = switch(
         input$MoveSampleType,
-        "1" = "Basket Name",
-        "2" = "Rack Position",
-        "3" = "To Be Implemented"
+        "micronix" = "Basket Name",
+        "cryovial" = "Rack Position"
       )
     )
 
@@ -119,9 +117,8 @@ AppMoveSamples <- function(session, input, output, database) {
 
       manifest <- switch(
         input$MoveSampleType,
-        "1" = "micronix_plate",
-        "2" = "cryovial_box",
-        "3" = "dbs_paper"
+        "micronix" = "micronix_plate",
+        "cryovial" = "cryovial_box"
       )
 
       result <- tbl(con, manifest) %>%
@@ -197,9 +194,8 @@ AppMoveSamples <- function(session, input, output, database) {
         if (input$ManifestID != "") {
           manifest <- switch(
             input$MoveSampleType,
-            "1" = "micronix_plate",
-            "2" = "cryovial_box",
-            "3" = "dbs_paper"
+            "micronix" = "micronix_plate",
+            "cryovial" = "cryovial_box"
           )
 
           result <- tbl(con, manifest) %>%
@@ -230,9 +226,8 @@ AppMoveSamples <- function(session, input, output, database) {
         if (input$ManifestBarcode != "") {
           manifest <- switch(
             input$MoveSampleType,
-            "1" = "micronix_plate",
-            "2" = "cryovial_box",
-            "3" = "dbs_paper"
+            "micronix" = "micronix_plate",
+            "cryovial" = "cryovial_box"
           )
 
           result <- tbl(con, manifest) %>%
