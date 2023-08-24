@@ -397,6 +397,7 @@ SearchSamples <- function(sample_storage_type, filters = NULL, format = NULL, da
     dbmap$state <- "State"
     dbmap$status <- "Status"
 
+
     if (include_internal_sample_id) {
 
       ## Do date collection here because lubridate and purrr::map (used by dplyr sql backend) is not cooperating
