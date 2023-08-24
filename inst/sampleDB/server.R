@@ -124,31 +124,18 @@ function(input, output, session) {
 
       # Upload Micronix Samples
       AppUploadSamples(session, input, output, database, dbUpdateEvent)
-      
-      # Upload Cryo Samples
-      # CryoUpload(session, output, input, database)
 
-      # Upload RDT Samples
-      # RDTUpload(session, output, input, database)
-
-      # Upload Paper Samples
-      # PaperUpload(session, output, input, database)
-      
       # -------- Search, Archive and Delete Samples -------------
       
-      # SearchDelArchSamples(session, input, database, output, dbUpdateEvent)    
+      # SearchDelArchSamples(session, input, database, output, dbUpdateEvent) 
       
-      # # -------- Move Samples -------------
+      # # # -------- Move Samples -------------
 
-      # AppMoveSamples(session, input, output, database)
+      AppMoveSamples(session, input, output, database)
 
-      # # -------- Edit Containers --------
+      # # # -------- Edit Containers --------
       
       # EditWetlabContainers(session, input, database, output, dbUpdateEvent)  
-
-      # # -------- Delete Empty Container --------
-      
-      # # DeleteEmptyWetlabContainers(session, input, database, output)
       
       # # -------- Update References ---------------
       

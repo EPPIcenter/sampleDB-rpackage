@@ -393,7 +393,7 @@ AppMoveSamples <- function(session, input, output, database) {
 
     # message(paste("Loaded", dataset$name))
 
-    tryCatch({
+    early_stop <- tryCatch({
       withCallingHandlers({
         move_data_list <- list()
         for (i in 1:length(dataset[,1])) {
@@ -420,6 +420,7 @@ AppMoveSamples <- function(session, input, output, database) {
         }
 
         rv$user_file <- move_data_list
+        TRUE
       },
       message = function(m) {
         # shinyjs::html(id = "MoveOutputConsole", html = paste0(dataset$name, ": ", m$message), add = rv$console_verbatim)
@@ -428,48 +429,17 @@ AppMoveSamples <- function(session, input, output, database) {
     },
     validation_error = function(e) {
         message("Caught validation error")
-        early_stop <<- TRUE
-        html<-paste0("<font color='red'>", paste0(dataset$name, ": ", e$message), "</font>")
-        shinyjs::html(id = "MoveOutputConsole", html = html, add = rv$console_verbatim)
-        rv$console_verbatim <- FALSE
-
-        error$type <- "validation"
-        error$title <- e$message
-        error$table <- e$data
-
-        # TODO: breakup process csv into three stages(but keep calls in global process csv).
-        # Just download the error data frame for now.
-        errors <- names(e$data)
-        df <- lapply(1:length(errors), function(idx) {
-          e$data[[idx]]$CSV %>%
-            mutate(Error = errors[idx]) %>%
-            mutate(ErrCol = paste(e$data[[idx]]$Columns, collapse = ",")) %>%
-            select(Error, colnames(e$data[[idx]]$CSV)) 
-        })
-
-        rv$user_file_error_annotated <- do.call("rbind", df) %>%
-          select(-c(RowNumber))
-
-        print(e$data)
-
+        show_validation_error_modal(e)
+        FALSE
       },
       formatting_error = function(e) {
         message("Caught formatting error")
-        early_stop <<- TRUE
-        error$title = "Invalid File Detected"
-        error$type = "formatting"
-        error$message = e$message
-        error$table = e$df
+        show_formatting_error_modal(e)
+        FALSE
       },
       error = function(e) {
-        early_stop <<- TRUE
-        html<-paste0("<font color='red'>", paste0(dataset$name, ": ", e$message), "</font>")
-        shinyjs::html(id = "MoveOutputConsole", html = html, add = rv$console_verbatim)
-        rv$console_verbatim <- FALSE
-        error$title = "Unknown Error"
-        error$type = "unknown"
-        error$message = e$message
-        error$table = NULL
+        show_general_error_modal(e)
+        FALSE
       }
     )
 
@@ -522,7 +492,7 @@ AppMoveSamples <- function(session, input, output, database) {
     updateRadioButtons(
       session,
       "MoveFileType",
-      choices = global_sample_names_ids_list,
+      choices = get_file_types_for_sample(input$MoveSampleType),
       inline = TRUE
     )
   })
