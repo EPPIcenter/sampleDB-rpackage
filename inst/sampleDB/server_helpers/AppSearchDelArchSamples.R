@@ -9,47 +9,8 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
   # updateSelectInput(session, "DelArchSearchByState", selected = "Active")
   # updateSelectInput(session, "DelArchSearchByStatus", selected = "In Use")
 
-# Reactive to store retrieved database data
-  all_data <- reactiveVal(NULL)
-
   # get DelArchSearch ui elements
   rv <- reactiveValues(user_file = NULL, error = NULL, search_table = NULL, filters = NULL, dbmap = NULL, operation = NULL, filtered_sample_container_ids = NULL)
-
-  error <- reactiveValues(
-    title = "",
-    message = "",
-    table = NULL
-  )
-
-  observeEvent(rv$error, ignoreInit = TRUE, {
-    message("Running error workflow")
-
-    df <- NULL
-    if (!is.null(error$table)) {
-      df <- error$table %>%
-        dplyr::rename(
-          Column = column, 
-          Reason = reason,
-          `Triggered By` = trigger
-        ) %>%
-        reactable(.)
-    }
-
-    showModal(
-      modalDialog(
-        title = error$title,
-        error$message,
-        tags$hr(),
-        renderReactable({ df }),
-        footer = modalButton("Exit")
-      )
-    )
-
-    error$title = ""
-    error$message = ""
-    error$table = NULL
-    rv$error <- NULL
-  })
 
   # Initial data retrieval using default values
   # observe({
@@ -80,7 +41,6 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
       status = input$DelArchSearchByStatus
     )
 
-    browser()
     # Remove empty or NULL values
     filters <- purrr::map(filters, ~purrr::discard(.x, function(x) is.null(x) | "" %in% x | length(x) == 0))
     filters <- purrr::discard(filters, ~is.null(.x) | length(.x) == 0)
@@ -100,7 +60,6 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
   observe({
     output$DelArchSearchResultsTable <- renderReactable({
       # Get filtered data from our reactive
-      browser()
       search_table <- filtered_data() %>% select(-c(`Sample ID`))
       
       reactable(

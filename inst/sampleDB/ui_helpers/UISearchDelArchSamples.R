@@ -1,79 +1,83 @@
-library(RSQLite)
-UISearchDelArchSamples <- function(){
-  con <- DBI::dbConnect(RSQLite::SQLite(), Sys.getenv("SDB_PATH"))
+library(shiny)
+library(bslib)
 
-  ui <- sidebarLayout(
-    sidebarPanel(
-      width = 2,
-      HTML("<h4>Search, Delete and Archive Samples</h4>"),
+UISearchDelArchSamples <- function() {
+  ui <- page_sidebar(
+    title = "Search, Delete, and Archive",
+    sidebar = sidebar(
+      title = "Controls",
       hr(),
-      radioButtons("DelArchSearchBySampleType","Sample Type", choices = c("All" = "all", get_sample_types()), selected = "all", inline = T),
+      actionButton("DelArchSearchReset", label = "Reset Search Criteria", width = '100%'),
       hr(),
-      actionButton("DelArchSearchReset", width = '100%', label = "Reset Search Criteria", style="color: #fff; background-color: #337ab7; border-color: #2e6da4"),
-      hr(),
-      fileInput("DelArchSearchByBarcode", label = "Sample Barcodes"),
-      selectizeInput("DelArchSearchByManifest", label = NULL, choices = c()),
-      hr(),
-      selectizeInput("DelArchSearchByStudy", "Study", choices = c("", CheckTable(database = database, "study")$short_code)),
-      conditionalPanel(condition = "input.DelArchSubjectUIDSearchType == \"individual\"",
-                       selectizeInput("DelArchSearchBySubjectUID", label = "Study Subject", choices = c())),
-      conditionalPanel(condition = "input.DelArchSubjectUIDSearchType == \"multiple\"",
-                       fileInput("DelArchSearchBySubjectUIDFile", label = NULL)),
-      radioButtons("DelArchSubjectUIDSearchType", label = NULL, choices = list("Single Study Subject" = "individual", "Multiple Study Subjects" = "multiple"), selected = "individual"),
-      selectizeInput("DelArchSearchBySpecimenType", "Specimen Type", choices = c("", CheckTable(database = database, "specimen_type")$name)),
-      dateRangeInput("DelArchdateRange", label = "Collection Dates", start = NA, end = NA) %>% suppressWarnings(),
-      selectizeInput("DelArchSearchByLocation", "Storage Location", choices = c("", CheckTable("location")$location_root)),
-      selectizeInput("DelArchSearchByLevelI", "Storage Location: Level I", choices = c("")),
-      selectizeInput("DelArchSearchByLevelII", "Storage Location: Level II", choices = c("")),
-      selectizeInput("DelArchSearchByState", "State", choices = DBI::dbReadTable(con, "state")$name, selected = "Active"),
-      selectizeInput("DelArchSearchByStatus", "Status", choices = c("In Use"), selected = "In Use")
+      tabsetPanel(
+        id = "DelArchSearchTypes",
+        tabPanel("Samples",
+          radioButtons("DelArchSearchBySampleType", "Sample Type", choices = c("Type1", "Type2")),
+          fileInput("DelArchSearchByBarcode", label = "Sample Barcodes"),
+          selectizeInput("DelArchSearchByManifest", label = "Manifest", choices = c())
+        ),
+        tabPanel("Controls",
+          radioButtons("DelArchSearchByControlType", "Control Type", choices = c("Control1", "Control2"))
+        )
+      ),
+      bslib::accordion(
+        bslib::accordion_panel("Locations",
+          selectizeInput("DelArchSearchByLocation", "Storage Location", choices = c("", "Location 1", "Location 2")),
+          selectizeInput("DelArchSearchByLevelI", "Storage Location: Level I", choices = c("")),
+          selectizeInput("DelArchSearchByLevelII", "Storage Location: Level II", choices = c(""))
+        ),
+        bslib::accordion_panel("State & Status",
+          selectizeInput("DelArchSearchByState", "State", choices = c("Active", "Inactive")),
+          selectizeInput("DelArchSearchByStatus", "Status", choices = c("In Use", "Not In Use"))
+        ),
+        bslib::accordion_panel("Specimens",
+          selectizeInput("DelArchSearchBySpecimenType", "Specimen Type", choices = c("", "Type 1", "Type 2")),
+          dateRangeInput("DelArchdateRange", label = "Collection Dates", start = NA, end = NA)
+        ),
+        bslib::accordion_panel("Study & Subjects",
+          selectizeInput("DelArchSearchByStudy", "Study", choices = c("", "Study 1", "Study 2")),
+          radioButtons("DelArchSubjectUIDSearchType", label = NULL, choices = list("Single Study Subject" = "individual", "Multiple Study Subjects" = "multiple"), selected = "individual"),
+          conditionalPanel(
+            condition = "input.DelArchSubjectUIDSearchType == 'individual'",
+            selectizeInput("DelArchSearchBySubjectUID", label = "Study Subject", choices = c())
+          ),
+          conditionalPanel(
+            condition = "input.DelArchSubjectUIDSearchType == 'multiple'",
+            fileInput("DelArchSearchBySubjectUIDFile", label = NULL)
+          )
+        )
+      )
     ),
     mainPanel(
-      width = 10,
-      reactableOutput("DelArchSearchResultsTable"),
       hr(),
-      tags$em("Use the filters in the panel to the left to find samples that you wish to download. You may optionally select samples from the table to narrow down the samples that should be included. When you are finished, press the button below.", style = "color: grey;font-size: 18px;"),
+      tags$em("Use the filters in the panel to the left to find samples.", style = "color: grey; font-size: 18px;"),
       fluidRow(
-        width = 3,
         column(
-          width = 6, 
+          width = 6,
           downloadButton("DelArchDownloadSearchData", "Download")
         )
       ),
       tags$h3("Sample Archival & Deletion Workflows"),
-      tags$hr(),
-      tags$em("Select samples above to get started. In all workflows, users will be asked to confirm that they have selected the correct samples.", style = "color: grey;font-size: 18px;"),
+      hr(),
+      tags$em("Select samples to get started. In all workflows, users will be asked to confirm that they have selected the correct samples.", style = "color: grey; font-size: 18px;"),
       fluidRow(
-        width = 3,
         column(
-          width = 6, 
-          tagList(
-            tags$h4("Sample Archival"), 
-            tags$hr(),
-            tags$p("Select sample above that you wish to archive. This will remove samples from plates in the database so that they may be replaced with", tags$em("In Use"), "samples."),
-            actionButton("ArchiveAction", width = '25%', label = "Archive Samples", style="color: #fff; background-color: #337ab7; border-color: #2e6da4")
-          )
+          width = 6,
+          tags$h4("Sample Archival"),
+          hr(),
+          tags$p("Select samples above that you wish to archive. This will remove samples from plates in the database so that they may be replaced with", tags$em("In Use"), "samples."),
+          actionButton("ArchiveAction", label = "Archive Samples", width = '25%')
         ),
         column(
-          width = 6, 
-          tagList(
-            tags$h4("Sample Deletion"), 
-            tags$hr(),
-            tags$p("Select sample above that you wish to delete. Samples that are", tags$em("deleted"), "are removed", tags$strong("permanently", style = "color:red"),". Use caution when deleting samples - in most cases, archival should be used to retain sample history. An example of when to delete a sample is if a sample has been uploaded by mistake."),
-            actionButton("DeleteAction", width = '25%', label = "Delete Samples", style="color:#c4244c; background-color: #fff4f4; border-color: #c4244c")
-          )
+          width = 6,
+          tags$h4("Sample Deletion"),
+          hr(),
+          tags$p("Select samples above that you wish to delete. Samples that are", tags$em("deleted"), "are removed", tags$strong("permanently", style = "color: red"), ". Use caution when deleting samples - in most cases, archival should be used to retain sample history."),
+          actionButton("DeleteAction", label = "Delete Samples", width = '25%')
         )
       ),
-      verbatimTextOutput("DelArchMessage"),
-      # conditionalPanel(condition = "input.RenameStudyDescription == \"xxx\"",
-      #                  br(),
-      #                  HTML("Type \"Yes\" if you would like to archive these samples."),
-      #                  textInput("zzz", label = NULL),
-      #                  actionButton("yes1", label = "Enter"),
-      #                  verbatimTextOutput("yesout")),
-    ))
-
-  DBI::dbDisconnect(con)
-
-  return (ui)
+      verbatimTextOutput("DelArchMessage")
+    )
+  )
+  return(ui)
 }

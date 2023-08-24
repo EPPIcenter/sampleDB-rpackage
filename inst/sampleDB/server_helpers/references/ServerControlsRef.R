@@ -76,6 +76,81 @@ ControlReference <- function(session, input, output, database) {
     })
   })
 
+  #' 
+  filtered_data <- reactive({
+    
+    # Build the filters
+    filters <- list(
+      manifest = input$DelArchSearchByManifest,
+      short_code = input$DelArchSearchByStudy,
+      study_subject = input$DelArchSearchBySubjectUID,
+      specimen_type = input$DelArchSearchBySpecimenType,
+      collection_date = list(
+        date.from = input$DelArchdateRange[1],
+        date.to = input$DelArchdateRange[2]
+      ), 
+      location = list(
+        name = input$DelArchSearchByLocation,
+        level_I = input$DelArchSearchByLevelI,
+        level_II = input$DelArchSearchByLevelII
+      ),
+      state = input$DelArchSearchByState,
+      status = input$DelArchSearchByStatus
+    )
+
+    # Remove empty or NULL values
+    filters <- purrr::map(filters, ~purrr::discard(.x, function(x) is.null(x) | "" %in% x | length(x) == 0))
+    filters <- purrr::discard(filters, ~is.null(.x) | length(.x) == 0)
+
+    # Obtain the search results
+    results <- SearchControls(input$DelArchSearchBySampleType, filters = filters, include_internal_sample_id = TRUE)
+
+    # Prepare data for reactable
+    if (!is.null(results)) {
+      results 
+    } else {
+      tibble::tibble()
+    }
+  }) %>% debounce(500)  # 500ms delay
+
+
+  observe({
+    output$DelArchSearchResultsTable <- renderReactable({
+      # Get filtered data from our reactive
+      search_table <- filtered_data() %>% select(-c(`Sample ID`))
+      
+      reactable(
+        search_table,
+        defaultColDef = colDef(minWidth = 95, html = TRUE, sortable = TRUE, resizable = FALSE, na = "-", align = "center"),
+        searchable = TRUE,
+        selection = "multiple", 
+        onClick = "select",
+        columns = list(
+        .selection = colDef(
+          headerStyle = list(pointerEvents = "none")
+        )
+        ),
+        striped = TRUE,
+        showPageSizeOptions = TRUE,
+        theme = reactableTheme(
+          headerStyle = list(
+            "& input[type='checkbox']" = list(display = "none"),
+            "&:hover[aria-sort]" = list(background = "hsl(0, 0%, 96%)"),
+            "&[aria-sort='ascending'], &[aria-sort='descending']" = list(background = "hsl(0, 0%, 96%)"),
+            borderColor = "#555"
+          ),
+          rowSelectedStyle = list(backgroundColor = '#aafaff', boxShadow = 'inset 2px 0 0 0 #ffa62d')
+        )
+      )
+    })
+  })
+
+   # Use the filtered data to update selections
+  observeEvent(input$DelArchSearchBySampleType, {
+    UpdateSelections(session, input, TRUE)
+  })
+
+
 
   ###### Delarch specific functionality
 

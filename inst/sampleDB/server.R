@@ -127,7 +127,7 @@ function(input, output, session) {
 
       # -------- Search, Archive and Delete Samples -------------
       
-      AppSearchDelArchSamples(session, input, database, output, dbUpdateEvent) 
+      # AppSearchDelArchSamples(session, input, database, output, dbUpdateEvent) 
       
       # # # -------- Move Samples -------------
 
@@ -148,7 +148,7 @@ function(input, output, session) {
       # # Update EPPIcenter Lab Studies
       UpdateLabStudies(session, input, output, database)
 
-      ControlReference(session, input, output, database)
+      # ControlReference(session, input, output, database)
 
       # # Configuration panel
       AppPreferencesPanel(session, input, output, database)

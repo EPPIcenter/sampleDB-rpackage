@@ -170,8 +170,6 @@ upload_extracted_dna <- function(user_data, control_extraction, database = Sys.g
 #' @keywords internal
 .UploadSpecimens <- function(upload_data, sample_type_id, conn){
 
-  browser()
-
   safe_extract <- function(data_row, ...) {
     potential_cols <- c(...)
     for (col in potential_cols) {

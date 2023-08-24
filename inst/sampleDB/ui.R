@@ -1,40 +1,36 @@
+# Load required libraries
 library(dplyr)
 library(sampleDB)
 library(shiny)
 library(DT)
 library(bslib)
 
-#load helper files
+# Load helper files - make sure these files actually exist and are correct
 for(ui_helper in list.files(path = "ui_helpers", full.names = T, recursive = T)){
   source(ui_helper, local = TRUE)
 }
 
-#SET PATH TO SQLITE DATABASE
+# Ensure the environment variable is correctly set
 database <- Sys.getenv("SDB_PATH")
+if(database == "") {
+  stop("SDB_PATH environment variable not set.")
+}
 
-navbarPage("EPPIcenter SampleDB",
-           
-  #css setup
+# Main Shiny App UI
+ui <- navset_bar(
+  title = "EPPIcenter SampleDB",
   header = UICSS(),
-
-  theme = bs_theme(version = 4, bootswatch = "flatly"),
-  #upload 
+  id = "navBar", # add an ID for better JS/CSS customization
   tabPanel("Upload Samples", UIUploadSamples()),
-  #search & delarch
   tabPanel("Search, Delete & Archive Samples", UISearchDelArchSamples()),
-
-  #move
   tabPanel("Move Samples",  UIMoveSamples()),
-  
-    #edit containers
   tabPanel("Move, Rename & Delete Containers", UIMoveContainerOfSamples()),
-  #referrences
   navbarMenu("Update References",
-            tabPanel("Freezers", UIFreezerReference()),
-            tabPanel("Specimen Types", UISpecimenTypeReference()),
-            tabPanel("Studies", UIStudiesReference()),
-            tabPanel("Controls", UIControlsReference())
+             tabPanel("Freezers", UIFreezerReference()),
+             tabPanel("Specimen Types", UISpecimenTypeReference()),
+             tabPanel("Studies", UIStudiesReference()),
+             tabPanel("Controls", UIControlsReference())
   ),
-  #about
   tabPanel("Preferences", UIPreferences())
 )
+

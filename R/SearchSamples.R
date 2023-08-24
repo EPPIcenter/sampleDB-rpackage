@@ -67,7 +67,7 @@ SearchControls <- function(filters, control_type = NULL, database = Sys.getenv("
   con <- dbConnect(RSQLite::SQLite(), Sys.getenv("SDB_PATH"))
   tryCatch({
 
-    ## 
+    ##
     sql = tbl(con, "composition_strain") %>%
       left_join(tbl(con, "strain") %>% dplyr::rename(strain_id = id, strain = name), by = c("strain_id")) %>%
       left_join(tbl(con, "composition") %>% dplyr::rename(composition_id=id), by = c("composition_id")) %>%
@@ -86,17 +86,17 @@ SearchControls <- function(filters, control_type = NULL, database = Sys.getenv("
       sql = sql %>% filter(density %in% local(filters$density))
     }
 
-    # filter by batch 
+    # filter by batch
     if (!is.null(filters$batch) && filters$batch != "") {
       sql = sql %>% filter(batch %in% local(filters$batch))
     }
 
     if (!is.null(control_type) && control_type == "dbs_collection") {
-      sql = sql %>% 
+      sql = sql %>%
         inner_join(tbl(con, "blood_spot_collection") %>% dplyr::rename(blood_spot_collection_id=id), by=c("malaria_blood_control_id")) %>%
         inner_join(tbl(con, "blood_spot_collection_dbs_control_sheet") %>% dplyr::rename(blood_spot_collection_dbs_control_sheet=id), by=c("blood_spot_collection_id")) %>%
         inner_join(tbl(con, "dbs_control_sheet") %>% dplyr::rename(dbs_control_sheet_id=id), by = c("dbs_control_sheet_id")) %>%
-        inner_join(tbl(con, "dbs_bag") %>% dplyr::rename(dbs_bag_id=id, dbs_bag_label=name), by =c("dbs_bag_id")) 
+        inner_join(tbl(con, "dbs_bag") %>% dplyr::rename(dbs_bag_id=id, dbs_bag_label=name), by =c("dbs_bag_id"))
     } else if (!is.null(control_type) && control_type == "whole_blood") {
       sql = sql %>%
         inner_join(tbl(con, "whole_blood_tube"), by=c("malaria_blood_control_id")) %>%
@@ -167,11 +167,11 @@ FilterByLocation = function(con, sql, location) {
 }
 
 
-SearchSamples <- function(sample_storage_type, filters = NULL, format = NULL, database = Sys.getenv("SDB_PATH"), config_yml = Sys.getenv("SDB_CONFIG"), include_internal_sample_id = FALSE) {
+SearchSamples <- function(sample_storage_type, filters = NULL, format = "na", database = Sys.getenv("SDB_PATH"), config_yml = Sys.getenv("SDB_CONFIG"), include_internal_sample_id = FALSE) {
 
   db.results <- NULL
 
-  if (is.null(sample_storage_type) || !sample_storage_type %in% c(1,2, "all")) {
+  if (is.null(sample_storage_type) || !sample_storage_type %in% c("micronix", "cryovial", "all")) {
     stop("No search implemenation available for this sample_storage_type")
   }
 
@@ -311,7 +311,7 @@ SearchSamples <- function(sample_storage_type, filters = NULL, format = NULL, da
 
     sql <- inner_join(sql, tbl(con, "location") %>% dplyr::rename(location_id = id) %>% select(location_id, location_root, level_I, level_II), by = c("location_id"))
 
-    sql = FilterByLocation(con, sql, filters$location)
+    # sql = FilterByLocation(con, sql, filters$location)
 
     ## map results to the final columns
     ## note: order matters here
@@ -319,10 +319,10 @@ SearchSamples <- function(sample_storage_type, filters = NULL, format = NULL, da
     dbmap <- list()
 
     ## Micronix
-    if (!is.null(format) && sample_storage_type == 1 && format == "na") {
+    if (!is.null(format) && sample_storage_type == "micronix" && format == "na") {
       dbmap$barcode <- "Barcode"
       dbmap$position <- "Position"
-    } else if (!is.null(format) && sample_storage_type == 1 && format == "traxcer") {
+    } else if (!is.null(format) && sample_storage_type == "micronix" && format == "traxcer") {
       dbmap$barcode <- "Tube"
 
       dbmap$position <- ifelse(
@@ -331,25 +331,25 @@ SearchSamples <- function(sample_storage_type, filters = NULL, format = NULL, da
         config$traxcer_position$default
       )
 
-    } else if (!is.null(format) && sample_storage_type == 1 && format == "visionmate") {
+    } else if (!is.null(format) && sample_storage_type == "micronix" && format == "visionmate") {
       dbmap$barcode <- "TubeCode"
       dbmap$position <- "Position"
     }
 
     ## Cryovial
-    else if (sample_storage_type == 2) {
+    else if (sample_storage_type == "cryovial") {
       dbmap$barcode <- "Barcode"
       dbmap$position <-  "Position"
 
     ## DBS
-    } else if (sample_storage_type == 3) {
+    } else if (sample_storage_type == "dbs") {
       dbmap$position <- "Position"
     } else {
       dbmap$barcode <- "Barcode"
       dbmap$position <- "Position"
     }
 
-    if (sample_storage_type == 3) {
+    if (sample_storage_type == "dbs") {
       dbmap$`0.05` <- "0.05"
       dbmap$`0.1` <- "0.1"
       dbmap$`1` <- "1"
