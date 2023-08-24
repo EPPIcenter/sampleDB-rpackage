@@ -3,17 +3,68 @@ library(RSQLite)
 library(DBI)
 library(stringr)
 
-SearchDelArchSamples <- function(session, input, database, output, dbUpdateEvent) {
-  
-  ## Set defaults
-  # updateSelectInput(session, "DelArchSearchByState", selected = "Active")
-  # updateSelectInput(session, "DelArchSearchByStatus", selected = "In Use")
 
-# Reactive to store retrieved database data
-  all_data <- reactiveVal(NULL)
+SearchDelArchSamples <- function(session, input, database, output, dbUpdateEvent) {
+
+  # Reactive to store retrieved database data
+  createFilterSetReactive <- function(defaults = list()) {
+    rv <- reactiveVal(defaults)
+    
+    list(
+      get = function() { rv() },
+      set = function(new_filters) {
+        rv(new_filters)
+      },
+      insert = function(new_filters) {
+        existing_filters <- rv()
+        updated_filters <- modifyList(existing_filters, new_filters)
+        rv(updated_filters)
+      },
+      clear = function() { rv(list()) },
+      reset = function() { rv(defaults) }
+    )
+  }
+
+  # Initialize the custom filter with default values
+  filter_set <- createFilterSetReactive(
+    list(
+      state = "Active",
+      status = "In Use"
+    )
+  )
+      
+
+  #' Declare filters for searching and establish any filter dependencies
+  observe({
+    # Build the filters
+    new_filters <- list(
+      manifest = input$DelArchSearchByManifest,
+      short_code = input$DelArchSearchByStudy,
+      study_subject = input$DelArchSearchBySubjectUID,
+      specimen_type = input$DelArchSearchBySpecimenType,
+      collection_date = list(
+        date.from = input$DelArchdateRange[1],
+        date.to = input$DelArchdateRange[2]
+      ), 
+      location = list(
+        name = input$DelArchSearchByLocation,
+        level_I = input$DelArchSearchByLevelI,
+        level_II = input$DelArchSearchByLevelII
+      ),
+      state = input$DelArchSearchByState,
+      status = input$DelArchSearchByStatus
+    )
+
+    # Remove empty or NULL values
+    new_filters <- purrr::map(new_filters, ~purrr::discard(.x, function(x) is.null(x) | "" %in% x | length(x) == 0))
+    new_filters <- purrr::discard(new_filters, ~is.null(.x) | length(.x) == 0)
+
+    filter_set$insert(new_filters)
+  })
+
 
   # get DelArchSearch ui elements
-  rv <- reactiveValues(user_file = NULL, error = NULL, search_table = NULL, filters = NULL, dbmap = NULL, operation = NULL, filtered_sample_container_ids = NULL)
+  rv <- reactiveValues(user_file = NULL, error = NULL, search_table = NULL, operation = NULL, filtered_sample_container_ids = NULL)
 
   error <- reactiveValues(
     title = "",
@@ -51,41 +102,10 @@ SearchDelArchSamples <- function(session, input, database, output, dbUpdateEvent
     rv$error <- NULL
   })
 
-  # Initial data retrieval using default values
-  # observe({
-  #   initial_data <- SearchSamples(input$DelArchSearchBySampleType, filters = list(state = "Active", status = "In Use"))
-    
-  #   # Update the reactiveVal with the initial data
-  #   all_data(initial_data)
-  # })
-
   filtered_data <- reactive({
-    
-    # Build the filters
-    filters <- list(
-      manifest = input$DelArchSearchByManifest,
-      short_code = input$DelArchSearchByStudy,
-      study_subject = input$DelArchSearchBySubjectUID,
-      specimen_type = input$DelArchSearchBySpecimenType,
-      collection_date = list(
-        date.from = input$DelArchdateRange[1],
-        date.to = input$DelArchdateRange[2]
-      ), 
-      location = list(
-        name = input$DelArchSearchByLocation,
-        level_I = input$DelArchSearchByLevelI,
-        level_II = input$DelArchSearchByLevelII
-      ),
-      state = input$DelArchSearchByState,
-      status = input$DelArchSearchByStatus
-    )
-
-    # Remove empty or NULL values
-    filters <- purrr::map(filters, ~purrr::discard(.x, function(x) is.null(x) | "" %in% x | length(x) == 0))
-    filters <- purrr::discard(filters, ~is.null(.x) | length(.x) == 0)
 
     # Obtain the search results
-    results <- SearchSamples(input$DelArchSearchBySampleType, filters = filters, include_internal_sample_id = TRUE)
+    results <- SearchSamples(input$DelArchSearchBySampleType, filters = filter_set$get(), include_internal_sample_id = TRUE)
 
     # Prepare data for reactable
     if (!is.null(results)) {
@@ -136,7 +156,6 @@ SearchDelArchSamples <- function(session, input, database, output, dbUpdateEvent
 
   observeEvent(input$DelArchSearchByBarcode, ignoreInit = FALSE, {
     dataset <- input$DelArchSearchByBarcode
-
     message(paste("Loaded", dataset$name))
 
     tryCatch({
@@ -148,8 +167,8 @@ SearchDelArchSamples <- function(session, input, database, output, dbUpdateEvent
         validate = FALSE
       )
 
-      head(rv$user_file)
-      rv$filters$barcode <-rv$user_file %>% pull(Barcodes)
+      new_filter <- list(barcode = rv$user_file %>% pull(Barcodes))
+      filter_set$insert(new_filter)  # Insert new barcode filter
     },
     formatting_error = function(e) {
       message("Caught formatting error")
@@ -170,7 +189,6 @@ SearchDelArchSamples <- function(session, input, database, output, dbUpdateEvent
 
   observeEvent(input$DelArchSearchBySubjectUIDFile, ignoreInit = TRUE, {
     dataset <- input$DelArchSearchBySubjectUIDFile
-
     message(paste("Loaded", dataset$name))
 
     tryCatch({
@@ -182,8 +200,9 @@ SearchDelArchSamples <- function(session, input, database, output, dbUpdateEvent
         validate = FALSE
       )
 
-      head(rv$filters$study_subject)
-      rv$filters$study_subject <- rv$user_file %>% pull(StudySubjects)
+      new_filter <- list(study_subject = rv$user_file %>% pull(StudySubjects))
+      filter_set$insert(new_filter)  # Insert new study_subject filter
+
     },
     formatting_error = function(e) {
       message("Caught formatting error")
@@ -203,6 +222,8 @@ SearchDelArchSamples <- function(session, input, database, output, dbUpdateEvent
   })
   
   observeEvent(input$DelArchSearchReset, ignoreInit = TRUE, {
+
+    filter_set$reset()  # restore defaults
 
     updateRadioButtons(session, selected = "individual", "SubjectUIDDelArchSearchType", label = NULL, choices = list("Single Study Subject" = "individual", "Multiple Study Subjects" = "multiple"))
     
