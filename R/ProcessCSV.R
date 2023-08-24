@@ -143,15 +143,6 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
     }
   }
 
-  ## todo - across the app, 1, 2, 3 should be changed to their character counterparts (below)
-  ## until then do this for readability
-  sample_storage_type = switch(
-    sample_storage_type,
-    "1" = "micronix",
-    "2" = "cryovial",
-    "3" = "dbs"
-  )
-
   ## second row is valid because traxcer will have "plate_label:" in the first row
   valid_header_rows <- 1:2
 
@@ -248,6 +239,15 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
       # this will map the processed file back to the user file in case there are validation errors
       dbmap <- NULL
       dbmap$row_number <- "RowNumber"
+
+      ## todo - across the app, 1, 2, 3 should be changed to their character counterparts (below)
+      ## until then do this for readability
+      sample_storage_type = switch(
+        sample_storage_type,
+        "1" = "micronix",
+        "2" = "cryovial",
+        "3" = "dbs"
+      )
 
       ## pass the row id to link back to the actual user file, so that
       # we can inform the user if there is an issue with one of their rows
