@@ -1,15 +1,16 @@
 library(DBI)
 library(reactable)
 library(shinyjs)
+library(bslib)
 
 UIUploadSamples <- function() {
   
   con <- DBI::dbConnect(RSQLite::SQLite(), Sys.getenv("SDB_PATH"))
 
-  ui <- sidebarLayout(
-    sidebarPanel(
+  ui <- layout_sidebar(
+    sidebar = sidebar(
+      title = "Add Specimens to SampleDB",
       shinyjs::useShinyjs(),
-      width = 3,
       radioButtons("UploadType", "Choose Your Upload Type", choices = global_upload_type_list),
       conditionalPanel(
         condition = "input.UploadType == 'samples'",
@@ -39,28 +40,33 @@ UIUploadSamples <- function() {
                column(width = 6, actionButton("ClearUploadForm", width = '100%', label = "Clear Form"))),
       span(verbatimTextOutput("UploadOutputConsole"))
     ),
-    mainPanel(
-      tags$div(style = "width: 100%",
-        tags$h3("Guide to Uploading Samples"),
-        tags$h4("1. Select a Sample Storage Type"),
-        tags$p("Use the", tags$strong("Sample Storage Type"), "section to select the storage type for uploading."),
-        tags$h4("2. Create a Sample Data File to Upload"),   
-        tags$p("Some sample storage types will accept multiple file formats, but the", tags$strong("NA"), "file format will always be available. To see what columns are required and optional, you can change the file type in the left hand panel and the tables below will update accordingly."),
-        tags$p("If you would like to download a template file, press the button below."),
-        downloadButton("UploadFileTemplate"),
-        tags$h5("Required Fields"),
-        tags$p("Below are", tags$strong("required"), "columns that", tags$strong("must"), "be included in your file."),
-        reactableOutput("UploadFileExampleRequired"),
-        tags$br(),
-        tags$p("Some fields may be included in your file", tags$strong("or"), "can be entered after upload."),
-        reactableOutput("UploadFileExampleUserInput"),
-        tags$h5("Conditional Fields"),
-        tags$p("Some fields", tags$strong("may"), "be required depending on the contents of your upload."),
-        reactableOutput("UploadFileExampleConditional"),
-        tags$h5("Optional Fields"),
-        tags$p("The columns below do not need to be included in your upload."),
-        reactableOutput("UploadFileExampleOptional")
-    )))
+    card(
+      title = "Upload Samples",
+      full_screen = TRUE,
+      conditionalPanel(
+        condition = "input.UploadType == 'samples'",
+        includeMarkdown(get_markdown_path("upload_samples_instructions.md"))
+      ),
+      conditionalPanel(
+        condition = "input.UploadType == 'controls'",
+        includeMarkdown(get_markdown_path("upload_controls_instructions.md"))
+      ),
+      tags$p("If you would like to download a template file, press the button below."),
+      downloadButton("UploadFileTemplate"),
+      tags$h5("Required Fields"),
+      tags$p("Below are", tags$strong("required"), "columns that", tags$strong("must"), "be included in your file."),
+      reactableOutput("UploadFileExampleRequired"),
+      tags$br(),
+      tags$p("Some fields may be included in your file", tags$strong("or"), "can be entered after upload."),
+      reactableOutput("UploadFileExampleUserInput"),
+      tags$h5("Conditional Fields"),
+      tags$p("Some fields", tags$strong("may"), "be required depending on the contents of your upload."),
+      reactableOutput("UploadFileExampleConditional"),
+      tags$h5("Optional Fields"),
+      tags$p("The columns below do not need to be included in your upload."),
+      reactableOutput("UploadFileExampleOptional")
+    )
+    )
 
     DBI::dbDisconnect(con)
 

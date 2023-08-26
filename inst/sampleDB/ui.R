@@ -16,6 +16,17 @@ if(database == "") {
   stop("SDB_PATH environment variable not set.")
 }
 
+#' Get the path to a markdown file
+get_markdown_path <- function(filename, package_name = "sampleDB") {
+  filepath <- system.file("app/www", filename, package = package_name)
+  
+  if (file.exists(filepath)) {
+    return(filepath)
+  } else {
+    stop(paste("Markdown file", filename, "not found in package", package_name))
+  }
+}
+
 my_theme <- bs_theme(
   version = 5,
   bootswatch = "flatly",
