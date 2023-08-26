@@ -527,41 +527,46 @@ show_formatting_error_modal <- function(error) {
   )
 }
 
+# Create a function to generate reactable for displaying errors
+generate_error_reactable <- function(error_collection, index = 1) {
+  specific_error <- error_collection$error_data_list[[index]]
+  selected_cols <- c("RowNumber", specific_error$columns)
+  
+  error_details <- error_collection$get_error_details_by_index(index)
+  
+  reactable(
+    error_details,
+    outlined = TRUE,
+    striped = TRUE,
+    theme = reactableTheme(
+      headerStyle = list(
+        "&:hover[aria-sort]" = list(background = "hsl(0, 0%, 96%)"),
+        "&[aria-sort='ascending'], &[aria-sort='descending']" = list(background = "hsl(0, 0%, 96%)"),
+        borderColor = "#555"
+      )
+    ),
+    defaultColDef = colDef(na = "-", align = "center")
+  )
+}
+
+# Function to display validation error modal
 show_validation_error_modal <- function(error) {
-
+  
   message("Preparing validation error modal.")
-
+  
   error_collection <- error$data
+  
   # Extracting unique error descriptions
   errors <- unique(sapply(error_collection$error_data_list, function(x) x$description))
   errors_df <- data.frame(Error = errors)
-
+  
   # Define the reactable for displaying errors
   main_table <- reactable(
-    errors_df, 
+    errors_df,
     details = function(index) {
-
-      specific_error <- error_collection$error_data_list[[index]]
-      selected_cols <- c("RowNumber", specific_error$columns)
-      
-      error_details <- error_collection$get_error_details_by_index(index)
-      
-      # Display the error details using reactable
       htmltools::div(
         style = "padding: 1rem",
-        reactable(
-          error_details,
-          outlined = TRUE,
-          striped = TRUE,
-          theme = reactableTheme(
-            headerStyle = list(
-              "&:hover[aria-sort]" = list(background = "hsl(0, 0%, 96%)"),
-              "&[aria-sort='ascending'], &[aria-sort='descending']" = list(background = "hsl(0, 0%, 96%)"),
-              borderColor = "#555"
-            )
-          ),
-          defaultColDef = colDef(na = "-", align = "center")
-        )
+        generate_error_reactable(error_collection, index)
       )
     }
   )
@@ -580,6 +585,7 @@ show_validation_error_modal <- function(error) {
     )
   )
 }
+
 
 
 show_general_error_modal <- function(error) {
@@ -648,4 +654,55 @@ collate_user_input_sample_data <- function(sample_type,
   }
 
   return(collated_user_data)
+}
+
+#' Create a container to store filters
+#' 
+#' This function creates a reactive value that stores filters for the app.
+#' 
+#' @param defaults A list of default filters to use.
+createFilterSetReactive <- function(defaults = list()) {
+  rv <- reactiveVal(defaults)
+  
+  list(
+    get = function() { rv() },
+    set = function(new_filters) {
+      rv(new_filters)
+    },
+    insert = function(new_filters) {
+      existing_filters <- rv()
+      updated_filters <- modifyList(existing_filters, new_filters)
+      rv(updated_filters)
+    },
+    remove = function(filters_to_remove) {
+      existing_filters <- rv()
+      updated_filters <- existing_filters[!names(existing_filters) %in% filters_to_remove]
+      rv(updated_filters)
+    },
+    clear = function() { rv(list()) },
+    reset = function() { rv(defaults) },
+    filter = function(df) {
+      filters <- rv()
+      if (length(filters) > 0) {
+          exprs <- map2(names(filters), filters, ~ rlang::expr(!!rlang::sym(.x) == !!.y))
+          df <- df %>% filter(!!!exprs)
+      }
+      return(df)
+    }
+  )
+}
+
+#' Show a an upload success notification
+show_success_notification <- function(session, category, res) {
+  # Customize your success message
+  category <- ifelse(res > 1, paste0(category, "s"), category)
+
+  msg <- sprintf("Success! %d %s added.", res, category)
+  showNotification(
+    msg, 
+    duration = 3,
+    id = "GenericUploadSuccess", 
+    type = "default",
+    session = session
+  )
 }

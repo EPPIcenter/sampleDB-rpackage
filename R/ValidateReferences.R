@@ -253,7 +253,7 @@ validate_batch <- function(user_data, action, database) {
     errors <- add_to_errors(errors, validation_result$error_data)
   }
 
-  errors <- c(errors,perform_batch_db_validations(database, user_data, action))
+  errors <- c(errors, perform_batch_db_validations(database, user_data, action))
 
   return(errors)
 }

@@ -1,237 +1,52 @@
-ControlReference <- function(session, input, output, database) {
+ControlReference <- function(session, input, output, database, dbUpdateEvent) {
 	rv <- reactiveValues(
 		error = NULL,
 		user_file = NULL
   )
 
-  observeEvent(input$InputCreateStrain, ignoreInit = TRUE, {
+  #' Open modal dialog for Strain Information
+  #' Opens a modal dialog where users can manually enter a new strain
+  #' or upload a CSV file to add new strains.
+  observeEvent(input$StrainModalID, {
+    showModal(modalDialog(
+      title = "Strain Information",
+      h3("Manual Entry"),
+      textInput("InputControlNewStrain", "Enter New Strain Name:"),
+      actionButton("InputCreateStrainSubmit", "Submit"),
+      hr(),
+      h3("Upload by File"),
+      fileInput("InputUploadStrains", "Choose CSV File"),
+      actionButton("InputUploadStrainFromCSVSubmit", "Upload File"),
+      footer = modalButton("Close")
+    ))
+  })
 
+  #' Add new Strain Manually
+  #' Takes a manually entered strain name and saves it to the database.
+  observeEvent(input$InputCreateStrainSubmit, ignoreInit = TRUE, {
     tryCatch({
-
       if (!is.null(input$InputControlNewStrain) && input$InputControlNewStrain != "") {
-
-        con <- dbConnect(RSQLite::SQLite(), Sys.getenv("SDB_PATH"))  # Adjust database connection path as required
-
+        con <- dbConnect(RSQLite::SQLite(), Sys.getenv("SDB_PATH"))
         df.payload <- data.frame(name = input$InputControlNewStrain)
         res <- dbAppendTable(con, "strain", df.payload)
+        dbDisconnect(con)
 
-        dbDisconnect(con)  # Closing the connection
-
-        msg <- sprintf("%d strain added...", res)
-        showNotification(msg, id = "ControlCreateStrain", type = "message", action = NULL, duration = 3, closeButton = FALSE)
+        show_success_notification(session, "strain", res)
       }
-
     }, error = function(e) {
       show_general_error_modal(e)
     })
   })
 
-
-  observeEvent(input$InputBatchIDUploadAction, {
-
-    # Retrieve the inputs
-    title <- input$InputCreateBatchID
-    batch_date <- input$InputCreateBatchID
-    batch_desc <- input$InputCreateBatchDescription
-    lead_person <- input$InputCreateBatchLeadPerson
-    
-    # Prepare the inputs in a data frame
-    user_data <- data.frame(
-      RowNumber = 1,
-      Title = title,
-      Batch = batch_date,
-      Description = batch_desc,
-      LeadPerson = lead_person,
-      stringsAsFactors = FALSE
-    )
-    
-    # We assume you've set up a database connection or reference named "database"
-    tryCatch({
-      validate_references(database, user_data, "batch", "create")
-
-      user_data$RowNumber <- NULL
-      now <- lubridate::now()
-
-      user_data$created <- now
-      user_data$last_updated <- now
-      user_data$is_longitudinal <- 0
-
-      colnames(user_data) <- c("title", "short_code", "description", "lead_person", "created", "last_updated", "is_longitudinal")
-
-      user_data$short_code <- as.character(user_data$short_code)
-      user_data$title <- as.character(user_data$title)
-
-      con <- sampleDB::init_db_conn(database)
-      on.exit(dbDisconnect(con), add = TRUE)
-      dbAppendTable(con, "study", user_data)
-
-      showNotification("Batch data validated and uploaded successfully!", type = "success", duration = 3)
-
-    },
-    validation_error = function(e) {
-      show_validation_error_modal(e)
-    },
-    error = function(e) {
-      show_general_error_modal(e)
-    })
-  })
-
-  #' 
-  filtered_data <- reactive({
-    
-    # Build the filters
-    filters <- list(
-      manifest = input$DelArchSearchByManifest,
-      short_code = input$DelArchSearchByStudy,
-      study_subject = input$DelArchSearchBySubjectUID,
-      specimen_type = input$DelArchSearchBySpecimenType,
-      collection_date = list(
-        date.from = input$DelArchdateRange[1],
-        date.to = input$DelArchdateRange[2]
-      ), 
-      location = list(
-        name = input$DelArchSearchByLocation,
-        level_I = input$DelArchSearchByLevelI,
-        level_II = input$DelArchSearchByLevelII
-      ),
-      state = input$DelArchSearchByState,
-      status = input$DelArchSearchByStatus
-    )
-
-    # Remove empty or NULL values
-    filters <- purrr::map(filters, ~purrr::discard(.x, function(x) is.null(x) | "" %in% x | length(x) == 0))
-    filters <- purrr::discard(filters, ~is.null(.x) | length(.x) == 0)
-
-    # Obtain the search results
-    results <- SearchControls(input$DelArchSearchBySampleType, filters = filters, include_internal_sample_id = TRUE)
-
-    # Prepare data for reactable
-    if (!is.null(results)) {
-      results 
-    } else {
-      tibble::tibble()
-    }
-  }) %>% debounce(500)  # 500ms delay
-
-
-  observe({
-    output$DelArchSearchResultsTable <- renderReactable({
-      # Get filtered data from our reactive
-      search_table <- filtered_data() %>% select(-c(`Sample ID`))
-      
-      reactable(
-        search_table,
-        defaultColDef = colDef(minWidth = 95, html = TRUE, sortable = TRUE, resizable = FALSE, na = "-", align = "center"),
-        searchable = TRUE,
-        selection = "multiple", 
-        onClick = "select",
-        columns = list(
-        .selection = colDef(
-          headerStyle = list(pointerEvents = "none")
-        )
-        ),
-        striped = TRUE,
-        showPageSizeOptions = TRUE,
-        theme = reactableTheme(
-          headerStyle = list(
-            "& input[type='checkbox']" = list(display = "none"),
-            "&:hover[aria-sort]" = list(background = "hsl(0, 0%, 96%)"),
-            "&[aria-sort='ascending'], &[aria-sort='descending']" = list(background = "hsl(0, 0%, 96%)"),
-            borderColor = "#555"
-          ),
-          rowSelectedStyle = list(backgroundColor = '#aafaff', boxShadow = 'inset 2px 0 0 0 #ffa62d')
-        )
-      )
-    })
-  })
-
-   # Use the filtered data to update selections
-  observeEvent(input$DelArchSearchBySampleType, {
-    UpdateSelections(session, input, TRUE)
-  })
-
-
-
-  ###### Delarch specific functionality
-
-  observeEvent(input$InputControlArchiveAction, ignoreInit = TRUE, {
-
-    con <- dbConnect(RSQLite::SQLite(), Sys.getenv("SDB_PATH"))
-
-    user.filtered.rows = rv$table
-    user.selected.rows = user.filtered.rows[selected(), ]
-
-    rt.select = rv$update.table[rv$update.table %in% colnames(user.selected.rows)]
-    user.selected.rows.select = user.selected.rows %>% select(all_of(rt.select))
-    colnames(user.selected.rows.select) <- unname(rv$dbmap[names(rv$dbmap) %in% rv$update.table])
-
-    rv$user_selected_rows = user.selected.rows.select
-
-    rt <- reactable(
-      user.selected.rows.select,
-      defaultColDef = colDef(
-        minWidth = 95,
-        html = TRUE,
-        sortable = TRUE,
-        resizable = FALSE,
-        na = "-", 
-        align = "center"
-      ),
-      selection = "single",
-      onClick = "select",
-      theme = reactableTheme(
-        headerStyle = list(
-          "& input[type='checkbox']" = list(display = "none"),
-          "&:hover[aria-sort]" = list(background = "hsl(0, 0%, 96%)"),
-          "&[aria-sort='ascending'], &[aria-sort='descending']" = list(background = "hsl(0, 0%, 96%)"),
-          borderColor = "#555"
-        ),
-        rowSelectedStyle = list(backgroundColor = '#aafaff', boxShadow = 'inset 2px 0 0 0 #ffa62d')
-      )
-    )
-
-    showModal(
-      modalDialog(
-        title = "Update Controls",
-        size = "l",
-        tags$em("Please review the following fields and your selected samples below.", style = "color: grey;font-size: 18px;"),
-        hr(),
-        tags$p("Please review your selected samples below before submitting. You may cancel by selecting", tags$em("Dismiss"), "below or by clicking outside of the dialog box."),
-        renderReactable({ rt }),
-        hr(),
-        fluidRow( column(width = 6, numericInput(label = tags$strong("Number of DBS Controls Punched"), inputId = "ControlInputNumControls", value = 0, width = '75%')),
-                  column(width = 6, tags$p("Please indicate the number of controls that were punched."))
-        ),
-        easyClose = TRUE,
-        fade = TRUE,
-        footer = tagList(actionButton("ArchiveControlAction", label = "Update"), modalButton("Dismiss"))
-      )
-    )
-
-    DBI::dbDisconnect(con)
-  })
-
-
-  observeEvent(input$InputUploadStrainAction, ignoreInit = TRUE, {
+  #' Add new Strains from CSV File
+  #' Takes a CSV file of new strains and saves them to the database.
+  observeEvent(input$InputUploadStrainFromCSVSubmit, ignoreInit = TRUE, {
     
     # Check dataset
     dataset <- input$InputUploadStrains
     if (is.null(dataset) || is.null(dataset$datapath)) {
       message("Aborting upload - no file uploaded")
       return()
-    }
-
-    # Function to show spinner if needed
-    show_spinner_if_needed <- function(data) {
-      if (nrow(data) > 5) {
-        show_modal_spinner(
-          spin = "double-bounce",
-          color = "#00bfff",
-          text = paste("Uploading", nrow(data), "strains, please be patient...")
-        )
-        return(TRUE)
-      }
-      return(FALSE)
     }
     
     # Format file if user_file is null
@@ -259,46 +74,103 @@ ControlReference <- function(session, input, output, database) {
 
       if (!success) return()
     }
-
-    message("Starting Upload...")
     
-    b_use_wait_dialog <- show_spinner_if_needed(rv$user_file)
-
     tryCatch({
       shinyjs::reset("InputUploadStrains")
       res <- append_strains_to_db(rv$user_file)
+      show_success_notification(session, "strain", res)
     },
     error = function(e) {
       show_general_error_modal(e)
     },
     finally = {
-      if (b_use_wait_dialog) {
-        remove_modal_spinner()
-      }
       rv$user_file <- NULL
     })
   })
 
-  observeEvent(input$InputCompositionIDUploadAction, ignoreInit = TRUE, {
+  #' Open modal dialog for Batch ID Information
+  #' Opens a modal dialog where users can manually enter 
+  #' Batch ID, Batch Date, Description, and Lead Person.
+  observeEvent(input$BatchModalID, {
+    showModal(modalDialog(
+      title = "Batch ID Information",
+      dateInput("InputCreateBatchDate", "Batch Date:", value = Sys.Date()),
+      textInput("InputCreateBatchDescription", "Description:"),
+      textInput("InputCreateBatchLeadPerson", "Lead Person:"),
+      actionButton("InputBatchIDUploadSubmit", "Submit"),
+      footer = modalButton("Close")
+    ))
+  })
+
+  #' Add new Batch ID Information
+  #' Takes the user input for Batch ID, Batch Date, Description, and Lead Person
+  #' and saves it into the database.
+  observeEvent(input$InputBatchIDUploadSubmit, {
+    # Retrieve the inputs
+    batch <- as.character(input$InputCreateBatchDate)
+    batch_desc <- input$InputCreateBatchDescription
+    lead_person <- input$InputCreateBatchLeadPerson
+    
+    # Prepare the inputs in a data frame
+    user_data <- data.frame(
+      RowNumber = 1, # RowNumber is required for error handling purposes
+      title = batch,
+      Batch = batch, # 'Batch' instead of 'short_code' for error handling purposes
+      description = batch_desc,
+      lead_person = lead_person,
+      created = lubridate::now(),
+      last_updated = lubridate::now(),
+      is_longitudinal = 0,
+      stringsAsFactors = FALSE
+    )
+
+    tryCatch({
+      # Validate the references if applicable
+      validate_references(database, user_data, "batch", "create")
+    
+      # Initialize database connection
+      con <- sampleDB::init_db_conn(database)
+      on.exit(dbDisconnect(con), add = TRUE)
+    
+      # Append the data (and rename the column back)
+      user_data <- user_data %>% dplyr::rename(short_code = Batch) %>% select(-c(RowNumber))
+      dbAppendTable(con, "study", user_data)
+    
+      # Notify success
+      show_success_notification(session, "batch", 1) # 1 batch created
+    },
+    validation_error = function(e) {
+      show_validation_error_modal(e)
+    },
+    error = function(e) {
+      show_general_error_modal(e)
+    })
+  })
+
+  #' Open modal dialog for Uploading Compositions
+  #' Opens a modal dialog where users can upload compositions.
+  observeEvent(input$CompositionModalID, ignoreInit = TRUE, {
+    
+    # Trigger a modal for uploading compositions
+    showModal(modalDialog(
+      title = "Upload Compositions",
+      fileInput("InputUploadCompositionIDs", "Choose CSV File"),
+      actionButton("CompositionUploadSubmit", "Submit"),
+      footer = modalButton("Close")
+    ))
+    
+  })
+
+  #' Upload Compositions
+  #' Takes the user input for compositions (either as a dataset or a path to a CSV),
+  #' validates it, and then saves it into the database.
+  observeEvent(input$CompositionUploadSubmit, ignoreInit = TRUE, {
     
     # Check dataset
     dataset <- input$InputUploadCompositionIDs
     if (is.null(dataset) || is.null(dataset$datapath)) {
       message("Aborting upload - no file uploaded")
       return()
-    }
-
-    # Function to show spinner if needed
-    show_spinner_if_needed <- function(data) {
-      if (nrow(data) > 5) {
-        show_modal_spinner(
-          spin = "double-bounce",
-          color = "#00bfff",
-          text = paste("Uploading", nrow(data), "compositions, please be patient...")
-        )
-        return(TRUE)
-      }
-      return(FALSE)
     }
 
     # Format file if user_file is null
@@ -327,67 +199,135 @@ ControlReference <- function(session, input, output, database) {
       if (!success) return()
     }
 
-    message("Starting Upload...")
-
-    b_use_wait_dialog <- show_spinner_if_needed(rv$user_file)
-    
     tryCatch({
       shinyjs::reset("InputCompositionUploadAction")
-      upload_compositions(rv$user_file)
+      all_labels <- upload_compositions(rv$user_file)
+      show_success_notification(session, "composition", length(all_labels))
     },
     error = function(e) {
       show_general_error_modal(e)
     },
     finally = {
-      if (b_use_wait_dialog) {
-        remove_modal_spinner()
-      }
       rv$user_file <- NULL
     })
 
   })
 
+  observeEvent(dbUpdateEvent(), {
 
-  observeEvent(input$InputControlStudyAction, ignoreInit=TRUE, {
+    con <- init_db_conn(database)
+    on.exit(dbDisconnect(con), add = TRUE)
+    updateSelectizeInput(session, "InputControlSearchBatch", choices = get_batches(con), selected = input$InputControlSearchBatch)
+    updateSelectizeInput(session, "InputControlSearchStrain", choices = get_strains(con), selected = input$InputControlSearchStrain)
+    updateSelectizeInput(session, "InputControlSearchPercentage", choices = get_percentages(con), selected = input$InputControlSearchPercentage)
+    updateSelectizeInput(session, "InputControlSearchCompositionTypes", choices = get_composition_types(con), selected = input$InputControlSearchCompositionTypes)
+  })
 
-    database_path <- Sys.getenv("SDB_PATH")
 
-    # Create the study in the database
-    res <- append_study_to_db(
-      title = input$InputControlNewStudy,
-      short_code = input$InputControlNewStudy,
-      description = input$InputControlStudyDesc,
-      lead_person = input$InputControlBatchPerson,
-      is_longitudinal = 0, 
-      database = database_path
+  # Create a compositions table
+
+  # Initialize the custom filter with default values
+  composition_filter_set <- createFilterSetReactive()
+
+  # Declare filters for searching and establish any filter dependencies
+  observe({
+    # Build the filters
+    new_filters <- list(
+      strain = input$InputControlSearchStrain,
+      percentage = input$InputControlSearchPercentage,
+      composition_types = input$InputControlSearchCompositionTypes
     )
 
-  })
+    # Remove empty or NULL values
+    new_filters <- purrr::map(new_filters, ~purrr::discard(.x, ~ is.null(.x) | .x == "" | length(.x) == 0))
+    new_filters <- purrr::discard(new_filters, ~is.null(.x) | length(.x) == 0)
 
-  observeEvent(input$InputControlNewStrain, {
-
-    # Check if input value is provided
-    if (is.null(input$InputControlNewStrain) || input$InputControlNewStrain == "") {
-      shinyjs::disable("InputCreateStrain")
-      return()
+    # Change filter type to integer
+    if (!is.null(new_filters[['composition_types']])) {
+      new_filters[['composition_types']] <- as.integer(new_filters[['composition_types']])
     }
 
-    con <- dbConnect(RSQLite::SQLite(), Sys.getenv("SDB_PATH"))
+    # Insert new filters
+    if (length(new_filters) > 0) {
+      composition_filter_set$insert(new_filters)
+    }
+
+    # Get existing filters
+    existing_filters <- composition_filter_set$get()
+
+    # Identify filters to remove
+    filters_to_remove <- setdiff(names(existing_filters), names(new_filters))
     
-    # Check for existing strain
-    existing_strain <- tbl(con, "strain") %>% 
-      filter(name %in% local(input$InputControlNewStrain)) %>%
-      collect()
-
-    # Enable or Disable based on existence
-    if (nrow(existing_strain) == 0) {
-      shinyjs::enable("InputCreateStrain")
-    } else {
-      shinyjs::disable("InputCreateStrain")
+    # Remove selected filters
+    if (length(filters_to_remove) > 0) {
+      composition_filter_set$remove(filters_to_remove)
     }
-
-    dbDisconnect(con)
   })
 
-}
+  filtered_composition_data <- reactive({
+    
+    # Get the data from the database
+    compositions <- search_compositions(composition_filter_set$get()) %>%
+      arrange(strain_count, label, percentage) %>%
+      select(strain_count, strain, percentage, label, legacy) %>%
+      dplyr::rename(
+        `Composition Type` = strain_count,
+        Strain = strain,
+        Percentage = percentage,
+        CompositionID = label,
+        Legacy = legacy
+      ) 
+     
+    if (!is.null(compositions)) {
+      compositions
+    } else {
+      tibble::tibble()
+    }
+  }) %>% debounce(500)  # 500ms delay
 
+
+  observe({
+    output$OutputControlSearchResults <- renderReactable({
+      # Get filtered data from our reactive
+      search_table <- filtered_composition_data()
+
+      reactable(
+        search_table,
+        defaultColDef = colDef(minWidth = 95, html = TRUE, sortable = TRUE, resizable = FALSE, na = "-", align = "center"),
+        searchable = TRUE,
+        selection = "multiple", 
+        onClick = "select",
+        columns = list(
+        .selection = colDef(
+          headerStyle = list(pointerEvents = "none")
+        )
+        ),
+        striped = TRUE,
+        showPageSizeOptions = TRUE,
+        theme = reactableTheme(
+          headerStyle = list(
+            "& input[type='checkbox']" = list(display = "none"),
+            "&:hover[aria-sort]" = list(background = "hsl(0, 0%, 96%)"),
+            "&[aria-sort='ascending'], &[aria-sort='descending']" = list(background = "hsl(0, 0%, 96%)"),
+            borderColor = "#555"
+          ),
+          rowSelectedStyle = list(backgroundColor = '#aafaff', boxShadow = 'inset 2px 0 0 0 #ffa62d')
+        )
+      )
+    })
+  })
+
+  selected <- reactive(getReactableState("OutputControlSearchResults", "selected"))
+
+  observe({
+    # Download compositions table
+    output$DownloadControlSearchResults <- downloadHandler(
+      filename = function() {
+        paste("compositions", "csv", sep = ".")
+      },
+      content = function(file) {
+        write.csv(filtered_composition_data() %>% dplyr::slice(selected()), file, row.names = FALSE, quote = FALSE)
+      }
+    )
+  })
+}

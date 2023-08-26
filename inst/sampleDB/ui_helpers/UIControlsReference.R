@@ -1,90 +1,77 @@
-# Function for the "Create a New Strain" tab
-createStrainTab <- function() {
-  tabPanel("Create a New Strain",
-    br(),
-    radioButtons("InputControlStrainUploadType", "Upload Type", choices=c("Individual" = "individual", "Multiple"="multiple"), selected="individual", inline=TRUE), 
-    conditionalPanel(condition = "input.InputControlStrainUploadType == 'individual'",
-      textInput("InputControlNewStrain", "Strain", placeholder = "Add new strain here..."),
-      actionButton("InputCreateStrain", label = "Create")
-    ),
-    conditionalPanel(condition = "input.InputControlStrainUploadType == 'multiple'",
-      fileInput("InputUploadStrains", label = "Upload Strains", accept = c("text/csv", "text/comma-separated-values,text/plain", ".csv")),
-      actionButton("InputUploadStrainAction", label = "Upload")
-    )
-  )
-}
+library(shiny)
+library(shinyWidgets)
+library(DBI)
+library(dplyr)
 
-# Function for the "Batch IDs" tab
-batchIDsTab <- function() {
-  tabPanel("Batch IDs",
-    br(),
-    dateInput("InputCreateBatchID", label = "Batch ID", format = "yyyy-mm-dd"),
-    textInput("InputCreateBatchDescription", label = "Description", placeholder = "Description"),
-    textInput("InputCreateBatchLeadPerson", label = "Lead Person"),
-    actionButton("InputBatchIDUploadAction", label = "Upload")
-  )
-}
+# Moved to global scope
+gray_600 <- "#6C757D"
 
-# Function for the "Composition IDs" tab
-compositionIDsTab <- function() {
-  tabPanel("Composition IDs",
-    br(),
-    fileInput("InputUploadCompositionIDs", label = "Upload Compositions", accept = c("text/csv", "text/comma-separated-values,text/plain", ".csv")),
-    actionButton("InputCompositionIDUploadAction", label = "Upload")
-  )
-}
+# Create your theme
+my_theme <- bs_theme(
+  version = 5,
+  gray_600 = gray_600
+)
 
-# Function for sidebar panel with tabs
-sidebarWithTabs <- function() {
-  sidebarPanel(
-    shinyjs::useShinyjs(),
-    width = 4,
-    tabsetPanel(
-      createStrainTab(),
-      batchIDsTab(),
-      compositionIDsTab()
-    )
-  )
-}
+# Custom CSS moved to global scope
+custom_css <- paste0(
+  ".custom-dropdown, .dropdown-menu .dropdown-item {
+      width: 100%;
+  }
+  .custom-dropdown {
+      background-color: ", gray_600, ";
+      color: white;
+  }
+  .custom-dropdown:hover {
+      background-color: #5a6268;
+      color: white;
+  }
+  .dropdown-menu {
+      padding: 0;
+  }"
+)
 
-# Function for the main panel content
-mainPanelContent <- function(con) {
-  mainPanel(
-    # Control Storage Type Radio Buttons
-    radioButtons("InputControlPanelType", "Control Storage Type", choices=get_control_types(), selected = "dbs_collection", inline=TRUE),
-    
-    # Filter controls
-    tags$h3("Filters"),
-    fluidRow(
-      column(width = 2, selectizeInput("InputControlSearchBatch", width = '100%', label = "Batch", choices = c("", tbl(con, "study") %>% pull(short_code)), selected="")),
-      column(width = 2, selectizeInput("InputControlSearchStrain", width = '100%', label = "Strain", choices = c("", tbl(con, "strain") %>% pull(name)), selected="")),
-      column(width = 2, selectizeInput("InputControlSearchDensity", width = '100%', label = "Density", choices = c("", tbl(con, "malaria_blood_control") %>% pull(density) %>% unique(.)), selected="")),
-      column(width = 2, selectizeInput("InputControlSearchPercentage", width = '100%', label = "Percentage", choices = c("", tbl(con, "composition_strain") %>% pull(percentage) %>% unique(.)), selected=""))
-    ),
-    fluidRow(
-      column(width = 2, dateRangeInput("InputControlSearchDateRange", label = "Dates", start = NA, end = NA)),
-      column(width = 2, selectInput("InputControlLocationRoot", label = "Freezer", choices = c("", tbl(con, "location") %>% pull(location_root) %>% unique(.)), selected="")),
-      column(width = 2, selectInput("InputControlLocationLevelI", label = "Shelf Name", choices = c())),
-      column(width = 2, selectInput("InputControlLocationLevelII", label = "Basket Name", choices = c()))
-    ),
-    
-    # Main Table
-    reactableOutput("OutputControlTable"),
-    downloadButton("DownloadControlData", "Download")
-    # ... (other UI elements)
-  )
-}
-
-# Main UI function
 UIControlsReference <- function() {
+
   con <- DBI::dbConnect(RSQLite::SQLite(), Sys.getenv("SDB_PATH"))
-  
-  ui <- sidebarLayout(
-    sidebarWithTabs(),
-    mainPanelContent(con)
+  on.exit(DBI::dbDisconnect(con), add = TRUE)
+
+  ui <- layout_sidebar(
+    
+    sidebar = sidebar(
+      theme = my_theme,  # Applying your theme
+      tags$div(
+        class = "dropdown",
+        tags$button(
+          class = "btn dropdown-toggle custom-dropdown",
+          type = "button",
+          `data-bs-toggle` = "dropdown",
+          "Create New Item"
+        ),
+        tags$ul(
+          class = "dropdown-menu",
+          tags$li(actionButton("BatchModalID", "Batch", class = "dropdown-item")),
+          tags$li(actionButton("StrainModalID", "Strain", class = "dropdown-item")),
+          tags$li(actionButton("CompositionModalID", "Composition", class = "dropdown-item"))
+        )
+      ),
+      selectizeInput("InputControlSearchBatch", width = '100%', label = "Batch", choices = c()),
+      selectizeInput("InputControlSearchStrain", width = '100%', label = "Strain", choices = c()),
+      selectizeInput("InputControlSearchPercentage", width = '100%', label = "Percentage", choices = c()),
+      selectizeInput("InputControlSearchCompositionTypes", width = '100%', label = "Composition", choices = c())
+    ),
+    card(
+      title = "View Strains & Compositions",
+      reactableOutput("OutputControlSearchResults"),
+      fluidRow(
+        column(
+          width = 6,
+          downloadButton("DownloadControlSearchResults", "Download")
+        )
+      )
+    )
   )
-  
-  DBI::dbDisconnect(con)
-  
-  return(ui)
+  return(tagList(
+    tags$style(HTML(custom_css)),
+    ui
+  ))
 }

@@ -6,24 +6,6 @@ library(stringr)
 
 SearchDelArchSamples <- function(session, input, database, output, dbUpdateEvent) {
 
-  # Reactive to store retrieved database data
-  createFilterSetReactive <- function(defaults = list()) {
-    rv <- reactiveVal(defaults)
-    
-    list(
-      get = function() { rv() },
-      set = function(new_filters) {
-        rv(new_filters)
-      },
-      insert = function(new_filters) {
-        existing_filters <- rv()
-        updated_filters <- modifyList(existing_filters, new_filters)
-        rv(updated_filters)
-      },
-      clear = function() { rv(list()) },
-      reset = function() { rv(defaults) }
-    )
-  }
 
   # Initialize the custom filter with default values
   filter_set <- createFilterSetReactive(
@@ -32,7 +14,6 @@ SearchDelArchSamples <- function(session, input, database, output, dbUpdateEvent
       status = "In Use"
     )
   )
-      
 
   #' Declare filters for searching and establish any filter dependencies
   observe({
@@ -64,43 +45,7 @@ SearchDelArchSamples <- function(session, input, database, output, dbUpdateEvent
 
 
   # get DelArchSearch ui elements
-  rv <- reactiveValues(user_file = NULL, error = NULL, search_table = NULL, operation = NULL, filtered_sample_container_ids = NULL)
-
-  error <- reactiveValues(
-    title = "",
-    message = "",
-    table = NULL
-  )
-
-  observeEvent(rv$error, ignoreInit = TRUE, {
-    message("Running error workflow")
-
-    df <- NULL
-    if (!is.null(error$table)) {
-      df <- error$table %>%
-        dplyr::rename(
-          Column = column, 
-          Reason = reason,
-          `Triggered By` = trigger
-        ) %>%
-        reactable(.)
-    }
-
-    showModal(
-      modalDialog(
-        title = error$title,
-        error$message,
-        tags$hr(),
-        renderReactable({ df }),
-        footer = modalButton("Exit")
-      )
-    )
-
-    error$title = ""
-    error$message = ""
-    error$table = NULL
-    rv$error <- NULL
-  })
+  rv <- reactiveValues(user_file = NULL, error = NULL, operation = NULL, filtered_sample_container_ids = NULL)
 
   filtered_data <- reactive({
 
@@ -109,7 +54,7 @@ SearchDelArchSamples <- function(session, input, database, output, dbUpdateEvent
 
     # Prepare data for reactable
     if (!is.null(results)) {
-      results 
+      results
     } else {
       tibble::tibble()
     }
@@ -148,8 +93,23 @@ SearchDelArchSamples <- function(session, input, database, output, dbUpdateEvent
   })
 
    # Use the filtered data to update selections
+   # NOTE: make one observeEvnet for the two
   observeEvent(input$DelArchSearchBySampleType, {
     UpdateSelections(session, input, TRUE)
+  })
+
+  observeEvent(input$DelArchSearchByControlType, {
+    UpdateSelections(session, input, TRUE)
+  })
+
+  observeEvent(input$DelArchSearchType, {
+
+    if (input$DelArchSearchType == "samples") {
+      accordion_panel_update("DelArchSubjectsPanel", title = "Study & Subjects")
+    } else {
+      accordion_panel_update("DelArchSubjectsPanel", title = "Batch & Controls")
+    }
+
   })
 
   ### DelArchSearch by file
@@ -584,7 +544,23 @@ SearchDelArchSamples <- function(session, input, database, output, dbUpdateEvent
 }
 
 UpdateSelections <- function(session, input, keepCurrentSelection = FALSE) {
+
+  if (input$DelArchSearchType == "samples") {
+    UpdateSampleSelections(session, input, keepCurrentSelection)
+  } else {
+    UpdateControlSelections(session, input, keepCurrentSelection)
+  }
   
+  shinyjs::reset("DelArchSearchByBarcode")
+  shinyjs::reset("DelArchSearchBySubjectUIDFile")
+
+  updateSelectInput(session, "DelArchSearchByState", selected = "Active")
+  updateSelectInput(session, "DelArchSearchByStatus", selected = "In Use")
+}
+
+
+
+UpdateSampleSelections <- function(session, input, keepCurrentSelection = FALSE) {
   con <- DBI::dbConnect(RSQLite::SQLite(), Sys.getenv("SDB_PATH"))
   
   manifest_types <- list(
@@ -608,7 +584,7 @@ UpdateSelections <- function(session, input, keepCurrentSelection = FALSE) {
   )
   
   labels_list <- list(
-    DelArchSearchByManifest = manifest_types[[input$DelArchSearchBySampleType]]$label %||% "All Containers",
+    DelArchSearchByManifest = manifest_types[[input$DelArchSearchBySampleType]]$label,
     DelArchSearchByStudy = "Study",
     DelArchSearchBySubjectUID = "Study Subject",
     DelArchSearchBySpecimenType = "Specimen Type",
@@ -630,10 +606,70 @@ UpdateSelections <- function(session, input, keepCurrentSelection = FALSE) {
   })
   
   DBI::dbDisconnect(con)
-  
-  shinyjs::reset("DelArchSearchByBarcode")
-  shinyjs::reset("DelArchSearchBySubjectUIDFile")
+}
 
-  updateSelectInput(session, "DelArchSearchByState", selected = "Active")
-  updateSelectInput(session, "DelArchSearchByStatus", selected = "In Use")
+
+UpdateControlSelections <- function(session, input, keepCurrentSelection = FALSE) {
+
+  con <- DBI::dbConnect(RSQLite::SQLite(), Sys.getenv("SDB_PATH"))
+
+  ## Get the control container choices
+  if (input$DelArchSearchByControlType == "dbs_sheet") {
+    container_label <- "DBS Sheet"
+    container_choices <- tbl(con, "dbs_control_sheet") %>% pull(label)
+  } else {
+    container_label <- "Whole Blood"
+    container_choices <- tbl(con, "whole_blood") %>% pull(name)
+  }
+
+  ## Get the controls and batches
+  controls <- tbl(con, "malaria_blood_control") %>%
+    inner_join(tbl(con, "study_subject"), by = c("study_subject_id"="id"))
+
+  batches <- controls %>%
+    inner_join(tbl(con, "study"), by = c("study_id"="id"))
+
+  found_controls <- controls %>% pull(name, id)
+  found_batches <- batches %>% pull(short_code, id)
+
+
+  ## Get the identifiers and strains
+  composition_identifiers <- get_identifiers_from_database(con)
+  strains <- get_strains(con)
+  
+  choices_list <- list(
+    DelArchSearchByManifest = unique(container_choices),
+    DelArchSearchByStudy = unique(found_batches),
+    DelArchSearchBySubjectUID = unique(found_controls),
+    DelArchSearchBySpecimenType = c(), # leave empty for now
+    DelArchSearchByLocation = unique(tbl(con, "location") %>% pull(location_root)),
+    DelArchCompositionTypes = unique(composition_types),
+    DelArchSearchByStrains = unique(strains)
+  )
+  
+  labels_list <- list(
+    DelArchSearchByManifest = container_label,
+    DelArchSearchByStudy = "Batch",
+    DelArchSearchBySubjectUID = "Control ID",
+    DelArchSearchBySpecimenType = "Specimen Type",
+    DelArchSearchByLocation = "Storage Location",
+    DelArchCompositionTypes = "Composition Type",
+    DelArchSearchByStrains = "Strain"
+  )
+  
+  sapply(names(choices_list), function(input_name) {
+    # Adjust the selected argument based on keepCurrentSelection parameter
+    current_selected <- if (keepCurrentSelection) input[[input_name]] else FALSE
+    
+    updateSelectizeInput(
+      session,
+      input_name,
+      label = labels_list[[input_name]],
+      choices = choices_list[[input_name]],
+      selected = current_selected, 
+      server = TRUE
+    )
+  })
+  
+  DBI::dbDisconnect(con)
 }

@@ -793,27 +793,60 @@ upload_dbs_sheet <- function(user_data, database) {
 }
 
 
-#' Format labels for compositions
+#' Format labels for compositions in a dplyr pipeline
 #'
 #' This function formats the labels for the given compositions based on the legacy status and index.
+#' The function is designed to work within a dplyr pipeline.
 #'
-#' @param compositions A dataframe containing the compositions to be labeled.
+#' @param data A tibble containing the compositions to be labeled.
 #'        The dataframe should contain the columns `legacy`, `label`, and `index`.
+#' @param legacy_col The name of the column that contains the legacy flag. Default is "legacy".
+#' @param label_col The name of the column that contains the labels. Default is "label".
+#' @param index_col The name of the column that contains the index. Default is "index".
 #'
-#' @return A character vector containing the formatted labels.
+#' @return A tibble containing the formatted labels.
+#' @export
 #'
 #' @examples
-#' df <- data.frame(legacy = c(1, 0), label = c("S1", "S2"), index = c(1, 2))
-#' format_labels(df)
-format_labels <- function(compositions) {
-  compositions %>%
+#' df <- tibble(legacy = c(1, 0), label = c("S1", "S2"), index = c(1, 2))
+#' df %>% format_labels()
+format_labels <- function(data, 
+                          legacy_col = "legacy", 
+                          label_col = "label", 
+                          index_col = "index") {
+  
+  data %>%
     dplyr::mutate(
-      label = case_when(
-        (legacy == 1) ~ label,
-        TRUE ~ paste0(label, "_", index)
+      !!label_col := case_when(
+        (!!sym(legacy_col) == 1) ~ !!sym(label_col),
+        TRUE ~ paste0(!!sym(label_col), "_", !!sym(index_col))
       )
-    ) %>%
-    pull(label)
+    )
+}
+
+
+#' Reshape Identifier Data to Long Form
+#'
+#' This function takes a data frame and reshapes it to long form based on the strain-percentage pairs 
+#' in the 'unique_id' column. It separates each strain-percentage pair into two new columns: 'strain' 
+#' and 'percentage'.
+#'
+#' @param data A data frame containing a 'unique_id' column with strain-percentage pairs, separated 
+#'             by semicolons (';') and hyphens ('-').
+#' @return A data frame reshaped to long form, containing new 'strain' and 'percentage' columns.
+#' @importFrom tidyr separate_longer_delim separate_wider_delim
+#' @export
+reshape_identifier_to_long_form <- function(data) {
+  # create long form data from identifier ({strain}-{percentage};{strain}-{percentage};...)
+  long_data <- data %>%
+    # Duplicate each row for each strain-percentage pair in 'unique_id'
+    separate_longer_delim(unique_id, delim = ";") %>%
+    # Separate 'unique_id' into 'strain' and 'percentage' columns
+    separate_wider_delim(unique_id, names = c("strain", "percentage"), delim = "-") %>%
+    # Convert 'percentage' to numeric
+    dplyr::mutate(percentage = as.numeric(percentage))
+  
+  return(long_data)
 }
 
 #' Create a unique identifier for compositions
@@ -891,35 +924,6 @@ get_identifiers_from_user_data <- function(user_data) {
         distinct()
 }
 
-#' Extract identifiers from the database
-#'
-#' This function queries a database to collect and process data, generating a unique identifier based on strains and percentages.
-#'
-#' @param con A database connection object.
-#'
-#' @return A data frame containing unique identifiers for each composition in the database.
-get_identifiers_from_database <- function(con) {
-    local_data <- tbl(con, "composition_strain") %>%
-        dplyr::left_join(tbl(con, "strain") %>% dplyr::rename(strain = name), by = c(strain_id = "id")) %>%
-        dplyr::collect()
-
-    local_data %>%
-        group_by(composition_id) %>%
-        reframe(
-            combined_strains = paste(strain, collapse = ";"),
-            combined_percentages = paste(percentage, collapse = ";")
-        ) %>%
-        mutate(
-            split_data = map2(combined_strains, combined_percentages, ~split_and_sort(.x, .y)),
-            unique_id = map2_chr(split_data, split_data,
-                                 ~create_unique_id_from_sorted(.x$sorted_strains, .x$sorted_percentages))
-        ) %>%
-        inner_join(dbReadTable(con, "composition"), by = c("composition_id" = "id")) %>%
-        mutate(legacy = as.logical(legacy)) %>%  # Convert legacy to logical
-        select(composition_id, unique_id, index, label, legacy)
-}
-
-
 #' Prepare new compositions for database upload
 #'
 #' @param user_data A data frame containing user compositions.
@@ -938,18 +942,6 @@ prepare_new_compositions <- function(user_data) {
                TRUE ~ NA_character_
            )
     )
-}
-
-#' Retrieve compositions from the database by label
-#'
-#' @param con A database connection object.
-#' @param labels A character vector of labels to be matched.
-#'
-#' @return A dataframe of matched compositions
-retrieve_compositions_by_label <- function(con, labels) {
-    tbl(con, "composition") %>%
-        dplyr::filter(label %in% !!labels) %>%
-        collect()
 }
 
 #' Retrieve compositions from the database by identifier
@@ -1073,4 +1065,6 @@ upload_compositions <- function(user_data, database = Sys.getenv("SDB_PATH")) {
             dbDisconnect(con)
         }
     })
+
+    return(all_labels)
 }

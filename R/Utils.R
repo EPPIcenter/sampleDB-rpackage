@@ -30,7 +30,6 @@ concat_position <- function(col, row) {
 #' @keywords validation
 #' @return ErrorData object indicating any studies not found.
 validate_study_reference_db <- function(con, table_name, row_number_col, study_short_code_col, controls = FALSE, error_if_exists = FALSE) {
-
   # Left join with the study table
   df <- tbl(con, table_name) %>%
     left_join(tbl(con, "study"), by = setNames("short_code", study_short_code_col)) %>%
@@ -59,6 +58,27 @@ validate_study_reference_db <- function(con, table_name, row_number_col, study_s
 
   return(NULL)
 }
+
+#' Validate that study does not have a date for it's short code 
+#' 
+#' This function helps to validate that a study does not have a date for it's short code, which is reserved for control batches.
+#' 
+#' @param con A database connection object.
+#' @param table_name The name of the formatted CSV table in the database.
+#' @param row_number_col The name of the row number column.
+#' @param study_short_code_col The name of the study short code column.
+validate_study_short_code <- function(con, table_name, row_number, study_short_code_col) {
+  df <- tbl(con, table_name) %>%
+    filter(!is.na(!!sym(study_short_code_col))) %>%
+    filter(grepl("\\d{4}-\\d{2}-\\d{2}", !!sym(study_short_code_col))) %>%
+    select(all_of(c(row_number_col, study_short_code_col))) %>%
+    collect()
+
+  if (nrow(df) > 0) {
+    return(ErrorData$new(description = "Study short code cannot contain a date", data_frame = df))
+  }
+  return(NULL)
+} 
 
 
 #' Validate specimen type references (Database Version)
@@ -213,6 +233,32 @@ check_missing_data <- function(formatted_csv, col_attributes) {
   return(NULL)
 }
 
+#' Check for duplicated rows in a data frame
+#'
+#' @param formatted_csv The user-provided data frame to check for duplicated rows.
+#' @param col_attributes A named list of expected column attributes. If you want to check only specific columns for duplicates, include their names here. Otherwise, it will check all columns.
+#' @return An ErrorData object if any duplicated rows are found, otherwise NULL.
+check_duplicated_rows <- function(formatted_csv, col_attributes = NULL) {
+
+  # If col_attributes is not NULL, only check duplicates based on those columns
+  if (!is.null(col_attributes)) {
+    subset_data <- formatted_csv[, col_attributes, drop = FALSE]
+  } else {
+    subset_data <- formatted_csv
+  }
+
+  # Find duplicates
+  duplicate_rows <- which(duplicated(subset_data) | duplicated(subset_data, fromLast = TRUE))
+
+  if (length(duplicate_rows) > 0) {
+    description <- "Rows found with duplicate data"
+    return(ErrorData$new(description = description, columns = colnames(subset_data), rows = duplicate_rows))
+  }
+
+  return(NULL)
+}
+
+
 #' Add row numbers to a dataframe
 #'
 #' @param df A dataframe.
@@ -293,27 +339,6 @@ add_to_errors <- function(errors, err) {
   return(errors)
 }
 
-#' Initialize Database Connection and Copy User Data
-#'
-#' This function initializes a connection to a specified database and copies user data to a predefined table in the database.
-#'
-#' @param database The path or name of the SQLite database to connect to.
-#' @param user_data A dataframe containing the user data to be copied to the database.
-#'
-#' @return A connection object representing the active database connection.
-#' @examples
-#' \dontrun{
-#'   database_path <- Sys.getenv("DB_PATH")
-#'   user_df <- data.frame(id = 1:3, name = c("Alice", "Bob", "Charlie"))
-#'   conn <- init_and_copy_to_db(database_path, user_df)
-#' }
-#' @export
-init_and_copy_to_db <- function(database, user_data) {
-  con <- init_db_conn(database)
-  copy_to(con, user_data) 
-  return(con)
-}
-
 #' Get the Relevant Table Name Based on Container Class
 #'
 #' This function returns the name of the relevant database table
@@ -360,3 +385,47 @@ find_column_name <- function(data, potential_names) {
   intersect(colnames(data), potential_names)[1] %||% NA_character_
 }
 
+#' Get normalized path
+#'
+#' @param site_install Logical indicating whether installation is site-wide.
+#' @param pkgname Character string of the package name.
+#' @param dir_type Character string specifying the type of directory. Valid values are "config" and "data".
+#' @param filename File to add.
+#'
+#' @return A character string of the normalized path.
+#' @export
+get_normalized_path <- function(site_install, pkgname, dir_type, filename) {
+  stopifnot(dir_type %in% c("config", "data"))
+  
+  base_dir <- switch(
+    dir_type,
+    config = ifelse(site_install, rappdirs::site_config_dir(), rappdirs::user_config_dir()),
+    data = ifelse(site_install, rappdirs::site_data_dir(), rappdirs::user_data_dir())
+  )
+  
+  normalizePath(file.path(base_dir, pkgname, filename))
+}
+
+
+#' Get environ file path
+#'
+#' @param site_install Logical indicating whether installation is site-wide.
+#'
+#' @return A character string of the environment file path.
+get_environ_file_path <- function(site_install) {
+  normalizePath(
+    ifelse(site_install,
+           file.path(Sys.getenv("R_HOME"), "etc", "Renviron.site"),
+           file.path(Sys.getenv("HOME"), ".Renviron")
+    )
+  )
+}
+
+
+#' Find duplicate rows in a data frame
+#'
+#' @param data A data frame.
+#' @param cols A character vector of column names to check for duplicates.
+get_duplicated_rows <- function(data) {
+  data[duplicated(data), ]
+}

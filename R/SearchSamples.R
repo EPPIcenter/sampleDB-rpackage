@@ -145,6 +145,68 @@ SearchControls <- function(filters, control_type = NULL, database = Sys.getenv("
   return (results)
 }
 
+#' Search for Compositions in Database
+#'
+#' This function searches for compositions in a SQLite database using specified filters.
+#' The filters include strain, percentage, and composition types.
+#'
+#' @param filters A named list containing filter criteria. 
+#'   - `strain`: a vector of strains to filter by
+#'   - `percentage`: a vector of percentages to filter by
+#'   - `composition_types`: a vector of composition types to filter by
+#' @param database The path to the SQLite database. Defaults to the value from the SDB_PATH environment variable.
+#'
+#' @return A data frame containing the filtered compositions.
+#' @export
+#'
+#' @examples
+#' \dontrun{
+#' result <- search_compositions(filters = list(strain = c("3D7", "D6"), percentage = c(0.32, 0.33)))
+#' }
+search_compositions <- function(filters, database = Sys.getenv("SDB_PATH")) {
+
+  # Initialize database connection
+  con <- init_db_conn(database)
+  # Ensure the connection is closed when exiting
+  on.exit(DBI::dbDisconnect(con), add = TRUE)
+
+  # Create the basic query
+  query <- tbl(con, "composition_strain") %>%
+    dplyr::inner_join(tbl(con, "strain") %>% dplyr::rename(strain_id = id, strain = name), by = c("strain_id")) %>%
+    dplyr::inner_join(tbl(con, "composition") %>% dplyr::rename(composition_id = id), by = c("composition_id"))
+
+  # Count the number of strains in each composition
+  # This is needed to filter by composition types 
+  query <- query %>% 
+    dplyr::group_by(composition_id) %>%
+    dplyr::add_count(composition_id, name = "strain_count") %>%
+    dplyr::ungroup() %>%
+    select(strain, percentage, strain_count, legacy, index, label)
+
+  # Applying filters
+  if (!is.null(filters$strain)) {
+    query <- query %>% dplyr::filter(strain %in% !!filters$strain)
+  }
+
+  if (!is.null(filters$percentage)) {
+    query <- query %>% dplyr::filter(percentage %in% !!filters$percentage)
+  }
+
+  if (!is.null(filters$composition_types)) {
+    query <- query %>% dplyr::filter(strain_count %in% !!filters$composition_types)
+  }
+
+  # Collect the result and apply further transformations
+  result <- collect(query) %>%
+    format_labels() %>%
+    dplyr::mutate(
+      strain_count = format_composition_types(strain_count),
+      legacy = ifelse(legacy == 1, "True", "False")
+    ) %>%
+    select(-c(index))
+
+  return(result)
+}
 
 FilterByLocation = function(con, sql, location) {
   sql <- sql %>%

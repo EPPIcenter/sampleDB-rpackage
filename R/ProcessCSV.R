@@ -165,7 +165,7 @@ set_user_file_header <- function(user_file, file_column_attr) {
     stop_formatting_error("Could not find required columns", format_error(file_column_attr$required))
   }
 
-  duplicated_column_names <- check_for_duplicates_in_row(user_file, header_row)
+  duplicated_column_names <- check_for_duplicates_in_a_row(user_file, header_row)
   if (!is_empty(duplicated_column_names)) {
     stop_formatting_error(
       "Duplicate column names detected, please check your file",
@@ -192,7 +192,7 @@ set_user_file_header <- function(user_file, file_column_attr) {
 #' @importFrom tidyr pivot_longer
 #' @return A list with the column names that were found more than once.
 #' @keywords internal
-check_for_duplicates_in_row <- function(user_data, row_number) {
+check_for_duplicates_in_a_row <- function(user_data, row_number) {
   user_data %>% 
     slice(row_number) %>%
     pivot_longer(cols = everything(), names_to = "column", values_to = "value") %>%
@@ -201,6 +201,7 @@ check_for_duplicates_in_row <- function(user_data, row_number) {
     pull(value) %>%
     unique()
 }
+
 
 #' Detect Missing Specimen Columns in User's CSV File
 #'
@@ -633,7 +634,8 @@ process_reference_csv <- function(user_csv, user_action, reference_type, databas
   
   validate_references(database, validation_data, reference_type, user_action)
 
-  return(user_data)
+  # Return the validated data
+  return(validation_data)
 }
 
 #' Add Data to User Data
@@ -810,6 +812,13 @@ prepare_specimen_data_for_validation <- function(sample_type, user_data, file_co
     stop_validation_error("There are missing data in required fields.", error)
   }
 
+  # 2. Check for duplicated rows
+  error <- check_duplicated_rows(user_data)
+
+  if (!is.null(error)) {
+    stop_validation_error("There are missing data in required fields.", error)
+  }
+
   container_obj <- get_container_by_sample(sample_type)
 
   user_data <- prepare_matrix_position_column(user_data, container_obj, "Position")
@@ -860,6 +869,12 @@ prepare_control_data_for_validation <- function(control_type, user_data, action,
 
   # 1. Check for missing data in required positions
   error <- check_missing_data(user_data, file_column_attr)
+  if (!is.null(error)) {
+    stop_validation_error("There are missing data in required fields.", error)
+  }
+
+  # 2. Check for duplicated rows
+  error <- check_duplicated_rows(user_data)
   if (!is.null(error)) {
     stop_validation_error("There are missing data in required fields.", error)
   }
@@ -966,6 +981,12 @@ prepare_reference_data_for_validation <- function(user_data, reference_type, fil
     stop_validation_error("There are missing data in required fields.", error)
   }
 
+  # 2. Check for duplicated rows
+  error <- check_duplicated_rows(user_data)
+  if (!is.null(error)) {
+    stop_validation_error("There are missing data in required fields.", error)
+  }
+
   # Assuming rename_columns renames based on given mapping
   user_data <- add_row_numbers(user_data)
 
@@ -978,6 +999,11 @@ prepare_reference_data_for_validation <- function(user_data, reference_type, fil
     }
 
     user_data <- split_and_unnest_columns(user_data, "Strains", "Percentages", append = "Long")
+  }
+
+  # make sure strains are capitalized
+  if (reference_type %in% c("strains")) {
+    user_data[["Strain"]] <- toupper(user_data[["Strain"]])
   }
 
   return(user_data)
