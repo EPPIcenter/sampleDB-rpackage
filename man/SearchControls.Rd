@@ -4,7 +4,12 @@
 \alias{SearchControls}
 \title{Get all malaria blood controls}
 \usage{
-SearchControls(filters, control_type = NULL, database = Sys.getenv("SDB_PATH"))
+SearchControls(
+  filters,
+  control_type = NULL,
+  database = Sys.getenv("SDB_PATH"),
+  include_internal_control_id = FALSE
+)
 }
 \arguments{
 \item{con}{A dplyr dbConnect() connection object}

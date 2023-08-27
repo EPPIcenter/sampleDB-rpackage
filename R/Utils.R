@@ -30,6 +30,7 @@ concat_position <- function(col, row) {
 #' @keywords validation
 #' @return ErrorData object indicating any studies not found.
 validate_study_reference_db <- function(con, table_name, row_number_col, study_short_code_col, controls = FALSE, error_if_exists = FALSE) {
+
   # Left join with the study table
   df <- tbl(con, table_name) %>%
     left_join(tbl(con, "study"), by = setNames("short_code", study_short_code_col)) %>%

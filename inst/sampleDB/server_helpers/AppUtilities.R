@@ -529,6 +529,7 @@ show_formatting_error_modal <- function(error) {
 
 # Create a function to generate reactable for displaying errors
 generate_error_reactable <- function(error_collection, index = 1) {
+
   specific_error <- error_collection$error_data_list[[index]]
   selected_cols <- c("RowNumber", specific_error$columns)
   
@@ -556,20 +557,36 @@ show_validation_error_modal <- function(error) {
   
   error_collection <- error$data
   
-  # Extracting unique error descriptions
-  errors <- unique(sapply(error_collection$error_data_list, function(x) x$description))
-  errors_df <- data.frame(Error = errors)
-  
-  # Define the reactable for displaying errors
-  main_table <- reactable(
-    errors_df,
-    details = function(index) {
-      htmltools::div(
-        style = "padding: 1rem",
-        generate_error_reactable(error_collection, index)
-      )
-    }
-  )
+  if (inherits(error_collection, "ErrorData")) {
+    # Your code to generate a single table for the ErrorData class
+    
+    errors_df <- data.frame(
+      Description = error_collection$description,
+      Columns = toString(error_collection$columns),
+      Rows = toString(error_collection$rows)
+    )
+    
+    main_table <- reactable(errors_df)
+    
+  } else if (inherits(error_collection, "ValidationErrorCollection")) {
+    # Your code to generate multiple tables for the ValidationErrorCollection class
+    
+    # Extracting unique error descriptions
+    errors <- unique(sapply(error_collection$error_data_list, function(x) x$description))
+    errors_df <- data.frame(Error = errors)
+    
+    main_table <- reactable(
+      errors_df,
+      details = function(index) {
+        htmltools::div(
+          style = "padding: 1rem",
+          generate_error_reactable(error_collection, index)
+        )
+      }
+    )
+  } else {
+    stop("Unknown error collection type.")
+  }
   
   # Display the modal with the main error table
   showModal(
@@ -690,6 +707,54 @@ createFilterSetReactive <- function(defaults = list()) {
       return(df)
     }
   )
+}
+
+#' Process Filters for Shiny App
+#'
+#' This function processes filter inputs for a Shiny app. It removes empty or NULL values,
+#' inserts new filters into a given filter set, and removes any outdated filters.
+#'
+#' @param input_filters A list of filter inputs to be processed.
+#' @param filter_keys A character vector specifying the keys that should exist in the filter set.
+#' @param filter_set A reactive object that contains the current state of filters.
+#'
+#' @return This function is called for its side effects and does not return a value.
+#' @examples
+#' \dontrun{
+#' observe({
+#'   input_filters <- list(
+#'     strain = input$InputControlSearchStrain,
+#'     percentage = input$InputControlSearchPercentage,
+#'     composition_types = input$InputControlSearchCompositionTypes
+#'   )
+#'   filter_keys <- c("strain", "percentage", "composition_types")
+#'   process_filters(input_filters, filter_keys, composition_filter_set)
+#' })
+#' }
+#' @export
+process_filters <- function(input_filters, filter_keys, filter_set) {
+
+  # Modified the inner function to handle NAs explicitly
+  new_filters <- purrr::map(input_filters, function(x) {
+    purrr::discard(x, ~ is.null(.x) | is.na(.x) | .x == "" | length(.x) == 0)
+  })  
+  new_filters <- purrr::discard(new_filters, ~ is.null(.x) | length(.x) == 0)
+
+  # Insert new filters
+  if (length(new_filters) > 0) {
+    filter_set$insert(new_filters)
+  }
+
+  # Get existing filters
+  existing_filters <- filter_set$get()
+
+  # Identify filters to remove
+  filters_to_remove <- setdiff(names(existing_filters), names(new_filters))
+  
+  # Remove selected filters
+  if (length(filters_to_remove) > 0) {
+    filter_set$remove(filters_to_remove)
+  }
 }
 
 #' Show a an upload success notification

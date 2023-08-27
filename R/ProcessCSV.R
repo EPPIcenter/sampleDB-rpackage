@@ -862,6 +862,7 @@ prepare_control_data_for_validation <- function(control_type, user_data, action,
   # dplyr for database manipulation and querying, so doing these modification upfront
   # makes it easier to prepare the data frame for validation.
 
+
   # Check if file_column_attr is of class ColumnData
   if (!inherits(file_column_attr, "ColumnData")) {
     stop("file_column_attr must be an object of class 'ColumnData'")
@@ -970,6 +971,7 @@ denormalize_composition_ids <- function(user_data, in_label_col, in_index_col, i
 #'
 #' @export
 prepare_reference_data_for_validation <- function(user_data, reference_type, file_column_attr) {
+
   # Check if file_column_attr is of class ColumnData
   if (!inherits(file_column_attr, "ColumnData")) {
     stop("file_column_attr must be an object of class 'ColumnData'")
@@ -1003,7 +1005,7 @@ prepare_reference_data_for_validation <- function(user_data, reference_type, fil
 
   # make sure strains are capitalized
   if (reference_type %in% c("strains")) {
-    user_data[["Strain"]] <- toupper(user_data[["Strain"]])
+    user_data[["Strains"]] <- toupper(user_data[["Strains"]])
   }
 
   return(user_data)

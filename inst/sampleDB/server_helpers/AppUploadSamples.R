@@ -200,7 +200,7 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
         shinyjs::reset("UploadAction")
         if (input$UploadType == "samples") {
           UploadSpecimens(user_data = rv$user_file, storage_type_id=input$UploadSampleType)
-        } else if (input$UploadType == "controls" && input$UploadControlAction == "upload") { 
+        } else if (input$UploadType == "controls" && input$UploadControlAction == "create") { 
           upload_controls(user_data = rv$user_file, control_type = input$UploadControlType)
         } else if (input$UploadType == "controls" && input$UploadControlAction == "extraction") {
           upload_extracted_dna(user_data = rv$user_file, control_extraction = input$UploadControlAction)

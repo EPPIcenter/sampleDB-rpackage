@@ -17,8 +17,7 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
 
   #' Declare filters for searching and establish any filter dependencies
   observe({
-    # Build the filters
-    new_filters <- list(
+    input_filters <- list(
       manifest = input$DelArchSearchByManifest,
       short_code = input$DelArchSearchByStudy,
       study_subject = input$DelArchSearchBySubjectUID,
@@ -26,7 +25,7 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
       collection_date = list(
         date.from = input$DelArchdateRange[1],
         date.to = input$DelArchdateRange[2]
-      ), 
+      ),
       location = list(
         name = input$DelArchSearchByLocation,
         level_I = input$DelArchSearchByLevelI,
@@ -35,13 +34,12 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
       state = input$DelArchSearchByState,
       status = input$DelArchSearchByStatus
     )
-
-    # Remove empty or NULL values
-    new_filters <- purrr::map(new_filters, ~purrr::discard(.x, function(x) is.null(x) | "" %in% x | length(x) == 0))
-    new_filters <- purrr::discard(new_filters, ~is.null(.x) | length(.x) == 0)
-
-    filter_set$insert(new_filters)
+    
+    filter_keys <- c("manifest", "short_code", "study_subject", "specimen_type", "collection_date", "location", "state", "status")
+    
+    process_filters(input_filters, filter_keys, filter_set)
   })
+
 
 
   # get DelArchSearch ui elements
@@ -49,7 +47,11 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
 
   filtered_data <- reactive({
     # Obtain the search results
-    results <- SearchSamples(input$DelArchSearchBySampleType, filters = filter_set$get(), include_internal_sample_id = TRUE)
+    if (input$DelArchSearchType == "samples") {
+      results <- SearchSamples(input$DelArchSearchBySampleType, filters = filter_set$get(), include_internal_sample_id = TRUE)
+    } else {
+      results <- SearchControls(input$DelArchSearchByControlType, filters = filter_set$get(), include_internal_control_id = TRUE) 
+    }
 
     # Prepare data for reactable
     if (!is.null(results)) {
@@ -63,13 +65,17 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
   observe({
     output$DelArchSearchResultsTable <- renderReactable({
       # Get filtered data from our reactive
-
-      search_table <- filtered_data() %>% select(-c(`Sample ID`))
+      type <- isolate({ input$DelArchSearchType })
+      if (type == "samples") {
+        search_table <- filtered_data() %>% select(-c(`Sample ID`))
+      } else {
+        search_table <- filtered_data() %>% select(-c(ControlID))
+      } 
       
       reactable(
         search_table,
-        defaultColDef = colDef(minWidth = 95, html = TRUE, sortable = TRUE, resizable = FALSE, na = "-", align = "center"),
-        searchable = TRUE,
+        defaultColDef = colDef(minWidth = ifelse(type == "samples", 105, 150), html = TRUE, sortable = TRUE, resizable = FALSE, na = "-", align = "center"),
+        searchable = FALSE,
         selection = "multiple", 
         onClick = "select",
         columns = list(
@@ -618,8 +624,8 @@ UpdateControlSelections <- function(session, input, keepCurrentSelection = FALSE
     container_label <- "DBS Sheet"
     container_choices <- tbl(con, "dbs_control_sheet") %>% pull(label)
   } else {
-    container_label <- "Whole Blood"
-    container_choices <- tbl(con, "whole_blood") %>% pull(name)
+    container_label <- "WB Cryovial Box"
+    container_choices <- tbl(con, "cryovial_box") %>% pull(name)
   }
 
   ## Get the controls and batches
@@ -629,12 +635,11 @@ UpdateControlSelections <- function(session, input, keepCurrentSelection = FALSE
   batches <- controls %>%
     inner_join(tbl(con, "study"), by = c("study_id"="id"))
 
-  found_controls <- controls %>% pull(name, id)
-  found_batches <- batches %>% pull(short_code, id)
-
+  found_controls <- controls %>% pull(name, name = id)
+  found_batches <- batches %>% pull(short_code, name = id)
+  composition_types <- get_composition_types(con)
 
   ## Get the identifiers and strains
-  composition_identifiers <- get_identifiers_from_database(con)
   strains <- get_strains(con)
   
   choices_list <- list(

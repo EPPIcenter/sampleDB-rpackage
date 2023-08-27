@@ -144,12 +144,14 @@ CREATE TABLE IF NOT EXISTS "composition" (
 
 CREATE TABLE IF NOT EXISTS "whole_blood_tube" (
 	"id"			INTEGER NOT NULL,
+	"malaria_blood_control_id" INTEGER NOT NULL,
 	"barcode"		VARCHAR,
 	"position"		VARCHAR NOT NULL,
 	"cryovial_box_id"	INTEGER NOT NULL,
 
 	PRIMARY KEY ("id"),
-	FOREIGN KEY ("cryovial_box_id") REFERENCES "cryovial_box"("id")
+	FOREIGN KEY ("cryovial_box_id") REFERENCES "cryovial_box"("id"),
+	FOREIGN KEY ("malaria_blood_control_id") REFERENCES "malaria_blood_control"("id")
 );
 
 --- update database version ---

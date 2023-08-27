@@ -7,7 +7,6 @@
 create_controls_for_batch(
   user_data,
   con,
-  composition_col,
   density_col,
   study_short_code_col,
   control_col
@@ -17,6 +16,8 @@ create_controls_for_batch(
 \item{user_data}{A dataframe containing user data to process.}
 
 \item{con}{A database connection object.}
+
+\item{density_col}{Column name in user_data for density value.}
 
 \item{study_short_code_col}{Name of the column in user_data corresponding to "Batch".}
 

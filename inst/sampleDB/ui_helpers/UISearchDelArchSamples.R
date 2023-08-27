@@ -56,43 +56,35 @@ UISearchDelArchSamples <- function() {
           selectizeInput("DelArchSearchByState", "State", choices = c()),
           selectizeInput("DelArchSearchByStatus", "Status", choices = c())
         )
-      )
+      ),      
+      verbatimTextOutput("DelArchMessage")
     ),
-    card(
-      full_screen = TRUE,
-      card_header(
-        "Track your data"
+    layout_sidebar(
+      sidebar = sidebar(
+        title = "Sample Archival & Deletion Workflows", 
+        position = "right",
+        open = FALSE,
+        border = FALSE,
+        tags$p("Select samples to get started. In all workflows, users will be asked to confirm that they have selected the correct samples."),
+        tags$h4("Sample Archival"),
+        tags$p("Select samples above that you wish to archive. This will remove samples from plates in the database so that they may be replaced with", tags$em("In Use"), "samples."),
+        actionButton("ArchiveAction", label = "Archive Samples", width = '100%'),
+        tags$h4("Sample Deletion"),
+        tags$p("Select samples above that you wish to delete. Samples that are", tags$em("deleted"), "are removed", tags$strong("permanently", style = "color: red"), ". Use caution when deleting samples - in most cases, archival should be used to retain sample history."),
+        actionButton("DeleteAction", label = "Delete Samples", width = '100%')
       ),
-      card_body(
+      card(
+        card_header("Search Results"),
+        border = FALSE,
+        full_screen = TRUE,
         reactableOutput("DelArchSearchResultsTable"),
-        tags$em("Use the filters in the panel to the left to find samples.", style = "color: grey; font-size: 18px;"),
         fluidRow(
           column(
             width = 6,
             downloadButton("DelArchDownloadSearchData", "Download")
           )
-        ),
-        tags$h3("Sample Archival & Deletion Workflows"),
-        hr(),
-        tags$em("Select samples to get started. In all workflows, users will be asked to confirm that they have selected the correct samples.", style = "color: grey; font-size: 18px;"),
-        fluidRow(
-          column(
-            width = 6,
-            tags$h4("Sample Archival"),
-            hr(),
-            tags$p("Select samples above that you wish to archive. This will remove samples from plates in the database so that they may be replaced with", tags$em("In Use"), "samples."),
-            actionButton("ArchiveAction", label = "Archive Samples", width = '25%')
-          ),
-          column(
-            width = 6,
-            tags$h4("Sample Deletion"),
-            hr(),
-            tags$p("Select samples above that you wish to delete. Samples that are", tags$em("deleted"), "are removed", tags$strong("permanently", style = "color: red"), ". Use caution when deleting samples - in most cases, archival should be used to retain sample history."),
-            actionButton("DeleteAction", label = "Delete Samples", width = '25%')
-          )
         )
-      ),
-      verbatimTextOutput("DelArchMessage")
+      )
     )
   )
   return(ui)

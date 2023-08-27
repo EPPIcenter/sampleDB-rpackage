@@ -10,7 +10,10 @@ process_whole_blood_location_container(
   created_col,
   last_updated_col,
   box_name_col,
-  box_barcode_col
+  box_barcode_col,
+  location_root_col,
+  level_I_col,
+  level_II_col
 )
 }
 \arguments{

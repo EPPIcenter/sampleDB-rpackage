@@ -4,12 +4,12 @@
 \alias{append_whole_blood_tubes}
 \title{Add whole blood tubes to the database if they don't exist}
 \usage{
-append_whole_blood_tubes(con, user_data, barcode_col, position_col)
+append_whole_blood_tubes(user_data, con, barcode_col, position_col)
 }
 \arguments{
-\item{con}{A database connection object.}
-
 \item{user_data}{A dataframe containing the payload data.}
+
+\item{con}{A database connection object.}
 
 \item{barcode_col}{Column name in user_data for barcode.}
 

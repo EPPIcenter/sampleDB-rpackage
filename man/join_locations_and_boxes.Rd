@@ -4,7 +4,15 @@
 \alias{join_locations_and_boxes}
 \title{Process Whole Blood Box Data}
 \usage{
-join_locations_and_boxes(con, user_data, box_name_col, box_barcode_col)
+join_locations_and_boxes(
+  con,
+  user_data,
+  box_name_col,
+  box_barcode_col,
+  location_root_col,
+  level_I_col,
+  level_II_col
+)
 }
 \arguments{
 \item{con}{A database connection object.}
@@ -12,6 +20,8 @@ join_locations_and_boxes(con, user_data, box_name_col, box_barcode_col)
 \item{user_data}{A dataframe containing the payload data.}
 
 \item{box_name_col}{Column name in user_data for box name.}
+
+\item{box_barcode_col}{Column name in user_data for box barcode.}
 }
 \description{
 This function will check for locations and add new boxes if they don't exist. It will return the boxes and locations IDs.

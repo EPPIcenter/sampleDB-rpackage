@@ -110,6 +110,7 @@ ControlReference <- function(session, input, output, database, dbUpdateEvent) {
     batch <- as.character(input$InputCreateBatchDate)
     batch_desc <- input$InputCreateBatchDescription
     lead_person <- input$InputCreateBatchLeadPerson
+    now <- as.character(lubridate::now())
     
     # Prepare the inputs in a data frame
     user_data <- data.frame(
@@ -118,8 +119,8 @@ ControlReference <- function(session, input, output, database, dbUpdateEvent) {
       Batch = batch, # 'Batch' instead of 'short_code' for error handling purposes
       description = batch_desc,
       lead_person = lead_person,
-      created = lubridate::now(),
-      last_updated = lubridate::now(),
+      created = now,
+      last_updated = now,
       is_longitudinal = 0,
       stringsAsFactors = FALSE
     )
@@ -231,37 +232,14 @@ ControlReference <- function(session, input, output, database, dbUpdateEvent) {
 
   # Declare filters for searching and establish any filter dependencies
   observe({
-    # Build the filters
-    new_filters <- list(
+    input_filters <- list(
       strain = input$InputControlSearchStrain,
       percentage = input$InputControlSearchPercentage,
       composition_types = input$InputControlSearchCompositionTypes
     )
-
-    # Remove empty or NULL values
-    new_filters <- purrr::map(new_filters, ~purrr::discard(.x, ~ is.null(.x) | .x == "" | length(.x) == 0))
-    new_filters <- purrr::discard(new_filters, ~is.null(.x) | length(.x) == 0)
-
-    # Change filter type to integer
-    if (!is.null(new_filters[['composition_types']])) {
-      new_filters[['composition_types']] <- as.integer(new_filters[['composition_types']])
-    }
-
-    # Insert new filters
-    if (length(new_filters) > 0) {
-      composition_filter_set$insert(new_filters)
-    }
-
-    # Get existing filters
-    existing_filters <- composition_filter_set$get()
-
-    # Identify filters to remove
-    filters_to_remove <- setdiff(names(existing_filters), names(new_filters))
+    filter_keys <- c("strain", "percentage", "composition_types")
     
-    # Remove selected filters
-    if (length(filters_to_remove) > 0) {
-      composition_filter_set$remove(filters_to_remove)
-    }
+    process_filters(input_filters, filter_keys, composition_filter_set)
   })
 
   filtered_composition_data <- reactive({

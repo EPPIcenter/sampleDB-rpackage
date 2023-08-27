@@ -22,14 +22,14 @@
   "action_requirements": {
     "create": {
       "shared": {
-        "required_keys": ["density", "composition", "study_short_code", "storage_location", "storage_container", "created"],
+        "required_keys": ["density", "composition", "study_short_code", "storage_location", "storage_container"],
         "optional_keys": ["comment"]
       },
       "dbs_sheet": {
         "required_keys": ["count"]
       },
       "whole_blood": {
-        "conditional_keys": ["barcode"]
+        "optional_keys": ["barcode"]
       }
     },
     "extraction": {
@@ -48,7 +48,6 @@
       "study_subject": "ControlID",
       "extracted_on": "ExtractedOn",
       "comment": "Comment",
-      "created": "Created",
       "count": "Count"
     }
   }

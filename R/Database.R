@@ -151,7 +151,7 @@ get_composition_types <- function(con) {
       collect() %>%
       mutate(composition_label = format_composition_types(strain_count)) %>%
       arrange(strain_count) %>%
-      pull(strain_count, composition_label)
+      pull(name = strain_count, composition_label)
 } 
 
 #' Format composition types

@@ -47,13 +47,14 @@ upload_controls <- function(user_data, control_type, database = Sys.getenv("SDB_
 #' @param box_name_col Column name in user_data for box name.
 #' @param box_barcode_col Column name in user_data for box barcode.
 #' @return A dataframe with the location ids and cryovial box ids.
-process_whole_blood_location_container <- function(user_data, con, created_col, last_updated_col, box_name_col, box_barcode_col) {
+process_whole_blood_location_container <- function(user_data, con, created_col, last_updated_col, box_name_col, box_barcode_col, location_root_col, level_I_col, level_II_col) {
 
   # get the boxes ids
-  user_data <- join_locations_and_boxes(con, user_data, box_name_col, box_barcode_col)
+  user_data <- join_locations_and_boxes(con, user_data, box_name_col, box_barcode_col, location_root_col, level_I_col, level_II_col)
 
   # add the boxes if they don't exist
-  user_data <- append_boxes_if_not_exist(con, user_data, created_col, last_updated_col, box_name_col, box_barcode_col)
+  res <- append_boxes_if_not_exist(con, user_data, created_col, last_updated_col, box_name_col, box_barcode_col)
+  cat("Whole Blood Boxes Added: ", res, "\n")
 
   # rejoin to get the box ids
   user_data <- rejoin_box_ids(con, user_data, box_name_col, box_barcode_col)
@@ -68,11 +69,18 @@ process_whole_blood_location_container <- function(user_data, con, created_col, 
 #' @param con A database connection object.
 #' @param user_data A dataframe containing the payload data.
 #' @param box_name_col Column name in user_data for box name.
-join_locations_and_boxes <- function(con, user_data, box_name_col, box_barcode_col) {
+#' @param box_barcode_col Column name in user_data for box barcode.
+#' 
+join_locations_and_boxes <- function(con, user_data, box_name_col, box_barcode_col, location_root_col, level_I_col, level_II_col) {
 
   joins <- setNames(
     c("name", "location_id", "cryovial_box_barcode"),
     c(box_name_col, "location_id", box_barcode_col)
+  )
+
+  location_joins <- setNames(
+    c("location_root", "level_I", "level_II"),
+    c(location_root_col, level_I_col, level_II_col)
   )
 
   ## Find the locations and cryovial box if it already exists
@@ -80,7 +88,7 @@ join_locations_and_boxes <- function(con, user_data, box_name_col, box_barcode_c
     inner_join(dbReadTable(con, "location") %>%
                   select(-c(created, last_updated)) %>%
                   dplyr::rename(location_id=id)
-                , by = c("location_root", "level_I", "level_II")) %>%
+                , by = location_joins) %>%
     dplyr::left_join(dbReadTable(con, "cryovial_box") %>%
                         select(-c(created, last_updated)) %>%
                         dplyr::rename(
@@ -104,15 +112,15 @@ join_locations_and_boxes <- function(con, user_data, box_name_col, box_barcode_c
 rejoin_box_ids <- function(con, user_data, box_name_col, box_barcode_col) {
 
   joins <- setNames(
-    c("name", "location_id", "cryovial_box_barcode"),
+    c("name", "location_id", "barcode"),
     c(box_name_col, "location_id", box_barcode_col)
   )
 
-  ## Rejoin to get the cryovial box ids
-  df <- dbReadTable(con, "cryovial_box") %>% dplyr::rename(cryovial_box_id=id, cryovial_box_barcode=barcode) %>%
-    inner_join(df.payload %>% select(-c(created,last_updated,cryovial_box_id)), by = joins) %>%
-    dplyr::rename(manifest_name=name) %>%
-    select(location_id,cryovial_box_id,all_of(colnames(user_data)))
+  df <- user_data %>%
+    dplyr::select(-c(cryovial_box_id)) %>%
+    inner_join(dbReadTable(con, "cryovial_box") %>%
+                  dplyr::rename(cryovial_box_id=id), by = joins) %>%
+    select(location_id, cryovial_box_id, all_of(colnames(user_data)))
 
   return(df)
 
@@ -120,16 +128,16 @@ rejoin_box_ids <- function(con, user_data, box_name_col, box_barcode_col) {
 
 #' Add whole blood tubes to the database if they don't exist
 #' 
-#' @param con A database connection object.
 #' @param user_data A dataframe containing the payload data.
+#' @param con A database connection object.
 #' @param barcode_col Column name in user_data for barcode.
 #' @param position_col Column name in user_data for position.
 #' @return A result from the dbAppendTable indicating if the tubes were added successfully.
-append_whole_blood_tubes <- function(con, user_data, barcode_col, position_col) {
+append_whole_blood_tubes <- function(user_data, con, barcode_col, position_col) {
   ## Add the whole blood tubes
-  res <- dbAppendTable(con, "whole_blood_tube", df.payload %>%
-                dplyr::rename(id=malaria_blood_control_id) %>%
-                select(malaria_blood_control_id, !!sym(barcode_col), cryovial_box_id, !!sym(position_col)) %>%
+  res <- dbAppendTable(con, "whole_blood_tube", user_data %>%
+                dplyr::rename(position := !!sym(position_col)) %>%
+                select(any_of(c(barcode_col)), malaria_blood_control_id, cryovial_box_id, position) %>%
                 distinct()
   )
 
@@ -152,10 +160,10 @@ append_whole_blood_tubes <- function(con, user_data, barcode_col, position_col) 
 append_boxes_if_not_exist <- function(con, user_data, created_col, last_updated_col, box_name_col, box_barcode_col) {
 
   ## if the box does not exist (cryovial_box_id == `NA`), then create it
-  res <- dbAppendTable(con, "cryovial_box", df.payload %>%
+  res <- dbAppendTable(con, "cryovial_box", user_data %>%
                           filter(is.na(cryovial_box_id)) %>%
                           select(!!sym(created_col), !!sym(last_updated_col), location_id, !!sym(box_name_col), !!sym(box_barcode_col)) %>%
-                          dplyr::rename(name = box_name_col) %>%
+                          dplyr::rename(created = created_col, last_updated = last_updated_col, name = box_name_col, barcode = box_barcode_col) %>%
                           distinct())
 
   return(res)
@@ -173,10 +181,12 @@ upload_whole_blood <- function(user_data, database) {
 	n.uploaded=0
 
 	tryCatch({
-    user_data_with_control_ids <- create_controls_for_batch(user_data, con, "Batch", "Control")
-    user_data_with_container_ids <- process_whole_blood_location_container(user_data_with_blood_control_ids, con, "BoxName", "BoxBarcode")
+    user_data <- prepare_control_for_upload(user_data, now)
+
+    user_data_with_control_ids <- create_controls_for_batch(user_data, con, "Density", "Batch", "Control")
+    user_data_with_container_ids <- process_whole_blood_location_container(user_data_with_control_ids, con, "Created", "LastUpdated", "BoxName", "BoxBarcode", "WB_Minus80", "WB_RackName", "WB_RackPosition")
     user_data_with_blood_control_ids <- process_malaria_blood_control_data(user_data_with_container_ids, con, "Density", "CompositionID")
-    res <- append_whole_blood_tubes(user_data_with_blood_control_ids, con, "Barcode", "Position")
+    res <- append_whole_blood_tubes(user_data_with_blood_control_ids, con, "Barcode", "ControlOriginPosition")
 		dbCommit(con)
 	}, error = function(e) {
     dbRollback(con)
@@ -200,6 +210,7 @@ upload_whole_blood <- function(user_data, database) {
 #'
 #' @param user_data A dataframe containing user data to process.
 #' @param con A database connection object.
+#' @param density_col Column name in user_data for density value.
 #' @param study_short_code_col Name of the column in user_data corresponding to "Batch".
 #' @param control_col Name of the column in user-dta correspond to "Control" (system made)
 #' @return A dataframe with the study_subject_id added.
@@ -207,7 +218,6 @@ upload_whole_blood <- function(user_data, database) {
 create_controls_for_batch <- function(
   user_data,
   con,
-  composition_col,
   density_col,
   study_short_code_col,
   control_col
@@ -723,7 +733,7 @@ create_control_label <- function(dens_values, comp_values) {
   return(control_labels)
 }
 
-#' Prepare DBS Sheet for Upload
+#' Prepare Control for Upload
 #'
 #' This function prepares a user_data dataframe for upload by adding a 'Control' 
 #' column (generated from Density and CompositionID values), and by adding 'Created' 
@@ -737,10 +747,10 @@ create_control_label <- function(dens_values, comp_values) {
 #' @examples
 #' test_data <- data.frame(Density = c(100, 1000, 1500),
 #'                         CompositionID = c("S1_1", "S3_2", "S2_2"))
-#' prepare_dbs_sheet_for_upload(test_data, Sys.time())
+#' prepare_control_for_upload(test_data, Sys.time())
 #'
 #' @export
-prepare_dbs_sheet_for_upload <- function(user_data, now) {
+prepare_control_for_upload <- function(user_data, now) {
   
   user_data[['Control']] <- create_control_label(user_data$Density, user_data$CompositionID)
   user_data[['Created']] <- now
@@ -761,10 +771,10 @@ upload_dbs_sheet <- function(user_data, database) {
 	tryCatch({
 
     ## Prepare the user data for upload
-    user_data <- prepare_dbs_sheet_for_upload(user_data, now)
+    user_data <- prepare_control_for_upload(user_data, now)
 
-		user_data_with_control_ids <- create_controls_for_batch(user_data, con, "Batch", "Control")
-		user_data_with_bag_ids <- process_bag_data(user_data_with_control_ids, con, "Minus20Freezer", "ShelfName", "BasketName", "SheetName")
+		user_data_with_control_ids <- create_controls_for_batch(user_data, con, "Density", "Batch", "Control")
+		user_data_with_bag_ids <- process_bag_data(user_data_with_control_ids, con, "DBS_Minus20", "DBS_ShelfName", "DBS_BasketName", "SheetName")
 		user_data_with_blood_control_ids <- process_malaria_blood_control_data(user_data_with_bag_ids, con, "Density", "CompositionID")
 		user_data_with_sheet_ids <- process_dbs_control_sheet_data(user_data_with_blood_control_ids, con, "SheetName")
 		user_data_with_blood_spot_collection_ids <- process_blood_spot_collection_data(user_data_with_sheet_ids, con, "Control", "Count")
@@ -1026,6 +1036,7 @@ upload_compositions <- function(user_data, database = Sys.getenv("SDB_PATH")) {
     all_labels <- character()
 
     tryCatch({
+
         # Extract unique identifiers from user data and the database
         user_data_identifiers <- get_identifiers_from_user_data(user_data)
         db_data_identifiers_updated <- get_identifiers_from_database(con)
@@ -1050,7 +1061,7 @@ upload_compositions <- function(user_data, database = Sys.getenv("SDB_PATH")) {
 
             # Append labels of the added compositions
             new_labels <- format_labels(user_compositions) 
-            all_labels <- c(all_labels, new_labels)
+            all_labels <- c(all_labels, new_labels$label)
 
 	        # Commit changes to the database
 	        dbCommit(con)
