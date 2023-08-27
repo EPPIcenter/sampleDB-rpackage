@@ -285,9 +285,13 @@ SearchSamples <- function(sample_storage_type, filters = NULL, format = "na", da
     sql <- inner_join(sql, tbl(con, "storage_container") %>% dplyr::rename(storage_container_id = id) %>% select(-c(created, last_updated)), by = c("specimen_id"))
     sql <- inner_join(sql, tbl(con, "sample_type") %>% dplyr::rename(sample_type_id = id, sample_type = name) %>% select(sample_type_id, sample_type), by = c("sample_type_id"))
 
-    if (sample_storage_type != "all") {
-      sql <- filter(sql, sample_type_id == sample_storage_type)
-    }
+    sample_storage_type_id <- switch(
+      sample_storage_type,
+      "micronix" = 1,
+      "cryovial" = 2
+    )
+
+    sql <- filter(sql, sample_type_id == sample_storage_type_id)
 
     sql <- inner_join(sql, tbl(con, "status") %>% dplyr::rename(status_id = id, status = name), by = c("status_id"))
     sql <- inner_join(sql, tbl(con, "state") %>% dplyr::rename(state_id = id, state = name), by = c("state_id"))
@@ -300,33 +304,7 @@ SearchSamples <- function(sample_storage_type, filters = NULL, format = "na", da
       sql <- filter(sql, status == local(filters$status))
     }
 
-    if (sample_storage_type == "all") {
-
-      # Rf. https://stackoverflow.com/questions/53806023/row-bind-tables-in-sql-with-differing-columns
-      list_of_tables <- c("micronix_tube", "cryovial_tube")
-      eachnames <- sapply(list_of_tables, function(a) DBI::dbQuoteIdentifier(con, DBI::dbListFields(con, a)), simplify = FALSE)
-      allnames <- unique(unlist(eachnames, use.names=FALSE))
-      allnames <- allnames[1:4] # c("id", "manifest_id", "barcode", "position")
-
-      list_of_fields <- lapply(eachnames, function(a) {
-        paste(ifelse(allnames %in% a, allnames, paste("null as", allnames)), collapse = ", ")
-      })
-
-      qry <- paste0("CREATE TEMPORARY TABLE `storage_classes` AS\n", paste(
-        mapply(function(nm, flds) {
-          paste("select",
-                paste(ifelse(allnames %in% flds, allnames, paste("null as", allnames)),
-                      collapse = ", "),
-                "from", nm)
-          }, names(eachnames), eachnames),
-          collapse = " union\n"))
-
-      DBI::dbExecute(con, qry)
-      sql <- inner_join(sql, tbl(con, "storage_classes") %>% dplyr::rename(storage_container_id = id), by = c("storage_container_id")) %>% collapse()
-
-    } else {
-      sql <- inner_join(sql, tbl(con, container_tables[["container_class"]]) %>% dplyr::rename(storage_container_id = id), by = c("storage_container_id")) %>% collapse()
-    }
+    sql <- inner_join(sql, tbl(con, container_tables[["container_class"]]) %>% dplyr::rename(storage_container_id = id), by = c("storage_container_id")) %>% collapse()
 
     # note: dbs does not have a barcode
     if (!is.null(filters$barcode) && sample_storage_type != 3) {

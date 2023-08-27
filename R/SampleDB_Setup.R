@@ -282,7 +282,6 @@ setup_environment <- function(site_install, pkgname, expected_versions, database
 #'   setup_database(list(database = "2.0.0"))
 #' }
 setup_database <- function(expected_database_version, pkgname, database) {
-
   db_directory <- system.file("extdata", "db", package = pkgname)
   db_versions <- basename(list.dirs(db_directory, recursive = FALSE))
   
@@ -324,13 +323,11 @@ setup_database <- function(expected_database_version, pkgname, database) {
 
     } else {
 
-      # Open a connection for an existing database
+      # Proceed with the upgrade logic
       con <- init_db_conn(database)
       on.exit(DBI::dbDisconnect(con), add = TRUE)  # Ensure connection is closed when function exits or if an error occurs
 
-      # Proceed with the upgrade logic
       Backup_SampleDB()
-      con <- lock_database(database)
 
       success <- copy_database(database, new_database)
       if (!success) {

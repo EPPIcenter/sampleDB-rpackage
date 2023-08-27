@@ -4,7 +4,7 @@ library(DBI)
 library(stringr)
 
 
-SearchDelArchSamples <- function(session, input, database, output, dbUpdateEvent) {
+AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEvent) {
 
 
   # Initialize the custom filter with default values
@@ -48,7 +48,6 @@ SearchDelArchSamples <- function(session, input, database, output, dbUpdateEvent
   rv <- reactiveValues(user_file = NULL, error = NULL, operation = NULL, filtered_sample_container_ids = NULL)
 
   filtered_data <- reactive({
-
     # Obtain the search results
     results <- SearchSamples(input$DelArchSearchBySampleType, filters = filter_set$get(), include_internal_sample_id = TRUE)
 
@@ -64,6 +63,7 @@ SearchDelArchSamples <- function(session, input, database, output, dbUpdateEvent
   observe({
     output$DelArchSearchResultsTable <- renderReactable({
       # Get filtered data from our reactive
+
       search_table <- filtered_data() %>% select(-c(`Sample ID`))
       
       reactable(
@@ -73,9 +73,9 @@ SearchDelArchSamples <- function(session, input, database, output, dbUpdateEvent
         selection = "multiple", 
         onClick = "select",
         columns = list(
-        .selection = colDef(
-          headerStyle = list(pointerEvents = "none")
-        )
+          .selection = colDef(
+            headerStyle = list(pointerEvents = "none")
+          )
         ),
         striped = TRUE,
         showPageSizeOptions = TRUE,
@@ -104,11 +104,11 @@ SearchDelArchSamples <- function(session, input, database, output, dbUpdateEvent
 
   observeEvent(input$DelArchSearchType, {
 
-    if (input$DelArchSearchType == "samples") {
-      accordion_panel_update("DelArchSubjectsPanel", title = "Study & Subjects")
-    } else {
-      accordion_panel_update("DelArchSubjectsPanel", title = "Batch & Controls")
-    }
+    # if (input$DelArchSearchType == "samples") {
+    #   accordion_panel_update("DelArchSubjectsPanel", "Study & Subjects")
+    # } else {
+    #   accordion_panel_update("DelArchSubjectsPanel", "Batch & Controls")
+    # }
 
   })
 

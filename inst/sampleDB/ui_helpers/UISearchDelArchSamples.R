@@ -64,6 +64,7 @@ UISearchDelArchSamples <- function() {
         "Track your data"
       ),
       card_body(
+        reactableOutput("DelArchSearchResultsTable"),
         tags$em("Use the filters in the panel to the left to find samples.", style = "color: grey; font-size: 18px;"),
         fluidRow(
           column(

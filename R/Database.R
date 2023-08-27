@@ -68,7 +68,7 @@ get_batches <- function(con) {
 
   ## Temporary way to identify a batch from a study
   dbReadTable(con, "study") %>%
-    dplyr::mutate(is_batch = !is.na(lubridate::parse_date_time(short_code, orders = "ymd"))) %>%
+    dplyr::mutate(is_batch = !is.na(lubridate::parse_date_time(short_code, "%Y-%m-%d", quiet = TRUE, exact = TRUE))) %>%
     filter(is_batch) %>%
     select(short_code) %>%
     pull()

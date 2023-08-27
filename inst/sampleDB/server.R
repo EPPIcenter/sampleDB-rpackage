@@ -127,7 +127,7 @@ function(input, output, session) {
 
       # -------- Search, Archive and Delete Samples -------------
       
-      # AppSearchDelArchSamples(session, input, database, output, dbUpdateEvent) 
+      AppSearchDelArchSamples(session, input, database, output, dbUpdateEvent) 
       
       # # # -------- Move Samples -------------
 

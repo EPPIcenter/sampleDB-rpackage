@@ -5,11 +5,10 @@ library(bslib)
 
 UIUploadSamples <- function() {
   
-  con <- DBI::dbConnect(RSQLite::SQLite(), Sys.getenv("SDB_PATH"))
-
   ui <- layout_sidebar(
     sidebar = sidebar(
       title = "Add Specimens to SampleDB",
+      width = validateCssUnit("25%"),
       shinyjs::useShinyjs(),
       radioButtons("UploadType", "Choose Your Upload Type", choices = global_upload_type_list),
       conditionalPanel(
@@ -40,9 +39,7 @@ UIUploadSamples <- function() {
                column(width = 6, actionButton("ClearUploadForm", width = '100%', label = "Clear Form"))),
       span(verbatimTextOutput("UploadOutputConsole"))
     ),
-    card(
-      title = "Upload Samples",
-      full_screen = TRUE,
+    card_body(
       conditionalPanel(
         condition = "input.UploadType == 'samples'",
         includeMarkdown(get_markdown_path("upload_samples_instructions.md"))
@@ -52,13 +49,15 @@ UIUploadSamples <- function() {
         includeMarkdown(get_markdown_path("upload_controls_instructions.md"))
       ),
       tags$p("If you would like to download a template file, press the button below."),
-      downloadButton("UploadFileTemplate"),
+      fluidRow(
+        column(
+          width = 6,
+          downloadButton("UploadFileTemplate")
+        )
+      ),
       tags$h5("Required Fields"),
       tags$p("Below are", tags$strong("required"), "columns that", tags$strong("must"), "be included in your file."),
       reactableOutput("UploadFileExampleRequired"),
-      tags$br(),
-      tags$p("Some fields may be included in your file", tags$strong("or"), "can be entered after upload."),
-      reactableOutput("UploadFileExampleUserInput"),
       tags$h5("Conditional Fields"),
       tags$p("Some fields", tags$strong("may"), "be required depending on the contents of your upload."),
       reactableOutput("UploadFileExampleConditional"),
@@ -66,9 +65,7 @@ UIUploadSamples <- function() {
       tags$p("The columns below do not need to be included in your upload."),
       reactableOutput("UploadFileExampleOptional")
     )
-    )
+  )
 
-    DBI::dbDisconnect(con)
-
-    return(ui)
+  return(ui)
 }

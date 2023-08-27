@@ -1,6 +1,3 @@
---- Convert back to YYYY-MM-DD ---
-UPDATE "specimen" SET collection_date = date(collection_date * 86400, 'unixepoch');
-
 ALTER TABLE "location" RENAME COLUMN "name" TO "location_root";
 
 ALTER TABLE "sample_type" ADD COLUMN "parent_id" INTEGER DEFAULT NULL REFERENCES "sample_type"("id");

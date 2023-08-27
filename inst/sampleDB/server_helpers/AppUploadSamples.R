@@ -24,12 +24,31 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
   # Download a complete upload template
   observe({
     output$UploadFileTemplate <- downloadHandler(
-        filename = function() {
-          paste(paste(c(input$UploadSampleType, input$UploadFileType, "upload", "template"), collapse="_"), '.csv', sep='')
-        },
-        content = function(con) {
-          write.csv(rv$upload_template, con, row.names = FALSE, quote=FALSE)
+      filename = function() {
+        if (input$UploadType == "samples") {
+          paste(paste(c(input$UploadSampleType, input$UploadFileType, "upload", "template"), collapse = "_"), ".csv", sep = "")
+        } else {
+          paste(paste(c(input$UploadControlType, input$UploadControlAction, "template"), collapse = "_"), ".csv", sep = "")
         }
+      },
+      content = function(con) {
+         # Check if the user is uploading samples or controls
+        if (input$UploadType == "samples") {
+          # Retrieve column data for samples based on selected sample type
+          column_data <- get_sample_file_columns(input$UploadSampleType, "upload", input$UploadFileType)
+        } else if (input$UploadType == "controls") {
+          # Retrieve column data for controls based on selected control type
+          column_data <- get_control_file_columns(input$UploadControlType, "create")  # Using action from the input
+        }
+        
+        # Generate an empty data frame with the correct column names for downloading
+        if (!is.null(column_data)) {
+          all_columns <- c(column_data$required, column_data$conditional, column_data$optional)
+          upload_template <- data.frame(matrix(ncol = length(all_columns), nrow = 0))
+          colnames(upload_template) <- all_columns
+        }
+        write.csv(upload_template, con, row.names = FALSE, quote = FALSE)
+      }
     )
   })
 
