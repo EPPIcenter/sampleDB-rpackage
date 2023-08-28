@@ -2,31 +2,17 @@
 % Please edit documentation in R/SampleDB_Setup.R
 \name{SampleDB_Setup}
 \alias{SampleDB_Setup}
-\title{Set up and deploy the SampleDB environment, database, and Shiny server.}
+\title{Save SampleDB's database file to a specified location}
 \usage{
 SampleDB_Setup(env = TRUE, db = TRUE, server = TRUE)
 }
-\arguments{
-\item{env}{Logical flag indicating whether to setup the environment.
-Defaults to TRUE.}
-
-\item{db}{Logical flag indicating whether to setup the database.
-Defaults to TRUE.}
-
-\item{server}{Logical flag indicating whether to deploy the Shiny server.
-Defaults to TRUE.}
-}
-\value{
-NULL (The function is primarily called for its side effects).
-}
 \description{
-This function orchestrates the deployment of the SampleDB environment,
-database, and Shiny server based on user preferences. The function calls
-appropriate helper functions to achieve each of these steps.
+Save SampleDB's database file to a specified location
 }
 \examples{
 \dontrun{
-  SampleDB_Setup(env = TRUE, db = TRUE, server = TRUE)
+library(sampleDB)
+SampleDB_Setup()
 }
+
 }
-\keyword{setup}
