@@ -404,7 +404,7 @@ get_normalized_path <- function(site_install, pkgname, dir_type, filename) {
     data = ifelse(site_install, rappdirs::site_data_dir(), rappdirs::user_data_dir())
   )
   
-  normalizePath(file.path(base_dir, pkgname, filename))
+  suppressWarnings(normalizePath(file.path(base_dir, pkgname, filename)))
 }
 
 
@@ -414,10 +414,12 @@ get_normalized_path <- function(site_install, pkgname, dir_type, filename) {
 #'
 #' @return A character string of the environment file path.
 get_environ_file_path <- function(site_install) {
-  normalizePath(
-    ifelse(site_install,
-           file.path(Sys.getenv("R_HOME"), "etc", "Renviron.site"),
-           file.path(Sys.getenv("HOME"), ".Renviron")
+  suppressWarnings(
+    normalizePath(
+      ifelse(site_install,
+             file.path(Sys.getenv("R_HOME"), "etc", "Renviron.site"),
+             file.path(Sys.getenv("HOME"), ".Renviron")
+      )
     )
   )
 }

@@ -57,7 +57,13 @@ update_env_variable <- function(name, value, environ_file_path) {
     row.names = FALSE
   )
 
-  Sys.setenv(name = value)
+  if (name == "SDB_CONFIG") {
+    Sys.setenv("SDB_CONFIG" = value)
+  }
+  if (name == "SDB_PATH") {
+    Sys.setenv("SDB_PATH" = value)
+  }
+
   message(paste(crayon::green(cli::symbol$tick),
                 paste0(name, " location set [", value, "]")))
 }
@@ -558,11 +564,9 @@ get_expected_versions <- function(pkgname) {
 #' @import jsonlite
 #' @keywords setup
 SampleDB_Setup <- function(env=TRUE, db=TRUE, server=TRUE) {
-
+  browser()
   pkgname <- "sampleDB"
   site_install <- is_system_installed(pkgname)
-
-  database <- Sys.getenv("SDB_PATH")
 
   message(paste(cli::rule(left = crayon::bold(paste("Deploying", pkgname, "Environment")))))
 
@@ -570,8 +574,8 @@ SampleDB_Setup <- function(env=TRUE, db=TRUE, server=TRUE) {
                                         "versions.json", package = pkgname))
 
   tryCatch({
-    if (env) setup_environment(site_install, pkgname, expected_versions, database)
-    if (db) setup_database(expected_versions$database, pkgname, database)
+    if (env) setup_environment(site_install, pkgname, expected_versions, Sys.getenv("SDB_PATH"))
+    if (db) setup_database(expected_versions$database, pkgname, Sys.getenv("SDB_PATH"))
     if (server) deploy_shiny_app(pkgname, site_install)
   },
   warning = function(w) {
@@ -636,6 +640,22 @@ merge_configs <- function(current_config, new_config) {
 #' }
 update_configuration_file <- function(pkgname, expected_config_version) {
   config <- Sys.getenv("SDB_CONFIG")
+
+  # if not set
+  if (nchar(config) == 0) {
+    config <- suppressWarnings(
+      normalizePath(
+        file.path(
+          ifelse(site_install,
+            rappdirs::site_config_dir(),
+            rappdirs::user_config_dir()
+          ),
+          pkgname,
+          "config.yml"
+        )
+      )
+    )
+  }
 
   # Install new config if doesn't exist
   if (!file.exists(config)) {
