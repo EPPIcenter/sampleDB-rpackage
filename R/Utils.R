@@ -430,26 +430,3 @@ get_environ_file_path <- function(site_install) {
 get_duplicated_rows <- function(data) {
   data[duplicated(data), ]
 }
-
-#' Retrieve Expected Versions from JSON File
-#'
-#' This function gets the expected versions of the specified package from
-#' an external 'versions.json' file within the package's 'extdata' directory.
-#'
-#' @param pkgname The name of the package for which the expected versions
-#'   should be retrieved.
-#' 
-#' @return A list containing the expected versions as described in the
-#'   'versions.json' file.
-#' 
-#' @examples
-#' \dontrun{
-#' get_expected_versions("sampleDB")
-#' }
-#' 
-#' @importFrom jsonlite fromJSON
-#' 
-#' @export
-get_expected_versions <- function(pkgname) {
-  jsonlite::fromJSON(txt = system.file("extdata", "versions.json", package = pkgname))
-}
