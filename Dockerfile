@@ -1,5 +1,5 @@
 FROM rocker/shiny:4.3.0
-RUN apt-get update && apt-get install -y  libicu-dev make pandoc zlib1g-dev sqlite3 && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y  libicu-dev make pandoc zlib1g-dev sqlite3 nano && rm -rf /var/lib/apt/lists/*
 RUN mkdir -p /usr/local/lib/R/etc/ /usr/lib/R/etc/ /etc/xdg/ 
 RUN echo "options(repos = c(CRAN = 'https://cran.rstudio.com/'), download.file.method = 'libcurl', Ncpus = 4)" | tee /usr/local/lib/R/etc/Rprofile.site | tee /usr/lib/R/etc/Rprofile.site
 RUN R -e 'install.packages("remotes")'
