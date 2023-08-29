@@ -2,7 +2,7 @@ FROM rocker/shiny-verse:4.3.0
 RUN apt-get update && apt-get install -y  libicu-dev make pandoc zlib1g-dev sqlite3 nano && rm -rf /var/lib/apt/lists/*
 RUN mkdir -p /usr/local/lib/R/etc/ /usr/lib/R/etc/ /etc/xdg/ 
 RUN echo "options(repos = c(CRAN = 'https://cran.rstudio.com/'), download.file.method = 'libcurl', Ncpus = 4)" | tee /usr/local/lib/R/etc/Rprofile.site | tee /usr/lib/R/etc/Rprofile.site
-RUN R -e 'install.packages("remotes")'
+RUN R -e 'install.packages(c("remotes", "markdown"))'
 RUN Rscript -e 'remotes::install_version("vctrs",upgrade="never", version = "0.6.3")'
 RUN Rscript -e 'remotes::install_version("rlang",upgrade="never", version = "1.1.0")'
 RUN Rscript -e 'remotes::install_version("rappdirs",upgrade="never", version = "0.3.3")'
