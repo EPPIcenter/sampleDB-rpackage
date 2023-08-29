@@ -4,8 +4,6 @@ library(shinyjs)
 
 UIMoveContainerOfSamples <- function(){
 
-  con <- DBI::dbConnect(RSQLite::SQLite(), Sys.getenv("SDB_PATH"))
-
   ui <- sidebarLayout(
     sidebarPanel(
       shinyjs::useShinyjs(),
@@ -29,8 +27,6 @@ UIMoveContainerOfSamples <- function(){
     ),
     mainPanel()
   )
-
-  DBI::dbDisconnect(con)
 
   return(ui)
 }

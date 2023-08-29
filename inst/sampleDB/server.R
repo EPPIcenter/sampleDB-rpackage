@@ -30,12 +30,12 @@ function(input, output, session) {
       # Close the modal
       removeModal()
 
-      # Prompt for session restart
-      showModal(modalDialog(
-        title = "Restart Needed",
-        "Operation completed successfully. Please restart the session for changes to take effect.",
-        footer = actionButton("restartBtn", "Restart Session")
-      ))
+    showNotification(
+      "Database upgrade/setup completed successfully!",
+      type = "message",  
+      duration = 5,      
+      closeButton = TRUE 
+    )
 
     }, error = function(e) {
       # Display any errors in a modal for feedback
@@ -47,7 +47,10 @@ function(input, output, session) {
   }
  
   dbUpdateEvent <- reactivePoll(1000 * 5, NULL,
-    function() file.mtime(Sys.getenv("SDB_PATH")),
+    function() {
+      current_mtime <- file.mtime(Sys.getenv("SDB_PATH"))
+      return(current_mtime)
+    },
     function() TRUE
   )
 
@@ -61,10 +64,15 @@ function(input, output, session) {
     expected_versions <- get_expected_versions("sampleDB")
     current_version <- get_db_version(database)
 
+    cat("Current database version: ", current_version, "\n")
+    cat("Database path: ", database, "\n")
+
     if (is.na(current_version) || !file.exists(database)) {
+      update_required(TRUE)
+
       showModal(modalDialog(
         title = "Clean Install Detected",
-        "It appears this is a clean install. Setting up the database...",
+        paste0("It appears this is a clean install. Setting up the database with version ", expected_versions$database, "."),
         footer = actionButton("btn_setup", "Setup New Database"),
         easyClose = FALSE # Prevents dismissing the modal without action
       ))
@@ -74,7 +82,9 @@ function(input, output, session) {
       # Display modal dialog if update is required
       showModal(modalDialog(
         title = "Database Version Mismatch",
-        "The database version is incorrect. Please upgrade to ensure the application functions correctly.",
+        paste0("The current database version is ", current_version, 
+               ". The expected version is ", expected_versions$database, 
+               ". Please upgrade to ensure the application functions correctly."),
         footer = actionButton("btn_upgrade", "Upgrade"),
         easyClose = FALSE # This ensures the modal cannot be dismissed without pressing "Upgrade"
       ))
@@ -82,6 +92,7 @@ function(input, output, session) {
       update_required(FALSE)
     }
   })
+
 
   # Handle the database setup for a clean install
   observeEvent(input$btn_setup, {
@@ -93,17 +104,10 @@ function(input, output, session) {
     handle_database_operation("upgrade")
   })
 
-  # Restart the session when the restart button is clicked
-  observeEvent(input$restartBtn, {
-    removeModal()
-    session$reload()
-  })
-
   # Conditionally load main app logic if update is not required
   observe({
     # Set path to .sqlite database
     database <- Sys.getenv("SDB_PATH")
-
     if (!update_required()) {
 
       # Back up database when app is fired up... supplementary files such as the backup generator are stored in /extdata

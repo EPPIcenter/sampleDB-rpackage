@@ -2,6 +2,8 @@ library(yaml)
 
 message('Loading global environment...')
 
+options(sass.cache = "/tmp/sass-cache")
+
 # Global Variables
 Global <- list(
   DefaultStateSearchTerm = "Active",

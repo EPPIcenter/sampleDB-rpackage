@@ -96,27 +96,39 @@ generate_upgrade_script_path <- function(current_version_idx, db_versions, pkgna
 #' @param db_versions Vector of available database versions.
 #' @param pkgname Name of package
 upgrade_database <- function(database, current_version, expected_version, db_versions, pkgname) {
-
+  message("INFO: upgrade_database() called")
+  
+  message("INFO: Initializing database connection")
   con <- init_db_conn(database)
-  on.exit(DBI::dbDisconnect(con), add = TRUE)  # Ensure connection is closed when function exits or if an error occurs
+  message(paste("INFO: Connection object:", str(con)))
 
-  # Validate inputs
+  on.exit(DBI::dbDisconnect(con), add = TRUE)
+
+  message("INFO: Validating inputs")
   stopifnot(!is.null(con))
   stopifnot(is(current_version, "character"), length(current_version) == 1)
   stopifnot(is(expected_version, "character"), length(expected_version) == 1)
   stopifnot(is(db_versions, "character"))
 
-  # Start the transaction
+  message("INFO: Starting the transaction")
   DBI::dbBegin(con)
 
-  successful <- FALSE  # To track if the upgrade was successful
-  tryCatch({
+  successful <- FALSE
 
+  tryCatch({
+    message("INFO: Inside tryCatch block")
+    
     current_version_idx <- which(current_version == db_versions)
+    message(paste("INFO: Current version index:", current_version_idx))
 
     while (current_version != expected_version) {
+      message("INFO: Entering upgrade loop")
+      
       upgrade_script <- generate_upgrade_script_path(current_version_idx, db_versions, pkgname)
+      message(paste("INFO: Upgrade script path:", upgrade_script))
+      
       if (!file.exists(upgrade_script)) {
+        message(paste("WARN: Upgrade script not found:", upgrade_script))
         stop(paste("Upgrade script not found:", upgrade_script))
       }
 
@@ -125,26 +137,35 @@ upgrade_database <- function(database, current_version, expected_version, db_ver
         glue::glue_sql(.con = con) %>%
         strsplit(., ';')
 
+      message(paste("INFO: SQL commands to be executed:", sql[[1]]))
+      
       execute_sql(con, sql[[1]])
-
+      
       current_version_idx <- current_version_idx + 1
       current_version <- db_versions[current_version_idx]
+      message(paste("INFO: Upgraded to version:", current_version))
     }
 
+    message("INFO: Upgrade successful")
     successful <- TRUE
 
   }, error = function(e) {
-    message("An error occurred during the database upgrade: ", e$message)
+    message(paste("WARN: An error occurred during the database upgrade:", e$message))
   })
 
-  # End the transaction
+  message("INFO: Ending the transaction")
   if (successful) {
     DBI::dbCommit(con)
     DBI::dbExecute(con, "VACUUM")
+    message("INFO: Transaction committed and database vacuumed")
   } else {
     DBI::dbRollback(con)
+    message("WARN: Transaction rolled back due to unsuccessful upgrade")
   }
+  
+  message("INFO: upgrade_database() completed")
 }
+
 
 
 #' Initialize Database with Base Version
@@ -303,75 +324,98 @@ setup_environment <- function(site_install, pkgname, expected_versions, database
 #'   setup_database(list(database = "2.0.0"))
 #' }
 setup_database <- function(expected_database_version, pkgname, database) {
+  message("INFO: Entering setup_database function")
+
+  message("INFO: Locating database directory")
   db_directory <- system.file("extdata", "db", package = pkgname)
+  message(paste("INFO: Database directory is:", db_directory))
+
+  message("INFO: Listing database versions")
   db_versions <- basename(list.dirs(db_directory, recursive = FALSE))
+  message(paste("INFO: Available database versions:", paste(db_versions, collapse = ", ")))
 
   if (length(db_versions) < 1) {
+    message("ERROR: The upgrade file directory structure is incomplete.")
     stop("The upgrade file directory structure is incomplete.")
   }
 
+  message(paste("INFO: Checking if expected_database_version is in db_versions:", expected_database_version %in% db_versions))
   stopifnot("no upgrade could be found for the version specified" = expected_database_version %in% db_versions)
 
-  # If database doesn't exist, then the current version is NA
+  message("INFO: Checking if database file exists")
   current_db_version <- ifelse(file.exists(database), get_db_version(database), NA)
+  message(paste("INFO: Current database version is:", current_db_version))
 
-  # If database exists and matches the expected version, no action is needed
   if (!is.na(current_db_version) && current_db_version == expected_database_version) {
-    message(paste(crayon::white(cli::symbol$info), paste0("Database exists [version=", current_db_version, "]")))
+    message(paste("INFO: Database already exists with expected version:", current_db_version))
     return()
   }
 
-  message(paste(crayon::white(cli::symbol$info), paste0("Installing database [version=", expected_database_version, "]")))
+  message(paste("INFO: Installing database with version:", expected_database_version))
   new_database <- tempfile()
+  message(paste("INFO: Temporary database file created at:", new_database))
 
   con <- NULL
   tryCatch({
+    message("INFO: Entering tryCatch block")
+
     if (is.na(current_db_version) || !file.exists(database)) {
-      # If no database exists, initialize with base version
+      message("INFO: No existing database. Initializing...")
+
       initialize_database_with_base_version(database, pkgname, db_versions[1])
 
-      # Check version of newly created database
       current_db_version <- get_db_version(database)
+      message(paste("INFO: New database version is:", current_db_version))
 
-      # If version of the new database isn't 1.0.0, upgrade to expected version
       if (expected_database_version != current_db_version) {
-        # Open a connection for the upgrade
+        message("INFO: Upgrading database to expected version")
+
         con <- init_db_conn(database)
-        on.exit(DBI::dbDisconnect(con), add = TRUE)  # Ensure connection is closed when function exits or if an error occurs
+        on.exit(DBI::dbDisconnect(con), add = TRUE)
 
         upgrade_database(database, current_db_version, expected_database_version, db_versions, pkgname)
       }
 
     } else {
+      message("INFO: Existing database found. Preparing to upgrade...")
 
-      # Proceed with the upgrade logic
       con <- init_db_conn(database)
-      on.exit(DBI::dbDisconnect(con), add = TRUE)  # Ensure connection is closed when function exits or if an error occurs
+      on.exit(DBI::dbDisconnect(con), add = TRUE)
 
-      Backup_SampleDB()
+      # message("INFO: Backing up database...")      
+      # Backup_SampleDB()
 
+      message(paste0("INFO: Copying database to ", new_database))
       success <- copy_database(database, new_database)
+      message(paste("INFO: Database copy was successful:", success))
+
       if (!success) {
+        message("ERROR: Failed to copy the database.")
         handle_upgrade_error(new_database, simpleError("Failed to copy the database."))
         return()
       }
 
       current_db_version <- get_db_version(con)
+      message(paste("INFO: Current version of new database copy:", current_db_version))
 
       if (!is.na(current_db_version) && current_db_version != expected_database_version) {
+        message("INFO: Upgrading new database copy to expected version")
+        
         upgrade_database(new_database, current_db_version, expected_database_version, db_versions, pkgname)
       }
 
       finalize_upgrade(database, new_database, con)
-      message(paste(crayon::green(cli::symbol$tick), paste0("Database upgraded to ", expected_database_version, " [", database, "]")))
+      message(paste("INFO: Database successfully upgraded to:", expected_database_version))
 
     }
 
   }, error = function(e) {
+    message(paste("ERROR: An error occurred:", e$message))
     handle_upgrade_error(new_database, e)
   })
-}
 
+  message("INFO: Exiting setup_database function")
+}
 
 
 #' Deploy Shiny Application

@@ -2,8 +2,6 @@ library(DBI)
 
 UIMoveSamples <- function(){
 
-  con <- DBI::dbConnect(RSQLite::SQLite(), Sys.getenv("SDB_PATH"))
-
   ui <- sidebarLayout(
     sidebarPanel(
       width = 4,
@@ -45,8 +43,6 @@ UIMoveSamples <- function(){
         tags$h4(tags$strong("Important")),
         tags$p("The destination container must exist in the database before moving the file. Use ", tags$strong("Create Container"), " to create an empty container.")
     )))
-
-  dbDisconnect(con)
 
   return(ui)
 }

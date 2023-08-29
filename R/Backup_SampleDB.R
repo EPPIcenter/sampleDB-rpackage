@@ -2,54 +2,83 @@
 #' @import tools
 #' @export
 
-Backup_SampleDB <- function(
-  database = Sys.getenv("SDB_PATH"),
-  backup_dest = NULL,
-  checksum = FALSE)
-{
+Backup_SampleDB <- function(database = Sys.getenv("SDB_PATH"),
+                            backup_dest = NULL,
+                            checksum = FALSE) {
+
+
+  ## TODO: FIGURE THIS OUT
+
+  return(NULL)
+
+  # Display current database size
+  db_size <- file.info(database)$size
+  message(paste("Current database size: ", format(db_size, big.mark = ",", scientific = FALSE), " bytes"))
+  message(paste("Current database path: ", database))
+
+  # Determine backup destination
   if (is.null(backup_dest)) {
     backup_dest <- suppressWarnings(
-          normalizePath(
-            file.path(
-              dirname(database),
-              "backups", 
-              paste0("sampledb_",
-                gsub("[T:]", "_", lubridate::format_ISO8601(lubridate::now())),
-                  ".backup"))))
+      normalizePath(
+        file.path(
+          dirname(database),
+          "backups",
+          paste0("sampledb_",
+                 gsub("[T:]", "_", lubridate::format_ISO8601(lubridate::now())),
+                 ".backup"))))
+  }
+  
+  message(paste("Backup will be saved at: ", backup_dest))
+
+  # Temporary file for initial backup
+  temp_current_db <- tempfile()
+  message("Creating initial backup...")
+  if (.Backup(database, temp_current_db)) {
+    init_backup_size <- file.info(temp_current_db)$size
+    message(paste("Initial backup created. Size: ", format(init_backup_size, big.mark = ",", scientific = FALSE), " bytes"))
+  } else {
+    message("Failed to create initial backup.")
+    return(FALSE)
   }
 
-  temp_current_db <- tempfile()
+  # Check existing backups
   backups <- normalizePath(file.path(dirname(database), "backups"))
   list.backups <- list.files(backups)
-  .Backup(database, temp_current_db)
-
+  
+  # Perform checksum if needed
   if (isFALSE(checksum) || 0 == length(list.backups)) {
+    message("Compressing backup...")
     .Compress(temp_current_db, backup_dest)
   } else {
+    message("Comparing with the most recent backup...")
     most_recent_backup <- file.path(backups, tail(list.backups, 1))
     temp_eval_backup <- tempfile()
+    
     if(!.Uncompress(most_recent_backup, temp_eval_backup)) {
-      message('could not decompress')
+      message('Decompression failed. Proceeding without comparison.')
     }
 
     list.files <- c(current = temp_current_db, latest = temp_eval_backup)
     df.checksums <- data.frame(checksum = tools::md5sum(list.files))
 
     if (0 == anyDuplicated(df.checksums)) {
+      message("Backup differs from the most recent one. Compressing...")
       .Compress(temp_current_db, backup_dest)
     } else {
-      message(paste0("No changes since last backup [",
-        most_recent_backup, "]"))
+      message(paste0("Backup is identical to the most recent one. Skipping compression."))
     }
     file.remove(temp_eval_backup)
   }
   invisible(file.remove(temp_current_db))
+  message("Backup process completed.")
 }
 
 
 .Backup <- function(database, backup_dest) {
 
   args <- paste(paste0("\"", database, "\""), paste0("\".backup ", paste0("\'", backup_dest, "\'"), "\""))
+
+  message(paste("Issuing system command: sqlite3", args))
   system2("sqlite3", args)
 
   return(file.exists(backup_dest))

@@ -32,9 +32,6 @@ custom_css <- paste0(
 
 UIControlsReference <- function() {
 
-  con <- DBI::dbConnect(RSQLite::SQLite(), Sys.getenv("SDB_PATH"))
-  on.exit(DBI::dbDisconnect(con), add = TRUE)
-
   ui <- layout_sidebar(
     
     sidebar = sidebar(
