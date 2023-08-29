@@ -20,7 +20,7 @@
   "action_requirements": {
     "upload": {
       "shared": {
-        "required_keys": ["position_keys", "study_short_code", "study_subject", "specimen_type", "location_key", "container_key"],
+        "required_keys": ["study_short_code", "study_subject", "specimen_type", "location_key", "container_key"],
         "conditional_keys": ["collection_date"],
         "optional_keys": ["comment"]
       },

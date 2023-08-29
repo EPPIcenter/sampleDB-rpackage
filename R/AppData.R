@@ -351,9 +351,28 @@ dereference_control_location_container <- function(header_keys, app_data, action
 #'
 #' @return A vector of values prioritized from sample_values, if available.
 get_values <- function(keys, sample_values, shared_values) {
-  values <- c(sample_values[keys], shared_values[keys])
-  # Remove duplicates keeping only the first occurrence (which would be from sample_values)
-  unique(unlist(values))
+  
+  # Initialize an empty list to hold the final values
+  final_values <- vector("character", length = 0)
+  
+  # Loop through each key
+  for (key in keys) {
+    
+    # Prioritize sample_value if it exists, otherwise use shared_value
+    if (key %in% names(sample_values) && sample_values[[key]] != "") {
+      final_values <- c(final_values, sample_values[[key]])
+    } else if (key %in% names(shared_values) && shared_values[[key]] != "") {
+      final_values <- c(final_values, shared_values[[key]])
+    }
+  }
+  
+  # If final_values is empty, return NULL
+  if (length(final_values) == 0) {
+    return(NULL)
+  }
+  
+  # Otherwise, return as a character vector (removes names)
+  return(unname(final_values))
 }
 
 #' Get dereferenced values using sample_values and shared_values
@@ -426,21 +445,23 @@ get_sample_file_columns <- function(sample_type, action, file_type = "na", confi
     sample_values <- sample_data$sample_key_associations[[sample_type]][[file_type]]
   }
 
-  # Get locations and containers
-  dereferenced_values <- dereference_location_container(header_key, app_data)
-
   # Get the union of keys between both shared and sample specific keys
   required_keys_combined <- unique(c(action_keys$required_keys, shared_action_keys$required_keys))
 
-  # Ignore keys that are in the sample specific required keys
-  value_overrides <- setdiff(names(dereferenced_values), names(sample_values))
+  # Get locations and containers
+  dereferenced_values <- dereference_location_container(header_key, app_data)
 
-  # Keep only the keys that are part of the sample type and action
-  keep_keys <- intersect(value_overrides, required_keys_combined)
+  # If there are key subsets, then only keep those otherwise keep everything
+  common_keys <- intersect(names(dereferenced_values), required_keys_combined)
+  dereferenced_values <- if (!purrr::is_empty(common_keys)) dereferenced_values[common_keys] else dereferenced_values
 
-  deref_values <- if (!is_empty(keep_keys)) get_dereferenced_values(dereferenced_values[keep_keys], sample_values, shared_values)
-  required_vals <- c( get_values(required_keys_combined, sample_values, shared_values),
-                      deref_values
+  # Overwrite the values in dereferenced_values with the ones from sample_values
+  common_keys <- intersect(names(dereferenced_values), names(sample_values))
+  dereferenced_values[common_keys] <- sample_values[common_keys]
+  
+  # Include both dereferenced_values and sample_values in the required values
+  required_vals <- unique(c( get_values(required_keys_combined, sample_values, shared_values),
+                      unlist(unname(dereferenced_values)))
   )
 
   # Check for traxcer position override if file_type is 'traxcer'

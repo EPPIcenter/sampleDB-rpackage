@@ -4,7 +4,12 @@
 \alias{SampleDB_Setup}
 \title{Set up and deploy the SampleDB environment, database, and Shiny server.}
 \usage{
-SampleDB_Setup(env = TRUE, db = TRUE, server = TRUE)
+SampleDB_Setup(
+  env = TRUE,
+  db = TRUE,
+  server = TRUE,
+  reset_env_variables = FALSE
+)
 }
 \arguments{
 \item{env}{Logical flag indicating whether to setup the environment.
