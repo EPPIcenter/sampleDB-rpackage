@@ -70,7 +70,7 @@ update_env_variable <- function(name, value, environ_file_path) {
 
 #' Generate Path to Database Upgrade Script
 #'
-#' This function generates the file path to the SQL upgrade script based on the current version index, 
+#' This function generates the file path to the SQL upgrade script based on the current version index,
 #' available database versions, and package name.
 #'
 #' @param current_version_idx Index of the current database version.
@@ -81,9 +81,9 @@ update_env_variable <- function(name, value, environ_file_path) {
 #' @export
 generate_upgrade_script_path <- function(current_version_idx, db_versions, pkgname) {
   system.file("extdata",
-             paste0(file.path("db", 
-                              db_versions[current_version_idx + 1], 
-                              paste(c("sampledb", "database", db_versions[current_version_idx], db_versions[current_version_idx + 1]), 
+             paste0(file.path("db",
+                              db_versions[current_version_idx + 1],
+                              paste(c("sampledb", "database", db_versions[current_version_idx], db_versions[current_version_idx + 1]),
                                     collapse = "_")), ".sql"),
              package = pkgname)
 }
@@ -108,7 +108,7 @@ upgrade_database <- function(database, current_version, expected_version, db_ver
 
   # Start the transaction
   DBI::dbBegin(con)
-  
+
   successful <- FALSE  # To track if the upgrade was successful
   tryCatch({
 
@@ -124,7 +124,7 @@ upgrade_database <- function(database, current_version, expected_version, db_ver
         glue::glue_collapse(sep = "\n") %>%
         glue::glue_sql(.con = con) %>%
         strsplit(., ';')
-      
+
       execute_sql(con, sql[[1]])
 
       current_version_idx <- current_version_idx + 1
@@ -136,7 +136,7 @@ upgrade_database <- function(database, current_version, expected_version, db_ver
   }, error = function(e) {
     message("An error occurred during the database upgrade: ", e$message)
   })
-  
+
   # End the transaction
   if (successful) {
     DBI::dbCommit(con)
@@ -154,7 +154,7 @@ upgrade_database <- function(database, current_version, expected_version, db_ver
 #' @param new_database Path to the new temporary SQLite database.
 #' @param pkgname Name of the package containing the database upgrade scripts.
 #' @param db_versions Vector of available database versions.
-#' 
+#'
 #' @return None (primarily called for side effects).
 #' @examples
 #' \dontrun{
@@ -213,48 +213,56 @@ handle_upgrade_error <- function(new_database, e) {
   stop(e$message)
 }
 
-#' Main environment setup function
-#'
-#' Setups the environment based on the provided settings. 
-#' This includes setting up the configuration, database location and subdirectories.
-#'
-#' @param site_install Logical indicating whether installation is site-wide.
-#' @param pkgname Character string of the package name.
-#' @param expected_versions Named list of expected versions for components.
-#' @param database The path to the database.
-#'
-#' @return None.
 setup_environment <- function(site_install, pkgname, expected_versions, database) {
 
+  # Initialize the log file
+  log_file <- "setup_environment.log"
+
+  # Log: Function called
+  cat("[INFO] setup_environment() called\n", file=log_file, append=TRUE)
+  
   # Setup Config
   config <- Sys.getenv("SDB_CONFIG")
   environ_file_path <- get_environ_file_path(site_install)
 
+  # Log: Initial variables
+  cat(sprintf("[INFO] Initial Variables - site_install: %s, pkgname: %s, config: %s, database: %s\n",
+              site_install, pkgname, config, database), file=log_file, append=TRUE)
+
   if (0 == nchar(config)) {
     config <- get_normalized_path(site_install, pkgname, "config", "config.yml")
     update_env_variable("SDB_CONFIG", config, environ_file_path)
+    # Log: Config updated
+    cat(sprintf("[INFO] Config updated to: %s\n", config), file=log_file, append=TRUE)
   } else {
     message(paste(crayon::white(cli::symbol$info), paste0("Config location already set [", config, "]")))
+    # Log: Config already set
+    cat(sprintf("[INFO] Config location already set to: %s\n", config), file=log_file, append=TRUE)
   }
 
   configdir <- dirname(config)
-  if (!dir.exists(configdir)) dir.create(configdir)
-
+  if (!dir.exists(configdir)) dir.create(configdir, recursive = TRUE)
+  
   # Update or install configuration
   update_configuration_file(pkgname, expected_versions$config)
 
+  # Log: Database setup
+  cat("[INFO] Setting up database\n", file=log_file, append=TRUE)
 
-  # Setup Database
   if (0 == nchar(database)) {
     database <- get_normalized_path(site_install, pkgname, "data", "sampledb_database.sqlite")
     update_env_variable("SDB_PATH", database, environ_file_path)
+    # Log: Database path updated
+    cat(sprintf("[INFO] Database path updated to: %s\n", database), file=log_file, append=TRUE)
   } else {
     message(paste(crayon::white(cli::symbol$info), paste0("Database location already set [", database, "]")))
+    # Log: Database path already set
+    cat(sprintf("[INFO] Database location already set to: %s\n", database), file=log_file, append=TRUE)
   }
 
   datadir <- dirname(database)
-  if (!dir.exists(datadir)) dir.create(datadir)
-
+  if (!dir.exists(datadir)) dir.create(datadir, recursive = TRUE)
+  
   Sys.chmod(datadir, mode = "0777", use_umask = FALSE)
 
   subdirs <- suppressWarnings(normalizePath(file.path(datadir, c("backups", "upload_files", "move_files"))))
@@ -263,15 +271,22 @@ setup_environment <- function(site_install, pkgname, expected_versions, database
       dir.create(subdir)
       Sys.chmod(subdir, mode = "0777", use_umask = FALSE)
       message(paste(crayon::green(cli::symbol$tick), paste0("Subdirectory installed [", subdir, "]")))
+      # Log: Subdirectory created
+      cat(sprintf("[INFO] Subdirectory created: %s\n", subdir), file=log_file, append=TRUE)
     } else {
       message(paste(crayon::white(cli::symbol$info), paste0("Subdirectory exists [", subdir, "]")))
+      # Log: Subdirectory exists
+      cat(sprintf("[INFO] Subdirectory exists: %s\n", subdir), file=log_file, append=TRUE)
     }
   }
+
+  # Log: Function completed
+  cat("[INFO] setup_environment() completed\n", file=log_file, append=TRUE)
 }
 
 #' Setup or upgrade the database
 #'
-#' This function sets up a new SQLite database or upgrades it if it already exists. 
+#' This function sets up a new SQLite database or upgrades it if it already exists.
 #' The function will:
 #' 1. Check the current version of the database.
 #' 2. Create a new one if none exists or upgrades an existing database to the target version.
@@ -279,7 +294,7 @@ setup_environment <- function(site_install, pkgname, expected_versions, database
 #'
 #' @param expected_database_version A string that contains the expected database version for the application release.
 #' @param pkgname Name of the R package.
-#' @param database Path to the SQLite database file. 
+#' @param database Path to the SQLite database file.
 #'
 #' @return NULL (The function is primarily called for its side effects).
 #' @export
@@ -290,11 +305,11 @@ setup_environment <- function(site_install, pkgname, expected_versions, database
 setup_database <- function(expected_database_version, pkgname, database) {
   db_directory <- system.file("extdata", "db", package = pkgname)
   db_versions <- basename(list.dirs(db_directory, recursive = FALSE))
-  
+
   if (length(db_versions) < 1) {
     stop("The upgrade file directory structure is incomplete.")
   }
-  
+
   stopifnot("no upgrade could be found for the version specified" = expected_database_version %in% db_versions)
 
   # If database doesn't exist, then the current version is NA
@@ -351,7 +366,7 @@ setup_database <- function(expected_database_version, pkgname, database) {
       message(paste(crayon::green(cli::symbol$tick), paste0("Database upgraded to ", expected_database_version, " [", database, "]")))
 
     }
-    
+
   }, error = function(e) {
     handle_upgrade_error(new_database, e)
   })
@@ -497,24 +512,24 @@ get_package_path <- function(pkgname) {
 #' of the common system library paths (retrieved via `.libPaths()`).
 #'
 #' @param pkgname Character string specifying the name of the package to check.
-#' 
+#'
 #' @return Logical value indicating if the package is installed in a system-wide
 #' location (`TRUE`) or not (`FALSE`).
-#' 
+#'
 #' @examples
 #' is_system_installed("sampleDB")
 #' is_system_installed("nonexistentPackage")
-#' 
+#'
 #' @keywords internal
 is_system_installed <- function(pkgname) {
   path <- get_package_path(pkgname)
   if (is.null(path)) {
     return(FALSE)
   }
-  
+
   # Common system library paths - this may vary depending on the system
   sys_lib_paths <- .libPaths()
-  
+
   return(path %in% sys_lib_paths)
 }
 
@@ -526,17 +541,17 @@ is_system_installed <- function(pkgname) {
 #'
 #' @param pkgname The name of the package for which the expected versions
 #'   should be retrieved.
-#' 
+#'
 #' @return A list containing the expected versions as described in the
 #'   'versions.json' file.
-#' 
+#'
 #' @examples
 #' \dontrun{
 #' get_expected_versions("sampleDB")
 #' }
-#' 
+#'
 #' @importFrom jsonlite fromJSON
-#' 
+#'
 #' @export
 get_expected_versions <- function(pkgname) {
   jsonlite::fromJSON(txt = system.file("extdata", "versions.json", package = pkgname))
@@ -563,31 +578,73 @@ get_expected_versions <- function(pkgname) {
 #' @export
 #' @import jsonlite
 #' @keywords setup
-SampleDB_Setup <- function(env=TRUE, db=TRUE, server=TRUE) {
-  browser()
+SampleDB_Setup <- function(env=TRUE, db=TRUE, server=TRUE, reset_env_variables=FALSE) {
+
+  log_file <- file("SampleDB_Setup.log", open="wt")  # Open the log file
+
+  # Log the initial setup
+  writeLines("[INFO] SampleDB_Setup() called", log_file)
+
+  # Log the function parameters
+  writeLines(paste("[INFO] Initial Parameters - env:", env, "db:", db, "server:", server, "reset_env_variables:", reset_env_variables), log_file)
+
+  if (reset_env_variables) {
+    # Log the environment variables before unsetting
+    writeLines(paste("[INFO] Before unset - SDB_CONFIG:", Sys.getenv("SDB_CONFIG"), "SDB_PATH:", Sys.getenv("SDB_PATH")), log_file)
+
+    Sys.unsetenv("SDB_CONFIG")
+    Sys.unsetenv("SDB_PATH")
+
+    # Log that the environment variables have been unset
+    writeLines("[INFO] Environment variables SDB_CONFIG and SDB_PATH unset", log_file)
+
+    # Log the environment variables after unsetting to confirm
+    writeLines(paste("[INFO] After unset - SDB_CONFIG:", Sys.getenv("SDB_CONFIG"), "SDB_PATH:", Sys.getenv("SDB_PATH")), log_file)
+  }
+
   pkgname <- "sampleDB"
   site_install <- is_system_installed(pkgname)
+
+  writeLines(paste("[INFO] pkgname set to:", pkgname, "site_install set to:", site_install), log_file)
 
   message(paste(cli::rule(left = crayon::bold(paste("Deploying", pkgname, "Environment")))))
 
   expected_versions <- jsonlite::fromJSON(txt = system.file("extdata",
                                         "versions.json", package = pkgname))
 
+  writeLines("[INFO] Expected versions loaded", log_file)
+
   tryCatch({
-    if (env) setup_environment(site_install, pkgname, expected_versions, Sys.getenv("SDB_PATH"))
-    if (db) setup_database(expected_versions$database, pkgname, Sys.getenv("SDB_PATH"))
-    if (server) deploy_shiny_app(pkgname, site_install)
+    if (env) {
+      writeLines("[INFO] Running setup_environment()", log_file)
+      setup_environment(site_install, pkgname, expected_versions, Sys.getenv("SDB_PATH"))
+    }
+    if (db) {
+      writeLines("[INFO] Running setup_database()", log_file)
+      setup_database(expected_versions$database, pkgname, Sys.getenv("SDB_PATH"))
+    }
+    if (server) {
+      writeLines("[INFO] Running deploy_shiny_app()", log_file)
+      deploy_shiny_app(pkgname, site_install)
+    }
   },
   warning = function(w) {
     message(w)
+    writeLines(paste("[WARN]", w), log_file)
   },
   error = function(e) {
     message(e)
+    writeLines(paste("[ERROR]", e), log_file)
   })
+
+  writeLines("[INFO] SampleDB_Setup() completed", log_file)
+
+  close(log_file)  # Close the log file
 
   # Silence the NULL that is returned
   return(invisible())
 }
+
 
 #' Merge Configuration Lists
 #'
@@ -596,7 +653,7 @@ SampleDB_Setup <- function(env=TRUE, db=TRUE, server=TRUE) {
 #'
 #' @param current_config A list representing the current configuration.
 #' @param new_config A list representing the new configuration.
-#' 
+#'
 #' @return A merged list containing elements from both configurations.
 #' @examples
 #' \dontrun{
@@ -606,7 +663,7 @@ SampleDB_Setup <- function(env=TRUE, db=TRUE, server=TRUE) {
 #' print(merged)
 #' }
 merge_configs <- function(current_config, new_config) {
-  
+
   # If either is NULL or not a list, return the appropriate value
   if (is.null(current_config)) return(new_config)
   if (is.null(new_config)) return(current_config)
@@ -621,7 +678,7 @@ merge_configs <- function(current_config, new_config) {
       combined_config[[name]] <- current_config[[name]]
     }
   })
-  
+
   return(combined_config)
 }
 
@@ -638,42 +695,49 @@ merge_configs <- function(current_config, new_config) {
 #' \dontrun{
 #' update_configuration_file("my_package_name", "1.1.0")
 #' }
+# Your log file
 update_configuration_file <- function(pkgname, expected_config_version) {
+
+  log_file <- "setup_environment.log"
+
+  # Log: Function called
+  cat("[INFO] update_configuration_file() called\n", file=log_file, append=TRUE)
+
   config <- Sys.getenv("SDB_CONFIG")
 
-  # if not set
-  if (nchar(config) == 0) {
-    config <- suppressWarnings(
-      normalizePath(
-        file.path(
-          ifelse(site_install,
-            rappdirs::site_config_dir(),
-            rappdirs::user_config_dir()
-          ),
-          pkgname,
-          "config.yml"
-        )
-      )
-    )
-  }
+  # Log: Initial variables
+  cat(sprintf("[INFO] Initial Variables - pkgname: %s, expected_config_version: %s, config: %s\n",
+              pkgname, expected_config_version, config), file=log_file, append=TRUE)
 
   # Install new config if doesn't exist
   if (!file.exists(config)) {
     file.copy(system.file("conf", "config.yml", package = pkgname), config)
     message(paste(crayon::green(cli::symbol$tick), paste0("Configuration file installed [", config, "]")))
+    # Log: New config installed
+    cat(sprintf("[INFO] New configuration file installed at: %s\n", config), file=log_file, append=TRUE)
     return()
-  } 
+  }
 
   # Read both configs
   new_config <- yaml::read_yaml(system.file("conf", "config.yml", package = pkgname))
   current_config <- yaml::read_yaml(config)
+
+  # Log: Reading configurations
+  cat("[INFO] Reading new and current configurations\n", file=log_file, append=TRUE)
 
   # Update and write back if needed
   if (is.null(current_config$version) || current_config$version < expected_config_version) {
     updated_config <- merge_configs(current_config, new_config)
     yaml::write_yaml(updated_config, config)
     message(paste(crayon::green(cli::symbol$tick), paste0("Configuration file updated to version ", updated_config$version, " [", config, "]")))
+    # Log: Configuration updated
+    cat(sprintf("[INFO] Configuration file updated to version: %s\n", updated_config$version), file=log_file, append=TRUE)
   } else {
     message(paste(crayon::white(cli::symbol$info), paste0("Configuration file exists [", config, "]")))
+    # Log: Configuration already exists
+    cat(sprintf("[INFO] Configuration file already exists at: %s\n", config), file=log_file, append=TRUE)
   }
+
+  # Log: Function completed
+  cat("[INFO] update_configuration_file() completed\n", file=log_file, append=TRUE)
 }
