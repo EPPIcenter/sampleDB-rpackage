@@ -15,6 +15,21 @@ concat_position <- function(col, row) {
   sprintf("%s%02d", col, row)
 }
 
+
+#' Safely get a value from a list of possible values
+#' 
+#' This function will return the first column that it finds from a list of columns
+#' @keywords internal
+safe_extract <- function(data_row, ...) {
+  potential_cols <- c(...)
+  for (col in potential_cols) {
+    if (col %in% names(data_row) && !is.na(data_row[[col]])) {
+      return(data_row[[col]])
+    }
+  }
+  return(NA_character_)
+}
+
 #' Validate study references (Database Version)
 #'
 #' This function checks if the study reference provided in the dataset exists in the database.

@@ -24,6 +24,13 @@ MoveSamples <- function(sample_type, move_data){
   conn <-  RSQLite::dbConnect(RSQLite::SQLite(), database)
   RSQLite::dbBegin(conn)
 
+  # TODO: temporary fix for now until I have time to switch to 'micronix' and 'cryovial'
+  sample_type <- switch(
+    sample_type,
+    "micronix" = 1,
+    "cryovial" = 2
+  )
+
   # Save MoveCSVs
   .SaveMoveCSVs(move_data)
 
@@ -88,8 +95,8 @@ MoveSamples <- function(sample_type, move_data){
     # Get sample data
     for (i in 1:nrow(samples)){
       if(sample_type == 1){
-        eval.barcode <- samples[i,]$"barcode"
-        eval.well_pos <- samples[i,]$"position"
+        eval.barcode <- safe_extract(samples[i,], "Barcode", "Tube ID", "TubeCode")
+        eval.well_pos <- safe_extract(samples[i,], "Position", "ExtractedDNAPosition")
 
         # Find move data that matches sample data
         m <- which(stacked_orphaned_sample_data$barcode == eval.barcode)
@@ -102,8 +109,8 @@ MoveSamples <- function(sample_type, move_data){
       }
       else if(sample_type == 2){
 
-        eval.barcode <- samples[i,]$"barcode"
-        eval.well_pos <- samples[i,]$"position"
+        eval.barcode <- safe_extract(samples[i,], "Barcode", "Tube ID", "TubeCode")
+        eval.well_pos <- safe_extract(samples[i,], "Position", "ExtractedDNAPosition")
 
         # Find move data that matches sample data
         m <- which(stacked_orphaned_sample_data$barcode == eval.barcode)

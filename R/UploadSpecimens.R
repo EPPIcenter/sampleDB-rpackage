@@ -170,15 +170,6 @@ upload_extracted_dna <- function(user_data, control_extraction, database = Sys.g
 #' @keywords internal
 .UploadSpecimens <- function(upload_data, sample_type_id, conn){
 
-  safe_extract <- function(data_row, ...) {
-    potential_cols <- c(...)
-    for (col in potential_cols) {
-      if (col %in% names(data_row) && !is.na(data_row[[col]])) {
-        return(data_row[[col]])
-      }
-    }
-    return(NA_character_)
-  }
 
   for(i in 1:nrow(upload_data)){
     eval.specimen_type <- safe_extract(upload_data[i, ], "SpecimenType")
