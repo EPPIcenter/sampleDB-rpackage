@@ -912,27 +912,6 @@ create_unique_id_from_sorted <- function(sorted_strains, sorted_percentages) {
     paste(paste(sorted_strains, sorted_percentages, sep = "-"), collapse = ";")
 }
 
-#' Extract identifiers from user data
-#'
-#' This function processes user data to generate a unique identifier based on strains and percentages.
-#'
-#' @param user_data A data frame with at least two columns: 'Strains' and 'Percentages', each containing semicolon-separated values (for polyclonal controls).
-#'
-#' @return A data frame containing unique identifiers for each row of user data.
-get_identifiers_from_user_data <- function(user_data) {
-    user_data %>%
-        rowwise() %>%
-        mutate(split_data = list(split_and_sort(Strains, Percentages))) %>%
-        ungroup() %>%
-        mutate(
-            unique_id = map2_chr(split_data, split_data,
-                                 ~create_unique_id_from_sorted(.x$sorted_strains, .x$sorted_percentages)),
-            composition_num = row_number()
-        ) %>%
-        select(unique_id,Strains,Percentages,LegacyLabel) %>%
-        distinct()
-}
-
 #' Prepare new compositions for database upload
 #' 
 #' Compositions consist of strains and percentages, where there can me mutliple or single strains and the sum of each strain
@@ -1022,7 +1001,7 @@ process_and_append_compositions <- function(con, user_data) {
 
     appended_rows <- dbAppendTable(con, "composition_strain", composition_strain_data_long %>% select(composition_id, strain_id, percentage))
 
-    new_compositions_return <- new_compositions %>% select(unique_id, label, index, legacy)
+    new_compositions_return <- new_compositions %>% select(label, index, legacy)
     return(new_compositions_return)
 }
 
@@ -1041,15 +1020,15 @@ upload_compositions <- function(user_data, database = Sys.getenv("SDB_PATH")) {
     con = init_db_conn(database)
     # Initialize a vector to hold labels
     all_labels <- character()
-
     tryCatch({
 
         # Extract unique identifiers from user data and the database
-        user_data_identifiers <- get_identifiers_from_user_data(user_data)
-        db_data_identifiers_updated <- get_identifiers_from_database(con)
+        user_data_identifiers <- get_unique_compositions_from_user_data(user_data)
+        db_data_identifiers_updated <- get_unique_compositions_from_database(con)
 
-        matched_user_data <- inner_join(user_data_identifiers, db_data_identifiers_updated, by= "unique_id")
-        unmatched_user_data <- anti_join(user_data_identifiers, db_data_identifiers_updated, by = "unique_id")
+        merged_data <- fuzzy_merge_unique_compositions(user_data_identifiers, db_data_identifiers_updated)
+        matched_user_data <- merged_data %>% filter(match)
+        unmatched_user_data <- merged_data %>% filter(!match)
 
         # Continue if there are matching compositions
         if(nrow(matched_user_data) > 0) {
@@ -1085,4 +1064,38 @@ upload_compositions <- function(user_data, database = Sys.getenv("SDB_PATH")) {
     })
 
     return(all_labels)
+}
+
+
+#' Fuzzy Merge Unique Compositions
+#'
+#' This function performs a fuzzy merge of unique compositions based on sorted strains and percentages.
+#' It compares the percentages within a given tolerance to decide whether they should be considered the same.
+#'
+#' @param user_data Data frame containing sorted_strains_key and sorted_percentages columns, typically the output from get_unique_compositions_from_user_data.
+#' @param db_data Data frame containing sorted_strains_key and sorted_percentages columns, typically the output from get_unique_compositions_from_database.
+#' @param tolerance Numeric tolerance within which two percentages are considered similar. Default is 0.01.
+#' @return A data frame with a logical column 'match' indicating whether the compositions from user_data and db_data match within the given tolerance.
+#' @export
+fuzzy_merge_unique_compositions <- function(user_data, db_data, tolerance = 0.01) {
+  
+  # Perform a full join on sorted_strains_key
+  merged_data <- dplyr::full_join(user_data, db_data, by = "sorted_strains_key", suffix = c("_user", "_db"))
+  
+  # Function to compare percentages within tolerance
+  compare_percentages_within_tolerance <- function(p1, p2, tol) {
+    if (is.null(p1) || is.null(p2)) {
+      return(FALSE)
+    }
+    
+    return(all(abs(p1 - p2) <= tol))
+  }
+  
+  # Apply the comparison function to each row
+  merged_data <- merged_data %>%
+    rowwise() %>%
+    mutate(match = compare_percentages_within_tolerance(sorted_percentages_user, sorted_percentages_db, tolerance)) %>%
+    ungroup()
+  
+  return(merged_data)
 }

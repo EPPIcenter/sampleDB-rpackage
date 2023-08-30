@@ -106,35 +106,33 @@ retrieve_compositions_by_label <- function(con, labels) {
         collect()
 }
 
-#' Extract identifiers from the database
+#' Extract unique compositions from the database
 #'
-#' This function queries a database to collect and process data, generating a unique identifier based on strains and percentages.
+#' This function queries a database to collect and process data, generating a unique composition key based on sorted strains and percentages.
 #'
 #' @param con A database connection object.
 #'
-#' @keywords utilities database
-#' @return A data frame containing unique identifiers for each composition in the database with associated strains and percentages.
+#' @return A data frame containing sorted_strains_key for each composition in the database with associated strains and percentages.
 #' @seealso \code{\link{format_labels}}
 #' @export
-get_identifiers_from_database <- function(con) {
-    local_data <- tbl(con, "composition_strain") %>%
-        dplyr::left_join(tbl(con, "strain") %>% dplyr::rename(strain = name), by = c(strain_id = "id")) %>%
-        dplyr::collect()
+get_unique_compositions_from_database <- function(con) {
+  local_data <- tbl(con, "composition_strain") %>%
+    dplyr::left_join(tbl(con, "strain") %>% dplyr::rename(strain = name), by = c(strain_id = "id")) %>%
+    dplyr::collect()
 
-    local_data %>%
-        group_by(composition_id) %>%
-        reframe(
-            combined_strains = paste(strain, collapse = ";"),
-            combined_percentages = paste(percentage, collapse = ";")
-        ) %>%
-        mutate(
-            split_data = map2(combined_strains, combined_percentages, ~split_and_sort(.x, .y)),
-            unique_id = map2_chr(split_data, split_data,
-                                 ~create_unique_id_from_sorted(.x$sorted_strains, .x$sorted_percentages))
-        ) %>%
-        inner_join(dbReadTable(con, "composition"), by = c("composition_id" = "id")) %>%
-        mutate(legacy = as.logical(legacy)) %>%  # Convert legacy to logical
-        select(composition_id, unique_id, index, label, legacy)
+  local_data %>%
+    group_by(composition_id) %>%
+    summarise(
+      combined_strains = paste(strain, collapse = ";"),
+      combined_percentages = paste(percentage, collapse = ";")
+    ) %>%
+    mutate(
+      split_data = map2(combined_strains, combined_percentages, ~split_and_sort(.x, .y)),
+      sorted_strains_key = map_chr(split_data, ~paste(.x$sorted_strains, collapse = "-")),
+      sorted_percentages = map(split_data, ~.x$sorted_percentages)
+    ) %>%
+    inner_join(dbReadTable(con, "composition"), by = c("composition_id" = "id")) %>%
+    select(composition_id, sorted_strains_key, sorted_percentages, index, label)
 }
 
 #' Get all composition type from the database

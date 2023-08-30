@@ -2,7 +2,11 @@ UpdateLabFreezers <- function(session, input, output, database){
   
   # get ui freezer elements
   ui_elements <- GetUIFreezerElements()
-  
+
+  con <- init_db_conn(database)
+  on.exit(dbDisconnect(con), add = TRUE)
+  updateSelectInput(session, ui_elements$ui.input$AddFreezerType, choices = tbl(con, "storage_type") %>% pull(id, name = name))
+
   #check freezer update
   FreezerChangesChecks(input, database, output, ui_elements = ui_elements)
   

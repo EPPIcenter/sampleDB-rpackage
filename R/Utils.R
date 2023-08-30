@@ -447,3 +447,30 @@ get_environ_file_path <- function(site_install) {
 get_duplicated_rows <- function(data) {
   data[duplicated(data), ]
 }
+
+#' Normalize Percentages by Group
+#' 
+#' Normalize percentage column by groups so that 
+
+
+#' Extract unique compositions from user data
+#'
+#' This function processes user data to generate a unique composition key based on sorted strains and percentages.
+#'
+#' @param user_data A data frame with at least two columns: 'Strains' and 'Percentages', each containing semicolon-separated values (for polyclonal controls).
+#'
+#' @return A data frame containing sorted_strains_key for each row of user data.
+#' @export
+get_unique_compositions_from_user_data <- function(user_data) {
+  user_data %>%
+    rowwise() %>%
+    mutate(split_data = list(split_and_sort(Strains, Percentages))) %>%
+    ungroup() %>%
+    mutate(
+      sorted_strains_key = map_chr(split_data, ~paste(.x$sorted_strains, collapse = "-")),
+      sorted_percentages = map(split_data, ~.x$sorted_percentages),
+      composition_num = row_number()
+    ) %>%
+    select(sorted_strains_key, sorted_percentages, Strains, Percentages, LegacyLabel) %>%
+    distinct()
+}
