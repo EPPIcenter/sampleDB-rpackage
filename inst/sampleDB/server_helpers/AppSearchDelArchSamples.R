@@ -15,6 +15,14 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
     )
   )
 
+  #' Initialize dropdowns that are not control or sample specific
+  con <- init_db_conn(database)
+
+  updateSelectInput(session, "DelArchSearchByState", selected = "Active", choices = tbl(con, "state") %>% pull(name))
+  updateSelectInput(session, "DelArchSearchByStatus", selected = "In Use", choices = tbl(con, "status") %>% pull(name))
+  
+  DBI::dbDisconnect(con)
+
   #' Declare filters for searching and establish any filter dependencies
   observe({
     input_filters <- list(
@@ -27,7 +35,7 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
         date.to = input$DelArchdateRange[2]
       ),
       location = list(
-        name = input$DelArchSearchByLocation,
+        location_root = input$DelArchSearchByLocation,
         level_I = input$DelArchSearchByLevelI,
         level_II = input$DelArchSearchByLevelII
       ),
@@ -35,9 +43,7 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
       status = input$DelArchSearchByStatus
     )
     
-    filter_keys <- c("manifest", "short_code", "study_subject", "specimen_type", "collection_date", "location", "state", "status")
-    
-    process_filters(input_filters, filter_keys, filter_set)
+    process_filters(input_filters, filter_set)
   })
 
 
@@ -47,6 +53,7 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
 
   filtered_data <- reactive({
     # Obtain the search results
+
     if (input$DelArchSearchType == "samples") {
       results <- SearchSamples(input$DelArchSearchBySampleType, filters = filter_set$get(), include_internal_sample_id = TRUE)
     } else {
@@ -250,7 +257,7 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
       "DelArchSearchByLevelI",
       selected = "",
       choices = c("", tbl(con, "location") %>%
-        filter(name == local(input$DelArchSearchByLocation)) %>%
+        filter(location_root == local(input$DelArchSearchByLocation)) %>%
         pull(level_I) %>%
         unique(.)
       )
@@ -269,7 +276,7 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
       "DelArchSearchByLevelII",
       selected = "",
       choices = c("", tbl(con, "location") %>%
-        filter(name == local(input$DelArchSearchByLocation) & level_I == local(input$DelArchSearchByLevelI)) %>%
+        filter(location_root == local(input$DelArchSearchByLocation) & level_I == local(input$DelArchSearchByLevelI)) %>%
         collect() %>% 
         pull(level_II) %>%
         unique(.)
@@ -559,9 +566,6 @@ UpdateSelections <- function(session, input, keepCurrentSelection = FALSE) {
   
   shinyjs::reset("DelArchSearchByBarcode")
   shinyjs::reset("DelArchSearchBySubjectUIDFile")
-
-  updateSelectInput(session, "DelArchSearchByState", selected = "Active")
-  updateSelectInput(session, "DelArchSearchByStatus", selected = "In Use")
 }
 
 
@@ -610,6 +614,9 @@ UpdateSampleSelections <- function(session, input, keepCurrentSelection = FALSE)
       server = TRUE
     )
   })
+
+  updateSelectInput(session, "DelArchSearchByState", selected = ifelse(keepCurrentSelection, input$DelArchSearchByState, "Active"))
+  updateSelectInput(session, "DelArchSearchByStatus", selected = ifelse(keepCurrentSelection, input$DelArchSearchByStatus, "In Use"))
   
   DBI::dbDisconnect(con)
 }
@@ -675,6 +682,9 @@ UpdateControlSelections <- function(session, input, keepCurrentSelection = FALSE
       server = TRUE
     )
   })
+
+  updateSelectInput(session, "DelArchSearchByState", selected = ifelse(keepCurrentSelection, input$DelArchSearchByState, "Active"))
+  updateSelectInput(session, "DelArchSearchByStatus", selected = ifelse(keepCurrentSelection, input$DelArchSearchByStatus, "In Use"))
   
   DBI::dbDisconnect(con)
 }

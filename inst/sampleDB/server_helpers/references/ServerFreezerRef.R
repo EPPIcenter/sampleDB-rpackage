@@ -24,6 +24,8 @@ UpdateLabFreezers <- function(session, input, output, database){
 
       print(new.freezer_type)
 
+      return_message <- ""
+
       
       # set requirements
       SetFreezerAddRequirements(input = input, database = database, ui_elements = ui_elements)

@@ -254,7 +254,7 @@ FilterByLocation = function(con, sql, location) {
   if (!is.null(location)) {
     if (!is.null(location[['location_root']]) & !is.null(location[['level_I']]) & !is.null(location[['level_II']])) {
       sql <- filter(sql, location_root == local(location[['location_root']]) & level_I == local(location[['level_I']]) & level_II == local(location[['level_II']]))
-    } else if (!is.null(location[['location_root']]) & !is.null(filters$location[['level_I']])) {
+    } else if (!is.null(location[['location_root']]) & !is.null(location[['level_I']])) {
       sql <- filter(sql, location_root == local(location[['location_root']]) & level_I == local(ocation[['level_I']]))
     } else if (!is.null(location[['location_root']])) {
       sql <- filter(sql, location_root == local(location[['location_root']]))
@@ -266,9 +266,9 @@ FilterByLocation = function(con, sql, location) {
 
 
 SearchSamples <- function(sample_storage_type, filters = NULL, format = "na", database = Sys.getenv("SDB_PATH"), config_yml = Sys.getenv("SDB_CONFIG"), include_internal_sample_id = FALSE) {
-
   db.results <- NULL
 
+  browser()
   if (is.null(sample_storage_type) || !sample_storage_type %in% c("micronix", "cryovial", "all")) {
     stop("No search implemenation available for this sample_storage_type")
   }
@@ -385,9 +385,9 @@ SearchSamples <- function(sample_storage_type, filters = NULL, format = "na", da
       sql <- filter(sql, manifest == local(filters$manifest))
     }
 
-    sql <- inner_join(sql, tbl(con, "location") %>% dplyr::rename(location_id = id) %>% select(location_id, location_root, level_I, level_II), by = c("location_id"))
+    # sql <- inner_join(sql, tbl(con, "location") %>% dplyr::rename(location_id = id) %>% select(location_id, location_root, level_I, level_II), by = c("location_id"))
 
-    # sql = FilterByLocation(con, sql, filters$location)
+    sql = FilterByLocation(con, sql, filters$location)
 
     ## map results to the final columns
     ## note: order matters here

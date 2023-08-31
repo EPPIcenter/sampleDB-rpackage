@@ -237,9 +237,8 @@ ControlReference <- function(session, input, output, database, dbUpdateEvent) {
       percentage = input$InputControlSearchPercentage,
       composition_types = input$InputControlSearchCompositionTypes
     )
-    filter_keys <- c("strain", "percentage", "composition_types")
     
-    process_filters(input_filters, filter_keys, composition_filter_set)
+    process_filters(input_filters, composition_filter_set)
   })
 
   filtered_composition_data <- reactive({

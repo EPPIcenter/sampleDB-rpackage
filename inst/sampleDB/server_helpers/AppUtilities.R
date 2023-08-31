@@ -715,7 +715,6 @@ createFilterSetReactive <- function(defaults = list()) {
 #' inserts new filters into a given filter set, and removes any outdated filters.
 #'
 #' @param input_filters A list of filter inputs to be processed.
-#' @param filter_keys A character vector specifying the keys that should exist in the filter set.
 #' @param filter_set A reactive object that contains the current state of filters.
 #'
 #' @return This function is called for its side effects and does not return a value.
@@ -727,12 +726,11 @@ createFilterSetReactive <- function(defaults = list()) {
 #'     percentage = input$InputControlSearchPercentage,
 #'     composition_types = input$InputControlSearchCompositionTypes
 #'   )
-#'   filter_keys <- c("strain", "percentage", "composition_types")
-#'   process_filters(input_filters, filter_keys, composition_filter_set)
+#'   process_filters(input_filters, composition_filter_set)
 #' })
 #' }
 #' @export
-process_filters <- function(input_filters, filter_keys, filter_set) {
+process_filters <- function(input_filters, filter_set) {
 
   # Modified the inner function to handle NAs explicitly
   new_filters <- purrr::map(input_filters, function(x) {
