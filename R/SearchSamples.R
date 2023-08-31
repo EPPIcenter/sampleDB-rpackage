@@ -268,7 +268,6 @@ FilterByLocation = function(con, sql, location) {
 SearchSamples <- function(sample_storage_type, filters = NULL, format = "na", database = Sys.getenv("SDB_PATH"), config_yml = Sys.getenv("SDB_CONFIG"), include_internal_sample_id = FALSE) {
   db.results <- NULL
 
-  browser()
   if (is.null(sample_storage_type) || !sample_storage_type %in% c("micronix", "cryovial", "all")) {
     stop("No search implemenation available for this sample_storage_type")
   }
