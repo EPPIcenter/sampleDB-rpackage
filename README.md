@@ -18,6 +18,7 @@ You should first create a volume to contain the sampleDB database. Start by runn
 
 ```bash
 docker volume create sampledb_database
+docker volume create shinylogs
 ```
 
 #### 2. Create the image
@@ -47,7 +48,7 @@ docker build -t eppicenter/sampledb:v2.1.1 .
 This is the final step. The host `localhost` and port `8080` will be used to access the application within the container, and all volumes needed to run the container are passed in on the command line. Notice that the sampleDB database volume is also include in the list of volumes.
 
 ```bash
-docker run -d -p 8080:3838 -v /srv/shinyapps/:/srv/shiny-server -v /srv/shinylog/:/var/log/shiny-server -v sampledb_database:/usr/local/share/sampleDB --restart unless-stopped --name sampleDB eppicenter/sampledb:v2.1.1
+docker run -d -p 3838:3838 -v shinylogs:/var/log/shiny-server -v sampledb_database:/usr/local/share/sampleDB --restart unless-stopped --name sampleDB eppicenter/sampledb:v2.1.1
 ```
 
 #### 4. Access sampleDB 
