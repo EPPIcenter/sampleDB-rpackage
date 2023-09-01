@@ -17,10 +17,22 @@ RUN mkdir -p /usr/local/lib/R/etc/ \
 	/etc/xdg/sampleDB \
 	/tmp/sass-cache 
 
+# Change ownership to shiny user for necessary directories
+RUN chown -R shiny:shiny /srv/shiny-server \
+	&& chown -R shiny:shiny /usr/local/share/sampleDB \
+	&& chmod -R 777 /usr/local/share/sampleDB \
+	&& chown -R shiny:shiny /etc/xdg/sampleDB \
+	&& chown -R shiny:shiny /var/log/shiny-server \
+	&& chown -R shiny:shiny /tmp/sass-cache
+
 # Update R configurations
-RUN echo "options(repos = c(CRAN = 'https://cran.rstudio.com/'), download.file.method = 'libcurl', Ncpus = 4, sass.cache = '/tmp/sass-cache')" \
+RUN echo "options(repos = c(CRAN = 'https://cran.rstudio.com/'), download.file.method = 'libcurl', Ncpus = 4, sass.cache = '/tmp/sass-cache', shiny.port = 3838, shiny.host = '0.0.0.0')" \
     | tee /usr/local/lib/R/etc/Rprofile.site \
     | tee /usr/lib/R/etc/Rprofile.site
+
+# Update the .Renviron file with the SDB_CONFIG and SDB_PATH variables
+RUN echo 'SDB_CONFIG="/etc/xdg/sampleDB/config.yml"' >> /usr/local/lib/R/etc/Renviron.site \
+	&& echo 'SDB_PATH="/usr/local/share/sampleDB/sampledb_database.sqlite"' >> /usr/local/lib/R/etc/Renviron.site
 
 # Install R packages
 RUN R -e 'install.packages(c("remotes", "markdown"))'
@@ -43,38 +55,23 @@ RUN Rscript -e 'remotes::install_version("shinyWidgets",upgrade="never", version
 RUN Rscript -e 'remotes::install_version("shinyalert",upgrade="never", version = "2.0.0")'
 RUN Rscript -e 'remotes::install_version("bslib",upgrade="never", version = "0.5.1")'
 
-# Update the .Renviron file with the SDB_CONFIG and SDB_PATH variables
-RUN echo 'SDB_CONFIG="/etc/xdg/sampleDB/config.yml"' >> /usr/local/lib/R/etc/Renviron.site \
-	&& echo 'SDB_PATH="/usr/local/share/sampleDB/sampledb_database.sqlite"' >> /usr/local/lib/R/etc/Renviron.site
-
-# Copy and install the R package
+# Install local R package and set up
 RUN mkdir /build_zone
-ADD . /build_zone
+COPY . /build_zone
 WORKDIR /build_zone
 RUN R -e 'remotes::install_local(upgrade="never")'
+# NOTE: make the 'config.yml' upgrade part of the application and remove this line
 RUN R -e 'library(sampleDB); SampleDB_Setup(env=TRUE, db=FALSE, server=FALSE)'
+# Copy Shiny app to /home/sampleDB and change ownership ('inst' is where the shiny application source code lives)
+WORKDIR /srv/shiny-server
+COPY --chown=shiny:shiny ./inst/sampleDB sampleDB
+# Remove the work directory now
 RUN rm -rf /build_zone
-
-# Copy Shiny application files
-RUN cp -R /usr/local/lib/R/site-library/sampleDB/sampleDB /srv/shiny-server/
-
-# Change ownership to shiny user for necessary directories
-RUN chown -R shiny:shiny /srv/shiny-server \
-	&& chown -R shiny:shiny /usr/local/share/sampleDB \
-	&& chmod -R 777 /usr/local/share/sampleDB \
-	&& chown -R shiny:shiny /etc/xdg/sampleDB \
-	&& chown -R shiny:shiny /var/log/shiny-server \
-	&& chown -R shiny:shiny /tmp/sass-cache \
-	&& chmod -R 777 /var/log/shiny-server
 
 # Enable Logging from stdout
 ENV SHINY_LOG_STDERR=1
 
-# # Use shiny user
-# USER shiny
-
-# Expose port 3838 to access Shiny
+# Run the Shiny app
+USER shiny
 EXPOSE 3838
-
-# Run Shiny Server
 CMD ["/usr/bin/shiny-server"]
