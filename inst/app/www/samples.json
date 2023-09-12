@@ -5,7 +5,7 @@
       "name": "Micronix",
       "file_types": ["na", "visionmate", "traxcer"],
       "actions": ["upload", "move"],
-      "location_key": "minus20",
+      "location_key": "micronix_locations",
       "container_key": "micronix_plate"
     },
     "cryovial": {
@@ -13,7 +13,7 @@
       "name": "Cryovial",
       "file_types": ["na"],
       "actions": ["upload"],
-      "location_key": "minus80",
+      "location_key": "cryovial_locations",
       "container_key": "cryovial_box"
     }
   },

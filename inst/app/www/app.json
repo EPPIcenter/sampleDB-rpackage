@@ -15,23 +15,23 @@
     "controls": ["dbs_sheet", "whole_blood"]
   },
   "locations": {
-    "minus20": {
-      "location_root": "Minus20Freezer",
+    "micronix_locations": {
+      "location_root": "FreezerName",
       "level_i": "ShelfName",
       "level_ii": "BasketName"
     },
-    "minus80": {
-      "location_root": "Minus80Freezer",
+    "cryovial_locations": {
+      "location_root": "FreezerName",
       "level_i": "RackName",
       "level_ii": "RackPosition"
     },
     "minus20_dbs_storage": {
-      "location_root": "DBS_Minus20",
+      "location_root": "DBS_FreezerName",
       "level_i": "DBS_ShelfName",
       "level_ii": "DBS_BasketName"      
     },
     "minus80_wb_storage": {
-      "location_root": "WB_Minus80",
+      "location_root": "WB_FreezerName",
       "level_i": "WB_RackName",
       "level_ii": "WB_RackPosition"      
     }
