@@ -32,6 +32,26 @@ UISearchDelArchSamples <- function(){
       selectizeInput("DelArchSearchByStatus", "Status", choices = c("In Use"), selected = "In Use")
     ),
     mainPanel(
+      tags$script(HTML("
+        var firstSelectedRow = null;
+        var shiftKeyEnabled = false;
+        $(document).on('click', '.rt-tbody .rt-tr-group', function(evt) {
+          evt.preventDefault()
+          var row = $(this).closest('.rt-tr-group').index();
+          if (evt.shiftKey && firstSelectedRow !== null) {
+            var start = Math.min(firstSelectedRow, row);
+            var end = Math.max(firstSelectedRow, row);
+            $('body').addClass('no-select');
+            Shiny.setInputValue('selectedRange', [start, end], {priority: 'event'});
+          } else {
+            $('body').removeClass('no-select');
+            firstSelectedRow = row;
+          }
+          shiftKeyEnabled = evt.shiftKey;
+          Shiny.setInputValue('shiftKeyEnabled', shiftKeyEnabled);
+        });
+        ")
+      ),
       width = 10,
       reactableOutput("DelArchSearchResultsTable"),
       hr(),

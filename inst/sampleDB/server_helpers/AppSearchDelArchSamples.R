@@ -6,6 +6,26 @@ library(stringr)
 
 SearchDelArchSamples <- function(session, input, database, output, dbUpdateEvent) {
 
+  # Your existing 'selected()' reactive
+  selected <- reactive(getReactableState("DelArchSearchResultsTable", "selected"))
+
+  observe({
+    if (!is.null(input$shiftKeyEnabled) && input$shiftKeyEnabled) {
+      if (!is.null(input$selectedRange)) {
+        
+        # Get the selected range
+        start_row <- input$selectedRange[1]
+        end_row <- input$selectedRange[2]
+        
+        # Create new selection sequence
+        new_selection <- seq(from = start_row + 1, to = end_row + 1)
+        
+        # Update the selected rows
+        updateReactable(outputId = "DelArchSearchResultsTable", selected = new_selection)
+      }
+    }
+  })
+
   # Reactive to store retrieved database data
   createFilterSetReactive <- function(defaults = list()) {
     rv <- reactiveVal(defaults)
@@ -127,16 +147,10 @@ SearchDelArchSamples <- function(session, input, database, output, dbUpdateEvent
         searchable = TRUE,
         selection = "multiple", 
         onClick = "select",
-        columns = list(
-        .selection = colDef(
-          headerStyle = list(pointerEvents = "none")
-        )
-        ),
         striped = TRUE,
         showPageSizeOptions = TRUE,
         theme = reactableTheme(
           headerStyle = list(
-            "& input[type='checkbox']" = list(display = "none"),
             "&:hover[aria-sort]" = list(background = "hsl(0, 0%, 96%)"),
             "&[aria-sort='ascending'], &[aria-sort='descending']" = list(background = "hsl(0, 0%, 96%)"),
             borderColor = "#555"
@@ -404,8 +418,6 @@ SearchDelArchSamples <- function(session, input, database, output, dbUpdateEvent
 
 
   ###### Delarch specific functionality
-
-  selected <- reactive(getReactableState("DelArchSearchResultsTable", "selected"))
 
   observeEvent(input$ArchiveAction, ignoreInit = TRUE, {
 
