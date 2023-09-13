@@ -845,8 +845,8 @@ validate_specimens <- function(user_data, sample_type, user_action, file_type, d
   if (user_action == "upload") {
     validation_result <- validate_dates_with_tokens(user_data, "CollectionDate", "%Y-%m-%d",  c("unk", "UNK", "unknown", "UNKNOWN"))
 
-    if (!is.null(validation_result$error_data)) {
-      errors <- add_to_errors(errors, validation_result$error_data)
+    if (inherits(validation_result, "ErrorData")) {
+      errors <- add_to_errors(errors, validation_result)
     }
   }
 

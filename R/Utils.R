@@ -200,7 +200,7 @@ validate_dates_with_tokens <- function(data, date_col, allowed_date_formats, tok
   token_mask <- !data[[date_col]] %in% tokens
 
   # Find rows with invalid dates
-  invalid_rows <- which(!is.na(data[[date_col]]) & is.na(parsed_dates) & !token_mask)
+  invalid_rows <- which(!is.na(data[[date_col]]) & is.na(parsed_dates) & token_mask)
   
   error_data <- NULL
   if (length(invalid_rows) > 0) {
@@ -208,7 +208,7 @@ validate_dates_with_tokens <- function(data, date_col, allowed_date_formats, tok
     return(ErrorData$new(description = string, columns = date_col, rows = invalid_rows))
   }
 
-  return(list(error_data = error_data, parsed_dates = parsed_dates, token_mask = token_mask))
+  return(list(parsed_dates = parsed_dates, token_mask = token_mask))
 }
 
 
