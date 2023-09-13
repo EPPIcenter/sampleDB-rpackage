@@ -286,17 +286,22 @@ print.ColumnData <- function(x, ...) {
 #' @noRd
 dereference_location_container <- function(keys, app_data) {
   dereferenced <- c()
-  
-  if ("location_key" %in% names(keys) && !is.null(keys$location)) {
+
+  if ("location_key" %in% names(keys) && !is.null(keys$location_key)) {
     location_keys <- app_data$locations[[keys$location]]
     dereferenced <- c(dereferenced, location_keys)
   }
 
-  if ("container_key" %in% names(keys) && !is.null(keys$container)) {
-    location_keys <- app_data$containers[[keys$container]]
+  if ("container_key" %in% names(keys) && !is.null(keys$container_key)) {
+    location_keys <- app_data$containers[[keys$container_key]]
     dereferenced <- c(dereferenced, location_keys)
   }
   
+  if ("container_barcode_key" %in% names(keys) && !is.null(keys$container_barcode_key)) {
+    location_keys <- app_data$container_barcodes[[keys$container_barcode_key]]
+    dereferenced <- c(dereferenced, location_keys)
+  }
+
   return(dereferenced)
 }
 
@@ -458,10 +463,14 @@ get_sample_file_columns <- function(sample_type, action, file_type = "na", confi
   # Overwrite the values in dereferenced_values with the ones from sample_values
   common_keys <- intersect(names(dereferenced_values), names(sample_values))
   dereferenced_values[common_keys] <- sample_values[common_keys]
+
+  # NOTE: quick fix as this is always the case 
+  required_dereferenced_values <- dereferenced_values
+  required_dereferenced_values[["container_barcode_key"]] <- NULL
   
   # Include both dereferenced_values and sample_values in the required values
   required_vals <- unique(c( get_values(required_keys_combined, sample_values, shared_values),
-                      unlist(unname(dereferenced_values)))
+                      unlist(unname(required_dereferenced_values)))
   )
 
   # Check for traxcer position override if file_type is 'traxcer'
@@ -474,6 +483,9 @@ get_sample_file_columns <- function(sample_type, action, file_type = "na", confi
 
   optional_keys_combined <- c(action_keys$optional_keys, shared_action_keys$optional_keys)
   optional_vals <- get_values(optional_keys_combined, sample_values, shared_values)
+
+  # NOTE: quick fix
+  optional_vals <- c(optional_vals, unlist(unname(dereferenced_values[names(dereferenced_values) %in% optional_keys_combined])))
 
   # Cleaning up null values
   required_vals <- required_vals[!is.null(required_vals)]
@@ -609,7 +621,7 @@ get_location_by_sample <- function(sample_type, sample_file = "samples.json", ap
     stop("Specified sample type not found.")
   }
   
-  location_keys <- sample_data$samples[[sample_type]]$location
+  location_keys <- sample_data$samples[[sample_type]]$location_key
   # If there's only one location, make it a list for consistency
   if (!is.list(location_keys)) {
     location_keys <- list(location_keys)
@@ -706,7 +718,7 @@ get_container_by_sample <- function(sample_type, sample_file = "samples.json", a
     stop("Specified sample type not found.")
   }
   
-  container_keys <- sample_data$samples[[sample_type]]$container
+  container_keys <- sample_data$samples[[sample_type]]$container_key
   # If there's only one container, make it a list for consistency
   if (!is.list(container_keys)) {
     container_keys <- list(container_keys)
@@ -785,4 +797,45 @@ get_destination_container_by_control <- function(control_type, control_file = "c
   })
 
   return(container_destination_data[[1]])
+}
+
+
+#' Get the expected position column for a sample type
+#' 
+#' Micronix have different file formats which report sample positioning in different ways. This
+#' function makes it easy to look up that information. 
+#' 
+#' @param sample_type A character string specifying the type of sample.
+#' @param file_type The file type (default: "na")
+#' @param sample_file A character string indicating the path to the samples.json file. (default: "samples.json")
+#' @param control_file A character string specifying the path to the controls.json file. (default: "app.json")
+#' @return The position column for that sample type.
+#' @export
+get_position_column_by_sample <- function(sample_type, file_type = "na", sample_file = "samples.json", app_file = "app.json") {
+  
+  sample_data <- read_json_file(sample_file)
+  app_data <- read_json_file(app_file)
+
+   # Check if control type exists
+  if(!sample_type %in% names(sample_data$samples)) {
+    stop("Specified sample type not found.")
+  }
+
+  # Get the sample type header with all application data keys for lookup
+  header_key <- sample_data$samples[[sample_type]]
+
+  # Get the container key
+  container_key <- header_key[["container_key"]]
+
+  # If there are file specific overrides, find them here
+  overrides <- sample_data[["sample_key_associations"]][[sample_type]][[file_type]]
+
+  override_position <- NULL
+  if (!is.null(overrides)) {
+    override_position <- overrides[["position_keys"]]
+  }
+
+  expected_columns <- if(!is.null(override_position)) override_position else app_data[["containers"]][[container_key]][['position_keys']]
+
+  return(expected_columns)
 }

@@ -391,10 +391,10 @@ get_container_table_name <- function(container_class) {
 #' @examples
 #' df <- data.frame(
 #'   Barcode = 1:5,
-#'   Minus20Freezer = 6:10
+#'   FreezerName = 6:10
 #' )
 #' find_column_name(df, c("Barcode", "Tube ID", "TubeCode"))
-#' find_column_name(df, c("Minus20Freezer", "Minus80Freezer"))
+#' find_column_name(df, c("FreezerName", "FreezerName"))
 #'
 #' @export
 find_column_name <- function(data, potential_names) {

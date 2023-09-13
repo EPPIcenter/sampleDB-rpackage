@@ -21,9 +21,9 @@ and returns the first one that matches, or NA_character_ if none is found.
 \examples{
 df <- data.frame(
   Barcode = 1:5,
-  Minus20Freezer = 6:10
+  FreezerName = 6:10
 )
 find_column_name(df, c("Barcode", "Tube ID", "TubeCode"))
-find_column_name(df, c("Minus20Freezer", "Minus80Freezer"))
+find_column_name(df, c("FreezerName", "FreezerName"))
 
 }

@@ -175,7 +175,7 @@ validate_dbs_sheet_extraction <- function(dbs_sheet_test) {
   dbs_sheet_test(validate_location_reference_db, "DBS_Minus20", "DBS_ShelfName", "DBS_BasketName")
 
   # Validate destination location
-  dbs_sheet_test(validate_location_reference_db, "Minus20Freezer", "ShelfName", "BasketName")
+  dbs_sheet_test(validate_location_reference_db, "FreezerName", "ShelfName", "BasketName")
 }
 
 #' Validate Whole Blood Control Data
@@ -266,7 +266,7 @@ validate_whole_blood_extraction <- function(whole_blood_test) {
   whole_blood_test(validate_location_reference_db, "WB_Minus80", "WB_RackName", "WB_RackPosition")
 
   # Validate destination location
-  whole_blood_test(validate_location_reference_db, "Minus20Freezer", "ShelfName", "BasketName")
+  whole_blood_test(validate_location_reference_db, "FreezerName", "ShelfName", "BasketName")
 
 }
 

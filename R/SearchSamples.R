@@ -245,6 +245,7 @@ search_compositions <- function(filters, database = Sys.getenv("SDB_PATH")) {
 }
 
 FilterByLocation = function(con, sql, location) {
+
   sql <- sql %>%
     inner_join(tbl(con, "location") %>%
       dplyr::rename(location_id = id) %>%
@@ -255,7 +256,7 @@ FilterByLocation = function(con, sql, location) {
     if (!is.null(location[['location_root']]) & !is.null(location[['level_I']]) & !is.null(location[['level_II']])) {
       sql <- filter(sql, location_root == local(location[['location_root']]) & level_I == local(location[['level_I']]) & level_II == local(location[['level_II']]))
     } else if (!is.null(location[['location_root']]) & !is.null(location[['level_I']])) {
-      sql <- filter(sql, location_root == local(location[['location_root']]) & level_I == local(ocation[['level_I']]))
+      sql <- filter(sql, location_root == local(location[['location_root']]) & level_I == local(location[['level_I']]))
     } else if (!is.null(location[['location_root']])) {
       sql <- filter(sql, location_root == local(location[['location_root']]))
     }
@@ -318,15 +319,12 @@ SearchSamples <- function(sample_storage_type, filters = NULL, format = "na", da
     }
 
     sql <- inner_join(sql, tbl(con, "storage_container") %>% dplyr::rename(storage_container_id = id) %>% select(-c(created, last_updated)), by = c("specimen_id"))
-    sql <- inner_join(sql, tbl(con, "sample_type") %>% dplyr::rename(sample_type_id = id, sample_type = name) %>% select(sample_type_id, sample_type), by = c("sample_type_id"))
 
     sample_storage_type_id <- switch(
       sample_storage_type,
       "micronix" = 1,
       "cryovial" = 2
     )
-
-    sql <- filter(sql, sample_type_id == sample_storage_type_id)
 
     sql <- inner_join(sql, tbl(con, "status") %>% dplyr::rename(status_id = id, status = name), by = c("status_id"))
     sql <- inner_join(sql, tbl(con, "state") %>% dplyr::rename(state_id = id, state = name), by = c("state_id"))

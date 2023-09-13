@@ -637,7 +637,7 @@ show_general_error_modal <- function(error) {
 #' @examples
 #' # With mock input data
 #' input <- list(UploadManifestName = "MyPlate", 
-#'               UploadLocationRoot = "Minus20Freezer", 
+#'               UploadLocationRoot = "FreezerName", 
 #'               UploadLocationLevelI = "Shelf1", 
 #'               UploadLocationLevelII = "Basket2")
 #' collate_user_input_sample_data("micronix", input)

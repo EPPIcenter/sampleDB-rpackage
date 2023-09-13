@@ -6,7 +6,8 @@
       "file_types": ["na", "visionmate", "traxcer"],
       "actions": ["upload", "move"],
       "location_key": "micronix_locations",
-      "container_key": "micronix_plate"
+      "container_key": "micronix_plate",
+      "container_barcode_key": "micronix_plate"
     },
     "cryovial": {
       "id": 2,
@@ -14,7 +15,8 @@
       "file_types": ["na"],
       "actions": ["upload"],
       "location_key": "cryovial_locations",
-      "container_key": "cryovial_box"
+      "container_key": "cryovial_box",
+      "container_barcode_key": "cryovial_box"
     }
   },
   "action_requirements": {
@@ -22,7 +24,7 @@
       "shared": {
         "required_keys": ["study_short_code", "study_subject", "specimen_type", "location_key", "container_key"],
         "conditional_keys": ["collection_date"],
-        "optional_keys": ["comment"]
+        "optional_keys": ["comment", "container_barcode_key"]
       },
       "micronix": {
         "required_keys": ["barcode"]

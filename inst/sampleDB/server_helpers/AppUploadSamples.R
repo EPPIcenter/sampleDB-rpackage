@@ -446,6 +446,7 @@ check_if_special_columns_missing <- function(e, rv, input) {
 
   message("Checking whether to ask user for input.")
   # Use the get_sample_file_columns function to retrieve file column attributes
+
   file_column_attr <- get_sample_file_columns(
     sample_type = input$UploadSampleType,
     action = "upload",

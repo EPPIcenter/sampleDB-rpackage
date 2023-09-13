@@ -23,9 +23,10 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
   
   DBI::dbDisconnect(con)
 
-  #' Declare filters for searching and establish any filter dependencies
+  # Declare filters for searching and establish any filter dependencies
   observe({
-    input_filters <- list(
+    # Build the new filters
+    new_filters <- list(
       manifest = input$DelArchSearchByManifest,
       short_code = input$DelArchSearchByStudy,
       study_subject = input$DelArchSearchBySubjectUID,
@@ -33,7 +34,7 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
       collection_date = list(
         date.from = input$DelArchdateRange[1],
         date.to = input$DelArchdateRange[2]
-      ),
+      ), 
       location = list(
         location_root = input$DelArchSearchByLocation,
         level_I = input$DelArchSearchByLevelI,
@@ -42,24 +43,40 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
       state = input$DelArchSearchByState,
       status = input$DelArchSearchByStatus
     )
-    
-    process_filters(input_filters, filter_set)
+
+    # Remove empty or NULL values from new_filters
+    new_filters <- purrr::map(new_filters, ~purrr::discard(.x, function(x) is.null(x) || "" %in% x || length(x) == 0))
+    new_filters <- purrr::discard(new_filters, ~is.null(.x) || length(.x) == 0)
+
+    # Insert the new filters
+    filter_set$insert(new_filters)
+
+    # Identify filters to remove
+    existing_filters <- filter_set$get()
+    filters_to_remove <- setdiff(names(existing_filters), names(new_filters))
+
+    # Remove the filters no longer being used
+    if(length(filters_to_remove) > 0) {
+      filter_set$remove(filters_to_remove)
+    }
   })
-
-
 
   # get DelArchSearch ui elements
   rv <- reactiveValues(user_file = NULL, error = NULL, operation = NULL, filtered_sample_container_ids = NULL)
 
   filtered_data <- reactive({
     # Obtain the search results
-
+    
+    # Ensure that state and status are set before performing any searches
+    # Check for non-NULL and non-empty strings
+    req(nzchar(input$DelArchSearchByState), nzchar(input$DelArchSearchByStatus))
+    
     if (input$DelArchSearchType == "samples") {
       results <- SearchSamples(input$DelArchSearchBySampleType, filters = filter_set$get(), include_internal_sample_id = TRUE)
     } else {
       results <- SearchControls(input$DelArchSearchByControlType, filters = filter_set$get(), include_internal_control_id = TRUE) 
     }
-
+    
     # Prepare data for reactable
     if (!is.null(results)) {
       results
@@ -563,12 +580,13 @@ UpdateSelections <- function(session, input, keepCurrentSelection = FALSE) {
   } else {
     UpdateControlSelections(session, input, keepCurrentSelection)
   }
+
+  updateSelectInput(session, "DelArchSearchByState", selected = ifelse(keepCurrentSelection, input$DelArchSearchByState, "Active"))
+  updateSelectInput(session, "DelArchSearchByStatus", selected = ifelse(keepCurrentSelection, input$DelArchSearchByStatus, "In Use"))
   
   shinyjs::reset("DelArchSearchByBarcode")
   shinyjs::reset("DelArchSearchBySubjectUIDFile")
 }
-
-
 
 UpdateSampleSelections <- function(session, input, keepCurrentSelection = FALSE) {
   con <- DBI::dbConnect(RSQLite::SQLite(), Sys.getenv("SDB_PATH"))
@@ -615,9 +633,6 @@ UpdateSampleSelections <- function(session, input, keepCurrentSelection = FALSE)
     )
   })
 
-  updateSelectInput(session, "DelArchSearchByState", selected = ifelse(keepCurrentSelection, input$DelArchSearchByState, "Active"))
-  updateSelectInput(session, "DelArchSearchByStatus", selected = ifelse(keepCurrentSelection, input$DelArchSearchByStatus, "In Use"))
-  
   DBI::dbDisconnect(con)
 }
 
@@ -683,8 +698,5 @@ UpdateControlSelections <- function(session, input, keepCurrentSelection = FALSE
     )
   })
 
-  updateSelectInput(session, "DelArchSearchByState", selected = ifelse(keepCurrentSelection, input$DelArchSearchByState, "Active"))
-  updateSelectInput(session, "DelArchSearchByStatus", selected = ifelse(keepCurrentSelection, input$DelArchSearchByStatus, "In Use"))
-  
   DBI::dbDisconnect(con)
 }

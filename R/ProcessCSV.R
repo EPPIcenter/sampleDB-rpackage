@@ -507,7 +507,6 @@ validate_and_format_reference_file <- function(user_file, file_column_attr) {
 #' processed_csv <- process_specimen_csv(user_file_path, action, type)
 #' }
 process_specimen_csv <- function(user_csv, user_action, sample_type, file_type = "na", bind_data = NULL, database = Sys.getenv("SDB_PATH"), config_yml = Sys.getenv("SDB_CONFIG")) {
-
   if (is.null(user_csv) || user_csv == "") {
     stop("No csv file was provided.")
   }
@@ -522,7 +521,7 @@ process_specimen_csv <- function(user_csv, user_action, sample_type, file_type =
   file_column_attr <- get_sample_file_columns(sample_type, user_action, file_type, config_yml)
   user_data <- validate_and_format_specimen_file(user_data, user_action, sample_type, file_column_attr, bind_data)
 
-  user_data <- prepare_specimen_data_for_validation(sample_type, user_data, file_column_attr)
+  user_data <- prepare_specimen_data_for_validation(sample_type, user_data, file_type, file_column_attr) # note: duplicate information, see fn for details
 
   user_data <- validate_specimens(user_data, sample_type, user_action, file_type, database)
 
@@ -706,19 +705,18 @@ read_and_preprocess_csv <- function(user_csv) {
 #' Modify the user column for validation purposes
 #' 
 #' @param user_data The users uploaded and formatted data.
-#' @param container_json_object 'containers' object from app.json that has been filtered.
+#' @param expected_position_column Expected position column names(s)
 #' @param position_col The name of the concatenated position to be used with validation
 #' 
 #' @return The users updated data frame.
 #' @importFrom stringr str_pad
 #' @import dplyr
 #' @keywords internal validation
-prepare_matrix_position_column <- function(user_data, container_json_object, position_col) {
+prepare_matrix_position_column <- function(user_data, expected_position_column, position_col) {
 
-  position_keys <- container_json_object$position_keys
-  if (!is.null(position_keys)) {
-    if (is.list(position_keys)) {
-      position_columns <- unlist(position_keys)
+  if (!is.null(expected_position_column)) {
+    if (is.list(expected_position_column)) {
+      position_columns <- unlist(expected_position_column)
       if (!is.null(position_columns)) {
 
         rows <- user_data[[position_columns[1]]]
@@ -780,6 +778,7 @@ convert_density_representations <- function(user_data, density_col) {
 #' It renames columns and also applies column-specific transformations where needed.
 #'
 #' @param user_data A data frame with columns to be renamed.
+#' @param file_type Parameter needed for internal function. (NOTE: should make this information available in a different way since we need it for file_column_attr)
 #' @param file_column_attr A ColumnData object containing the column mappings.
 #'
 #' @return A pre-processed data frame.
@@ -798,7 +797,16 @@ convert_density_representations <- function(user_data, density_col) {
 #'
 #' new_df <- prepare_specimen_data_for_validation(user_data, file_column_attr)
 #' }
-prepare_specimen_data_for_validation <- function(sample_type, user_data, file_column_attr) {
+prepare_specimen_data_for_validation <- function(sample_type, user_data, file_type, file_column_attr) {
+
+  # Pre-processing the user data up front for the following reasons:
+  # 1. The transformed data aids in various validation functions.
+  # 2. Transformed data is directly copied to the SQL database for validation.
+  # 
+  # By transforming data up front, we reduce the need for in-memory table loading 
+  # and leverage SQL for efficient validations. There also limitations using 
+  # dplyr for database manipulation and querying, so doing these modification upfront
+  # makes it easier to prepare the data frame for validation.
 
   # Check if file_column_attr is of class ColumnData
   if (!inherits(file_column_attr, "ColumnData")) {
@@ -812,6 +820,22 @@ prepare_specimen_data_for_validation <- function(sample_type, user_data, file_co
     stop_validation_error("There are missing data in required fields.", error)
   }
 
+  # Extract column names from file_column_attr
+  required_columns <- file_column_attr$required
+  conditional_columns <- file_column_attr$conditional
+  optional_columns <- file_column_attr$optional
+
+  # Combine all expected column names
+  all_expected_columns <- c(required_columns, conditional_columns, optional_columns)
+
+  # Identify columns that are missing in user_data
+  missing_columns <- setdiff(all_expected_columns, colnames(user_data))
+
+  # Add missing columns to user_data and fill with NA
+  for (col_name in missing_columns) {
+    user_data[[col_name]] <- NA
+  }
+
   # 2. Check for duplicated rows
   error <- check_duplicated_rows(user_data)
 
@@ -819,9 +843,9 @@ prepare_specimen_data_for_validation <- function(sample_type, user_data, file_co
     stop_validation_error("There are missing data in required fields.", error)
   }
 
-  container_obj <- get_container_by_sample(sample_type)
+  expected_position_column <- get_position_column_by_sample(sample_type, file_type)
 
-  user_data <- prepare_matrix_position_column(user_data, container_obj, "Position")
+  user_data <- prepare_matrix_position_column(user_data, expected_position_column, "Position")
   user_data <- add_row_numbers(user_data)
 
   return(user_data)
@@ -905,8 +929,6 @@ prepare_control_data_for_validation <- function(control_type, user_data, action,
 
   # Extract the label, legacy, and index from the composition ID provided by the user
   user_data <- normalize_composition_ids(user_data, "CompositionID", "Label", "Index", "LegacyLabel")
-
-
   user_data <- add_row_numbers(user_data)
 
   return(user_data)

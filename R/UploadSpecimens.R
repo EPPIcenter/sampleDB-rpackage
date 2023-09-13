@@ -185,7 +185,7 @@ upload_extracted_dna <- function(user_data, control_extraction, database = Sys.g
     eval.container_name <- safe_extract(upload_data[i,], "PlateName", "BoxName")
 
     eval.freezer_address <- list(
-      location = safe_extract(upload_data[i,], "Minus20Freezer", "Minus80Freezer"),
+      location = safe_extract(upload_data[i,], "FreezerName", "FreezerName"),
       level_I = safe_extract(upload_data[i,], "ShelfName", "RackName"),
       level_II = safe_extract(upload_data[i,], "BasketName", "RackPosition")
     )
@@ -283,7 +283,6 @@ upload_extracted_dna <- function(user_data, control_extraction, database = Sys.g
     AddToTable("storage_container",
                          list(created = lubridate::now() %>% as.character(),
                               last_updated = lubridate::now() %>% as.character(),
-                              sample_type_id = sample_type_id,
                               specimen_id = eval.specimen_id,
                               status_id = eval.status_id, # In Use
                               state_id = eval.state_id,

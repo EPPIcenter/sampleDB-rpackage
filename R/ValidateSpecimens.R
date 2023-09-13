@@ -105,7 +105,7 @@ check_longitudinal_study_dates <- function(con, table_name, row_number_col, stud
     select(all_of(c(row_number_col, study_short_code_col, collection_date_col))) %>%
     collect()
 
-  df$collection_date <- as.character(lubridate::as_date(df$collection_date))
+  df[[collection_date_col]] <- as.character(lubridate::as_date(df[[collection_date_col]]))
 
   if (nrow(df) > 0) {
     return(ErrorData$new(
@@ -747,7 +747,7 @@ validate_micronix_uploads <- function(micronix_test, variable_colnames) {
   micronix_test(check_micronix_barcodes_exist, variable_colnames[['barcode_col']], error_if_exists = TRUE)
   micronix_test(validate_study_reference_db, "StudyCode")
   micronix_test(validate_specimen_type_db, "SpecimenType")
-  micronix_test(validate_location_reference_db, "Minus20Freezer", "ShelfName", "BasketName")
+  micronix_test(validate_location_reference_db, "FreezerName", "ShelfName", "BasketName")
 
   micronix_test(check_longitudinal_study_dates, "StudyCode", "CollectionDate")
   micronix_test(validate_empty_micronix_well_upload,  "Position", "PlateName", "PlateBarcode")
@@ -783,7 +783,7 @@ validate_cryovial_uploads <- function(cryovial_test) {
   cryovial_test(validate_cryovial_collection_dates, "StudyCode", "StudySubject", "Barcode", "CollectionDate")
   cryovial_test(validate_study_reference_db, "StudyCode")
   cryovial_test(validate_specimen_type_db, "SpecimenType")
-  cryovial_test(validate_location_reference_db, "Minus80Freezer", "RackName", "RackPosition")
+  cryovial_test(validate_location_reference_db, "FreezerName", "RackName", "RackPosition")
   cryovial_test(validate_empty_cryovial_well_upload, "Position", "BoxName", "BoxBarcode")
 }
 
