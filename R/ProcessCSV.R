@@ -705,6 +705,7 @@ read_and_preprocess_csv <- function(user_csv) {
 #' Modify the user column for validation purposes
 #' 
 #' @param user_data The users uploaded and formatted data.
+#' @param dimensions Dimensions of the matrix to check against.
 #' @param expected_position_column Expected position column names(s)
 #' @param position_col The name of the concatenated position to be used with validation
 #' 
@@ -712,32 +713,65 @@ read_and_preprocess_csv <- function(user_csv) {
 #' @importFrom stringr str_pad
 #' @import dplyr
 #' @keywords internal validation
-prepare_matrix_position_column <- function(user_data, expected_position_column, position_col) {
+prepare_matrix_position_column <- function(user_data, dimensions, expected_position_column, position_col) {
 
   if (!is.null(expected_position_column)) {
+    position_columns <- NULL
     if (is.list(expected_position_column)) {
       position_columns <- unlist(expected_position_column)
-      if (!is.null(position_columns)) {
+    } else if (is.character(expected_position_column)) {
+      position_columns <- expected_position_column
+    } else {
+      stop("Cannot handle expected_position_column")
+    }
 
-        rows <- user_data[[position_columns[1]]]
-        cols <- user_data[[position_columns[2]]]
-        
-        # NOTE: allow for reporting granular checks for matrix position. This 
-        # will mean return an error collection since there is code to handle this
-        # in the handle_validation_error function.
+    if (!is.null(position_columns) && length(position_columns) == 2) {
 
-        user_data[[position_col]] <- paste0(
-          rows, 
-          str_pad(cols, width = 2, pad = "0"))
-          
-        user_data <- user_data[, !(names(user_data) %in% position_columns)]
+      ROW_IDX <- 1
+      COL_IDX <- 2
+
+      rows <- user_data[[position_columns[ROW_IDX]]]
+      cols <- as.integer(user_data[[position_columns[COL_IDX]]])
+
+      # Conduct grandular checks of the position coordinates here
+      # There are position checks for row and columns
+      
+      invalid_rows <- unique(rows[!rows %in% LETTERS[1:dimensions[ROW_IDX]]]) 
+      if (is.null(invalid_rows) || !purrr::is_empty(invalid_rows)) {
+        stop_formatting_error(
+          sprintf("Invalid row coordinates detected"),
+          format_error(
+            position_columns[ROW_IDX],
+            sprintf("Rows should always be letters [%s-%s]", LETTERS[1], LETTERS[dimensions[ROW_IDX]]),
+            paste0("Invalid entries found: ", paste(invalid_rows, collapse = ", "))
+          )
+        )
       }
 
-      # NOTE: this is a little dangerous, because we accept NULL as
-      # nothing is wrong. It is internal app data so not going to worry
-      # about it now.
+      invalid_cols <- unique(cols[!cols %in% 1:dimensions[COL_IDX]])
+      if (is.null(invalid_cols) || !purrr::is_empty(invalid_cols)) {
+        stop_formatting_error(
+          sprintf("Invalid rows detected. Rows should always be integers [%d-%d]", 1, dimensions[COL_IDX]),
+          format_error(
+            position_columns[COL_IDX],
+            sprintf("Columns should always be integers [%s-%s]", 1, dimensions[COL_IDX]),
+            paste0("Invalid entries found: ", paste(invalid_cols, collapse = ", "))
+          )
+        )
+      }
 
+      user_data[[position_col]] <- paste0(
+        rows, 
+        str_pad(cols, width = 2, pad = "0")
+      )
+        
+      user_data <- user_data[, !(names(user_data) %in% position_columns)]
     }
+
+    # NOTE: this is a little dangerous, because we accept NULL as
+    # nothing is wrong. It is internal app data so not going to worry
+    # about it now.
+
   }
 
   return(user_data)
@@ -845,7 +879,8 @@ prepare_specimen_data_for_validation <- function(sample_type, user_data, file_ty
 
   expected_position_column <- get_position_column_by_sample(sample_type, file_type)
 
-  user_data <- prepare_matrix_position_column(user_data, expected_position_column, "Position")
+  dimensions <- c(ifelse(sample_type == "micronix", 8, 10), ifelse(sample_type == "micronix", 12, 10))
+  user_data <- prepare_matrix_position_column(user_data, dimensions, expected_position_column, "Position")
   user_data <- add_row_numbers(user_data)
 
   return(user_data)

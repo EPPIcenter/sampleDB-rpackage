@@ -151,7 +151,8 @@ ValidationErrorCollection <- R6::R6Class(
       error_details <- data.frame(
         RowNumber = specific_error$rows,
         self$user_data[specific_error$rows, specific_error$columns, drop = FALSE],
-        stringsAsFactors = FALSE
+        stringsAsFactors = FALSE,
+        check.names = FALSE
       )
       error_details <- error_details[, specific_error$columns] # reorder columns
       

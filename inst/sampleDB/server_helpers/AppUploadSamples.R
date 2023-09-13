@@ -458,7 +458,14 @@ check_if_special_columns_missing <- function(e, rv, input) {
   columns <- e[['data']]$column
 
   missing <- columns[!columns %in% c(locations, container)]
-  if (length(missing) > 0) {
+
+  # If there are any missing columns outside of the special colums
+  # or if not all location columns were found that were missing,
+  # then show the error dialog. All locations are required
+  # because only showing one add complexity in the UI and it is 
+  # likely not an intenional decision by the user to do this and 
+  # will likely cause errors.
+  if (length(missing) > 0 || !all(locations %in% columns)) {
     show_formatting_error_modal(e)
   } else {
     if (container[['container_name_key']] %in% columns) {
