@@ -197,7 +197,7 @@ validate_dates_with_tokens <- function(data, date_col, allowed_date_formats, tok
   parsed_dates <- lubridate::parse_date_time(data[[date_col]], allowed_date_formats, quiet = TRUE, exact = TRUE)
   
   # Mask for recognized tokens
-  token_mask <- data[[date_col]] %in% tokens
+  token_mask <- !data[[date_col]] %in% tokens
 
   # Find rows with invalid dates
   invalid_rows <- which(!is.na(data[[date_col]]) & is.na(parsed_dates) & !token_mask)
