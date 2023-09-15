@@ -296,7 +296,7 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
 
   })
 
-  observeEvent(input$UploadSampleType, {
+  observeEvent(input$UploadSampleType, ignoreInit = TRUE, {
 
 
     shinyjs::reset("UploadLocationRoot")
@@ -399,7 +399,7 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
     DBI::dbDisconnect(con)
   })
 
-  observeEvent(input$ClearUploadForm, {
+  observeEvent(input$ClearUploadForm, ignoreInit = TRUE, {
     shinyjs::enable("UploadSampleType")
     shinyjs::enable("UploadFileType")
     shinyjs::reset("UploadSampleDataSet")

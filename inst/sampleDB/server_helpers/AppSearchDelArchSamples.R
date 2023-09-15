@@ -118,21 +118,21 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
 
    # Use the filtered data to update selections
    # NOTE: make one observeEvnet for the two
-  observeEvent(input$DelArchSearchBySampleType, {
+  observeEvent(input$DelArchSearchBySampleType, ignoreInit = TRUE, {
     UpdateSelections(session, input, TRUE)
   })
 
-  observeEvent(input$DelArchSearchByControlType, {
+  observeEvent(input$DelArchSearchByControlType, ignoreInit = TRUE, {
     UpdateSelections(session, input, TRUE)
   })
 
   observeEvent(input$DelArchSearchType, {
 
-    # if (input$DelArchSearchType == "samples") {
-    #   accordion_panel_update("DelArchSubjectsPanel", "Study & Subjects")
-    # } else {
-    #   accordion_panel_update("DelArchSubjectsPanel", "Batch & Controls")
-    # }
+    if (input$DelArchSearchType == "samples") {
+      accordion_panel_update("DelArchSubjectsPanel", "Study & Subjects")
+    } else {
+      accordion_panel_update("DelArchSubjectsPanel", "Batch & Controls")
+    }
 
   })
 

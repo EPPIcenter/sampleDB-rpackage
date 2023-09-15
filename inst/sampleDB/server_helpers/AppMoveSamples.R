@@ -401,13 +401,15 @@ AppMoveSamples <- function(session, input, output, database) {
             }
           }
 
+          container <- get_container_by_sample(sample_type = input$MoveSampleType)
+
           ## format the file
-          result <- validate_specimens_csv(
+          result <- process_specimen_csv(
             user_csv = dataset[i,]$datapath,
             user_action = "move",
             file_type = input$MoveFileType,
-            sample_storage_type = input$MoveSampleType,
-            container_name = manifest_name
+            sample_type = input$MoveSampleType,
+            bind_data = setNames(manifest_name, container$container_name_key)
           )
 
           move_data_list <- c(move_data_list, list(result))
@@ -415,7 +417,7 @@ AppMoveSamples <- function(session, input, output, database) {
         }
 
         rv$user_file <- move_data_list
-        TRUE
+        FALSE
       },
       message = function(m) {
         # shinyjs::html(id = "MoveOutputConsole", html = paste0(dataset$name, ": ", m$message), add = rv$console_verbatim)
@@ -425,16 +427,16 @@ AppMoveSamples <- function(session, input, output, database) {
     validation_error = function(e) {
         message("Caught validation error")
         show_validation_error_modal(e)
-        FALSE
+        TRUE
       },
       formatting_error = function(e) {
         message("Caught formatting error")
         show_formatting_error_modal(e)
-        FALSE
+        TRUE
       },
       error = function(e) {
         show_general_error_modal(e)
-        FALSE
+        TRUE
       }
     )
 
@@ -463,7 +465,7 @@ AppMoveSamples <- function(session, input, output, database) {
         shinyjs::reset("MoveAction")
 
         # note: this is to make things work retroactively
-        MoveSamples(sample_type = as.integer(input$MoveSampleType), move_data = rv$user_file)
+        MoveSamples(sample_type = input$MoveSampleType, move_data = rv$user_file)
       },
       message = function(m) {
         shinyjs::html(id = "MoveOutputConsole", html = paste0(dataset$name, ": ", m$message), add = rv$console_verbatim)

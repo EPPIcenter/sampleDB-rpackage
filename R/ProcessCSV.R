@@ -355,14 +355,15 @@ get_matched_studies <- function(user_file, database) {
 #' @param file_column_attr An instance of ColumnData containing attributes of file columns.
 #' @return A data frame with only the relevant columns selected.
 #' @export
-select_relevant_columns <- function(user_file, file_column_attr) {
+select_relevant_columns <- function(user_file, file_column_attr, bind_data) {
 
   # Note: For now, use the values and not denormalized names.
   user_file <- user_file %>%
     select(
       all_of(file_column_attr$required),
       all_of(file_column_attr$conditional),
-      any_of(file_column_attr$optional)
+      any_of(file_column_attr$optional),
+      all_of(names(bind_data))
     )
 
   return(user_file)
@@ -398,7 +399,7 @@ validate_and_format_specimen_file <- function(user_file, sample_type, user_actio
   }
 
   # 5. Select relevant columns.
-  user_file <- select_relevant_columns(user_file, file_column_attr)
+  user_file <- select_relevant_columns(user_file, file_column_attr, bind_data)
 
   # Notify success.
   message("Required columns detected.")
@@ -507,6 +508,7 @@ validate_and_format_reference_file <- function(user_file, file_column_attr) {
 #' processed_csv <- process_specimen_csv(user_file_path, action, type)
 #' }
 process_specimen_csv <- function(user_csv, user_action, sample_type, file_type = "na", bind_data = NULL, database = Sys.getenv("SDB_PATH"), config_yml = Sys.getenv("SDB_CONFIG")) {
+
   if (is.null(user_csv) || user_csv == "") {
     stop("No csv file was provided.")
   }

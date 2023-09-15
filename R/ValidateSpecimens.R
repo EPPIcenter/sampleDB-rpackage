@@ -131,12 +131,19 @@ check_longitudinal_study_dates <- function(con, table_name, row_number_col, stud
 #' @return An instance of the ErrorData class if errors are found, or NULL if there are no errors.
 #' @keywords validation, micronix
 #' @export
-check_micronix_plate_exists <- function(con, table_name, row_number_col, plate_name_col, plate_barcode_col) {
+check_micronix_plate_exists <- function(con, table_name, row_number_col, plate_name_col, plate_barcode_col = NULL) {
   
-  user_table_joins <- setNames(
-    c("barcode", "name"),
-    c(plate_barcode_col, plate_name_col)
-  )
+  if (!is.null(plate_barcode_col)) {
+    user_table_joins <- setNames(
+      c("barcode", "name"),
+      c(plate_barcode_col, plate_name_col)
+    )
+  } else {
+    user_table_joins <- setNames(
+      c("name"),
+      c(plate_name_col)
+    ) 
+  }
 
   df <- tbl(con, table_name) %>%
     left_join(tbl(con, "micronix_plate"), by = user_table_joins) %>%
@@ -765,7 +772,8 @@ validate_micronix_moves <- function(micronix_test, variable_colnames) {
 
   # todo: pass this information in
   micronix_test(check_micronix_barcodes_exist, variable_colnames[['barcode_col']], error_if_exists = FALSE)
-  micronix_test(check_micronix_plate_exists, "PlateName", "PlateBarcode")
+  micronix_test(check_micronix_plate_exists, "PlateName")
+
 }
 
 #' Validate Cryovial Uploads
@@ -858,7 +866,9 @@ validate_specimens <- function(user_data, sample_type, user_action, file_type, d
   }
 
   # update here
-  user_data <- handle_unknown_date_tokens(user_data, "CollectionDate", validation_result$parsed_dates, validation_result$token_mask)
+  if (user_action == "upload") {
+    user_data <- handle_unknown_date_tokens(user_data, "CollectionDate", validation_result$parsed_dates, validation_result$token_mask)
+  }
 
   return(user_data)
 }

@@ -24,13 +24,6 @@ MoveSamples <- function(sample_type, move_data){
   conn <-  RSQLite::dbConnect(RSQLite::SQLite(), database)
   RSQLite::dbBegin(conn)
 
-  # TODO: temporary fix for now until I have time to switch to 'micronix' and 'cryovial'
-  sample_type <- switch(
-    sample_type,
-    "micronix" = 1,
-    "cryovial" = 2
-  )
-
   # Save MoveCSVs
   .SaveMoveCSVs(move_data)
 
@@ -280,13 +273,13 @@ MoveSamples <- function(sample_type, move_data){
   # Extract sample level data from sampleDB (barcode, container position, container id) for containers involved in the move
   # set sample type variables
 
-  stopifnot("*** ERROR: Sample type move not implemented" = sample_type %in% c(1, 2))
-  if(sample_type == 1){
+  stopifnot("*** ERROR: Sample type move not implemented" = sample_type %in% c("micronix", "cryovial"))
+  if(sample_type == "micronix"){
     container_type <- "micronix_plate"
     sample_type <- "micronix_tube"
     colname.container_name <- "name"
     colname.container_id <- "manifest_id"
-  } else if (sample_type == 2) {
+  } else if (sample_type == "cryovial") {
     container_type <- "cryovial_box"
     sample_type <- "cryovial_tube"
     colname.container_name <- "name"
