@@ -535,3 +535,65 @@ SearchSamples <- function(sample_storage_type, filters = NULL, format = "na", da
   return (db.results)
 }
 
+
+#' Extract Search Criteria from User CSV File
+#'
+#' This function reads a CSV file provided by the user and extracts
+#' search criteria based on a specified search type (either "barcode" or "StudySubjects").
+#'
+#' @param user_csv A path to the user-provided CSV file.
+#' @param search_type A string indicating the type of search ("barcode" or "StudySubjects").
+#'
+#' @return A message indicating whether the required columns were detected.
+#' @export
+extract_search_criteria <- function(user_csv, search_type) {
+  
+  if (!require(dplyr)) {
+    stop("Function requires dplyr for database access!")
+  }
+
+  # Read the user CSV
+  user_file <- read.csv(file = user_csv, header = FALSE, na.strings = "", blank.lines.skip = TRUE)
+  user_file[user_file == ""] <- NA
+  user_file[] <- lapply(user_file, function(x) as.character(gsub("[\n\t,]", "", x)))
+
+  # Set required column names based on search type
+  required_user_column_names <- ifelse(search_type == "barcode", "Barcodes", "StudySubjects")
+
+  # Find the header row
+  valid_header_rows <- 1:2
+  header_row <- find_header(user_file = user_file, required_user_column_names = required_user_column_names, valid_header_rows = valid_header_rows)
+
+  # If no header is found, stop and raise an error
+  if (is.null(header_row)) {
+    df.error.formatting <- data.frame(
+      column = required_user_column_names,
+      reason = "Always Required",
+      trigger = "Not detected in file"
+    )
+    stop_formatting_error(df.error.formatting)
+  }
+
+  # Set column names and remove header row(s)
+  colnames(user_file) <- user_file[header_row,]
+  user_file <- user_file %>%  slice(-c(1:header_row))
+
+  # Check for missing columns
+  missing_columns <- required_user_column_names[!required_user_column_names %in% colnames(user_file)]
+
+  if (length(missing_columns) > 0) {
+    df.error.formatting <- data.frame(
+      column = missing_columns,
+      reason = "Always Required",
+      trigger = "Not detected in file"
+    )
+    stop_formatting_error(df.error.formatting)
+  }
+
+  # Select the required columns
+  user_file <- select(user_file, all_of(required_user_column_names))
+
+  message("Required columns detected.")
+
+  return(user_file)
+}

@@ -9,7 +9,7 @@ check_micronix_plate_exists(
   table_name,
   row_number_col,
   plate_name_col,
-  plate_barcode_col
+  plate_barcode_col = NULL
 )
 }
 \arguments{

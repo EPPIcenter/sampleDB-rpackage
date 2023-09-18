@@ -6,6 +6,7 @@
 \usage{
 get_position_column_by_sample(
   sample_type,
+  file_type = "na",
   sample_file = "samples.json",
   app_file = "app.json"
 )
@@ -13,9 +14,11 @@ get_position_column_by_sample(
 \arguments{
 \item{sample_type}{A character string specifying the type of sample.}
 
-\item{sample_file}{A character string indicating the path to the samples.json file.}
+\item{file_type}{The file type (default: "na")}
 
-\item{control_file}{A character string specifying the path to the controls.json file.}
+\item{sample_file}{A character string indicating the path to the samples.json file. (default: "samples.json")}
+
+\item{control_file}{A character string specifying the path to the controls.json file. (default: "app.json")}
 }
 \value{
 The position column for that sample type.

@@ -4,12 +4,19 @@
 \alias{prepare_matrix_position_column}
 \title{Modify the user column for validation purposes}
 \usage{
-prepare_matrix_position_column(user_data, container_json_object, position_col)
+prepare_matrix_position_column(
+  user_data,
+  dimensions,
+  expected_position_column,
+  position_col
+)
 }
 \arguments{
 \item{user_data}{The users uploaded and formatted data.}
 
-\item{container_json_object}{'containers' object from app.json that has been filtered.}
+\item{dimensions}{Dimensions of the matrix to check against.}
+
+\item{expected_position_column}{Expected position column names(s)}
 
 \item{position_col}{The name of the concatenated position to be used with validation}
 }

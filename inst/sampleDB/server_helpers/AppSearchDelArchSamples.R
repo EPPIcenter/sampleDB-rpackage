@@ -51,12 +51,21 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
     # Insert the new filters
     filter_set$insert(new_filters)
 
+    # List of filters that should not be removed
+    exception_list <- c("barcode")
+    
+    # Do not remove 'study_subject' if a file for it is loaded
+    if (!is.null(input$DelArchSearchBySubjectUIDFile)) {
+      exception_list <- c(exception_list, "study_subject")
+    }
+
     # Identify filters to remove
     existing_filters <- filter_set$get()
     filters_to_remove <- setdiff(names(existing_filters), names(new_filters))
 
-    # Remove the filters no longer being used
-    if(length(filters_to_remove) > 0) {
+    # Remove filters not in the exception list
+    filters_to_remove <- setdiff(filters_to_remove, exception_list)
+    if (length(filters_to_remove) > 0) {
       filter_set$remove(filters_to_remove)
     }
   })
@@ -99,7 +108,7 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
       reactable(
         search_table,
         defaultColDef = colDef(minWidth = ifelse(type == "samples", 105, 150), html = TRUE, sortable = TRUE, resizable = FALSE, na = "-", align = "center"),
-        searchable = FALSE,
+        searchable = TRUE,
         selection = "multiple", 
         onClick = "select",
         striped = TRUE,
@@ -144,11 +153,9 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
 
     tryCatch({
       ## format the file
-      rv$user_file <- ProcessCSV(
+      rv$user_file <- extract_search_criteria(
         user_csv = dataset$datapath,
-        user_action = "search",
-        search_type = "barcode",
-        validate = FALSE
+        search_type = "barcode"
       )
 
       new_filter <- list(barcode = rv$user_file %>% pull(Barcodes))
@@ -177,11 +184,9 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
 
     tryCatch({
       ## format the file
-      rv$user_file <- ProcessCSV(
+      rv$user_file <- extract_search_criteria(
         user_csv = dataset$datapath,
-        user_action = "search",
-        search_type = "study_subject",
-        validate = FALSE
+        search_type = "study_subject"
       )
 
       new_filter <- list(study_subject = rv$user_file %>% pull(StudySubjects))

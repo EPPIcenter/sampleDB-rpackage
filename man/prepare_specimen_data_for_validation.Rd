@@ -4,10 +4,17 @@
 \alias{prepare_specimen_data_for_validation}
 \title{Prepare DataFrame for Specimen Validation}
 \usage{
-prepare_specimen_data_for_validation(sample_type, user_data, file_column_attr)
+prepare_specimen_data_for_validation(
+  sample_type,
+  user_data,
+  file_type,
+  file_column_attr
+)
 }
 \arguments{
 \item{user_data}{A data frame with columns to be renamed.}
+
+\item{file_type}{Parameter needed for internal function. (NOTE: should make this information available in a different way since we need it for file_column_attr)}
 
 \item{file_column_attr}{A ColumnData object containing the column mappings.}
 }

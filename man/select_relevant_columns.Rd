@@ -4,7 +4,7 @@
 \alias{select_relevant_columns}
 \title{Select relevant columns from the user CSV file}
 \usage{
-select_relevant_columns(user_file, file_column_attr)
+select_relevant_columns(user_file, file_column_attr, bind_data)
 }
 \arguments{
 \item{user_file}{The user's CSV file as a data frame.}

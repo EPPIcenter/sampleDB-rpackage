@@ -501,12 +501,14 @@ ViewArchiveStatuses <- function(database) {
 
 
 # You can now call handle_formatting_error whenever you encounter a formatting error.
-
-
-show_formatting_error_modal <- function(error) {
-
+show_formatting_error_modal <- function(error, filename = NULL) {
   message("Preparing format error modal.")
-
+  
+  # Conditional title based on whether a filename is provided
+  title_text <- ifelse(is.null(filename), 
+                       "Formatting Error Detected", 
+                       paste("Formatting Error Detected in", filename))
+  
   df <- error$data %>%
     dplyr::rename(
       Column = column, 
@@ -518,8 +520,9 @@ show_formatting_error_modal <- function(error) {
   showModal(
     modalDialog(
       size = "m",
-      title = "Formatting Error Detected",
+      title = title_text,
       error$message,
+      if (!is.null(filename)) tags$p(paste("File:", filename)), # Conditional filename display
       tags$hr(),
       renderReactable({ df }),
       footer = modalButton("Exit")
@@ -550,31 +553,27 @@ generate_error_reactable <- function(error_collection, index = 1) {
   )
 }
 
-# Function to display validation error modal
-show_validation_error_modal <- function(error) {
+show_validation_error_modal <- function(error, filename = NULL) {
   
   message("Preparing validation error modal.")
+  
+  # Conditional title based on whether a filename is provided
+  title_text <- ifelse(is.null(filename), 
+                       "Validation Error Detected", 
+                       paste("Validation Error Detected in", filename))
   
   error_collection <- error$data
   
   if (inherits(error_collection, "ErrorData")) {
-    # Your code to generate a single table for the ErrorData class
-    
     errors_df <- data.frame(
       Description = error_collection$description,
       Columns = toString(error_collection$columns),
       Rows = toString(error_collection$rows)
     )
-    
     main_table <- reactable(errors_df)
-    
   } else if (inherits(error_collection, "ValidationErrorCollection")) {
-    # Your code to generate multiple tables for the ValidationErrorCollection class
-    
-    # Extracting unique error descriptions
     errors <- unique(sapply(error_collection$error_data_list, function(x) x$description))
     errors_df <- data.frame(Error = errors)
-    
     main_table <- reactable(
       errors_df,
       details = function(index) {
@@ -588,12 +587,12 @@ show_validation_error_modal <- function(error) {
     stop("Unknown error collection type.")
   }
   
-  # Display the modal with the main error table
   showModal(
     modalDialog(
       size = "l",
-      title = error$title,
+      title = title_text,
       tags$p("One or more rows had invalid or missing data. See the errors below and expand them to see which rows caused this error."),
+      if (!is.null(filename)) tags$p(paste("File:", filename)), # Conditional filename display
       tags$p("Press the button below to download your file with annotations"),
       downloadButton("ErrorFileDownload"),
       tags$hr(),
@@ -602,8 +601,6 @@ show_validation_error_modal <- function(error) {
     )
   )
 }
-
-
 
 show_general_error_modal <- function(error) {
   errcall = ifelse(is.null(error$call), "No function call information available", error$call)

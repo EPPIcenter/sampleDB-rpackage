@@ -24,8 +24,7 @@ AppMoveSamples <- function(session, input, output, database) {
   )
   error <- reactiveValues(
     title = "",
-    message = "",
-    table = NULL
+    message = ""
   )
 
   example_data <- reactiveValues(
@@ -155,7 +154,7 @@ AppMoveSamples <- function(session, input, output, database) {
       }
 
       location_id <- tbl(con, "location") %>%
-        filter(name %in% local(input$ManifestLocationRoot) & level_I %in% local(input$ManifestLocationRootLevelI) & level_II %in% local(input$ManifestLocationRootLevelII)) %>%
+        filter(location_root %in% local(input$ManifestLocationRoot) & level_I %in% local(input$ManifestLocationRootLevelI) & level_II %in% local(input$ManifestLocationRootLevelII)) %>%
         pull(id)
 
       df.payload <- data.frame(
@@ -205,6 +204,9 @@ AppMoveSamples <- function(session, input, output, database) {
 
           if (result > 0) {
             html <- paste0("<span style=color:#0000ff>", "Name is in use!", "</span>")
+            shinyjs::disable("ManifestCreateAction")
+          } else {
+            shinyjs::enable("ManifestCreateAction")
           }
         }
 
@@ -254,7 +256,7 @@ AppMoveSamples <- function(session, input, output, database) {
       "ManifestLocationRootLevelI",
       selected = "",
       choices = c("", tbl(con, "location") %>%
-        filter(name == local(input$ManifestLocationRoot)) %>%
+        filter(location_root == local(input$ManifestLocationRoot)) %>%
         collect() %>%
         pull(level_I)
       )
@@ -272,7 +274,7 @@ AppMoveSamples <- function(session, input, output, database) {
       "ManifestLocationRootLevelII",
       selected = "",
       choices = c("", tbl(con, "location") %>%
-        filter(name == local(input$ManifestLocationRoot) && level_I == local(input$ManifestLocationRootLevelI)) %>%
+        filter(location_root == local(input$ManifestLocationRoot) && level_I == local(input$ManifestLocationRootLevelI)) %>%
         collect() %>%
         pull(level_II)
       )
@@ -292,83 +294,22 @@ AppMoveSamples <- function(session, input, output, database) {
   })
 
   observeEvent(rv$error, ignoreInit = TRUE, {
-    message("Running error workflow")
-    df <- error$table
+    message("Running move specific error workflow")
     modal_size <- "m"
-    message(error$type)
-    if (!is.null(error$type) && error$type == "formatting") {
-      df <- error$table %>%
-        dplyr::rename(
-          Column = column, 
-          Reason = reason,
-          `Triggered By` = trigger
-        ) %>%
-        reactable(.)
 
-      showModal(
-        modalDialog(
-          size = "m",
-          title = error$title,
-          error$message,
-          tags$hr(),
-          renderReactable({ df }),
-          footer = modalButton("Exit")
-        )
+    showModal(
+      modalDialog(
+        size = "m",
+        title = error$title,
+        error$message,
+        tags$hr(),
+        footer = modalButton("Exit")
       )
-    } else if (!is.null(error$type) && error$type == "validation") {
-      errors <- unique(names(error$table))
-      errors <- data.frame(errors)
-      colnames(errors) <- "Error"
-      df <- reactable(errors, details = function(index) {
-        data <- error$table[[index]]$Columns
-        htmltools::div(style = "padding: 1rem",
-          reactable(
-            data, 
-            outlined = TRUE, 
-            striped = TRUE,
-            # rownames = TRUE,
-            theme = reactableTheme(
-            headerStyle = list(
-              "&:hover[aria-sort]" = list(background = "hsl(0, 0%, 96%)"),
-              "&[aria-sort='ascending'], &[aria-sort='descending']" = list(background = "hsl(0, 0%, 96%)"),
-              borderColor = "#555"
-            )),
-            defaultColDef = colDef(na = "-", align = "center")
-          )
-        )
-      })
-
-      showModal(
-        modalDialog(
-          size = "l",
-          title = error$title,
-          tags$p("One or more rows had invalid or missing data. See the errors below and expand them to see which rows caused this error."),
-          tags$p("Press the button below to download your file with annotations"),
-          downloadButton("ErrorMoveFileDownload"),
-          tags$hr(),
-          renderReactable({ df }),
-          footer = modalButton("Exit")
-        )
-      )
-    } else {
-      errmsg = ifelse(is.null(error$message), "No message available", error$message)
-      showModal(
-        modalDialog(
-          size = "l",
-          title = error$title,
-          tags$p("Something went wrong - contact the app author, and report the error message below."),
-          tags$hr(),
-          tags$p(errmsg),
-          footer = modalButton("Exit")
-        )
-      )
-    }
+    )
 
     rv$error <- NULL
     error$title <- ""
     error$message <- ""
-    error$type <- ""
-    error$table <- NULL
   })
 
   observeEvent(input$MoveAction, ignoreInit = TRUE, {
@@ -426,12 +367,12 @@ AppMoveSamples <- function(session, input, output, database) {
     },
     validation_error = function(e) {
         message("Caught validation error")
-        show_validation_error_modal(e)
+        show_validation_error_modal(e, dataset[i,]$name)
         TRUE
       },
       formatting_error = function(e) {
         message("Caught formatting error")
-        show_formatting_error_modal(e)
+        show_formatting_error_modal(e, dataset[i,]$name)
         TRUE
       },
       error = function(e) {
@@ -441,7 +382,6 @@ AppMoveSamples <- function(session, input, output, database) {
     )
 
     if (isTRUE(early_stop)) { 
-      rv$error <- TRUE
       return()
     }
 
