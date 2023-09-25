@@ -81,21 +81,21 @@ validate_strains_in_database <- function(con, table_name, row_number_col, strain
 #'
 #' @keywords validation
 #' @return An instance of the ErrorData class or NULL.
-validate_composition_sum <- function(user_data, row_number_col, strains_col, percentage_col, tolerance = 0.02) {
+validate_composition_sum <- function(user_data, row_number_col, strains_col, percentage_col, tolerance = 2.0) {
    df = user_data %>%
       select(!!sym(row_number_col), !!sym(strains_col), !!sym(percentage_col)) %>%
       group_by(!!sym(row_number_col)) %>%
       dplyr::mutate(
         perc_sum = sum(!!sym(percentage_col)),
-        equals_1 = as.logical(perc_sum >= 1.0 - tolerance & perc_sum <= 1.0) # tolerance added
+        equals_100 = as.logical(perc_sum >= 100.0 - tolerance & perc_sum <= 100.0) # tolerance added
       ) %>%
-      filter(equals_1 == FALSE) %>%
+      filter(equals_100 == FALSE) %>%
       ungroup() %>%
       select(all_of(c(row_number_col, strains_col, percentage_col))) %>%
       distinct()
 
   if (nrow(df) > 0) {
-    errmsg <- sprintf("Sum composition sums are not within the permissable range[%d, %d]", 1.0 - tolerance, 1.0)
+    errmsg <- sprintf("Sum composition sums are not within the permissable range ([%.2f, %.2f])", 100.0 - tolerance, 100.0)
     return(ErrorData$new(
       description = errmsg,
       columns = c(row_number_col, percentage_col),
@@ -163,12 +163,12 @@ validate_composition <- function(user_data, action, database) {
 
   errors <- list()
   #todo: expose this
-  tolerance <- 0.02
+  tolerance <- 2.0
 
   result <- validate_composition_sum(user_data, "RowNumber", "StrainsLong", "PercentagesLong", tolerance)
 
   if (!is.null(result)) {
-    errors <- add_to_errors(errors, result$error_data)
+    errors <- add_to_errors(errors, result)
   }
 
   errors <- c(

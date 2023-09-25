@@ -169,9 +169,7 @@ upload_extracted_dna <- function(user_data, control_extraction, database = Sys.g
 #' @importFrom RSQLite dbReadTable
 #' @keywords internal
 .UploadSpecimens <- function(upload_data, sample_type_id, conn){
-
-
-  for(i in 1:nrow(upload_data)){
+  for(i in 1:nrow(upload_data)) {
     eval.specimen_type <- safe_extract(upload_data[i, ], "SpecimenType")
     eval.study_code <- safe_extract(upload_data[i, ], "StudyCode", "Batch")
     eval.subject <- safe_extract(upload_data[i, ], "StudySubject", "ControlID")

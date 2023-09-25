@@ -148,6 +148,24 @@ format_error <- function(required, reason = "Always Required", trigger = "Not de
   return(df.error.formatting)
 }
 
+#' Remove columns that have NA in a row
+#' 
+#' This is a helper function for set_user_file_header. Before set_header_row
+#' can be called, we need to make sure there are no NAs in the row because
+#' we should not have NAs as column headers. At this point we know what 
+#' the header row should be so we can simply remove columns at this point. 
+#' This helps resolve bugs - if he user has a random character in a row,
+#' it will create a new column. This potentially could be addressed during 
+#' preprocessing but the advantage of handling this in set_user_file_header
+#' is that we have have the columns that we want and we can confidently remove
+#' anything else.
+#' 
+#' @param data The data frame
+#' @param row_num The row to look for NAs in
+remove_na_columns_in_row <- function(data, row_num) {
+  valid_columns <- !is.na(data[row_num, ])
+  return(data[ , valid_columns, drop = FALSE])
+}
 
 #' Set the header row for the user CSV file
 #'
@@ -158,12 +176,14 @@ format_error <- function(required, reason = "Always Required", trigger = "Not de
 #' @param file_column_attr A colum attribute object containing required columns.
 #' @importFrom purrr is_empty
 #' @return A data frame with the appropriate header row set.
-#' @export
 set_user_file_header <- function(user_file, file_column_attr) {
   header_row <- find_header(user_file, file_column_attr$required, valid_header_rows = 1:2)
   if (is.null(header_row)) {
     stop_formatting_error("Could not find required columns", format_error(file_column_attr$required))
   }
+
+  # Remove columns with NA in the target header row
+  user_file <- remove_na_columns_in_row(user_file, header_row)
 
   duplicated_column_names <- check_for_duplicates_in_a_row(user_file, header_row)
   if (!is_empty(duplicated_column_names)) {
@@ -454,7 +474,7 @@ validate_and_format_control_file <- function(user_file, file_column_attr, bind_d
 #' @param file_column_attr A list containing attributes of file columns such as required, conditional, and optional columns.
 #' @return A cleaned and checked user_file ready for further processing.
 #' @export
-validate_and_format_reference_file <- function(user_file, file_column_attr) {
+validate_and_format_reference_file <- function(user_file, file_column_attr, bind_data = NULL) {
 
   # 2. Handle header.
   user_file <- set_user_file_header(user_file, file_column_attr)
@@ -468,7 +488,7 @@ validate_and_format_reference_file <- function(user_file, file_column_attr) {
   }
 
   # 4. Select relevant columns.
-  user_file <- select_relevant_columns(user_file, file_column_attr)
+  user_file <- select_relevant_columns(user_file, file_column_attr, bind_data)
 
   # Notify success.
   message("Required columns detected.")
@@ -511,6 +531,7 @@ process_specimen_csv <- function(user_csv, user_action, sample_type, file_type =
   if (is.null(user_csv) || user_csv == "") {
     stop("No csv file was provided.")
   }
+
   # Read and preprocess user CSV file
   # Steps:
   # 1. Read the CSV file.

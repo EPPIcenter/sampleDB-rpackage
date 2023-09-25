@@ -492,51 +492,6 @@ validate_empty_micronix_well_upload <- function(con, table_name, row_number_col,
   return(NULL)
 }
 
-#' Micronix Occupied Well Validation
-#'
-#' This function checks if the provided sample in the Micronix dataset is being uploaded to a well with an existing sample.
-#'
-#' @param con A database connection object.
-#' @param table_name The name of the formatted CSV table in the database.
-#' @param row_number_col The column name representing the row number in `table_name`.
-#' @param position_col The column name representing the position in `table_name`.
-#' @param container_name_col The column name representing the Micronix container name in `table_name`.
-#' @param container_barcode_col The column name representing the Micronix container barcode in `table_name`.
-#'
-#' @return An object of class ErrorData. If there are errors, NULL is returned.
-#' @export
-#' @keywords validation, micronix
-
-validate_micronix_tube_exists <- function(con, table_name, row_number_col, position_col, container_name_col, container_barcode_col) {
-  
-  # Directly define the join conditions using named vectors
-  user_table_joins <- setNames(
-    c("container_barcode", "container_name", "position"),
-    c(container_barcode_col, container_name_col, position_col)
-  )
-
-  df <- tbl(con, "storage_container") %>%
-    select(status_id, id) %>%
-    filter(status_id != 1) %>%  # Changed this condition to find occupied wells
-    inner_join(tbl(con, "micronix_tube"), by = c("id" = "id")) %>%
-    inner_join(tbl(con, "micronix_plate") %>%
-      dplyr::rename(
-        container_barcode = barcode,
-        container_name = name
-      ), by = c("manifest_id" = "id")
-    ) %>%
-    inner_join(tbl(con, table_name), by = user_table_joins) %>% 
-    select(all_of(c(row_number_col, position_col, container_name_col))) %>%
-    collect()
-
-  if (nrow(df) > 0) {
-    error_message <- "The Micronix sample you specified does not exist in the database."
-    return(ErrorData$new(description = error_message, data = df))
-  }
-
-  return(NULL)
-}
-
 
 #' Cryovial Empty Well Validation
 #'
@@ -582,51 +537,24 @@ validate_empty_cryovial_well_upload <- function(con, table_name, row_number_col,
   return(NULL)
 }
 
-#' Cryovial Occupied Well Validation
-#'
-#' This function checks if the provided sample in the Cryovial dataset is being uploaded to a well with an existing sample.
-#'
-#' @param con A database connection object.
-#' @param table_name The name of the formatted CSV table in the database.
-#' @param row_number_col The column name representing the row number in `table_name`.
-#' @param position_col The column name representing the position in `table_name`.
-#' @param container_name_col The column name representing the Cryovial container name in `table_name`.
-#' @param container_barcode_col The column name representing the Cryovial container barcode in `table_name`.
-#'
-#' @return An object of class ErrorData. If there are errors, NULL is returned.
-#' @export
-#' @keywords validation, cryovial
+#' Check Unique Positions
+#' 
+#' @param user_data A data frame contianer the user data
+#' @param position_col A position column
+#' @param container_name_col The container name column
+#' @param container_barcode_col The container barcode column
+check_unique_positions <- function(user_data, position_col, container_name_col, container_barcode_col) {
+  duplicates <- user_data %>%
+    group_by(!!sym(container_name_col), !!sym(container_barcode_col), !!sym(position_col)) %>%
+    filter(n() > 1) %>%
+    ungroup()
 
-validate_cryovial_tube_exists <- function(con, table_name, row_number_col, position_col, container_name_col, container_barcode_col) {
-  
-  # Directly define the join conditions using named vectors
-  user_table_joins <- setNames(
-    c("container_barcode", "container_name", "position"),
-    c(container_barcode_col, container_name_col, position_col)
-  )
-
-  df <- tbl(con, "cryovial_container") %>% # Assuming the table name is cryovial_container
-    select(status_id, id) %>%
-    filter(status_id != 1) %>%  # Finding occupied wells
-    inner_join(tbl(con, "cryovial_tube"), by = c("id" = "id")) %>%  # Assuming the table name is cryovial_tube
-    inner_join(tbl(con, "cryovial_plate") %>%  # Assuming the table name is cryovial_plate
-      dplyr::rename(
-        container_barcode = barcode,
-        container_name = name
-      ), by = c("manifest_id" = "id")
-    ) %>%
-    inner_join(tbl(con, table_name), by = user_table_joins) %>% 
-    select(all_of(c(row_number_col, position_col, container_name_col))) %>%
-    collect()
-
-  if (nrow(df) > 0) {
-    error_message <- "The Cryovial sample you specified does not exist in the database."
-    return(ErrorData$new(description = error_message, data = df))
+  if (nrow(duplicates) > 0) {
+    return(ErrorData$new(description = sprintf("Found duplicate positions for given %s and %s", container_name_col, container_barcode_col),
+                         columns = names(duplicates),
+                         rows = duplicates[[row_number_column]]))
   }
-
-  return(NULL)
 }
-
 
 
 #' Validate Micronix Specimen Data
@@ -651,6 +579,11 @@ validate_micronix <- function(user_data, action, file_type, database) {
   }
 
   result <- validate_micronix_position(user_data, "Position", "RowNumber")
+  if (!is.null(result)) {
+    errors <- add_to_errors(errors, result)
+  }
+
+  result <- check_unique_positions(user_data, "Position", "PlateName", "PlateBarcode")
   if (!is.null(result)) {
     errors <- add_to_errors(errors, result)
   }
@@ -706,7 +639,18 @@ perform_micronix_db_validations <- function(database, user_data, action, variabl
 #' @return A list containing validation errors, if any.
 #' @keywords validation, cryovial
 validate_cryovial <- function(user_data, action, database) {
-  perform_cryovial_db_validations(database, user_data, action)
+  errors <- list()
+  result <- check_unique_positions(user_data, "Position", "BoxName", "BoxBarcode")
+  if (!is.null(result)) {
+    errors <- add_to_errors(errors, result)
+  }
+
+  errors <- c(
+    errors,
+    perform_cryovial_db_validations(database, user_data, action)
+  )
+
+  return(errors)
 }
 
 #' Perform Database-Related Validations for Cryovials
@@ -794,6 +738,8 @@ validate_cryovial_uploads <- function(cryovial_test) {
   cryovial_test(validate_location_reference_db, "FreezerName", "RackName", "RackPosition")
   cryovial_test(validate_empty_cryovial_well_upload, "Position", "BoxName", "BoxBarcode")
 }
+
+
 
 #' Validate Cryovial Moves
 #'

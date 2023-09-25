@@ -1016,6 +1016,7 @@ process_and_append_compositions <- function(con, user_data) {
 #' @return A formatted list of labels representing the added or matched compositions.
 #' @export
 upload_compositions <- function(user_data, database = Sys.getenv("SDB_PATH")) {
+
     # Initialize the database connection
     con = init_db_conn(database)
     # Initialize a vector to hold labels
