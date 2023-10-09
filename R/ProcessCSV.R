@@ -381,7 +381,7 @@ select_relevant_columns <- function(user_file, file_column_attr, bind_data) {
   user_file <- user_file %>%
     select(
       all_of(file_column_attr$required),
-      all_of(file_column_attr$conditional),
+      any_of(file_column_attr$conditional),
       any_of(file_column_attr$optional),
       all_of(names(bind_data))
     )
