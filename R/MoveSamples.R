@@ -192,17 +192,18 @@ MoveSamples <- function(sample_type, move_data){
   # use move data to link samples with the proper container
   for(container_name in names(move_data_list)){
     container_names <- c(container_names, container_name)
-    number_samples <- c(number_samples, nrow(container_name))
 
     # Get samples in container
     move_data <- move_data_list[[container_name]]
+    number_samples <- c(number_samples, nrow(move_data))
+
     if(nrow(move_data) != 0){
 
       # Get data for each sample
       for (i in 1:nrow(move_data)){
-        if(sample_type == 1){
-          eval.barcode <- move_data[i,]$barcode
-          eval.well_pos <- move_data[i,]$position
+        if(sample_type == "micronix"){
+          eval.barcode <- safe_extract(move_data[i,], "Barcode", "Tube ID")
+          eval.well_pos <- safe_extract(move_data[i,], "Position")
 
           # get sample id
           id <- filter(CheckTable(database = database, "micronix_tube"), barcode == eval.barcode)$id
@@ -215,9 +216,9 @@ MoveSamples <- function(sample_type, move_data){
                       info_list = list(manifest_id = eval.container_id,
                                        position = eval.well_pos),
                       id = id) %>% suppressWarnings()
-        } else if(sample_type == 2) {
-          eval.barcode <- move_data[i,]$barcode
-          eval.well_pos <- move_data[i,]$position
+        } else if(sample_type == "cryovial") {
+          eval.barcode <- safe_extract(move_data[i,], "Barcode")
+          eval.well_pos <- safe_extract(move_data[i,], "Position")
 
           # get sample id
           id <- filter(CheckTable(database = database, "cryovial_tube"), barcode == eval.barcode)$id
@@ -230,6 +231,8 @@ MoveSamples <- function(sample_type, move_data){
                       info_list = list(manifest_id = eval.container_id,
                                        position = eval.well_pos),
                       id = id) %>% suppressWarnings()
+        } else {
+          stop("Invalid Sample Type!!!")
         }
       }
     }
@@ -244,7 +247,7 @@ MoveSamples <- function(sample_type, move_data){
 
 .GetOrphanedSamples <- function(sample_type, stacked_orphaned_sample_data, database){
   # GET LABEL STILL IN DUMMY PLATE
-  if(sample_type == 1) {
+  if(sample_type == "micronix") {
     remaining_well_positions <- grepl("-", stacked_orphaned_sample_data %>% pull(position), fixed = TRUE)
     label.missing <- stacked_orphaned_sample_data[remaining_well_positions, ] %>% pull(barcode)
 
@@ -252,13 +255,15 @@ MoveSamples <- function(sample_type, move_data){
     container_id_with_missing_label <- filter(CheckTable(database = database, "micronix_tube"), barcode %in% label.missing)$manifest_id
     container_name_with_missing_label <- filter(CheckTable(database = database, "micronix_plate"), id %in% container_id_with_missing_label)$name
   }
-  else if (sample_type == 2) {
+  else if (sample_type == "cryovial") {
     remaining_well_positions <- grepl("-", stacked_orphaned_sample_data %>% pull(position), fixed = TRUE)
     label.missing <- stacked_orphaned_sample_data[remaining_well_positions, ] %>% pull(barcode)
 
     # GET PLATE ID/PLATE NAME WHICH CONTAINED BARCODE STILL IN DUMMY
     container_id_with_missing_label <- filter(CheckTable(database = database, "cryovial_tube"), barcode %in% label.missing)$manifest_id
     container_name_with_missing_label <- filter(CheckTable(database = database, "cryovial_box"), id %in% container_id_with_missing_label)$name
+  } else {
+    stop("Invalid Sample Type!!!")
   }
 
   message.fail <- paste0("Move Failed:\n",

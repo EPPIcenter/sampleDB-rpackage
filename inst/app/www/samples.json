@@ -35,7 +35,8 @@
     },
     "move": {
       "shared": {
-        "required_keys": ["position_keys"]
+        "required_keys": ["position_keys"],
+        "optional_keys": ["container_barcode_key"]
       },
       "micronix": {
         "required_keys": ["barcode"]

@@ -7,10 +7,6 @@ Backup_SampleDB <- function(database = Sys.getenv("SDB_PATH"),
                             checksum = FALSE) {
 
 
-  ## TODO: FIGURE THIS OUT
-
-  return(NULL)
-
   # Display current database size
   db_size <- file.info(database)$size
   message(paste("Current database size: ", format(db_size, big.mark = ",", scientific = FALSE), " bytes"))

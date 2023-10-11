@@ -478,10 +478,21 @@ get_sample_file_columns <- function(sample_type, action, file_type = "na", confi
     required_vals[required_vals == "Position"] <- app_config$traxcer_position$override
   }
 
+
+  ### Conditional values
+
   conditional_keys_combined <- c(action_keys$conditional_keys, shared_action_keys$conditional_keys)
   conditional_vals <- get_values(conditional_keys_combined, sample_values, shared_values)
 
+  ### Optional values
+
   optional_keys_combined <- c(action_keys$optional_keys, shared_action_keys$optional_keys)
+  dereferenced_values <- dereference_location_container(header_key, app_data)
+
+  common_keys <- intersect(names(dereferenced_values), optional_keys_combined)
+  dereferenced_values <- if (!purrr::is_empty(common_keys)) dereferenced_values[common_keys] else dereferenced_values
+
+  # If there are key subsets, then only keep those otherwise keep everything
   optional_vals <- get_values(optional_keys_combined, sample_values, shared_values)
 
   # NOTE: quick fix
