@@ -9,7 +9,7 @@ validate_composition_sum(
   row_number_col,
   strains_col,
   percentage_col,
-  tolerance = 0.02
+  tolerance = 2
 )
 }
 \arguments{

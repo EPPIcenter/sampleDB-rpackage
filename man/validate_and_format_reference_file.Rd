@@ -4,7 +4,11 @@
 \alias{validate_and_format_reference_file}
 \title{Check if the user CSV file for control meets the requirements}
 \usage{
-validate_and_format_reference_file(user_file, file_column_attr)
+validate_and_format_reference_file(
+  user_file,
+  file_column_attr,
+  bind_data = NULL
+)
 }
 \arguments{
 \item{user_file}{The user's CSV file as a data frame.}

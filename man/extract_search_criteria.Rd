@@ -9,12 +9,12 @@ extract_search_criteria(user_csv, search_type)
 \arguments{
 \item{user_csv}{A path to the user-provided CSV file.}
 
-\item{search_type}{A string indicating the type of search ("barcode" or "StudySubjects").}
+\item{search_type}{A string indicating the type of search ("barcode" or "study_subject").}
 }
 \value{
 A message indicating whether the required columns were detected.
 }
 \description{
 This function reads a CSV file provided by the user and extracts
-search criteria based on a specified search type (either "barcode" or "StudySubjects").
+search criteria based on a specified search type (either "barcode" or "study_subject").
 }

@@ -244,7 +244,7 @@ search_compositions <- function(filters, database = Sys.getenv("SDB_PATH")) {
   return(result)
 }
 
-FilterByLocation = function(con, sql, location) {
+FilterByLocation <- function(con, sql, location) {
 
   sql <- sql %>%
     inner_join(tbl(con, "location") %>%
@@ -290,7 +290,7 @@ SearchSamples <- function(sample_storage_type, filters = NULL, format = "na", da
 
     sql <- tbl(con, "study") %>% dplyr::rename(study_id = id) %>% select(study_id, short_code)
     if (!is.null(filters$short_code)) {
-      sql <- filter(sql, short_code == local(filters$short_code))
+      sql <- filter(sql, short_code %in% local(filters$short_code))
     }
 
     sql <- inner_join(sql, tbl(con, "study_subject") %>%
@@ -539,15 +539,14 @@ SearchSamples <- function(sample_storage_type, filters = NULL, format = "na", da
 #' Extract Search Criteria from User CSV File
 #'
 #' This function reads a CSV file provided by the user and extracts
-#' search criteria based on a specified search type (either "barcode" or "StudySubjects").
+#' search criteria based on a specified search type (either "barcode" or "study_subject").
 #'
 #' @param user_csv A path to the user-provided CSV file.
-#' @param search_type A string indicating the type of search ("barcode" or "StudySubjects").
+#' @param search_type A string indicating the type of search ("barcode" or "study_subject").
 #'
 #' @return A message indicating whether the required columns were detected.
 #' @export
 extract_search_criteria <- function(user_csv, search_type) {
-  
   if (!require(dplyr)) {
     stop("Function requires dplyr for database access!")
   }
@@ -557,8 +556,22 @@ extract_search_criteria <- function(user_csv, search_type) {
   user_file[user_file == ""] <- NA
   user_file[] <- lapply(user_file, function(x) as.character(gsub("[\n\t,]", "", x)))
 
-  # Set required column names based on search type
-  required_user_column_names <- ifelse(search_type == "barcode", "Barcodes", "StudySubjects")
+  # Set possible names for columns
+  possible_study_subject_names <- c("Study Subject", "Study Subjects", "StudySubjects")
+  possible_collection_date_names <- c("Collection Date", "CollectionDate", "Collection Dates", "CollectionDates")
+  possible_study_code_names <- c("Study Codes", "StudyCodes", "Studies", "Study Code")
+  possible_specimen_type_names <- c("Specimen Type", "SpecimenType", "Specimen Types", "SpecimenTypes")
+
+  # Set required and optional column names based on search type
+  if (search_type == "barcode") {
+    required_user_column_names <- "Barcodes"
+    optional_user_column_names <- NULL
+  } else if (search_type == "study_subject") {
+    required_user_column_names <- possible_study_subject_names
+    optional_user_column_names <- list(CollectionDate = possible_collection_date_names, StudyCode = possible_study_code_names, SpecimenType = possible_specimen_type_names)
+  } else {
+    stop(paste("Unknown search_type:", search_type))
+  }
 
   # Find the header row
   valid_header_rows <- 1:2
@@ -571,29 +584,241 @@ extract_search_criteria <- function(user_csv, search_type) {
       reason = "Always Required",
       trigger = "Not detected in file"
     )
-    stop_formatting_error(df.error.formatting)
+    stop_formatting_error("Could not find required header row", df.error.formatting)
   }
 
-  # Set column names and remove header row(s)
-  colnames(user_file) <- user_file[header_row,]
-  user_file <- user_file %>%  slice(-c(1:header_row))
+  # Initialize available_columns
+  available_columns <- character(0)
 
-  # Check for missing columns
-  missing_columns <- required_user_column_names[!required_user_column_names %in% colnames(user_file)]
+  # Set the actual column names
+  user_file <- set_header_row(user_file, header_row)
 
-  if (length(missing_columns) > 0) {
+  # Detect optional columns if available
+  if (!is.null(optional_user_column_names)) {
+    for (name in names(optional_user_column_names)) {
+      optional_column_present <- intersect(optional_user_column_names[[name]], colnames(user_file))
+      if (length(optional_column_present) > 0) {
+        available_columns <- c(available_columns, optional_column_present[1])
+      }
+    }
+  }
+
+  # Check for found required columns
+  found_required_column <- intersect(required_user_column_names, colnames(user_file)) 
+
+  if (length(found_required_column) != 1) { 
     df.error.formatting <- data.frame(
-      column = missing_columns,
-      reason = "Always Required",
-      trigger = "Not detected in file"
+      column = required_user_column_names,
+      reason = "At least one required",
+      trigger = paste("Available headers: ", paste(colnames(user_file), collapse = ", "))
     )
-    stop_formatting_error(df.error.formatting)
+    stop_formatting_error("None of the required columns were detected. Please ensure at least one of the required columns is present.", df.error.formatting)
   }
 
-  # Select the required columns
-  user_file <- select(user_file, all_of(required_user_column_names))
+  # Add found required column
+  available_columns <- c(available_columns, found_required_column)
+  user_file <- select(user_file, all_of(available_columns))
+  
+  # Utility to find the column and add to user_file
+  find_and_add_column <- function(data, possible_names) {
+    for (col_name in possible_names) {
+      if (col_name %in% colnames(data)) {
+        return(data[[col_name]])
+      }
+    }
+    return(NA_character_) # return NA if none of the possible names are found
+  }
+
+  if (search_type == "barcode") {
+    user_file$Barcodes <- ifelse(!is.null(user_file$Barcodes), user_file$Barcodes, NA_character_)
+  } else if (search_type == "study_subject") {
+    user_file$StudySubject <- user_file[[found_required_column]]
+    user_file$CollectionDate <- find_and_add_column(user_file, possible_collection_date_names)
+    user_file$StudyCode <- find_and_add_column(user_file, possible_study_code_names)
+    user_file$SpecimenType <- find_and_add_column(user_file, possible_specimen_type_names)
+  }
 
   message("Required columns detected.")
-
   return(user_file)
+}
+
+
+#' Search by Study Subject (and other longitudinal study criteria)
+#'
+#' This function takes a sample storage type, filters, and optional database and config parameters 
+#' to search by study subjects and retrieve relevant data.
+#'
+#' @param sample_storage_type A character string indicating the type of sample storage 
+#'        ("micronix", "cryovial").
+#' @param filters A list of filters to apply to the query.
+#' @param database An optional parameter indicating the database path. Defaults to the 
+#'        value of the environment variable 'SDB_PATH'.
+#' @param config_yml An optional parameter indicating the configuration YAML file. Defaults 
+#'        to the value of the environment variable 'SDB_CONFIG'.
+#' 
+#' @return A dataframe containing search results based on provided filters and sample storage type.
+#' @export
+#'
+#' @examples
+#' \dontrun{
+#'   results <- search_by_study_subject_file_upload("micronix", list(short_code = c("SC01"), study_subject = c("SS01")))
+#'   print(results)
+#' }
+#'
+search_by_study_subject_file_upload <- function(sample_storage_type, filters, database = Sys.getenv("SDB_PATH"), config_yml = Sys.getenv("SDB_CONFIG")) {
+  db.results <- NULL
+
+  con <- DBI::dbConnect(RSQLite::SQLite(), database)
+  dbBegin(con)
+
+  dbmap <- get_db_map(sample_storage_type, format = "na", config = config_yml)
+
+  tryCatch({
+
+    container_tables <- list(
+      "manifest" = switch(sample_storage_type,
+        "micronix" = "micronix_plate",
+        "cryovial" = "cryovial_box"
+      ),
+      "container_class" = switch(sample_storage_type,
+        "micronix" = "micronix_tube",
+        "cryovial" = "cryovial_tube"
+      )
+    )
+
+    sql <- tbl(con, "study") %>% dplyr::rename(study_id = id) %>% select(study_id, short_code)
+
+    if (!is.null(filters$short_code)) {
+      sql <- filter(sql, short_code %in% local(filters$short_code))
+    }
+
+    sql <- inner_join(sql, tbl(con, "study_subject") %>%
+      dplyr::rename(study_subject_id = id, study_subject = name) %>%
+      select(study_subject_id, study_subject, study_id), by = c("study_id"))
+
+
+    sql <- sql %>%
+      inner_join(
+        tbl(con, "specimen") %>%
+          dplyr::rename(specimen_id = id) %>%
+          select(specimen_id, study_subject_id, specimen_type_id, collection_date)
+        , by = c("study_subject_id"))
+
+    
+    # Join with specimen_type
+    sql <- sql %>% 
+      inner_join(tbl(con, "specimen_type") %>% 
+                   dplyr::rename(specimen_type_id = id, specimen_type = name) %>% 
+                   select(specimen_type_id, specimen_type),
+                 by = c("specimen_type_id"))
+
+
+    # Make sure to include the sample ID
+    sql <- inner_join(sql, tbl(con, "storage_container") %>% dplyr::rename(storage_container_id = id) %>% select(-c(created, last_updated)), by = c("specimen_id"))
+
+    # Filter by study subject
+    sql <- filters %>% inner_join(collect(sql), by = c("study_subject", "short_code", "collection_date", "specimen_type"))
+
+    sql <- inner_join(sql, dbReadTable(con, "status") %>% dplyr::rename(status_id = id, status = name), by = c("status_id"))
+    sql <- inner_join(sql, dbReadTable(con, "state") %>% dplyr::rename(state_id = id, state = name), by = c("state_id"))
+    sql <- inner_join(sql, dbReadTable(con, container_tables[["container_class"]]) %>% dplyr::rename(storage_container_id = id), by = c("storage_container_id")) %>% collapse()
+    sql <- inner_join(sql, dbReadTable(con, container_tables[["manifest"]]) %>% dplyr::rename(manifest_id = id, manifest = name, manifest_barcode = barcode), by = c("manifest_id")) %>% collapse()
+    sql <- inner_join(sql, dbReadTable(con, "location") %>% dplyr::rename(location_id = id) %>% select(location_id, location_root, level_I, level_II), by = c("location_id"))
+
+    db.results <- sql %>% select("storage_container_id", names(dbmap)) %>% dplyr::rename(`Sample ID` = storage_container_id)
+  }, finally = {
+    dbDisconnect(con)
+  })
+
+  return(db.results)
+}
+
+
+
+
+get_db_map <- function(sample_storage_type, format = "na", config = Sys.getenv("SDB_CONFIG")) {
+
+    dbmap <- list()
+
+   ## Micronix
+    if (!is.null(format) && sample_storage_type == "micronix" && format == "na") {
+      dbmap$barcode <- "Barcode"
+      dbmap$position <- "Position"
+    } else if (!is.null(format) && sample_storage_type == "micronix" && format == "traxcer") {
+      dbmap$barcode <- "Tube"
+
+      dbmap$position <- ifelse(
+        !is.na(config$traxcer_position$override),
+        config$traxcer_position$override,
+        config$traxcer_position$default
+      )
+
+    } else if (!is.null(format) && sample_storage_type == "micronix" && format == "visionmate") {
+      dbmap$barcode <- "TubeCode"
+      dbmap$position <- "Position"
+    }
+
+    ## Cryovial
+    else if (sample_storage_type == "cryovial") {
+      dbmap$barcode <- "Barcode"
+      dbmap$position <-  "Position"
+
+    ## DBS
+    } else if (sample_storage_type == "dbs") {
+      dbmap$position <- "Position"
+    } else {
+      dbmap$barcode <- "Barcode"
+      dbmap$position <- "Position"
+    }
+
+    if (sample_storage_type == "dbs") {
+      dbmap$`0.05` <- "0.05"
+      dbmap$`0.1` <- "0.1"
+      dbmap$`1` <- "1"
+      dbmap$`10` <- "10"
+      dbmap$`100` <- "100"
+      dbmap$`1k` <- "1k"
+      dbmap$`10k` <- "10k"
+      dbmap$strain <- "Strain"
+    }
+
+    dbmap$short_code <- "Study Code"
+    dbmap$study_subject <- "Study Subject"
+    dbmap$specimen_type <- "Specimen Type"
+    dbmap$collection_date <- "Collection Date"
+
+    dbmap$location_root <- "Location"
+    if (sample_storage_type == "micronix") {
+      dbmap$location_root <- "Freezer Name"
+      dbmap$level_I <- "Shelf Name"
+      dbmap$level_II <- "Basket Name"
+      dbmap$manifest <- "Plate Name"
+      dbmap$manifest_barcode <- "Plate Barcode"
+    } else if (sample_storage_type == "cryovial") {
+      dbmap$location_root <- "Freezer Name"
+      dbmap$level_I <- "Rack Number"
+      dbmap$level_II <- "Rack Position"
+      dbmap$manifest <- "Box Name"
+      dbmap$manifest_barcode <- "Box Barcode"
+    } else if (sample_storage_type == "dbs") {
+      dbmap$location_root <- "Freezer Name"
+      dbmap$level_I <- "Rack Number"
+      dbmap$level_II <- "Rack Position"
+      dbmap$manifest <- "Container Label"
+      dbmap$manifest_barcode <- "Paper Barcode"
+    } else {
+      # Defaults
+      dbmap$location_root <- "Location"
+      dbmap$level_I <- "Level I"
+      dbmap$level_II <- "Level II"
+      dbmap$manifest <- "Manifest Name"
+      dbmap$manifest_barcode <- "Manifest Barcode"
+    }
+
+    dbmap$comment <- "Comment"
+    dbmap$state <- "State"
+    dbmap$status <- "Status"
+
+
+    return(dbmap)
 }
