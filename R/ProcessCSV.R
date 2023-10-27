@@ -422,7 +422,16 @@ CheckFormattedFileData <- function(database, formatted_csv, file_type, sample_st
       formatted_csv[["position1"]],
       as.integer(formatted_csv[["position2"]])
     )
+
+  # If position1 and position2 columns don't exist, check the format of position column
+} else {
+  incorrect_rows <- which(!grepl("^[A-Z][0-9]{2}$", formatted_csv$position))
+  if (length(incorrect_rows) > 0) {
+    incorrect_data <- formatted_csv[incorrect_rows, c("row_number", "position")]
+    err <- .maybe_add_err(err, incorrect_data, "Incorrectly formatted positions", dbmap)
   }
+}
+
 
   bError <- FALSE
   err <- errmsg <- NULL
