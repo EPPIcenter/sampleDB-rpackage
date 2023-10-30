@@ -737,63 +737,74 @@ read_and_preprocess_csv <- function(user_csv) {
 #' @keywords internal validation
 prepare_matrix_position_column <- function(user_data, dimensions, expected_position_column, position_col) {
 
-  if (!is.null(expected_position_column)) {
-    position_columns <- NULL
-    if (is.list(expected_position_column)) {
-      position_columns <- unlist(expected_position_column)
-    } else if (is.character(expected_position_column)) {
-      position_columns <- expected_position_column
-    } else {
-      stop("Cannot handle expected_position_column")
-    }
+  if (is.null(expected_position_column)) {
+    stop("Parameter `expected_position_column` is NULL")
+  }
 
-    if (!is.null(position_columns) && length(position_columns) == 2) {
+  position_columns <- NULL
+  if (is.list(expected_position_column)) {
+    position_columns <- unlist(expected_position_column)
+  } else if (is.character(expected_position_column)) {
+    position_columns <- expected_position_column
+  } else {
+    stop("Cannot handle `expected_position_column`")
+  }
 
-      ROW_IDX <- 1
-      COL_IDX <- 2
+  if (!is.null(position_columns) && length(position_columns) == 2) {
 
-      rows <- user_data[[position_columns[ROW_IDX]]]
-      cols <- as.integer(user_data[[position_columns[COL_IDX]]])
+    ROW_IDX <- 1
+    COL_IDX <- 2
 
-      # Conduct grandular checks of the position coordinates here
-      # There are position checks for row and columns
-      
-      invalid_rows <- unique(rows[!rows %in% LETTERS[1:dimensions[ROW_IDX]]]) 
-      if (is.null(invalid_rows) || !purrr::is_empty(invalid_rows)) {
-        stop_formatting_error(
-          sprintf("Invalid row coordinates detected"),
-          format_error(
-            position_columns[ROW_IDX],
-            sprintf("Rows should always be letters [%s-%s]", LETTERS[1], LETTERS[dimensions[ROW_IDX]]),
-            paste0("Invalid entries found: ", paste(invalid_rows, collapse = ", "))
-          )
+    rows <- user_data[[position_columns[ROW_IDX]]]
+    cols <- as.integer(user_data[[position_columns[COL_IDX]]])
+
+    # Conduct grandular checks of the position coordinates here
+    # There are position checks for row and columns
+    
+    invalid_rows <- unique(rows[!rows %in% LETTERS[1:dimensions[ROW_IDX]]]) 
+    if (is.null(invalid_rows) || !purrr::is_empty(invalid_rows)) {
+      stop_formatting_error(
+        sprintf("Invalid row coordinates detected"),
+        format_error(
+          position_columns[ROW_IDX],
+          sprintf("Rows should always be letters [%s-%s]", LETTERS[1], LETTERS[dimensions[ROW_IDX]]),
+          paste0("Invalid entries found: ", paste(invalid_rows, collapse = ", "))
         )
-      }
-
-      invalid_cols <- unique(cols[!cols %in% 1:dimensions[COL_IDX]])
-      if (is.null(invalid_cols) || !purrr::is_empty(invalid_cols)) {
-        stop_formatting_error(
-          sprintf("Invalid rows detected. Rows should always be integers [%d-%d]", 1, dimensions[COL_IDX]),
-          format_error(
-            position_columns[COL_IDX],
-            sprintf("Columns should always be integers [%s-%s]", 1, dimensions[COL_IDX]),
-            paste0("Invalid entries found: ", paste(invalid_cols, collapse = ", "))
-          )
-        )
-      }
-
-      user_data[[position_col]] <- paste0(
-        rows, 
-        str_pad(cols, width = 2, pad = "0")
       )
-        
-      user_data <- user_data[, !(names(user_data) %in% position_columns)]
     }
 
-    # NOTE: this is a little dangerous, because we accept NULL as
-    # nothing is wrong. It is internal app data so not going to worry
-    # about it now.
+    invalid_cols <- unique(cols[!cols %in% 1:dimensions[COL_IDX]])
+    if (is.null(invalid_cols) || !purrr::is_empty(invalid_cols)) {
+      stop_formatting_error(
+        sprintf("Invalid rows detected. Rows should always be integers [%d-%d]", 1, dimensions[COL_IDX]),
+        format_error(
+          position_columns[COL_IDX],
+          sprintf("Columns should always be integers [%s-%s]", 1, dimensions[COL_IDX]),
+          paste0("Invalid entries found: ", paste(invalid_cols, collapse = ", "))
+        )
+      )
+    }
 
+    user_data[[position_col]] <- paste0(
+      rows, 
+      str_pad(cols, width = 2, pad = "0")
+    )
+      
+    user_data <- user_data[, !(names(user_data) %in% position_columns)]
+  } 
+  # Check for a single position column and its format
+  else if (!is.null(position_columns) && length(position_columns) == 1) {
+    incorrect_format <- which(!grepl("^[A-Z][0-9]{2}$", user_data[[position_col]]))
+    if (length(incorrect_format) > 0) {
+      stop_formatting_error(
+        sprintf("Incorrectly formatted positions detected in column %s", position_columns),
+        format_error(
+          position_columns,
+          "Expected format: A01",
+          paste0("Incorrect entries found at row(s): ", paste(incorrect_format, collapse = ", "))
+        )
+      )
+    }
   }
 
   return(user_data)
