@@ -3,39 +3,12 @@ library(shinyWidgets)
 library(DBI)
 library(dplyr)
 
-# Moved to global scope
-gray_600 <- "#6C757D"
-
-# Create your theme
-my_theme <- bs_theme(
-  version = 5,
-  gray_600 = gray_600
-)
-
-# Custom CSS moved to global scope
-custom_css <- paste0(
-  ".custom-dropdown, .dropdown-menu .dropdown-item {
-      width: 100%;
-  }
-  .custom-dropdown {
-      background-color: ", gray_600, ";
-      color: white;
-  }
-  .custom-dropdown:hover {
-      background-color: #5a6268;
-      color: white;
-  }
-  .dropdown-menu {
-      padding: 0;
-  }"
-)
 
 UIControlsReference <- function() {
 
   ui <- layout_sidebar(
     
     sidebar = sidebar(
-      theme = my_theme,  # Applying your theme
       tags$div(
         class = "dropdown",
         tags$button(
@@ -67,8 +40,6 @@ UIControlsReference <- function() {
       )
     )
   )
-  return(tagList(
-    tags$style(HTML(custom_css)),
-    ui
-  ))
+  
+  return(ui)
 }

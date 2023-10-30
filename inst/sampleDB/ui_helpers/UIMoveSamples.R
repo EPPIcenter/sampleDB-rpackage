@@ -19,8 +19,8 @@ UIMoveSamples <- function(){
 
       hr(),
       #action buttons
-      fluidRow(column(width = 6, actionButton("MoveAction", width = '100%', label = "Move Samples", style="color: #fff; background-color: #337ab7; border-color: #2e6da4")),
-               column(width = 6, actionButton("ClearMoveForm", width = '100%', label = "Clear Form", style="color:#c4244c; background-color: #fff4f4; border-color: #c4244c"))),
+      fluidRow(column(width = 6, actionButton("MoveAction", width = '100%', label = "Move Samples")),
+               column(width = 6, actionButton("ClearMoveForm", width = '100%', label = "Clear Form"))),
       
       br(),
       actionButton("CreateNewManifest", label = "Create Container"),

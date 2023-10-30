@@ -30,9 +30,9 @@ get_markdown_path <- function(filename, package_name = "sampleDB") {
 my_theme <- bs_theme(
   version = 5,
   bootswatch = "flatly",
-  primary = "#007BFF",
-  secondary = "#6C757D",
-  success = "#17A2B8",
+  primary = "#FF4B4B",
+  secondary = "#FFF6D0",
+  success = "#262730",
   info = "#28A745",
   warning = "#FFC107",
   danger = "#DC3545",

@@ -344,45 +344,12 @@ SearchSamples <- function(sample_storage_type, filters = NULL, format = "na", da
       sql <- filter(sql, barcode %in% local(filters$barcode))
     }
 
-
-    if (sample_storage_type == "all") {
-
-      list_of_tables <- c("micronix_plate", "cryovial_box")
-
-      # This is needed because the container tables do not explitly keep track of the sample types they keep.
-      # Thus, table order is important here!!!
-      lapply(1:length(list_of_tables), function(i) { DBI::dbExecute(con, paste0("ALTER TABLE ", list_of_tables[i], " ADD COLUMN `sample_type_id` DEFAULT ", i)) })
-
-      # Rf. https://stackoverflow.com/questions/53806023/row-bind-tables-in-sql-with-differing-columns
-      eachnames <- sapply(list_of_tables, function(a) DBI::dbQuoteIdentifier(con, DBI::dbListFields(con, a)), simplify = FALSE)
-      allnames <- unique(unlist(eachnames, use.names=FALSE))
-      allnames <- c(allnames[3:6], allnames[length(allnames)]) # "`id`"          "`location_id`" "`name`"        "`barcode`"
-
-      list_of_fields <- lapply(eachnames, function(a) {
-        paste(ifelse(allnames %in% a, allnames, paste("null as", allnames)), collapse = ", ")
-      })
-
-      qry <- paste0("CREATE TEMPORARY TABLE `manifests` AS\n", paste(
-        mapply(function(nm, flds) {
-          paste("select",
-                paste(ifelse(allnames %in% flds, allnames, paste("null as", allnames)),
-                      collapse = ", "),
-                "from", nm)
-          }, names(eachnames), eachnames),
-          collapse = " union\n"))
-
-      DBI::dbExecute(con, qry)
-      # NOT a bug - leave `sample_type_id` here and not in the manifest-specific pathway.
-      sql <- inner_join(sql, tbl(con, "manifests") %>% dplyr::rename(manifest_id = id, manifest = name, manifest_barcode = barcode), by = c("manifest_id", "sample_type_id")) %>% collapse()
-    } else {
-      sql <- inner_join(sql, tbl(con, container_tables[["manifest"]]) %>% dplyr::rename(manifest_id = id, manifest = name, manifest_barcode = barcode), by = c("manifest_id")) %>% collapse()
-    }
-
+    # Join manifest table
+    sql <- inner_join(sql, tbl(con, container_tables[["manifest"]]) %>% dplyr::rename(manifest_id = id, manifest = name, manifest_barcode = barcode), by = c("manifest_id")) %>% collapse()
+    
     if (!is.null(filters$manifest)) {
       sql <- filter(sql, manifest == local(filters$manifest))
     }
-
-    # sql <- inner_join(sql, tbl(con, "location") %>% dplyr::rename(location_id = id) %>% select(location_id, location_root, level_I, level_II), by = c("location_id"))
 
     sql = FilterByLocation(con, sql, filters$location)
 
@@ -422,48 +389,24 @@ SearchSamples <- function(sample_storage_type, filters = NULL, format = "na", da
       dbmap$position <- "Position"
     }
 
-    if (sample_storage_type == "dbs") {
-      dbmap$`0.05` <- "0.05"
-      dbmap$`0.1` <- "0.1"
-      dbmap$`1` <- "1"
-      dbmap$`10` <- "10"
-      dbmap$`100` <- "100"
-      dbmap$`1k` <- "1k"
-      dbmap$`10k` <- "10k"
-      dbmap$strain <- "Strain"
-    }
-
     dbmap$short_code <- "Study Code"
     dbmap$study_subject <- "Study Subject"
     dbmap$specimen_type <- "Specimen Type"
     dbmap$collection_date <- "Collection Date"
 
     dbmap$location_root <- "Location"
-    if (sample_storage_type == 1) {
+    if (sample_storage_type == "micronix") {
       dbmap$location_root <- "Freezer Name"
       dbmap$level_I <- "Shelf Name"
       dbmap$level_II <- "Basket Name"
       dbmap$manifest <- "Plate Name"
       dbmap$manifest_barcode <- "Plate Barcode"
-    } else if (sample_storage_type == 2) {
+    } else if (sample_storage_type == "cryovial") {
       dbmap$location_root <- "Freezer Name"
       dbmap$level_I <- "Rack Number"
       dbmap$level_II <- "Rack Position"
       dbmap$manifest <- "Box Name"
       dbmap$manifest_barcode <- "Box Barcode"
-    } else if (sample_storage_type == 3) {
-      dbmap$location_root <- "Freezer Name"
-      dbmap$level_I <- "Rack Number"
-      dbmap$level_II <- "Rack Position"
-      dbmap$manifest <- "Container Label"
-      dbmap$manifest_barcode <- "Paper Barcode"
-    } else {
-      # Defaults
-      dbmap$location_root <- "Location"
-      dbmap$level_I <- "Level I"
-      dbmap$level_II <- "Level II"
-      dbmap$manifest <- "Manifest Name"
-      dbmap$manifest_barcode <- "Manifest Barcode"
     }
 
     dbmap$comment <- "Comment"
