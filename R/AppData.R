@@ -332,8 +332,8 @@ dereference_control_location_container <- function(header_keys, app_data, action
     dereferenced <- c(dereferenced, location_keys)
   }
   
-  if ("storage_container" %in% names(keys) && !is.null(keys$storage_container)) {
-    container_keys <- app_data$containers[[keys$storage_container]]
+  if ("container_key" %in% names(keys) && !is.null(keys$container_key)) {
+    container_keys <- app_data$containers[[keys$container_key]]
     dereferenced <- c(dereferenced, container_keys)
   }
 
@@ -516,14 +516,17 @@ get_sample_file_columns <- function(sample_type, action, file_type = "na", confi
 #'
 #' @param control_type Type of the control for which the columns are needed.
 #' @param action Desired action.
+#' @param file_type The file type being used. Default is 'na'.
+#' @param config_yml (default: Sys.getenv("SDB_CONFIG")) Path to the application config file.
 #' @param controls_file (default: "controls.json") Path to the JSON file containing controls data.
 #'
 #' @return A ColumnData S3 object.
 #' @export
-get_control_file_columns <- function(control_type, action, controls_file = "controls.json") {
+get_control_file_columns <- function(control_type, action, file_type = "na", config_yml = Sys.getenv("SDB_CONFIG"), controls_file = "controls.json") {
 
   control_data <- read_json_file(controls_file)
   app_data <- read_app_file()
+  app_config <- yaml::read_yaml(config_yml)
   
   # Ensure that control type and action exists
   if (!control_type %in% names(control_data$controls)) {
@@ -534,26 +537,51 @@ get_control_file_columns <- function(control_type, action, controls_file = "cont
   }
 
   header_key <- control_data$controls[[control_type]]
-  action_keys <- control_data$action_requirements[[action]][[control_type]]
   shared_action_keys <- control_data$action_requirements[[action]]$shared
+  action_keys <- control_data$action_requirements[[action]][[control_type]]
   shared_values <- control_data$control_key_associations$shared
   control_values <- control_data$control_key_associations[[control_type]]
 
-  combined_action_keys <- c(action_keys, shared_action_keys)
-  dereferenced_keys <- dereference_control_location_container(header_key, app_data, combined_action_keys)
+  if (!is.null(file_type) && file_type != 'na') {
+    control_values <- control_data$control_key_associations[[control_type]][[file_type]]
+  }
 
-  # Get the union of keys between both shared and control specific keys
+  # Dereference logic
   required_keys_combined <- unique(c(action_keys$required_keys, shared_action_keys$required_keys))
+  dereferenced_values <- dereference_control_location_container(header_key, app_data, required_keys_combined)
 
-  required_vals <- c( get_values(required_keys_combined, control_values, shared_values),
-                      get_dereferenced_values(dereferenced_keys, control_values, shared_values)
+  # Keep only the common keys
+  common_keys <- intersect(names(dereferenced_values), required_keys_combined)
+  dereferenced_values <- if (!purrr::is_empty(common_keys)) dereferenced_values[common_keys] else dereferenced_values
+  
+  # Overwrite logic
+  common_keys <- intersect(names(dereferenced_values), names(control_values))
+  dereferenced_values[common_keys] <- control_values[common_keys]
+
+  # NOTE: quick fix as this is always the case 
+  required_dereferenced_values <- dereferenced_values
+  required_dereferenced_values[["container_barcode_key"]] <- NULL
+
+  required_vals <- unique(c( get_values(required_keys_combined, control_values, shared_values),
+                      unlist(unname(required_dereferenced_values)))
   )
   
   conditional_keys_combined <- c(action_keys$conditional_keys, shared_action_keys$conditional_keys)
   conditional_vals <- get_values(conditional_keys_combined, control_values, shared_values)
 
+  ### Optional values
+
   optional_keys_combined <- c(action_keys$optional_keys, shared_action_keys$optional_keys)
+  dereferenced_values <- dereference_location_container(header_key, app_data)
+
+  common_keys <- intersect(names(dereferenced_values), optional_keys_combined)
+  dereferenced_values <- if (!purrr::is_empty(common_keys)) dereferenced_values[common_keys] else dereferenced_values
+
+  # If there are key subsets, then only keep those otherwise keep everything
   optional_vals <- get_values(optional_keys_combined, control_values, shared_values)
+
+  # NOTE: quick fix
+  optional_vals <- c(optional_vals, unlist(unname(dereferenced_values[names(dereferenced_values) %in% optional_keys_combined])))
 
   # Cleaning up null values
   required_vals <- required_vals[!is.null(required_vals)]
@@ -566,6 +594,7 @@ get_control_file_columns <- function(control_type, action, controls_file = "cont
     optional = optional_vals
   ))
 }
+
 
 
 #' Retrieve ColumnData for a given reference type.

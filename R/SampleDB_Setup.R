@@ -723,6 +723,9 @@ merge_configs <- function(current_config, new_config) {
     }
   })
 
+  # Assign the new version
+  combined_config$version <- new_config$version
+
   return(combined_config)
 }
 

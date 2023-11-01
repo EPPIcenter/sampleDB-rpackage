@@ -142,7 +142,7 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
             "&[aria-sort='ascending'], &[aria-sort='descending']" = list(background = "hsl(0, 0%, 96%)"),
             borderColor = "#555"
           ),
-          rowSelectedStyle = list(backgroundColor = '#aafaff', boxShadow = 'inset 2px 0 0 0 #ffa62d')
+          rowSelectedStyle = list(backgroundColor = '#FFAC45', boxShadow = 'inset 2px 0 0 0 #FF4B4B')
         )
       )
     })
