@@ -774,7 +774,7 @@ upload_dbs_sheet <- function(user_data, database) {
     user_data <- prepare_control_for_upload(user_data, now)
 
 		user_data_with_control_ids <- create_controls_for_batch(user_data, con, "Density", "Batch", "Control")
-		user_data_with_bag_ids <- process_bag_data(user_data_with_control_ids, con, "DBS_Minus20", "DBS_ShelfName", "DBS_BasketName", "SheetName")
+		user_data_with_bag_ids <- process_bag_data(user_data_with_control_ids, con, "DBS_FreezerName", "DBS_ShelfName", "DBS_BasketName", "SheetName")
 		user_data_with_blood_control_ids <- process_malaria_blood_control_data(user_data_with_bag_ids, con, "Density", "CompositionID")
 		user_data_with_sheet_ids <- process_dbs_control_sheet_data(user_data_with_blood_control_ids, con, "SheetName")
 		user_data_with_blood_spot_collection_ids <- process_blood_spot_collection_data(user_data_with_sheet_ids, con, "Control", "Count")
@@ -1027,7 +1027,11 @@ upload_compositions <- function(user_data, database = Sys.getenv("SDB_PATH")) {
         user_data_identifiers <- get_unique_compositions_from_user_data(user_data)
         db_data_identifiers_updated <- get_unique_compositions_from_database(con)
 
-        merged_data <- fuzzy_merge_unique_compositions(user_data_identifiers, db_data_identifiers_updated)
+        # Full join fuzzy merge, then filter (could add the 'inner join' to the function but this is fine.)
+        merged_data <- fuzzy_merge_unique_compositions(user_data_identifiers, db_data_identifiers_updated) %>%
+          rowwise() %>%
+          filter(!is.null(sorted_percentages_user)) # keep the data we want (user data)!
+
         matched_user_data <- merged_data %>% filter(match)
         unmatched_user_data <- merged_data %>% filter(!match)
 
@@ -1072,6 +1076,7 @@ upload_compositions <- function(user_data, database = Sys.getenv("SDB_PATH")) {
 #'
 #' This function performs a fuzzy merge of unique compositions based on sorted strains and percentages.
 #' It compares the percentages within a given tolerance to decide whether they should be considered the same.
+#' This function performs a full join without filtering, the user should filter afterwards if they want an 'inner join' behavior.
 #'
 #' @param user_data Data frame containing sorted_strains_key and sorted_percentages columns, typically the output from get_unique_compositions_from_user_data.
 #' @param db_data Data frame containing sorted_strains_key and sorted_percentages columns, typically the output from get_unique_compositions_from_database.
@@ -1097,6 +1102,6 @@ fuzzy_merge_unique_compositions <- function(user_data, db_data, tolerance = 0.01
     rowwise() %>%
     mutate(match = compare_percentages_within_tolerance(sorted_percentages_user, sorted_percentages_db, tolerance)) %>%
     ungroup()
-  
+
   return(merged_data)
 }

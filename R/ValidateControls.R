@@ -58,7 +58,14 @@ check_control_exists <- function(con, table_name, row_number_col, control_col, b
 
 
 check_composition_id_exists <- function(con, table_name, row_number_col, label_col, index_col, legacy_col, error_if_exists = FALSE) { 
-  
+
+  # Remove NAs so that we can join
+  na_removal <- setNames(
+    list(0, 0),
+    list(index_col, "index") # user file col, database col
+  )
+
+  # Composition join columns
   composition_joins = setNames(
     c("label", "index", "legacy"),
     c(label_col, index_col, legacy_col)
@@ -66,7 +73,8 @@ check_composition_id_exists <- function(con, table_name, row_number_col, label_c
 
   # Find rows where the label doesn't exist in the composition table
   df <- tbl(con, table_name) %>%
-    left_join(tbl(con, "composition"), by = composition_joins)
+    tidyr::replace_na(na_removal) %>%
+    left_join(tbl(con, "composition") %>% tidyr::replace_na(na_removal), by = composition_joins)
   
   # If any rows are found and error_if_exists is TRUE, throw an error
   if (error_if_exists) {
@@ -152,7 +160,7 @@ validate_dbs_sheet_create <- function(dbs_sheet_test) {
   # References check
   dbs_sheet_test(check_composition_id_exists, "Label", "Index", "LegacyLabel", error_if_exists = FALSE)
   dbs_sheet_test(validate_study_reference_db, "Batch", controls = TRUE)
-  dbs_sheet_test(validate_location_reference_db, "DBS_Minus20", "DBS_ShelfName", "DBS_BasketName")
+  dbs_sheet_test(validate_location_reference_db, "DBS_FreezerName", "DBS_ShelfName", "DBS_BasketName")
 }
 
 #' Validate DBS Sheet Extraction
@@ -172,7 +180,7 @@ validate_dbs_sheet_extraction <- function(dbs_sheet_test) {
   dbs_sheet_test(validate_study_reference_db, "Batch")
 
   # Validate source location
-  dbs_sheet_test(validate_location_reference_db, "DBS_Minus20", "DBS_ShelfName", "DBS_BasketName")
+  dbs_sheet_test(validate_location_reference_db, "DBS_FreezerName", "DBS_ShelfName", "DBS_BasketName")
 
   # Validate destination location
   dbs_sheet_test(validate_location_reference_db, "FreezerName", "ShelfName", "BasketName")
@@ -288,17 +296,26 @@ validate_controls <- function(database, user_data, control_type, user_action) {
     errors <- validate_whole_blood(user_data, user_action, database)
   }
 
+  validation_result <- NULL
   if (user_action == "created") {
-    validation_result <- validate_dates(user_data, "Created", "%Y-%m-%d")
+    validation_result <- validate_dates_with_tokens(user_data, "Batch", "%Y-%m-%d",  c("unk", "UNK", "unknown", "UNKNOWN"))
 
-    if (!is.null(validation_result)) {
+    if (inherits(validation_result, "ErrorData")) {
       errors <- add_to_errors(errors, validation_result)
     }
   }
 
-  if (length(errors) > 0) {
-    # Initialize the ValidationErrorCollection with the accumulated errors and the user_data
-    error_collection <- ValidationErrorCollection$new(errors, user_data)
+  # Initialize the ValidationErrorCollection with the accumulated errors and the user_data
+  error_collection <- ValidationErrorCollection$new(errors, user_data)
+
+  if (error_collection$length() > 0) {
     stop_validation_error("Validation error", error_collection)
   }
+
+  # update here
+  if (user_action == "created") {
+    user_data <- handle_unknown_date_tokens(user_data, "Batch", validation_result$parsed_dates, validation_result$token_mask)
+  }
+
+  return(user_data)
 }

@@ -784,7 +784,7 @@ get_container_by_sample <- function(sample_type, sample_file = "samples.json", a
 #' get_extraction_container_by_control(control_type = "DBS Sheet")
 #' @export
 get_storage_container_by_control <- function(control_type, control_file = "controls.json", app_file = "app.json") {
-  
+
   # Read the data
   control_data <- read_json_file(control_file)
   app_data <- read_json_file(app_file)
@@ -795,10 +795,10 @@ get_storage_container_by_control <- function(control_type, control_file = "contr
   }
   
   # Extract the source container key
-  container_source_key <- control_data$controls[[control_type]]$storage_container
+  container_key <- control_data$controls[[control_type]]$container_key
   
   # Fetch the complete container data from app_data using the source key
-  container_source_data <- lapply(container_source_key, function(cont) {
+  container_source_data <- lapply(container_key, function(cont) {
     data <- app_data$containers[[cont]]
     list(position_keys = list(data$position_keys), container_name_key = data$container_name_key, container_barcode_key = data$container_barcode_key)
   })

@@ -373,6 +373,7 @@ get_matched_studies <- function(user_file, database) {
 #'
 #' @param user_file The user's CSV file as a data frame.
 #' @param file_column_attr An instance of ColumnData containing attributes of file columns.
+#' @param bind_data Data that has been bound to the data frame that should be included in the selection.
 #' @return A data frame with only the relevant columns selected.
 #' @export
 select_relevant_columns <- function(user_file, file_column_attr, bind_data) {
@@ -457,7 +458,7 @@ validate_and_format_control_file <- function(user_file, file_column_attr, bind_d
   }
 
   # 4. Select relevant columns.
-  user_file <- select_relevant_columns(user_file, file_column_attr)
+  user_file <- select_relevant_columns(user_file, file_column_attr, bind_data)
 
   # Notify success.
   message("Required columns detected.")
@@ -489,6 +490,10 @@ validate_and_format_reference_file <- function(user_file, file_column_attr, bind
 
   # 4. Select relevant columns.
   user_file <- select_relevant_columns(user_file, file_column_attr, bind_data)
+
+  if ("LegacyLabel" %in% file_column_attr$optional && is.null(user_file$LegacyLable)) {
+    user_file$LegacyLabel <- c(NA)
+  }
 
   # Notify success.
   message("Required columns detected.")
@@ -585,6 +590,7 @@ process_specimen_csv <- function(user_csv, user_action, sample_type, file_type =
 #' processed_data <- process_control_csv(user_file_path, action, type)
 #' }
 process_control_csv <- function(user_csv, user_action, control_type, file_type = "na", bind_data = NULL, database = Sys.getenv("SDB_PATH"), config_yml = Sys.getenv("SDB_CONFIG")) {
+  
   # Ensure a valid CSV is provided
   if (is.null(user_csv) || user_csv == "") {
     stop("No csv file was provided.")
@@ -599,7 +605,7 @@ process_control_csv <- function(user_csv, user_action, control_type, file_type =
 
   # Further validate controls - check for empty data points, rename columns and add position column if necessary
   user_data <- prepare_control_data_for_validation(control_type, user_data, user_action, file_column_attr)
-  validate_controls(database, user_data, control_type, user_action)
+  user_data <- validate_controls(database, user_data, control_type, user_action)
 
   return(user_data)
 }
@@ -637,7 +643,7 @@ process_control_csv <- function(user_csv, user_action, control_type, file_type =
 #' processed_data <- process_reference_csv(user_file_path, action, type)
 #' }
 process_reference_csv <- function(user_csv, user_action, reference_type, database = Sys.getenv("SDB_PATH"), config_yml = Sys.getenv("SDB_CONFIG")) {
-  
+
   # Ensure a valid CSV is provided
   if (is.null(user_csv) || user_csv == "") {
     stop("No csv file was provided.")
@@ -819,7 +825,7 @@ prepare_matrix_position_column <- function(user_data, dimensions, expected_posit
 #' @param user_data A dataframe containing user data with density values.
 #' @param density_col A string specifying the column name of the density values in `user_data`.
 #' 
-#' @return A dataframe with the converted density values.
+#' @return A dataframe with the converted density values. Special values are 0 ('Negative Control') and -1 ('Value was not known'). All other values are returned as numerics. In cases where 'K' or 'k' is appended, the numeric value in front is multiplied by 1000. 
 #'
 #' @examples
 #' user_df <- data.frame(Density = c("1", "10k", "100K"))
@@ -828,8 +834,14 @@ prepare_matrix_position_column <- function(user_data, dimensions, expected_posit
 #' @export
 convert_density_representations <- function(user_data, density_col) {
   user_data[[density_col]] <- sapply(user_data[[density_col]], function(x) {
-    if (grepl("k$", ignore.case = TRUE, x)) {
+    # Capture both 19K and 1.9K
+    if (grepl("^[0-9]+\\.?[0-9]*k$", ignore.case = TRUE, x)) {
       as.numeric(sub("k$", "", ignore.case = TRUE, x)) * 1000
+    } else if (grepl("^neg$", ignore.case = TRUE, x)) {
+      as.numeric(0.0)
+    # if unknown, return (-1). This will be a special value to mean that the data could not be found
+    } else if (grepl("^unk$", ignore.case = TRUE, x)) {
+      as.numeric(-1.0)
     } else {
       as.numeric(x)
     }
@@ -984,7 +996,11 @@ prepare_control_data_for_validation <- function(control_type, user_data, action,
   ## JSON UPDATE
   ## update this after json modification
   storage_container <- get_storage_container_by_control(control_type)
-  user_data <- prepare_matrix_position_column(user_data, storage_container, "ControlOriginPosition")
+
+  # If there are position values, prepare the column that will be used by the database (`ControlOriginPosition`)
+  if (is.list(storage_container$position_keys) && !is.null(storage_container$position_keys[[1]])) {
+    user_data <- prepare_matrix_position_column(user_data, storage_container, "ControlOriginPosition")
+  }
   
   # NOTE: If these checks grow, then make into functions
   if (action == "extraction") {
