@@ -19,4 +19,5 @@ A data frame with a logical column 'match' indicating whether the compositions f
 \description{
 This function performs a fuzzy merge of unique compositions based on sorted strains and percentages.
 It compares the percentages within a given tolerance to decide whether they should be considered the same.
+This function performs a full join without filtering, the user should filter afterwards if they want an 'inner join' behavior.
 }

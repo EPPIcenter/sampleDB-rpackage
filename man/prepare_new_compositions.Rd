@@ -10,12 +10,12 @@ prepare_new_compositions(user_data)
 \item{user_data}{A data frame containing user compositions.}
 }
 \value{
-A dataframe with new compositions
+A dataframe with updated compositions and legacy labels.
 }
 \description{
-Compositions consist of strains and percentages, where there can me mutliple or single strains and the sum of each strain
-must be close to 1 (some tolerance is allowed). The composition is a descriptive idenitfier in the case of new monoclonal
+Compositions consist of strains and percentages, where there can be multiple or single strains and the sum of each strain
+must be close to 1 (some tolerance is allowed). The composition is a descriptive identifier in the case of new monoclonal
 and polyclonal, where the monoclonal label is the name of the strain, and the polyclonal label is a formatted string of the number
-strains and a unique, incrementing index. For example, "W2" is a monoclonal 'W2' composition and "2S_1" is a dual strain composition
-that we would need to collect more information about from the database.
+of strains and a unique, incrementing index. For example, "W2" is a monoclonal 'W2' composition and "2S_1" is a dual strain composition
+that we would need to collect more information about from the database. Monoclonal compositions are always considered legacy.
 }

@@ -10,6 +10,8 @@ select_relevant_columns(user_file, file_column_attr, bind_data)
 \item{user_file}{The user's CSV file as a data frame.}
 
 \item{file_column_attr}{An instance of ColumnData containing attributes of file columns.}
+
+\item{bind_data}{Data that has been bound to the data frame that should be included in the selection.}
 }
 \value{
 A data frame with only the relevant columns selected.

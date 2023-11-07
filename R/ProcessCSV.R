@@ -491,7 +491,7 @@ validate_and_format_reference_file <- function(user_file, file_column_attr, bind
   # 4. Select relevant columns.
   user_file <- select_relevant_columns(user_file, file_column_attr, bind_data)
 
-  if ("LegacyLabel" %in% file_column_attr$optional && is.null(user_file$LegacyLable)) {
+  if ("LegacyLabel" %in% file_column_attr$optional && is.null(user_file$LegacyLabel)) {
     user_file$LegacyLabel <- c(NA)
   }
 

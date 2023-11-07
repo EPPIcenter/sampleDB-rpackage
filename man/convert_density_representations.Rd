@@ -12,7 +12,7 @@ convert_density_representations(user_data, density_col)
 \item{density_col}{A string specifying the column name of the density values in \code{user_data}.}
 }
 \value{
-A dataframe with the converted density values.
+A dataframe with the converted density values. Special values are 0 ('Negative Control') and -1 ('Value was not known'). All other values are returned as numerics. In cases where 'K' or 'k' is appended, the numeric value in front is multiplied by 1000.
 }
 \description{
 This function processes a dataframe to convert density values that might be in various

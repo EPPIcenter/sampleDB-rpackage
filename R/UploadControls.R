@@ -913,27 +913,27 @@ create_unique_id_from_sorted <- function(sorted_strains, sorted_percentages) {
 }
 
 #' Prepare new compositions for database upload
-#' 
-#' Compositions consist of strains and percentages, where there can me mutliple or single strains and the sum of each strain
-#' must be close to 1 (some tolerance is allowed). The composition is a descriptive idenitfier in the case of new monoclonal
-#' and polyclonal, where the monoclonal label is the name of the strain, and the polyclonal label is a formatted string of the number 
-#' strains and a unique, incrementing index. For example, "W2" is a monoclonal 'W2' composition and "2S_1" is a dual strain composition
-#' that we would need to collect more information about from the database. 
+#'
+#' Compositions consist of strains and percentages, where there can be multiple or single strains and the sum of each strain
+#' must be close to 1 (some tolerance is allowed). The composition is a descriptive identifier in the case of new monoclonal
+#' and polyclonal, where the monoclonal label is the name of the strain, and the polyclonal label is a formatted string of the number
+#' of strains and a unique, incrementing index. For example, "W2" is a monoclonal 'W2' composition and "2S_1" is a dual strain composition
+#' that we would need to collect more information about from the database. Monoclonal compositions are always considered legacy.
 #'
 #' @param user_data A data frame containing user compositions.
 #'
-#' @return A dataframe with new compositions
+#' @return A dataframe with updated compositions and legacy labels.
 prepare_new_compositions <- function(user_data) {
 
   user_data %>%
     mutate(LegacyLabel = as.character(LegacyLabel),
-           legacy = LegacyLabel != "" & LegacyLabel != "NA" & !is.na(LegacyLabel),
-           strain_count = if_else(!legacy, lengths(strsplit(Strains, split=";")), NA_integer_),
-           index = if_else(!is.na(strain_count) & strain_count != 1, ave(strain_count, strain_count, FUN = seq_along, na.rm = TRUE), NA_integer_),
+           # Update legacy logic to include monoclonal strains (strain_count == 1)
+           strain_count = lengths(strsplit(Strains, split=";")),
+           legacy = LegacyLabel != "" & LegacyLabel != "NA" & !is.na(LegacyLabel) | strain_count == 1,
+           index = if_else(!legacy & strain_count > 1, ave(strain_count, strain_count, FUN = seq_along, na.rm = TRUE), NA_integer_),
            label = case_when(
-               legacy ~ LegacyLabel,
-               strain_count == 1 ~ as.character(Strains),
-               !is.na(strain_count) ~ paste0("S", strain_count),
+               legacy ~ if_else(strain_count == 1, as.character(Strains), LegacyLabel),
+               strain_count > 1 ~ paste0("S", strain_count, "_", index),
                TRUE ~ NA_character_
            )
     )
