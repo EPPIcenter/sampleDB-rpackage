@@ -25,6 +25,7 @@ It can be used to add new ErrorData objects, and to export the collection of err
 \item \href{#method-ValidationErrorCollection-get_error_details_by_index}{\code{ValidationErrorCollection$get_error_details_by_index()}}
 \item \href{#method-ValidationErrorCollection-to_csv}{\code{ValidationErrorCollection$to_csv()}}
 \item \href{#method-ValidationErrorCollection-length}{\code{ValidationErrorCollection$length()}}
+\item \href{#method-ValidationErrorCollection-get_combined_error_data}{\code{ValidationErrorCollection$get_combined_error_data()}}
 \item \href{#method-ValidationErrorCollection-clone}{\code{ValidationErrorCollection$clone()}}
 }
 }
@@ -105,6 +106,16 @@ This method is used to export the errors to a CSV file.
 This method returns the number of ErrorData objects in the list.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{ValidationErrorCollection$length()}\if{html}{\out{</div>}}
+}
+
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-ValidationErrorCollection-get_combined_error_data"></a>}}
+\if{latex}{\out{\hypertarget{method-ValidationErrorCollection-get_combined_error_data}{}}}
+\subsection{Method \code{get_combined_error_data()}}{
+This method combines the error details with the user data and returns it as a data frame.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{ValidationErrorCollection$get_combined_error_data()}\if{html}{\out{</div>}}
 }
 
 }

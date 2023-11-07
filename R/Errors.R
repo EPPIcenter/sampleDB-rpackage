@@ -197,6 +197,24 @@ ValidationErrorCollection <- R6::R6Class(
     #' @description This method returns the number of ErrorData objects in the list.
     length = function() {
       return(length(self$error_data_list))
+    },
+
+    #' @method ValidationErrorCollection get_combined_error_data
+    #' @description This method combines the error details with the user data and returns it as a data frame.
+    get_combined_error_data = function() {
+      # Initialize an empty data frame to store combined errors
+      combined_errors <- data.frame(RowNumber = integer(0), stringsAsFactors = FALSE)
+      
+      # Loop through each error data frame and combine them
+      for (i in seq_along(self$error_data_list)) {
+        error_details <- self$get_error_details_by_index(i)
+        combined_errors <- merge(combined_errors, error_details, by = "RowNumber", all = TRUE)
+      }
+      
+      # Merge the combined errors with the user data by row number
+      combined_data <- merge(self$user_data, combined_errors, by = "RowNumber", all.x = TRUE, sort = FALSE)
+      
+      return(combined_data)
     }
   )
 )
