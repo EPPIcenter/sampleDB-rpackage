@@ -367,7 +367,7 @@ AppMoveSamples <- function(session, input, output, database) {
     },
     validation_error = function(e) {
         message("Caught validation error")
-        show_validation_error_modal(e, dataset[i,]$name)
+        show_validation_error_modal(output, e, dataset[i,]$name)
         TRUE
       },
       formatting_error = function(e) {

@@ -159,40 +159,6 @@ ValidationErrorCollection <- R6::R6Class(
       return(error_details)
     },
 
-    #' @method ErrorDataList to_csv
-    #' @description This method is used to export the errors to a CSV file.
-    #' @param filename The name of the CSV file.
-    to_csv = function(filename) {
-        if (length(self$error_data_list) == 0) {
-            stop("No errors have been added.")
-        }
-        # Here, we're aggregating all the errors from the list into a single data frame.
-        error_df <- do.call(rbind, lapply(self$error_data_list, function(error) {
-            data.frame(
-                row = error$rows,
-                column = error$columns,
-                description = rep(error$description, length(error$rows)),
-                stringsAsFactors = FALSE
-            )
-        }))
-
-        # Group by row and collapse descriptions
-        error_df <- aggregate(description ~ row + column, data = error_df, FUN = function(x) paste(x, collapse = ";"))
-
-        # Now, we're aggregating descriptions by row number. This is in case there are multiple
-        # descriptions for a single row.
-        extracted_data <- mapply(function(row, col) {
-            # Directly access the column using the `[[]]` operator and then access the specific row.
-            return(self$user_data[[col]][row])
-        }, error_df$row, error_df$column, SIMPLIFY = TRUE)
-
-        # The extracted goes in the `error_df`.
-        error_df[["data"]] <- as.character(extracted_data)
-
-        # Finally, write the csv.
-        write.csv(error_df, file = filename, row.names = FALSE)
-    },
-
     #' @method ErrorDataList length
     #' @description This method returns the number of ErrorData objects in the list.
     length = function() {
@@ -202,18 +168,30 @@ ValidationErrorCollection <- R6::R6Class(
     #' @method ValidationErrorCollection get_combined_error_data
     #' @description This method combines the error details with the user data and returns it as a data frame.
     get_combined_error_data = function() {
-      # Initialize an empty data frame to store combined errors
-      combined_errors <- data.frame(RowNumber = integer(0), stringsAsFactors = FALSE)
+      # Create an error description data frame
+      error_desc_df <- do.call(rbind, lapply(self$error_data_list, function(error) {
+        data.frame(
+          RowNumber = error$rows,
+          Description = rep(error$description, length(error$rows)),
+          stringsAsFactors = FALSE
+        )
+      }))
       
-      # Loop through each error data frame and combine them
-      for (i in seq_along(self$error_data_list)) {
-        error_details <- self$get_error_details_by_index(i)
-        combined_errors <- merge(combined_errors, error_details, by = "RowNumber", all = TRUE)
-      }
+      # Aggregate descriptions by RowNumber, concatenating with ";"
+      error_desc_df <- aggregate(Description ~ RowNumber, data = error_desc_df, FUN = function(x) paste(unique(x), collapse = ";"))
       
-      # Merge the combined errors with the user data by row number
-      combined_data <- merge(self$user_data, combined_errors, by = "RowNumber", all.x = TRUE, sort = FALSE)
-      
+      # Merge the error descriptions with the user data
+      combined_data <- dplyr::left_join(self$user_data, error_desc_df, by = "RowNumber")
+
+      # Replace NA in Description with "No error"
+      combined_data$Description[is.na(combined_data$Description)] <- "No error"
+
+      # Sort the data frame so that rows with errors are on top
+      combined_data <- combined_data[order(combined_data$Description != "No error", decreasing = TRUE), ]
+
+      # Reorder the columns to make sure RowNumber and Description are first
+      combined_data <- combined_data[, c("RowNumber", "Description", setdiff(names(combined_data), c("RowNumber", "Description")))]
+
       return(combined_data)
     }
   )

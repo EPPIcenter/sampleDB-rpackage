@@ -70,7 +70,7 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
       show_formatting_error_modal(e)
     },
     validation_error = function(e) {
-      show_validation_error_modal(e)
+      show_validation_error_modal(output, e)
     },
     error = function(e) {
       show_general_error_modal(e)
@@ -102,7 +102,7 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
       check_if_special_columns_missing(e, rv, input)
     },
     validation_error = function(e) {
-      show_validation_error_modal(e)
+      show_validation_error_modal(output, e)
     },
     error = function(e) {
       show_general_error_modal(e)
@@ -161,7 +161,7 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
         })
       },
       validation_error = function(e) {
-        show_validation_error_modal(e)
+        show_validation_error_modal(output, e)
         early_stop <<- TRUE
       },
       formatting_error = function(e) {

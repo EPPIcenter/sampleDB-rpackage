@@ -64,7 +64,7 @@ ControlReference <- function(session, input, output, database, dbUpdateEvent) {
         FALSE
       },
       validation_error = function(e) {
-        show_validation_error_modal(e)
+        show_validation_error_modal(output, e)
         FALSE
       },
       error = function(e) {
@@ -141,7 +141,7 @@ ControlReference <- function(session, input, output, database, dbUpdateEvent) {
       show_success_notification(session, "batch", 1) # 1 batch created
     },
     validation_error = function(e) {
-      show_validation_error_modal(e)
+      show_validation_error_modal(output, e)
     },
     error = function(e) {
       show_general_error_modal(e)
@@ -189,7 +189,7 @@ ControlReference <- function(session, input, output, database, dbUpdateEvent) {
         FALSE
       },
       validation_error = function(e) {
-        show_validation_error_modal(e)
+        show_validation_error_modal(output, e)
         FALSE
       },
       error = function(e) {

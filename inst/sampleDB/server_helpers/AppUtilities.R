@@ -553,8 +553,8 @@ generate_error_reactable <- function(error_collection, index = 1) {
   )
 }
 
-show_validation_error_modal <- function(error, filename = NULL) {
-  
+show_validation_error_modal <- function(output, error, filename = NULL) {
+
   message("Preparing validation error modal.")
   
   # Conditional title based on whether a filename is provided
@@ -599,6 +599,17 @@ show_validation_error_modal <- function(error, filename = NULL) {
       renderReactable({ main_table }),
       footer = modalButton("Exit")
     )
+  )
+
+  # Add server logic for the download button
+  output$ErrorFileDownload <- downloadHandler(
+    filename = function() {
+      paste0("validation_errors_", Sys.Date(), ".csv")
+    },
+    content = function(file) {
+      df = error_collection$get_combined_error_data()
+      write.csv(df, file, row.names = FALSE, quote = FALSE)
+    }
   )
 }
 

@@ -23,7 +23,6 @@ It can be used to add new ErrorData objects, and to export the collection of err
 \item \href{#method-ValidationErrorCollection-new}{\code{ValidationErrorCollection$new()}}
 \item \href{#method-ValidationErrorCollection-add_error}{\code{ValidationErrorCollection$add_error()}}
 \item \href{#method-ValidationErrorCollection-get_error_details_by_index}{\code{ValidationErrorCollection$get_error_details_by_index()}}
-\item \href{#method-ValidationErrorCollection-to_csv}{\code{ValidationErrorCollection$to_csv()}}
 \item \href{#method-ValidationErrorCollection-length}{\code{ValidationErrorCollection$length()}}
 \item \href{#method-ValidationErrorCollection-get_combined_error_data}{\code{ValidationErrorCollection$get_combined_error_data()}}
 \item \href{#method-ValidationErrorCollection-clone}{\code{ValidationErrorCollection$clone()}}
@@ -78,23 +77,6 @@ Gets an error by index.
 \if{html}{\out{<div class="arguments">}}
 \describe{
 \item{\code{index}}{The index to specify which error.}
-}
-\if{html}{\out{</div>}}
-}
-}
-\if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-ValidationErrorCollection-to_csv"></a>}}
-\if{latex}{\out{\hypertarget{method-ValidationErrorCollection-to_csv}{}}}
-\subsection{Method \code{to_csv()}}{
-This method is used to export the errors to a CSV file.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{ValidationErrorCollection$to_csv(filename)}\if{html}{\out{</div>}}
-}
-
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{filename}}{The name of the CSV file.}
 }
 \if{html}{\out{</div>}}
 }
