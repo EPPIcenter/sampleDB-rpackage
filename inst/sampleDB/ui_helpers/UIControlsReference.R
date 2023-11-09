@@ -37,7 +37,8 @@ UIControlsReference <- function() {
           width = 6,
           downloadButton("DownloadControlSearchResults", "Download")
         )
-      )
+      ),
+      actionButton("deleteSelected", "Delete Selected", class = "btn-danger")
     )
   )
   

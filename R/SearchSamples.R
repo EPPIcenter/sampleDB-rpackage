@@ -217,7 +217,7 @@ search_compositions <- function(filters, database = Sys.getenv("SDB_PATH")) {
     dplyr::group_by(composition_id) %>%
     dplyr::add_count(composition_id, name = "strain_count") %>%
     dplyr::ungroup() %>%
-    select(strain, percentage, strain_count, legacy, index, label)
+    select(composition_id, strain, percentage, strain_count, legacy, index, label)
 
   # Applying filters
   if (!is.null(filters$strain)) {

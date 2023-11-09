@@ -246,15 +246,21 @@ ControlReference <- function(session, input, output, database, dbUpdateEvent) {
     # Get the data from the database
     compositions <- search_compositions(composition_filter_set$get()) %>%
       arrange(strain_count, label, percentage) %>%
-      select(strain_count, strain, percentage, label, legacy) %>%
-      dplyr::rename(
-        `Composition Type` = strain_count,
-        Strain = strain,
-        Percentage = percentage,
-        CompositionID = label,
-        Legacy = legacy
-      ) 
-     
+      select(composition_id, strain_count, strain, percentage, label, legacy) %>%
+      group_by(label) %>%
+        dplyr::mutate(
+          composition = strain_renderer(strain, percentage)
+        ) %>%
+        dplyr::ungroup() %>%
+        dplyr::select(
+          composition_id,
+          `Composition Type` = strain_count,
+          Composition = composition, 
+          Label = label,
+          Legacy = legacy
+        ) %>%
+        distinct()
+
     if (!is.null(compositions)) {
       compositions
     } else {
@@ -266,10 +272,9 @@ ControlReference <- function(session, input, output, database, dbUpdateEvent) {
   observe({
     output$OutputControlSearchResults <- renderReactable({
       # Get filtered data from our reactive
-      search_table <- filtered_composition_data()
 
       reactable(
-        search_table,
+        filtered_composition_data() %>% select(-c("composition_id")),
         defaultColDef = colDef(minWidth = 95, html = TRUE, sortable = TRUE, resizable = FALSE, na = "-", align = "center"),
         searchable = TRUE,
         selection = "multiple", 
@@ -288,7 +293,7 @@ ControlReference <- function(session, input, output, database, dbUpdateEvent) {
             "&[aria-sort='ascending'], &[aria-sort='descending']" = list(background = "hsl(0, 0%, 96%)"),
             borderColor = "#555"
           ),
-          rowSelectedStyle = list(backgroundColor = '#aafaff', boxShadow = 'inset 2px 0 0 0 #ffa62d')
+          rowSelectedStyle = list(boxShadow = 'inset 2px 0 0 0 #ffa62d')
         )
       )
     })
@@ -307,4 +312,98 @@ ControlReference <- function(session, input, output, database, dbUpdateEvent) {
       }
     )
   })
+
+  observeEvent(input$deleteSelected, ignoreInit = TRUE, {
+
+    user.filtered.rows =  filtered_composition_data()
+    user.selected.rows = user.filtered.rows[selected(), ]
+
+    rt <- reactable(
+      user.selected.rows,
+      defaultColDef = colDef(
+        minWidth = 95,
+        html = TRUE,
+        sortable = TRUE,
+        resizable = FALSE,
+        na = "-", 
+        align = "center"
+      )
+    )
+
+    showModal(
+      modalDialog(
+        title = "Delete Compositions",
+        size = "l",
+        tags$p("Below are samples you have selected for deletion."),
+        tags$strong("Warning: deleted compositions are permanently removed. Do you wish to continue?", style = "color:red"),
+        tags$p("You may cancel by selecting", tags$em("Dismiss"), "below or by clicking outside of the dialog box."),
+        tags$hr(),
+        renderReactable({ rt }),
+        easyClose = TRUE,
+        fade = TRUE,
+        footer = tagList(actionButton("DeleteComposition", label = "Delete"), modalButton("Dismiss"))
+      )
+    )
+  })
+
+  observeEvent(input$DeleteComposition, ignoreInit = TRUE, { 
+    message(sprintf("DelArch action: %s", "delete"))
+    shinyjs::disable("Delete")
+    showNotification("Working...", id = "ArchDelNotification", type = "message", action = NULL, duration = 5, closeButton = FALSE)
+
+    user.filtered.rows =  filtered_composition_data()
+    user.selected.rows = user.filtered.rows[selected(), ]
+
+    con <- RSQLite::dbConnect(RSQLite::SQLite(), database)
+
+    # Start the transaction
+    dbBegin(con)
+
+    tryCatch({
+      # Go through each id and check if it's in use. If not delete it.
+      for (id in user.selected.rows$composition_id) {
+        in_use <- dbGetQuery(con, sprintf("SELECT COUNT(*) as count FROM malaria_blood_control WHERE composition_id = %d", id))
+        if (in_use$count > 0) {
+          # Abort the transaction if the composition_id is in use
+          dbRollback(con)
+          showNotification(sprintf("Deletion aborted: Composition ID %d is in use.", id), type = "error")
+          break
+        } else {
+          # If not in use, delete related entries from composition_strain table
+          dbExecute(con, sprintf("DELETE FROM composition_strain WHERE composition_id = %d", id))
+          # Then delete the composition
+          dbExecute(con, sprintf("DELETE FROM composition WHERE id = %d", id))
+        }
+      }
+      dbCommit(con)
+      showNotification("Composition deleted successfully", type = "default")
+    }, error = function(e) {
+      dbRollback(con)
+      message(e$message)
+      showNotification("Failed to delete composition: ", e$message, type = "error")
+    })
+
+    dbDisconnect(con)
+
+    removeNotification(id = "ArchDelNotification")
+    removeModal()
+
+    # Get the filtered data
+    updated_data <- user.filtered.rows
+
+    # Remove the selected rows from the filtered data
+    updated_data <- updated_data[!updated_data$composition_id %in% user.selected.rows$composition_id,]
+
+    # Update the reactable table
+    updateReactable(
+      outputId = "OutputControlSearchResults",
+      data = updated_data
+    )
+  })
+}
+
+
+# Custom cell renderer that concatenates strain information
+strain_renderer <- function(strains, percentages) {
+  paste0(strains, " (", percentages, "%)", collapse = " + ")
 }
