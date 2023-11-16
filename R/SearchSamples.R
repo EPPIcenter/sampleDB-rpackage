@@ -572,9 +572,8 @@ extract_search_criteria <- function(user_csv, search_type) {
     return(NA_character_) # return NA if none of the possible names are found
   }
 
-  if (search_type == "barcode") {
-    user_file$Barcodes <- ifelse(!is.null(user_file$Barcodes), user_file$Barcodes, NA_character_)
-  } else if (search_type == "study_subject") {
+  ## Grab the possible columns if this is a study subject search (possible because they may not all be there, which is okay)
+  if (search_type == "study_subject") {
     user_file$StudySubject <- user_file[[found_required_column]]
     user_file$CollectionDate <- find_and_add_column(user_file, possible_collection_date_names)
     user_file$StudyCode <- find_and_add_column(user_file, possible_study_code_names)
