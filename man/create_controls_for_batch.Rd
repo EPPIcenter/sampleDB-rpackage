@@ -2,7 +2,7 @@
 % Please edit documentation in R/UploadControls.R
 \name{create_controls_for_batch}
 \alias{create_controls_for_batch}
-\title{Prepare and Append Study Subjects}
+\title{Create Controls for the batch}
 \usage{
 create_controls_for_batch(
   user_data,

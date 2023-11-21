@@ -4,19 +4,12 @@
 \alias{add_new_blood_spot_collections}
 \title{Add New Blood Spot Collections}
 \usage{
-add_new_blood_spot_collections(
-  df.payload,
-  con,
-  study_subject_id_col,
-  count_col
-)
+add_new_blood_spot_collections(df.payload, con, count_col)
 }
 \arguments{
 \item{df.payload}{A dataframe containing payload data.}
 
 \item{con}{A database connection object.}
-
-\item{study_subject_id_col}{Column name in df.payload for Controls}
 }
 \value{
 Result from the dbAppendTable indicating if the collections were added successfully.

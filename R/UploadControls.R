@@ -204,7 +204,7 @@ upload_whole_blood <- function(user_data, database) {
 
 
 
-#' Prepare and Append Study Subjects
+#' Create Controls for the batch
 #'
 #' This function prepares user data, appends study subjects to a database table, and rejoins to get the study_subject_id.
 #'
@@ -605,12 +605,12 @@ join_blood_spot_collections <- function(df.payload, con) {
 #'
 #' @param df.payload A dataframe containing payload data.
 #' @param con A database connection object.
-#' @param study_subject_id_col Column name in df.payload for Controls
 #' @return Result from the dbAppendTable indicating if the collections were added successfully.
-add_new_blood_spot_collections <- function(df.payload, con, study_subject_id_col, count_col) {
+add_new_blood_spot_collections <- function(df.payload, con, count_col) {
+
   res <- dbAppendTable(con, "blood_spot_collection", df.payload %>%
     filter(is.na(blood_spot_collection_id)) %>%
-    group_by(!!sym(study_subject_id_col)) %>%
+    group_by(malaria_blood_control_id) %>%
     dplyr::mutate(
       count = as.integer(!!sym(count_col)),
       total = ifelse(is.na(total), 0, as.integer(total)),
@@ -618,6 +618,7 @@ add_new_blood_spot_collections <- function(df.payload, con, study_subject_id_col
     ) %>%
     select(-c(total)) %>%
     ungroup() %>%
+    select(malaria_blood_control_id, count) %>%
     distinct() %>%
     dplyr::rename(total = count) %>%
     select(malaria_blood_control_id, total)
@@ -653,15 +654,15 @@ rejoin_with_updated_blood_spot_collections <- function(df.payload, con) {
 #'
 #' @param df.payload A dataframe containing payload data.
 #' @param con A database connection object.
-#' @param malaria_blood_control_id Column name in df.payload for study subject ID.
+#' @param count_col Count column.
 #' @return A dataframe with processed blood spot collection details.
-process_blood_spot_collection_data <- function(df.payload, con, study_subject_id_col, count_col) {
+process_blood_spot_collection_data <- function(df.payload, con, count_col) {
 
   # Join with blood spot collections
   df.payload <- join_blood_spot_collections(df.payload, con)
 
   # Add new blood spot collections if they don't exist
-  res <- add_new_blood_spot_collections(df.payload, con, study_subject_id_col, count_col)
+  res <- add_new_blood_spot_collections(df.payload, con, count_col)
 
   cat("Blood Spot Collections Added: ", res, "\n")
 
@@ -777,7 +778,7 @@ upload_dbs_sheet <- function(user_data, database) {
 		user_data_with_bag_ids <- process_bag_data(user_data_with_control_ids, con, "DBS_FreezerName", "DBS_ShelfName", "DBS_BasketName", "SheetName")
 		user_data_with_blood_control_ids <- process_malaria_blood_control_data(user_data_with_bag_ids, con, "Density", "CompositionID")
 		user_data_with_sheet_ids <- process_dbs_control_sheet_data(user_data_with_blood_control_ids, con, "SheetName")
-		user_data_with_blood_spot_collection_ids <- process_blood_spot_collection_data(user_data_with_sheet_ids, con, "Control", "Count")
+		user_data_with_blood_spot_collection_ids <- process_blood_spot_collection_data(user_data_with_sheet_ids, con, "Count")
 
 		## At this point, collapse the user data as we're no longer intereste edin retain specific sheet information
 		user_data_distinct <- user_data_with_blood_spot_collection_ids %>% distinct()

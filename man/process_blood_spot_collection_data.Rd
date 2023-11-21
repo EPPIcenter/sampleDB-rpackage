@@ -4,19 +4,14 @@
 \alias{process_blood_spot_collection_data}
 \title{Process Blood Spot Collection Data}
 \usage{
-process_blood_spot_collection_data(
-  df.payload,
-  con,
-  study_subject_id_col,
-  count_col
-)
+process_blood_spot_collection_data(df.payload, con, count_col)
 }
 \arguments{
 \item{df.payload}{A dataframe containing payload data.}
 
 \item{con}{A database connection object.}
 
-\item{malaria_blood_control_id}{Column name in df.payload for study subject ID.}
+\item{count_col}{Count column.}
 }
 \value{
 A dataframe with processed blood spot collection details.
