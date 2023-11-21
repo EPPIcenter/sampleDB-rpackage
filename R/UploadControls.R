@@ -950,25 +950,28 @@ prepare_new_compositions <- function(user_data) {
 #' @return A dataframe of matched compositions
 retrieve_compositions_by_identifier <- function(con, identifiers) {
   
-  # Identify standard identifiers
-  standard_ids <- grep("_", identifiers, value = TRUE)
+  # Apply the helper function to split all identifiers
+  split_ids <- lapply(identifiers, split_composition_id)
   
-  # Split standard identifiers
-  split_ids <- strsplit(standard_ids, "_")
-  labels_standard <- sapply(split_ids, `[`, 1)
-  indices_standard <- sapply(split_ids, `[`, 2)
+  # Extract standard and non-standard identifiers based on the legacy flag
+  standard_ids <- split_ids[!sapply(split_ids, `[[`, "legacy")]
+  non_standard_ids <- split_ids[sapply(split_ids, `[[`, "legacy")]
+  
+  # Extract labels and indices for standard identifiers
+  labels_standard <- sapply(standard_ids, `[[`, "label")
+  indices_standard <- sapply(standard_ids, `[[`, "index")
 
   # Retrieve compositions for standard identifiers
   result_standard <- tbl(con, "composition") %>%
-    dplyr::filter(label %in% !!labels_standard & index %in% !!indices_standard) %>%
+    dplyr::filter(label %in% labels_standard & index %in% indices_standard) %>%
     collect()
 
-  # Identify non-standard identifiers
-  non_standard_ids <- setdiff(identifiers, standard_ids)
-
+  # Extract labels for non-standard identifiers
+  labels_non_standard <- sapply(non_standard_ids, `[[`, "label")
+  
   # Retrieve compositions for non-standard identifiers
   result_non_standard <- tbl(con, "composition") %>%
-    dplyr::filter(label %in% !!non_standard_ids) %>%
+    dplyr::filter(label %in% labels_non_standard) %>%
     collect()
 
   # Combine results
