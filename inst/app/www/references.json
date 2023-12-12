@@ -1,0 +1,26 @@
+{
+  "references": {
+    "strains": {
+      "id": 1,
+      "name": "Strains",
+      "required_keys": ["strains"]
+    },
+    "compositions": {
+      "id": 2,
+      "name": "Compositions",
+      "required_keys": ["strains", "percentage"],
+      "optional_keys": ["label"]
+    }
+  },
+  "reference_key_associations": {
+    "shared": {},
+    "strains": {
+      "strains": "Strains"
+    },
+    "compositions": {
+      "strains": "Strains",
+      "percentage": "Percentages",
+      "label": "LegacyLabel"
+    }
+  }
+}

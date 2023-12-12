@@ -69,7 +69,7 @@ UpdateReferences <- function(reference, operation, identifier = NULL, update = N
                            table_name = "location",
                            list(created = as.character(lubridate::now()),
                                 last_updated = as.character(lubridate::now()),
-                                name = update$freezer_name,
+                                location_root = update$freezer_name,
                                 storage_type_id = update$freezer_type,
                                 level_I = update$freezer_levelI,
                                 level_II = update$freezer_levelII,
@@ -86,14 +86,14 @@ UpdateReferences <- function(reference, operation, identifier = NULL, update = N
       stopifnot("identifier list must include: freezer_name, freezer_levelI and freezer_levelII"= 
                   all(c("freezer_name", "freezer_levelI", "freezer_levelII") %in% names(identifier)))
 
-      tmp_table.location <- filter(CheckTableTx(conn = conn, "location"), name == identifier$freezer_name & level_I == identifier$freezer_levelI & level_II == identifier$freezer_levelII)
+      tmp_table.location <- filter(CheckTableTx(conn = conn, "location"), location_root == identifier$freezer_name & level_I == identifier$freezer_levelI & level_II == identifier$freezer_levelII)
       stopifnot("freezer could not be identified" = nrow(tmp_table.location) != 0)
       id.ref_freezer_space <- as.character(tmp_table.location$id)
       eval.created <- as.character(tmp_table.location$created)
 
       eval.info_list <- list(created = eval.created,
                              last_updated = as.character(lubridate::now()),
-                             name = update$freezer_name,
+                             location_root = update$freezer_name,
                              storage_type_id = update$freezer_type,
                              level_I = update$freezer_levelI,
                              level_II = update$freezer_levelII,
@@ -105,15 +105,15 @@ UpdateReferences <- function(reference, operation, identifier = NULL, update = N
                             info_list = eval.info_list,
                             id = id.ref_freezer_space)
       
-      tmp_table2.location <- filter(CheckTableTx(conn = conn, "location"), name == update$freezer_name & level_I == update$freezer_levelI & level_II == update$freezer_levelII)
+      tmp_table2.location <- filter(CheckTableTx(conn = conn, "location"), location_root == update$freezer_name & level_I == update$freezer_levelI & level_II == update$freezer_levelII)
 
       return_message <- paste0("Modified Freezer:\n",
-                               "\tPrevious Name: \"", tmp_table.location$name, "\"\n",
+                               "\tPrevious Name: \"", tmp_table.location$location_root, "\"\n",
                                "\tPrevious Type: \"", tmp_table.location$storage_type, "\"\n",
                                "\tPrevious Level I: \"", tmp_table.location$level_I, "\"\n",
                                "\tPrevious Level II: \"", tmp_table.location$level_II, "\"\n",
                                "New Freezer:\n",
-                               "\tCurrent Name: \"", tmp_table2.location$name, "\"\n",
+                               "\tCurrent Name: \"", tmp_table2.location$location_root, "\"\n",
                                "\tCurrent Type: \"", tmp_table2.location$storage_type, "\"\n",
                                "\tCurrent Level I: \"", tmp_table2.location$level_I, "\"\n",
                                "\tCurrent Level II: \"", tmp_table2.location$level_II, "\"")
@@ -123,7 +123,7 @@ UpdateReferences <- function(reference, operation, identifier = NULL, update = N
       
       stopifnot("identifier list must include: freezer_name, freezer_levelI and freezer_levelII" = 
                   all(c("freezer_name", "freezer_levelI", "freezer_levelII") %in% names(identifier)))
-      tmp_table.location <- filter(CheckTableTx(conn = conn, "location"), name == identifier$freezer_name & level_I == identifier$freezer_levelI & level_II == identifier$freezer_levelII)
+      tmp_table.location <- filter(CheckTableTx(conn = conn, "location"), location_root == identifier$freezer_name & level_I == identifier$freezer_levelI & level_II == identifier$freezer_levelII)
       stopifnot("freezer could not be identified" = nrow(tmp_table.location) != 0)
       id.ref_freezer_space <- as.character(tmp_table.location$id)
       DeleteFromTable(conn = conn, 
@@ -271,4 +271,86 @@ UpdateReferences <- function(reference, operation, identifier = NULL, update = N
   RSQLite::dbDisconnect(conn)
   message(return_message)
   return(return_message)
+}
+
+
+#' Append Strains to the Database Table
+#' 
+#' This function appends new strains to the 'strain' table in the database.
+#' 
+#' @param user_file A data frame containing a column named 'strain'.
+#' @param database The path to the SQLite database.
+#' 
+#' @return A boolean indicating success (TRUE) or failure (FALSE).
+#' @export
+#' 
+#' @examples
+#' # Assuming you have a data frame named user_data with a strain column and a valid SQLite database at "/path/to/db"
+#' result <- append_strains_to_db(user_data, "/path/to/db")
+#' 
+append_strains_to_db <- function(user_file, database = Sys.getenv("SDB_PATH")) {
+  con <- DBI::dbConnect(RSQLite::SQLite(), database)
+  on.exit(DBI::dbDisconnect(con), add = TRUE)  # Ensure connection is closed even if there's an error
+  
+  res <- FALSE
+  
+  tryCatch({
+    DBI::dbBegin(con)
+    res <- DBI::dbAppendTable(con, "strain", user_file %>% select(Strains) %>% dplyr::rename(name = Strains))
+    DBI::dbCommit(con)
+  }, error = function(e) {
+    DBI::dbRollback(con)
+    message("Error appending strains to database: ", e$message)
+  })
+  
+  return(res)
+}
+
+#' Append Studies to the Database Table
+#' 
+#' This function appends new strains to the 'strain' table in the database.
+#' 
+#' @param user_file A data frame containing a column named 'strain'.
+#' @param database The path to the SQLite database. 
+#' 
+#' @return A boolean indicating success (TRUE) or failure (FALSE).
+#' @export
+#' 
+#' @examples
+#' # Assuming you have a data frame named user_data with a strain column and a valid SQLite database at "/path/to/db"
+#' result <- append_strains_to_db(user_data, "/path/to/db")
+#' 
+# Appends a study record to the database
+append_study_to_db <- function(title, short_code, description, lead_person, is_longitudinal, database) {
+
+  con <- DBI::dbConnect(RSQLite::SQLite(), database)
+  on.exit(DBI::dbDisconnect(con), add = TRUE)  # Ensure connection is closed even if there's an error
+  
+  # Begin transaction
+  dbBegin(con)
+  
+  res <- NULL
+  
+  tryCatch({
+    now <- as.character(lubridate::now())
+    df.payload <- data.frame(
+      created = now,
+      last_updated = now,
+      title = title,
+      short_code = short_code,
+      description = description,
+      lead_person = lead_person,
+      is_longitudinal = is_longitudinal
+    )
+
+    res <- dbAppendTable(con, "study", df.payload)
+    dbCommit(con)  # Commit the transaction if everything went fine
+
+  }, error = function(e) {
+    # On error, rollback and propagate the error to the caller
+    dbRollback(con)
+    message("Error appending study to database: ", e$message)
+  })
+  
+  return(res)
 }

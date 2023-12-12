@@ -4,46 +4,8 @@ library(DBI)
 library(stringr)
 
 
-SearchDelArchSamples <- function(session, input, database, output, dbUpdateEvent) {
+AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEvent) {
 
-  # Your existing 'selected()' reactive
-  selected <- reactive(getReactableState("DelArchSearchResultsTable", "selected"))
-
-  observe({
-    if (!is.null(input$shiftKeyEnabled) && input$shiftKeyEnabled) {
-      if (!is.null(input$selectedRange)) {
-        
-        # Get the selected range
-        start_row <- input$selectedRange[1]
-        end_row <- input$selectedRange[2]
-        
-        # Create new selection sequence
-        new_selection <- seq(from = start_row + 1, to = end_row + 1)
-        
-        # Update the selected rows
-        updateReactable(outputId = "DelArchSearchResultsTable", selected = new_selection)
-      }
-    }
-  })
-
-  # Reactive to store retrieved database data
-  createFilterSetReactive <- function(defaults = list()) {
-    rv <- reactiveVal(defaults)
-    
-    list(
-      get = function() { rv() },
-      set = function(new_filters) {
-        rv(new_filters)
-      },
-      insert = function(new_filters) {
-        existing_filters <- rv()
-        updated_filters <- modifyList(existing_filters, new_filters)
-        rv(updated_filters)
-      },
-      clear = function() { rv(list()) },
-      reset = function() { rv(defaults) }
-    )
-  }
 
   # Initialize the custom filter with default values
   filter_set <- createFilterSetReactive(
@@ -52,11 +14,18 @@ SearchDelArchSamples <- function(session, input, database, output, dbUpdateEvent
       status = "In Use"
     )
   )
-      
 
-  #' Declare filters for searching and establish any filter dependencies
+  #' Initialize dropdowns that are not control or sample specific
+  con <- init_db_conn(database)
+
+  updateSelectInput(session, "DelArchSearchByState", selected = "Active", choices = tbl(con, "state") %>% pull(name))
+  updateSelectInput(session, "DelArchSearchByStatus", selected = "In Use", choices = tbl(con, "status") %>% pull(name))
+  
+  DBI::dbDisconnect(con)
+
+  # Declare filters for searching and establish any filter dependencies
   observe({
-    # Build the filters
+    # Build the new filters
     new_filters <- list(
       manifest = input$DelArchSearchByManifest,
       short_code = input$DelArchSearchByStudy,
@@ -67,7 +36,7 @@ SearchDelArchSamples <- function(session, input, database, output, dbUpdateEvent
         date.to = input$DelArchdateRange[2]
       ), 
       location = list(
-        name = input$DelArchSearchByLocation,
+        location_root = input$DelArchSearchByLocation,
         level_I = input$DelArchSearchByLevelI,
         level_II = input$DelArchSearchByLevelII
       ),
@@ -75,75 +44,93 @@ SearchDelArchSamples <- function(session, input, database, output, dbUpdateEvent
       status = input$DelArchSearchByStatus
     )
 
-    # Remove empty or NULL values
-    new_filters <- purrr::map(new_filters, ~purrr::discard(.x, function(x) is.null(x) | "" %in% x | length(x) == 0))
-    new_filters <- purrr::discard(new_filters, ~is.null(.x) | length(.x) == 0)
+    # Remove empty or NULL values from new_filters
+    new_filters <- purrr::map(new_filters, ~purrr::discard(.x, function(x) is.null(x) || "" %in% x || length(x) == 0))
+    new_filters <- purrr::discard(new_filters, ~is.null(.x) || length(.x) == 0)
 
+    # Insert the new filters
     filter_set$insert(new_filters)
-  })
 
-
-  # get DelArchSearch ui elements
-  rv <- reactiveValues(user_file = NULL, error = NULL, search_table = NULL, operation = NULL, filtered_sample_container_ids = NULL)
-
-  error <- reactiveValues(
-    title = "",
-    message = "",
-    table = NULL
-  )
-
-  observeEvent(rv$error, ignoreInit = TRUE, {
-    message("Running error workflow")
-
-    df <- NULL
-    if (!is.null(error$table)) {
-      df <- error$table %>%
-        dplyr::rename(
-          Column = column, 
-          Reason = reason,
-          `Triggered By` = trigger
-        ) %>%
-        reactable(.)
+    # List of filters that should not be removed
+    exception_list <- c("barcode")
+    
+    # Do not remove 'study_subject' if a file for it is loaded
+    if (!is.null(input$DelArchSearchBySubjectUIDFile)) {
+      exception_list <- c(exception_list, "study_subject")
     }
 
-    showModal(
-      modalDialog(
-        title = error$title,
-        error$message,
-        tags$hr(),
-        renderReactable({ df }),
-        footer = modalButton("Exit")
-      )
-    )
+    # Identify filters to remove
+    existing_filters <- filter_set$get()
+    filters_to_remove <- setdiff(names(existing_filters), names(new_filters))
 
-    error$title = ""
-    error$message = ""
-    error$table = NULL
-    rv$error <- NULL
+    # Remove filters not in the exception list
+    filters_to_remove <- setdiff(filters_to_remove, exception_list)
+    if (length(filters_to_remove) > 0) {
+      filter_set$remove(filters_to_remove)
+    }
   })
 
+  # get DelArchSearch ui elements
+  rv <- reactiveValues(user_file = NULL, error = NULL, operation = NULL, filtered_sample_container_ids = NULL)
+
   filtered_data <- reactive({
-
     # Obtain the search results
-    results <- SearchSamples(input$DelArchSearchBySampleType, filters = filter_set$get(), include_internal_sample_id = TRUE)
-
+    
+    # Ensure that state and status are set before performing any searches
+    # Check for non-NULL and non-empty strings
+    req(nzchar(input$DelArchSearchByState), nzchar(input$DelArchSearchByStatus))
+    
+    if (input$DelArchSearchType == "samples") {
+      results <- SearchSamples(input$DelArchSearchBySampleType, filters = filter_set$get(), include_internal_sample_id = TRUE)
+    } else {
+      results <- SearchControls(input$DelArchSearchByControlType, filters = filter_set$get(), include_internal_control_id = TRUE) 
+    }
+    
     # Prepare data for reactable
     if (!is.null(results)) {
-      results 
+      results
     } else {
       tibble::tibble()
     }
   }) %>% debounce(500)  # 500ms delay
 
 
+  # Store the most recent data in a reactive value
+  most_recent_data <- reactiveVal(NULL)
+
+  # Observe changes to filtered_data() and update most_recent_data
   observe({
-    output$DelArchSearchResultsTable <- renderReactable({
-      # Get filtered data from our reactive
-      search_table <- filtered_data() %>% select(-c(`Sample ID`))
+    if (!is.null(filtered_data())) {
+      most_recent_data(filtered_data())
+    }
+  })
+
+  # Observe changes to study_subject_search_results() and update most_recent_data
+  observe({
+    if (!is.null(study_subject_search_results())) {
+      most_recent_data(study_subject_search_results())
+    }
+  })
+
+  # Your main observe block using most_recent_data()
+  observe({
+  output$DelArchSearchResultsTable <- renderReactable({
+    # If most_recent_data is null (e.g. both filtered_data and study_subject_search_results are null initially)
+    if (is.null(most_recent_data())) {
+      return(NULL)
+    }
+
+    # Get filtered data from the most recent data source
+    type <- isolate({ input$DelArchSearchType })
+    if (type == "samples") {
+      search_table <- most_recent_data() %>% select(-c(`Sample ID`))
+    } else {
+      search_table <- most_recent_data() %>% select(-c(ControlID))
+    }
       
       reactable(
         search_table,
-        defaultColDef = colDef(minWidth = 95, html = TRUE, sortable = TRUE, resizable = FALSE, na = "-", align = "center"),
+        defaultColDef = colDef(minWidth = ifelse(type == "samples", 105, 150), html = TRUE, sortable = TRUE, resizable = FALSE, na = "-", align = "center"),
         searchable = TRUE,
         selection = "multiple", 
         onClick = "select",
@@ -155,15 +142,30 @@ SearchDelArchSamples <- function(session, input, database, output, dbUpdateEvent
             "&[aria-sort='ascending'], &[aria-sort='descending']" = list(background = "hsl(0, 0%, 96%)"),
             borderColor = "#555"
           ),
-          rowSelectedStyle = list(backgroundColor = '#aafaff', boxShadow = 'inset 2px 0 0 0 #ffa62d')
+          rowSelectedStyle = list(backgroundColor = '#FFAC45', boxShadow = 'inset 2px 0 0 0 #FF4B4B')
         )
       )
     })
   })
 
    # Use the filtered data to update selections
-  observeEvent(input$DelArchSearchBySampleType, {
+   # NOTE: make one observeEvnet for the two
+  observeEvent(input$DelArchSearchBySampleType, ignoreInit = TRUE, {
     UpdateSelections(session, input, TRUE)
+  })
+
+  observeEvent(input$DelArchSearchByControlType, ignoreInit = TRUE, {
+    UpdateSelections(session, input, TRUE)
+  })
+
+  observeEvent(input$DelArchSearchType, {
+
+    if (input$DelArchSearchType == "samples") {
+      accordion_panel_update("DelArchSubjectsPanel", "Study & Subjects")
+    } else {
+      accordion_panel_update("DelArchSubjectsPanel", "Batch & Controls")
+    }
+
   })
 
   ### DelArchSearch by file
@@ -174,65 +176,89 @@ SearchDelArchSamples <- function(session, input, database, output, dbUpdateEvent
 
     tryCatch({
       ## format the file
-      rv$user_file <- ProcessCSV(
+      rv$user_file <- extract_search_criteria(
         user_csv = dataset$datapath,
-        user_action = "search",
-        search_type = "barcode",
-        validate = FALSE
+        search_type = "barcode"
       )
-
-      new_filter <- list(barcode = rv$user_file %>% pull(Barcodes))
+      new_filter <- list(barcode = rv$user_file$Barcodes)
       filter_set$insert(new_filter)  # Insert new barcode filter
     },
     formatting_error = function(e) {
-      message("Caught formatting error")
-      error$title <- "Invalid File Detected"
-      error$message <- e$message
-      error$table <- e$df
-
-      rv$error <- TRUE
+      show_formatting_error_modal(e)
     },
     error = function(e) {
-      message(e)
-      error$title <- "Error Detected"
-      error$message <- e$message
-      error$table <- NULL
-      rv$error <- TRUE
+      show_general_error_modal(e)
     })
   })
 
-  observeEvent(input$DelArchSearchBySubjectUIDFile, ignoreInit = TRUE, {
+  study_subject_search_results <- eventReactive(input$DelArchSearchBySubjectUIDFile, ignoreInit = TRUE, {
     dataset <- input$DelArchSearchBySubjectUIDFile
     message(paste("Loaded", dataset$name))
 
-    tryCatch({
+    results <- tryCatch({
       ## format the file
-      rv$user_file <- ProcessCSV(
+      rv$user_file <- extract_search_criteria(
         user_csv = dataset$datapath,
-        user_action = "search",
-        search_type = "study_subject",
-        validate = FALSE
+        search_type = "study_subject"
       )
 
-      new_filter <- list(study_subject = rv$user_file %>% pull(StudySubjects))
-      filter_set$insert(new_filter)  # Insert new study_subject filter
+      # Begin by renaming just StudySubject which will always be present
+      new_filter <- rv$user_file %>%
+        select(StudySubject) %>%
+        dplyr::rename(study_subject = StudySubject)
+
+      # Add optional columns based on their presence in the dataset
+      if ("StudyCode" %in% names(rv$user_file)) {
+        new_filter$short_code <- rv$user_file$StudyCode
+      }
+      
+      if ("CollectionDate" %in% names(rv$user_file)) {
+        new_filter$collection_date <- rv$user_file$CollectionDate
+      }
+
+      if ("SpecimenType" %in% names(rv$user_file)) {
+        new_filter$specimen_type <- rv$user_file$SpecimenType
+      }
+
+      search_by_study_subject_file_upload(input$DelArchSearchBySampleType, new_filter)
 
     },
     formatting_error = function(e) {
-      message("Caught formatting error")
-      error$title <- "Invalid File Detected"
-      error$message <- e$message
-      error$table <- e$df
-
-      rv$error <- TRUE
+      show_formatting_error_modal(e)
     },
     error = function(e) {
-      message(e)
-      error$title <- "Error Detected"
-      error$message <- e$message
-      error$table <- NULL
-      rv$error <- TRUE
+      show_general_error_modal(e)
     })
+
+    results
+  })
+
+
+  observeEvent(input$DelArchSearchByStudy, ignoreInit = TRUE, { 
+
+    con <- DBI::dbConnect(RSQLite::SQLite(), Sys.getenv("SDB_PATH"))
+    choices <- NULL
+    if (!is.null(input$DelArchSearchByStudy) && input$DelArchSearchByStudy != "") {
+      choices <- tbl(con, "study") %>%
+        inner_join(tbl(con, "study_subject"), by = c("id"="study_id")) %>%
+        filter(short_code == local(input$DelArchSearchByStudy)) %>%
+        pull(name)
+    } else {
+      choices <- tbl(con, "study") %>%
+        inner_join(tbl(con, "study_subject"), by = c("id"="study_id")) %>%
+        pull(name)
+    }
+
+    updateSelectizeInput(
+      session,
+      "DelArchSearchBySubjectUID",
+      "Study Subject",
+      selected = "",
+      choices = choices,
+      server = TRUE
+    )
+
+    dbDisconnect(con)
   })
   
   observeEvent(input$DelArchSearchReset, ignoreInit = TRUE, {
@@ -262,32 +288,7 @@ SearchDelArchSamples <- function(session, input, database, output, dbUpdateEvent
     updateSelectizeInput(session, selected = selected, "DelArchSearchByStatus", "Status", choices = choices, server = TRUE) 
   })
 
-  observeEvent(input$DelArchSearchByStudy, ignoreInit = TRUE, { 
 
-    con <- DBI::dbConnect(RSQLite::SQLite(), Sys.getenv("SDB_PATH"))
-    choices <- NULL
-    if (!is.null(input$DelArchSearchByStudy) && input$DelArchSearchByStudy != "") {
-      choices <- tbl(con, "study") %>%
-        inner_join(tbl(con, "study_subject"), by = c("id"="study_id")) %>%
-        filter(short_code == local(input$DelArchSearchByStudy)) %>%
-        pull(name)
-    } else {
-      choices <- tbl(con, "study") %>%
-        inner_join(tbl(con, "study_subject"), by = c("id"="study_id")) %>%
-        pull(name)
-    }
-
-    updateSelectizeInput(
-      session,
-      "DelArchSearchBySubjectUID",
-      "Study Subject",
-      selected = "",
-      choices = choices,
-      server = TRUE
-    )
-
-    dbDisconnect(con)
-  })
 
   observeEvent(input$DelArchSearchByLocation, ignoreInit = TRUE, {
 
@@ -298,7 +299,7 @@ SearchDelArchSamples <- function(session, input, database, output, dbUpdateEvent
       "DelArchSearchByLevelI",
       selected = "",
       choices = c("", tbl(con, "location") %>%
-        filter(name == local(input$DelArchSearchByLocation)) %>%
+        filter(location_root == local(input$DelArchSearchByLocation)) %>%
         pull(level_I) %>%
         unique(.)
       )
@@ -317,7 +318,7 @@ SearchDelArchSamples <- function(session, input, database, output, dbUpdateEvent
       "DelArchSearchByLevelII",
       selected = "",
       choices = c("", tbl(con, "location") %>%
-        filter(name == local(input$DelArchSearchByLocation) & level_I == local(input$DelArchSearchByLevelI)) %>%
+        filter(location_root == local(input$DelArchSearchByLocation) & level_I == local(input$DelArchSearchByLevelI)) %>%
         collect() %>% 
         pull(level_II) %>%
         unique(.)
@@ -327,17 +328,6 @@ SearchDelArchSamples <- function(session, input, database, output, dbUpdateEvent
     dbDisconnect(con)
   })  
 
-  observe({
-    output$DownloadDelArchSearchData <- downloadHandler(
-      filename = function() {
-        paste('data-', Sys.Date(), '.csv', sep='')
-      },
-      content = function(con) {
-        write.csv(filtered_data(), con, row.names = FALSE, quote = FALSE)
-      }
-    )
-  })
-
 
   observeEvent(dbUpdateEvent(), ignoreInit = TRUE, {
     
@@ -345,9 +335,8 @@ SearchDelArchSamples <- function(session, input, database, output, dbUpdateEvent
 
     manifest_name <- switch(
       input$DelArchSearchBySampleType,
-      "1" = "micronix_plate",
-      "2" = "cryovial_box",
-      "3" = "dbs_paper",
+      "micronix" = "micronix_plate",
+      "cryovial" = "cryovial_box",
       NULL
     )
 
@@ -355,8 +344,7 @@ SearchDelArchSamples <- function(session, input, database, output, dbUpdateEvent
     manifests <- if (is.null(manifest_name)) {
       unique(c(
         tbl(con, "micronix_plate") %>% pull(name),
-        tbl(con, "cryovial_box") %>% pull(name),
-        tbl(con, "dbs_paper") %>% pull(name)
+        tbl(con, "cryovial_box") %>% pull(name)
       ))
     } else {
       unique(tbl(con, manifest_name) %>% pull(name))
@@ -367,7 +355,7 @@ SearchDelArchSamples <- function(session, input, database, output, dbUpdateEvent
       short_codes = tbl(con, "study") %>% pull(short_code),
       study_subjects = tbl(con, "study_subject") %>% pull(name),
       specimen_types = tbl(con, "specimen_type") %>% pull(name),
-      locations = tbl(con, "location") %>% pull(name)
+      locations = tbl(con, "location") %>% pull(location_root)
     )
 
     # Close the database connection
@@ -378,9 +366,8 @@ SearchDelArchSamples <- function(session, input, database, output, dbUpdateEvent
       session, "DelArchSearchByManifest",
       label = switch(
         input$DelArchSearchBySampleType,
-        "1" = "Plate Name",
-        "2" = "Box Name",
-        "3" = "Paper Name",
+        "micronix" = "Plate Name",
+        "cryovial" = "Box Name",
         "all" = "All Containers"
       ),
       choices = manifests,
@@ -418,6 +405,8 @@ SearchDelArchSamples <- function(session, input, database, output, dbUpdateEvent
 
 
   ###### Delarch specific functionality
+
+  selected <- reactive(getReactableState("DelArchSearchResultsTable", "selected"))
 
   observeEvent(input$ArchiveAction, ignoreInit = TRUE, {
 
@@ -590,7 +579,7 @@ SearchDelArchSamples <- function(session, input, database, output, dbUpdateEvent
         paste('data-', Sys.Date(), '.csv', sep='')
       },
       content = function(con) {
-        user.filtered.rows =  filtered_data()
+        user.filtered.rows =  most_recent_data()
         user.selected.rows <- if (length(selected() > 0)) user.filtered.rows[selected(), ] else user.filtered.rows
         write.csv(user.selected.rows, con, row.names = FALSE, quote = FALSE)
       }
@@ -599,19 +588,31 @@ SearchDelArchSamples <- function(session, input, database, output, dbUpdateEvent
 }
 
 UpdateSelections <- function(session, input, keepCurrentSelection = FALSE) {
+
+  if (input$DelArchSearchType == "samples") {
+    UpdateSampleSelections(session, input, keepCurrentSelection)
+  } else {
+    UpdateControlSelections(session, input, keepCurrentSelection)
+  }
+
+  updateSelectInput(session, "DelArchSearchByState", selected = ifelse(keepCurrentSelection, input$DelArchSearchByState, "Active"))
+  updateSelectInput(session, "DelArchSearchByStatus", selected = ifelse(keepCurrentSelection, input$DelArchSearchByStatus, "In Use"))
   
+  shinyjs::reset("DelArchSearchByBarcode")
+  shinyjs::reset("DelArchSearchBySubjectUIDFile")
+}
+
+UpdateSampleSelections <- function(session, input, keepCurrentSelection = FALSE) {
   con <- DBI::dbConnect(RSQLite::SQLite(), Sys.getenv("SDB_PATH"))
   
   manifest_types <- list(
-    "1" = list(name = "micronix_plate", label = "Plate Name"),
-    "2" = list(name = "cryovial_box", label = "Box Name"),
-    "3" = list(name = "dbs_paper", label = "Paper Name")
+    "micronix" = list(name = "micronix_plate", label = "Plate Name"),
+    "cryovial" = list(name = "cryovial_box", label = "Box Name")
   )
   
   manifests <- if (is.null(manifest_types[[input$DelArchSearchBySampleType]])) {
     c(unique(tbl(con, "micronix_plate") %>% pull(name)),
-      unique(tbl(con, "cryovial_box") %>% pull(name)),
-      unique(tbl(con, "dbs_paper") %>% pull(name)))
+      unique(tbl(con, "cryovial_box") %>% pull(name)))
   } else {
     unique(tbl(con, manifest_types[[input$DelArchSearchBySampleType]]$name) %>% pull(name))
   }
@@ -621,11 +622,11 @@ UpdateSelections <- function(session, input, keepCurrentSelection = FALSE) {
     DelArchSearchByStudy = unique(tbl(con, "study") %>% pull(short_code)),
     DelArchSearchBySubjectUID = unique(tbl(con, "study_subject") %>% pull(name)),
     DelArchSearchBySpecimenType = unique(tbl(con, "specimen_type") %>% pull(name)),
-    DelArchSearchByLocation = unique(tbl(con, "location") %>% pull(name))
+    DelArchSearchByLocation = unique(tbl(con, "location") %>% pull(location_root))
   )
   
   labels_list <- list(
-    DelArchSearchByManifest = manifest_types[[input$DelArchSearchBySampleType]]$label %||% "All Containers",
+    DelArchSearchByManifest = manifest_types[[input$DelArchSearchBySampleType]]$label,
     DelArchSearchByStudy = "Study",
     DelArchSearchBySubjectUID = "Study Subject",
     DelArchSearchBySpecimenType = "Specimen Type",
@@ -645,12 +646,71 @@ UpdateSelections <- function(session, input, keepCurrentSelection = FALSE) {
       server = TRUE
     )
   })
-  
-  DBI::dbDisconnect(con)
-  
-  shinyjs::reset("DelArchSearchByBarcode")
-  shinyjs::reset("DelArchSearchBySubjectUIDFile")
 
-  updateSelectInput(session, "DelArchSearchByState", selected = "Active")
-  updateSelectInput(session, "DelArchSearchByStatus", selected = "In Use")
+  DBI::dbDisconnect(con)
+}
+
+
+UpdateControlSelections <- function(session, input, keepCurrentSelection = FALSE) {
+
+  con <- DBI::dbConnect(RSQLite::SQLite(), Sys.getenv("SDB_PATH"))
+
+  ## Get the control container choices
+  if (input$DelArchSearchByControlType == "dbs_sheet") {
+    container_label <- "DBS Sheet"
+    container_choices <- tbl(con, "dbs_control_sheet") %>% pull(label)
+  } else {
+    container_label <- "WB Cryovial Box"
+    container_choices <- tbl(con, "cryovial_box") %>% pull(name)
+  }
+
+  ## Get the controls and batches
+  controls <- tbl(con, "malaria_blood_control") %>%
+    inner_join(tbl(con, "study_subject"), by = c("study_subject_id"="id"))
+
+  batches <- controls %>%
+    inner_join(tbl(con, "study"), by = c("study_id"="id"))
+
+  found_controls <- controls %>% pull(name, name = id)
+  found_batches <- batches %>% pull(short_code, name = id)
+  composition_types <- get_composition_types(con)
+
+  ## Get the identifiers and strains
+  strains <- get_strains(con)
+  
+  choices_list <- list(
+    DelArchSearchByManifest = unique(container_choices),
+    DelArchSearchByStudy = unique(found_batches),
+    DelArchSearchBySubjectUID = unique(found_controls),
+    DelArchSearchBySpecimenType = c(), # leave empty for now
+    DelArchSearchByLocation = unique(tbl(con, "location") %>% pull(location_root)),
+    DelArchCompositionTypes = unique(composition_types),
+    DelArchSearchByStrains = unique(strains)
+  )
+  
+  labels_list <- list(
+    DelArchSearchByManifest = container_label,
+    DelArchSearchByStudy = "Batch",
+    DelArchSearchBySubjectUID = "Control ID",
+    DelArchSearchBySpecimenType = "Specimen Type",
+    DelArchSearchByLocation = "Storage Location",
+    DelArchCompositionTypes = "Composition Type",
+    DelArchSearchByStrains = "Strain"
+  )
+  
+  sapply(names(choices_list), function(input_name) {
+    # Adjust the selected argument based on keepCurrentSelection parameter
+    current_selected <- if (keepCurrentSelection) input[[input_name]] else FALSE
+    
+    updateSelectizeInput(
+      session,
+      input_name,
+      label = labels_list[[input_name]],
+      choices = choices_list[[input_name]],
+      selected = current_selected, 
+      server = TRUE
+    )
+  })
+
+  DBI::dbDisconnect(con)
 }

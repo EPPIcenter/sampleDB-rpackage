@@ -2,22 +2,14 @@ library(DBI)
 
 UIMoveSamples <- function(){
 
-  con <- DBI::dbConnect(RSQLite::SQLite(), Sys.getenv("SDB_PATH"))
-
-  file_specs_json <- rjson::fromJSON(file = system.file(
-    "extdata", "file_specifications.json", package = .sampleDB$pkgname))
-
-  file_type_ids <- lapply(file_specs_json$file_types, function(x) x$id)
-  names(file_type_ids) <- lapply(file_specs_json$file_types, function(x) x$name)
-
   ui <- sidebarLayout(
     sidebarPanel(
       width = 4,
       HTML("<h4><b>Move Samples</b></h4>"),
       HTML("<p>To move samples please select a storage type and fill out the sections below.</p>"),
-      radioButtons("MoveSampleType","1. Sample Storage Type", DBI::dbReadTable(con, "sample_type") %>% pull(id, name = "name"), inline = T),
+      radioButtons("MoveSampleType","1. Sample Storage Type", get_sample_types(), inline = T),
       hr(),
-      radioButtons("MoveFileType", label = "2. Move File Type", choices = file_type_ids, inline = T),
+      radioButtons("MoveFileType", label = "2. Move File Type", choices = c("NA"="na"), inline = T),
       
       conditionalPanel(
         condition = "input.MoveFileType == 'traxcer'",
@@ -27,8 +19,8 @@ UIMoveSamples <- function(){
 
       hr(),
       #action buttons
-      fluidRow(column(width = 6, actionButton("MoveAction", width = '100%', label = "Move Samples", style="color: #fff; background-color: #337ab7; border-color: #2e6da4")),
-               column(width = 6, actionButton("ClearMoveForm", width = '100%', label = "Clear Form", style="color:#c4244c; background-color: #fff4f4; border-color: #c4244c"))),
+      fluidRow(column(width = 6, actionButton("MoveAction", width = '100%', label = "Move Samples")),
+               column(width = 6, actionButton("ClearMoveForm", width = '100%', label = "Clear Form"))),
       
       br(),
       actionButton("CreateNewManifest", label = "Create Container"),
@@ -51,8 +43,6 @@ UIMoveSamples <- function(){
         tags$h4(tags$strong("Important")),
         tags$p("The destination container must exist in the database before moving the file. Use ", tags$strong("Create Container"), " to create an empty container.")
     )))
-
-  dbDisconnect(con)
 
   return(ui)
 }

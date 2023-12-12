@@ -2,7 +2,11 @@ UpdateLabFreezers <- function(session, input, output, database){
   
   # get ui freezer elements
   ui_elements <- GetUIFreezerElements()
-  
+
+  con <- init_db_conn(database)
+  on.exit(dbDisconnect(con), add = TRUE)
+  updateSelectInput(session, ui_elements$ui.input$AddFreezerType, choices = tbl(con, "storage_type") %>% pull(id, name = name))
+
   #check freezer update
   FreezerChangesChecks(input, database, output, ui_elements = ui_elements)
   
@@ -19,6 +23,8 @@ UpdateLabFreezers <- function(session, input, output, database){
       new.freezer_levelII <- input[[ui_elements$ui.input$AddFreezerLevel_II]]
 
       print(new.freezer_type)
+
+      return_message <- ""
 
       
       # set requirements
@@ -135,8 +141,8 @@ ShowFreezers <- function(output, database){
     data <- tbl(con, "location") %>%
       dplyr::select(-c(created:id, level_III)) %>%
       inner_join(tbl(con, "storage_type") %>% rename(storage_type_name = name), by = c("storage_type_id" = "id")) %>%
-      select(name, storage_type_name, level_I, level_II) %>%
-      rename(`Freezer Name` = name,
+      select(location_root, storage_type_name, level_I, level_II) %>%
+      rename(`Freezer Name` = location_root,
              `Type` = storage_type_name,
              `Level I` = level_I,
              `Level II` = level_II) %>%

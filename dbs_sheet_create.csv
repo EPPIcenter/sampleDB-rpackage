@@ -1,0 +1,6 @@
+Density,CompositionID,Batch,SheetID,Count,Comment,FreezerName,ShelfName,BasketName,SheetName,SheetBarcode
+1.07935468871184,Comp1,A,Sheet1,87,Test comment 1,Freezer1,TopShelf,BasketA,Sheet6,Barcode1
+1.07275606320384,Comp2,B,Sheet2,23,Test comment 2,Freezer1,TopShelf,BasketA,Sheet7,Barcode2
+1.0945563716516,Comp3,A,Sheet3,25,Test comment 3,Freezer1,TopShelf,BasketA,Sheet8,Barcode3
+0.991615753724184,Comp4,A,Sheet4,72,Test comment 4,Freezer1,TopShelf,BasketA,Sheet9,Barcode4
+1.19962866436587,Comp5,B,Sheet5,15,Test comment 5,Freezer1,TopShelf,BasketA,Sheet10,Barcode5

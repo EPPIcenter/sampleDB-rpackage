@@ -1,0 +1,2 @@
+Row,Column,StudyCode,StudySubject,Density,SpecimenType,SheetID (??),BagName,FreezerName,ShelfName,BasketName,Date,Comment,SheetBarcode
+A,1,DBS Controls,TS1-TC2,10K,DNA (DBS),XXXXX,Bag1,Freezer A,Shelf 1,Basket 1,2023-06-08,Can add a coment here,8888888888

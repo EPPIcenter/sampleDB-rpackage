@@ -33,8 +33,23 @@ UICSS <- function(){
           -moz-user-select: none;      /* Firefox */
           -ms-user-select: none;       /* Internet Explorer/Edge */
           user-select: none;
-        }"
-      )
+        }
+        /* Your custom_css rules below */
+        .custom-dropdown, .dropdown-menu .dropdown-item {
+            width: 100%;
+        }
+        button, .btn {
+            background-color: #FFF6D0;
+            color: black;
+        }
+        button:hover, .btn:hover {
+            background-color: #FFAC45;
+            color: black;
+        }
+        .dropdown-menu {
+            padding: 0;
+        }
+      ")
     )
   )
 }

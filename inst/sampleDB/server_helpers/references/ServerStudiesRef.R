@@ -89,8 +89,10 @@ UpdateLabStudies <- function(session, input, output, database){
 }
 
 ShowStudies <- function(output, database){
+
+  con = dbConnect(SQLite(), database)
   output$TableStudy <- DT::renderDataTable({
-    CheckTable(database = database, "study") %>%
+    dbReadTable(con, "study") %>%
       dplyr::select(-c(id, last_updated)) %>%
       mutate(is_longitudinal = as.logical(is_longitudinal)) %>%
       rename(Title = title,
