@@ -245,74 +245,50 @@ check_micronix_barcodes_exist <- function(con, user_data, row_number_col, micron
 
 #' Check Cryovial Barcodes in Database
 #'
-#' This function checks whether Cryovial barcodes provided in a user-uploaded table
-#' exist or don't exist (based on `error_if_exists` parameter) in the main database.
-#'
-#' @param con A database connection object.
-#' @param user_data The name of the table containing user-uploaded data.
-#' @param row_number_col The name of the column in the user-uploaded table that contains row numbers.
-#' @param cryovial_col The name of the column in the user-uploaded table that contains the Cryovial barcodes.
-#' @param error_if_exists A logical value. If TRUE, function returns error if barcode exists in the database, 
-#' if FALSE, function returns error if barcode doesn't exist.
-#'
-#' @return An instance of the ErrorData class if errors are found, or NULL if there are no errors.
-#' @keywords validation, cryovial
-#' @export
-check_cryovial_barcodes_exist <- function(con, user_data, row_number_col, cryovial_col, error_if_exists=TRUE) {
-  
-  df <- tbl(con, user_data) %>%
-    left_join(tbl(con, "cryovial_tube"), by = setNames("barcode", cryovial_col))
-  
-  if (error_if_exists) {
-    df <- df %>% filter(!is.na(id))
-    error_desc <- "Cryovial barcode already exists in database"
-  } else {
-    df <- df %>% filter(is.na(id))
-    error_desc <- "Cryovial barcode not found in database"
-  }
-  
-  df <- df %>% select(all_of(c(row_number_col, cryovial_col))) %>% collect()
-
-  if (nrow(df) > 0) {
-    return(ErrorData$new(
-      description = error_desc,
-      columns = c(row_number_col, cryovial_col),
-      rows = df[[row_number_col]]
-    ))
-  }
-
-  return(NULL)
-}
-
-#' Check if Cryovial barcodes in the move file exist in the database
-#'
 #' @param con A database connection object.
 #' @param user_data The name of the table where the user data is temporarily stored in the database.
 #' @param row_number_col The column with the row number in the `user_data`.
 #' @param cryovial_col The column with Cryovial barcodes in the `user_data`.
+#' @param cryovial_box_col The column with Cryovial box IDs in the `user_data`.
+#' @param cryovial_box_barcode_col The column with Cryovial box barcodes in the `user_data`.
 #' @param error_if_exists Logical. If TRUE, an error is returned if the barcode exists in the database.
 #'
 #' @keywords validation, cryovial
 #' @return An instance of the ErrorData class or NULL.
-check_cryovial_barcodes_exist <- function(con, user_data, row_number_col, cryovial_col, error_if_exists=TRUE) {
+check_cryovial_barcodes_exist <- function(con, user_data, row_number_col, cryovial_col, cryovial_box_col, cryovial_box_barcode_col, error_if_exists = TRUE) {
+
   df <- tbl(con, user_data) %>%
     filter(!is.na(!!sym(cryovial_col))) %>%
-    left_join(tbl(con, "cryovial_tube"), by = setNames("barcode", cryovial_col))
-  
+    left_join(tbl(con, "cryovial_tube"), by = setNames(c("barcode"), c(cryovial_col))) %>%
+    left_join(tbl(con, "cryovial_box") %>% dplyr::rename(cryovial_box_id = id), by = setNames(c("cryovial_box_id"), c(cryovial_box_col)))
+
+  # Adjust join for handling NA in cryovial_box_barcode_col
+  df <- df %>%
+    mutate(cryovial_box_barcode = coalesce(!!sym(cryovial_box_barcode_col), NA_character_)) %>%
+    left_join(tbl(con, "cryovial_box") %>% dplyr::rename(cryovial_box_id = id), by = c("cryovial_box_barcode" = "barcode"))
+
+  # Filter based on unique cryovial barcode within a box, considering the box barcode
+  df <- df %>%
+    group_by(!!sym(cryovial_box_col), !!sym(cryovial_box_barcode_col), !!sym(cryovial_col)) %>%
+    add_count() %>%
+    mutate(duplicate_within_box = n > 1) %>%
+    ungroup()
+
+  # Error handling
   if (error_if_exists) {
-    df <- df %>% filter(!is.na(id))
-    error_desc <- "Cryovial barcode already exists in database"
+    df <- df %>% filter(!is.na(id) | duplicate_within_box)
+    error_desc <- "Cryovial is duplicated within a box"
   } else {
-    df <- df %>% filter(is.na(id))
+    df <- df %>% filter(is.na(id) & !duplicate_within_box)
     error_desc <- "Cryovial barcode not found in database"
   }
-  
+
   df <- df %>% select(!!sym(row_number_col), !!sym(cryovial_col)) %>% collect()
 
   if (nrow(df) > 0) {
     return(ErrorData$new(
       description = error_desc,
-      columns = c(row_number_col, cryovial_col),
+      columns = c(row_number_col, cryovial_col, cryovial_box_col, cryovial_box_barcode_col),
       rows = df[[row_number_col]]
     ))
   }
@@ -729,6 +705,7 @@ validate_micronix_moves <- function(micronix_test, variable_colnames) {
 #' @return A list object containing validation errors, if any.
 #' @keywords validation
 validate_cryovial_uploads <- function(cryovial_test) {
+  cryovial_test(check_cryovial_barcodes_exist, "Barcode", "BoxName", "BoxBarcode", error_if_exists = TRUE)
   cryovial_test(check_longitudinal_study_dates, "StudyCode", "CollectionDate")
   cryovial_test(validate_non_longitudinal_study_subjects, "StudyCode", "StudySubject")
   cryovial_test(validate_longitudinal_study, "StudyCode", "StudySubject", "CollectionDate")
