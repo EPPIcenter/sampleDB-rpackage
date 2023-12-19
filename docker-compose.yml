@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  main-app:
+    build: 
+      context: . 
+      dockerfile: Dockerfile
+    ports:
+      - "3838:3838"
+    volumes:
+      - sampledb_database:/usr/local/share/sampleDB
+
+  backup-service:
+    build: 
+      context: ./sdb-backup-service 
+      dockerfile: Dockerfile
+    ports:
+      - "8081:8081"
+    volumes:
+      - sampledb_database:/usr/local/share/sampleDB
+
+volumes:
+  sampledb_database:
