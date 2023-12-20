@@ -21,8 +21,8 @@ RUN Rscript -e 'remotes::install_version("lubridate",upgrade="never", version = 
 RUN Rscript -e 'remotes::install_version("DT",upgrade="never", version = "0.27")'
 RUN Rscript -e 'remotes::install_version("dbplyr",upgrade="never", version = "2.3.2")'
 RUN Rscript -e 'remotes::install_version("stringr",upgrade="never", version = "1.5.0")'
-Run Rscript -e 'remotes::install_version("httr2",upgrade="never", version = "1.0.0")'
 RUN Rscript -e 'remotes::install_version("shinyTime",upgrade="never", version = "1.0.3")'
+RUN Rscript -e 'remotes::install_version("curl",upgrade="never", version = "5.2.0")'
 RUN mkdir /build_zone
 ADD . /build_zone
 WORKDIR /build_zone
