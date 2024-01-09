@@ -5,6 +5,9 @@ library(reactable)
 library(shinyTime)
 library(lubridate)
 library(cronR)
+library(openssl)
+library(rappdirs)
+library(base64enc)
 
 AppPreferencesPanel <- function(session, input, output, database) {
 
@@ -52,38 +55,70 @@ AppPreferencesPanel <- function(session, input, output, database) {
   })
 
 	observeEvent(input$updateConfigBtn, {
-	  # Removing the existing backup job if it exists
+
+		# Removing the existing backup job if it exists
 	  cron_rm(id = "sampledb_backup", ask = FALSE)
 
-	  browser()
+		# Check if the key exists in the environment, and if not, generate and set it
+	  encoded_key <- Sys.getenv("SDB_BACKUP_KEY")
 
-	  # Path to the .Renviron file
-	  renviron_path <- normalizePath("~/.Renviron")
+	  if (nchar(encoded_key) == 0) {
 
-	  # Read current .Renviron contents
-	  if (file.exists(renviron_path)) {
-	    env_contents <- readLines(renviron_path)
-	  } else {
-	    env_contents <- character(0)
+			# Path to the .Renviron file
+			site_install <- .sampleDB$site_install
+		  renviron_path <- suppressWarnings(
+	      normalizePath(
+	        ifelse(site_install,
+	          file.path(Sys.getenv("R_HOME"), "etc", "Renviron.site"),
+	          file.path(Sys.getenv("HOME"), ".Renviron")
+	        )
+	      )
+	    )
+
+		  # Read current .Renviron contents
+		  if (file.exists(renviron_path)) {
+		    env_contents <- readLines(renviron_path)
+		  } else {
+		    env_contents <- character(0)
+		  }
+
+		  # Update or add the SFTP credentials
+		  update_or_add <- function(contents, key, value) {
+		    key_pattern <- paste0("^", key, "=")
+		    key_exists <- grepl(key_pattern, contents)
+		    if (any(key_exists)) {
+		      contents[key_exists] <- paste0(key, "='", value, "'")
+		    } else {
+		      contents <- c(contents, paste0(key, "='", value, "'"))
+		    }
+		    contents
+		  }
+
+	    # Generate a random binary key
+	    raw_key <- openssl::rand_bytes(32)
+	    # Base64 encode for safe storage
+	    encoded_key <- base64encode(raw_key)
+	    env_contents <- update_or_add(env_contents, "SDB_BACKUP_KEY", encoded_key)
+	    # Write updated contents back to .Renviron
+	  	writeLines(env_contents, renviron_path)
+	  	Sys.setenv(SDB_BACKUP_KEY = encoded_key)
 	  }
 
-	  # Update or add the SFTP credentials
-	  update_or_add <- function(contents, key, value) {
-	    key_pattern <- paste0("^", key, "=")
-	    key_exists <- grepl(key_pattern, contents)
-	    if (any(key_exists)) {
-	      contents[key_exists] <- paste0(key, "='", value, "'")
-	    } else {
-	      contents <- c(contents, paste0(key, "='", value, "'"))
-	    }
-	    contents
+	  # Always decode the key from base64 for use
+	  encryption_key <- base64decode(encoded_key)
+
+	  # Define path for encrypted credentials
+	  config_dir <- rappdirs::user_config_dir("sampleDB")
+	  if (!dir.exists(config_dir)) {
+	    dir.create(config_dir, recursive = TRUE)
 	  }
+	  config_file <- file.path(config_dir, "sftp_credentials.enc")
 
-	  env_contents <- update_or_add(env_contents, "SDB_SFTP_USERNAME", input$sftpUser)
-	  env_contents <- update_or_add(env_contents, "SDB_SFTP_PASSWORD", input$sftpPass)
-
-	  # Write updated contents back to .Renviron
-	  writeLines(env_contents, renviron_path)
+	  # Encrypt and save credentials
+	  creds <- list(username = input$sftpUser, password = input$sftpPass)
+	  serialized_creds <- serialize(creds, NULL)
+	  encrypted_creds <- openssl::aes_cbc_encrypt(serialized_creds, encryption_key)
+	  saveRDS(encrypted_creds, config_file)
 
 	  # Path to the backup script
 	  backup_script_path <- system.file(
@@ -144,18 +179,20 @@ AppPreferencesPanel <- function(session, input, output, database) {
 
   observe({
 	  output$scheduleInputs <- renderUI({
+	  	label <- "Time Input (24-Hour Time)"
+	  	value <- hms::as_hms("00:00:00")
 	    switch(input$scheduleType,
-	      "Daily" = timeInput("scheduleTime", "Time of Day", value = "00:00", seconds = FALSE),
+	      "Daily" = timeInput("scheduleTime", label, value = value, seconds = FALSE),
 
 	      "Weekly" = tagList(
 	        selectInput("scheduleDayOfWeek", "Day of Week", 
 	                    choices = c("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday")),
-	        timeInput("scheduleTime", "Time of Day", value = "00:00", seconds = FALSE)
+	        timeInput("scheduleTime", label, value = value, seconds = FALSE)
 	      ),
 
 	      "Monthly" = tagList(
 	        numericInput("scheduleDayOfMonth", "Day of Month", value = 1, min = 1, max = 31),
-	        timeInput("scheduleTime", "Time of Day", value = "00:00", seconds = FALSE)
+	        timeInput("scheduleTime", label, value = value, seconds = FALSE)
 	      )
 	    )
 	  })

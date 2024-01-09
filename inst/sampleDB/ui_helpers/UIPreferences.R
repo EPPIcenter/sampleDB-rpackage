@@ -1,16 +1,5 @@
 UIPreferences <- function() {
   fluidPage(
-    tags$head(
-      tags$style(HTML("
-        @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-        .spinning-icon {
-          animation: spin 2s linear infinite;
-        }
-      "))
-    ),
     titlePanel("Preferences and Backup Service Control Panel"),
     hr(),
     sidebarLayout(
@@ -18,39 +7,28 @@ UIPreferences <- function() {
         h4("Preferences"),
         textInput("PrefTraxerPositionOverride", label = "Traxer Position Override"),
         actionButton("PrefSaveButton", "Save Preferences"),
+        
         h4("Backup Service Control"),
         hr(),
-        textInput("sftpHost", "SFTP Host"),
-        textInput("sftpUser", "SFTP Username"),
-        passwordInput("sftpPass", "SFTP Password"),
-        textInput("sftpDir", "SFTP Directory"),
+        p("The backup service will create a backup of the sampleDB database and transfer it to a remote SFTP server."),
+        textInput("sftpHost", "Host"),
+        textInput("sftpUser", "Username"),
+        passwordInput("sftpPass", "Password"),
+        textInput("sftpDir", "Destination Directory"),
 
         # Schedule Inputs
         h4("Backup Schedule"),
         radioButtons("scheduleType", "Schedule Type",
                      choices = c("Daily", "Weekly", "Monthly"),
-                     inline = TRUE),
+                     inline = TRUE,
+                     selected = "Weekly"),
         uiOutput("scheduleInputs"),
-        actionButton("updateConfigBtn", "Update Configuration")
+        actionButton("updateConfigBtn", "Update Configuration")      
       ),
       mainPanel(
         h5("Software Component Version Table"),
         tableOutput("PrefVersionTable"),
-        hr(),
-        h5("Backup Service Status"),
-        reactableOutput("backupServiceStatus"),
-        hr(),
-
-        # Backup Functionality Table with Connection Status Icon
-        fluidRow(
-          column(width = 12,
-            tags$h3(
-              "Backup Functionality Details", 
-              uiOutput("connectionStatusIcon")
-            )
-          )
-        ),
-        reactableOutput("backupFunctionality"),
+        hr(),        
         h5("Source code can be found", a("here", href="https://github.com/EPPIcenter/sampleDB-rpackage/")),
         h5("Please report issues", a("here", href="https://github.com/EPPIcenter/sampleDB-rpackage/issues/"))
       )

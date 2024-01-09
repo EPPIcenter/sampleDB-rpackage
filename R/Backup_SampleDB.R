@@ -11,10 +11,10 @@ library(tools)
 }
 
 .Compress <- function(source_file, destination_file) {
-  gzfile(destination_file, "wb") %>% {
-    writeBin(readBin(source_file, "raw", file.info(source_file)$size), .)
-    close(.)
-  }
+  conn <- gzfile(destination_file, "wb")
+  on.exit(close(conn), add = TRUE)  # Ensure the connection is closed when the function exits
+
+  writeBin(readBin(source_file, "raw", file.info(source_file)$size), conn)
   file.remove(source_file)  # Remove the original uncompressed file
 
   return(destination_file)
@@ -61,10 +61,14 @@ Backup_SampleDB <- function(database = Sys.getenv("SDB_PATH"), backup_dir = NULL
 }
 
 .Uncompress <- function(source_file, destination_file) {
-  gzfile(source_file, "rb") %>% {
-    writeBin(readBin(., "raw", file.info(source_file)$size), file(destination_file, "wb"))
-    close(.)
-  }
+  conn_read <- gzfile(source_file, "rb")
+  on.exit(close(conn_read), add = TRUE)
+
+  conn_write <- file(destination_file, "wb")
+  on.exit(close(conn_write), add = TRUE)
+
+  writeBin(readBin(conn_read, "raw", file.info(source_file)$size), conn_write)
   return(file.exists(destination_file))
 }
+
 
