@@ -579,8 +579,20 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
         paste('data-', Sys.Date(), '.csv', sep='')
       },
       content = function(con) {
+
         user.filtered.rows =  most_recent_data()
         user.selected.rows <- if (length(selected() > 0)) user.filtered.rows[selected(), ] else user.filtered.rows
+
+        if (input$DelArchSearchType == "controls") {
+          concatenate_list <- function(lst) {
+            map_chr(lst, ~paste(.x, collapse = ";"))
+          }
+
+          # Apply the function to list columns
+          user.selected.rows <- user.selected.rows %>%
+            mutate(across(where(is.list), concatenate_list))
+        }
+
         write.csv(user.selected.rows, con, row.names = FALSE, quote = FALSE)
       }
     )
