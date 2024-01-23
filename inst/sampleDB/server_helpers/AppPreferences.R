@@ -1,6 +1,5 @@
 library(yaml)
 library(RSQLite)
-library(httr2)
 library(reactable)
 library(shinyTime)
 library(lubridate)
