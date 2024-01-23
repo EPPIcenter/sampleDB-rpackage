@@ -25,10 +25,42 @@
 #' @export
 #'
 
+#' Expects 'control_id' and control type
+ArchiveAndDeleteControls <- function(operation, control_type, data, comment, status, verification = TRUE, database = Sys.getenv("SDB_PATH")) {
+  con <-  RSQLite::dbConnect(RSQLite::SQLite(), database)
+
+  RSQLite::dbBegin(con)
+
+  if (operation %in% "archive") {
+    stopifnot("Status is not valid" = status %in% CheckTable("status")$name)
+  }
+
+  status_id <- filter(CheckTable("status"), name %in% status)$id
+  state_id <- filter(CheckTable("state"), name %in% "Archived")$id
+
+  stopifnot("Operation is not valid" = operation %in% c("archive", "delete", "unarchive"))
+
+  # if (operation == "delete") {
+  #   if (control_type == "dbs_sheet") {
+  #     dbs_control_sheet_df <- tbl(con, "malaria_blood_control") %>%
+  #       inner_join(tbl(con, "blood_spot_collection") %>% dplyr::rename(malaria_blood_control_id=id), by = c("malaria_blood_control_id")) %>%
+  #       filter(id %in% data$control_id) %>%
+  #       collect()
+
+      
+
+
+
+
+  #     tbl(con, "malaria_blood_control") %>%
+  #   }
+
+  # }
+
+}
 
 ArchiveAndDeleteSamples <- function(operation, data, comment, status, verification = TRUE){
 
-  print(data)
   database <- Sys.getenv("SDB_PATH")
   conn <-  RSQLite::dbConnect(RSQLite::SQLite(), database)
   RSQLite::dbBegin(conn)

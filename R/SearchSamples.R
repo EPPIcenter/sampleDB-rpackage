@@ -104,7 +104,7 @@ SearchControls <- function(filters, control_type = NULL, database = Sys.getenv("
         inner_join(tbl(con, "blood_spot_collection") %>% dplyr::rename(blood_spot_collection_id=id), by=c("malaria_blood_control_id")) %>%
         inner_join(tbl(con, "blood_spot_collection_dbs_control_sheet") %>% dplyr::rename(blood_spot_collection_dbs_control_sheet=id), by=c("blood_spot_collection_id")) %>%
         inner_join(tbl(con, "dbs_control_sheet") %>% dplyr::rename(dbs_control_sheet_id=id), by = c("dbs_control_sheet_id")) %>%
-        inner_join(tbl(con, "dbs_bag") %>% dplyr::rename(dbs_bag_id=id, dbs_bag_label=name), by =c("dbs_bag_id"))
+        inner_join(tbl(con, "dbs_bag") %>% dplyr::rename(dbs_bag_id=id, dbs_bag_label=name), by = c("dbs_bag_id"))
     } else if (!is.null(control_type) && control_type == "whole_blood") {
       sql = sql %>%
         inner_join(tbl(con, "whole_blood_tube") %>% dplyr::rename(whole_blood_tube_id=id), by=c("malaria_blood_control_id")) %>%
@@ -118,8 +118,6 @@ SearchControls <- function(filters, control_type = NULL, database = Sys.getenv("
 
     results = collect(sql)
 
-    print(results$n_strain)
-
     if (control_type == "dbs_sheet") {
       results <- results %>%
         dplyr::group_by(malaria_blood_control_id, blood_spot_collection_id, study_subject_id) %>%
@@ -130,7 +128,7 @@ SearchControls <- function(filters, control_type = NULL, database = Sys.getenv("
         dplyr::mutate(n_strain = format_composition_types(n_strain))
 
       results = results %>%
-        select(malaria_blood_control_id, batch,n_strain,density,percentage,strain,dbs_bag_label,location_root,level_I,level_II) %>%
+        select(malaria_blood_control_id, batch,n_strain,density,percentage,strain,dbs_bag_label,total,exhausted,location_root,level_I,level_II) %>%
         dplyr::rename(
           ControlID = malaria_blood_control_id,
           Batch = batch,
@@ -139,10 +137,13 @@ SearchControls <- function(filters, control_type = NULL, database = Sys.getenv("
           Percentage = percentage,
           Strain = strain,
           Label = dbs_bag_label,
+          Total = total,
+          Exhausted = exhausted,
           FreezerName = location_root,
           ShelfName = level_I,
           BasketName = level_II
         )
+
     } else {
 
       results <- results %>%

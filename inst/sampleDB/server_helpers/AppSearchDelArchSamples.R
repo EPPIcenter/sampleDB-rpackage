@@ -2,6 +2,7 @@ library(shinyjs)
 library(RSQLite)
 library(DBI)
 library(stringr)
+library(htmltools)
 
 
 AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEvent) {
@@ -510,34 +511,91 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
     user.filtered.rows =  filtered_data()
     user.selected.rows = user.filtered.rows[selected(), ]
 
-    rt <- reactable(
-      user.selected.rows,
-      defaultColDef = colDef(
-        minWidth = 95,
-        html = TRUE,
-        sortable = TRUE,
-        resizable = FALSE,
-        na = "-", 
-        align = "center"
-      )
-    )
-
     rv$operation = "deletion"
 
-    showModal(
-      modalDialog(
-        title = "Delete Samples",
-        size = "l",
-        tags$p("Below are samples you have selected for deletion."),
-        tags$strong("Warning: deleted samples are permanently removed. Do you wish to continue?", style = "color:red"),
-        tags$p("You may cancel by selecting", tags$em("Dismiss"), "below or by clicking outside of the dialog box."),
-        tags$hr(),
-        renderReactable({ rt }),
-        easyClose = TRUE,
-        fade = TRUE,
-        footer = tagList(actionButton("Delete", label = "Delete"), modalButton("Dismiss"))
+    # Sample specific deletion goes here. This is the same dialog for all sample types,
+    # as there is no need for a sample type specific deletion workflow at this time. 
+    if (input$DelArchSearchType == "samples") {
+
+      rt <- reactable(
+        user.selected.rows,
+        defaultColDef = colDef(
+          minWidth = 95,
+          html = TRUE,
+          sortable = TRUE,
+          resizable = FALSE,
+          na = "-", 
+          align = "center"
+        )
       )
-    )
+
+      showModal(
+        modalDialog(
+          title = "Delete Samples",
+          size = "l",
+          tags$p("Below are samples you have selected for deletion."),
+          tags$strong("Warning: deleted samples are permanently removed. Do you wish to continue?", style = "color:red"),
+          tags$p("You may cancel by selecting", tags$em("Dismiss"), "below or by clicking outside of the dialog box."),
+          tags$hr(),
+          renderReactable({ rt }),
+          easyClose = TRUE,
+          fade = TRUE,
+          footer = tagList(actionButton("Delete", label = "Delete"), modalButton("Dismiss"))
+        )
+      )
+
+    # If this is a DBS sheet, we need to ask how many spots should be deleted.
+    } else if (input$DelArchSearchByControlType == "dbs_sheet") {
+
+      # Updated rt definition
+      rt <- reactive({
+        reactable(
+          user.selected.rows,
+          defaultColDef = colDef(
+            minWidth = 95,
+            html = TRUE,
+            sortable = TRUE,
+            resizable = FALSE,
+            na = "-", 
+            align = "center"
+          ),
+          columns = list(
+            DeleteControl = colDef(cell = function(value, index) {
+              inputId <- paste0("deleteControl_", index)
+              tags$div(
+                HTML(sprintf('<input id="%s" type="number" value="1" min="0" class="shiny-bound-input" data-shiny-input-type="number">', inputId))
+              )
+            })
+          ),
+          elementId = "reactable-delete"
+        )
+      })
+
+      showModal(
+        modalDialog(
+          title = "Delete Controls",
+          size = "l",
+          tags$p("Below are controls you have selected for deletion."),
+          tags$strong("Warning: deleted controls are permanently removed. Do you wish to continue?", style = "color:red"),
+          tags$p("You may cancel by selecting", tags$em("Dismiss"), "below or by clicking outside of the dialog box."),
+          tags$hr(),
+          renderReactable({ rt() }),
+          tags$script(HTML("
+            $(document).on('shiny:modal', function(event) {
+              var tableId = 'reactable-delete';
+              $('#' + tableId + ' .rt-tbody .rt-tr-group').each(function(index) {
+                var inputId = 'deleteControl_' + (index + 1);
+                var inputHtml = '<input id=\"' + inputId + '\" type=\"number\" value=\"1\" min=\"0\" class=\"shiny-bound-input\" data-shiny-input-type=\"number\">';
+                $(this).find('.rt-td').first().append(inputHtml);
+              });
+            });
+          ")),
+          easyClose = TRUE,
+          fade = TRUE,
+          footer = tagList(actionButton("Delete", label = "Delete"), modalButton("Dismiss"))
+        )
+      )
+    }
   })
 
   observeEvent(input$Delete, ignoreInit = TRUE, { 
@@ -547,7 +605,10 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
 
     user.filtered.rows =  filtered_data()
     user.selected.rows = user.filtered.rows[selected(), ]
-    user.selected.rows$storage_container_id <- user.selected.rows$`Sample ID`
+    user.selected.rows$storage_container_id <- if (input$DelArchSearchType == "samples") 
+      user.selected.rows$`Sample ID`
+    else
+      user.selected.rows$ControlID
 
     ArchiveAndDeleteSamples(
       operation = "delete",
