@@ -590,13 +590,17 @@ process_dbs_control_sheet_data <- function(df.payload, con, dbs_sheet_name_col) 
 #' @param con A database connection object.
 #' @return A dataframe after joining with blood spot collections.
 join_blood_spot_collections <- function(df.payload, con) {
+  browser()
   df <- df.payload %>%
     left_join(
       dbReadTable(con, "blood_spot_collection") %>%
       dplyr::rename(blood_spot_collection_id = id),
-      by = setNames("malaria_blood_control_id", "malaria_blood_control_id")
+      by = setNames(
+        c("malaria_blood_control_id", "dbs_control_sheet_id"),
+        c("malaria_blood_control_id", "dbs_control_sheet_id")
+      )
     ) %>%
-    select(blood_spot_collection_id, total, all_of(colnames(df.payload)))
+    select(blood_spot_collection_id, total, dbs_control_sheet_id, all_of(colnames(df.payload)))
 
   return(df)
 }
@@ -605,12 +609,13 @@ join_blood_spot_collections <- function(df.payload, con) {
 #'
 #' @param df.payload A dataframe containing payload data.
 #' @param con A database connection object.
+#' @param count_col Column name in df.payload for count.
+#' @param dbs_control_sheet_id Column name in df.payload for DBS control sheet ID.
 #' @return Result from the dbAppendTable indicating if the collections were added successfully.
-add_new_blood_spot_collections <- function(df.payload, con, count_col) {
-
+add_new_blood_spot_collections <- function(df.payload, con, count_col, dbs_control_sheet_id) {
   res <- dbAppendTable(con, "blood_spot_collection", df.payload %>%
     filter(is.na(blood_spot_collection_id)) %>%
-    group_by(malaria_blood_control_id) %>%
+    group_by(malaria_blood_control_id, dbs_control_sheet_id) %>%
     dplyr::mutate(
       count = as.integer(!!sym(count_col)),
       total = ifelse(is.na(total), 0, as.integer(total)),
@@ -618,10 +623,9 @@ add_new_blood_spot_collections <- function(df.payload, con, count_col) {
     ) %>%
     select(-c(total)) %>%
     ungroup() %>%
-    select(malaria_blood_control_id, count) %>%
+    select(malaria_blood_control_id, dbs_control_sheet_id, count) %>%
     distinct() %>%
-    dplyr::rename(total = count) %>%
-    select(malaria_blood_control_id, total)
+    dplyr::rename(total = count)
   )
 
   return(res)
@@ -637,15 +641,19 @@ add_new_blood_spot_collections <- function(df.payload, con, count_col) {
 #' @param con A database connection object.
 #' @return A dataframe with rejoined blood spot collections.
 rejoin_with_updated_blood_spot_collections <- function(df.payload, con) {
-  
+  browser()
   df.updated <- df.payload %>%
     dplyr::select(-c(blood_spot_collection_id)) %>%
     dplyr::inner_join(
-      DBI::dbReadTable(con, "blood_spot_collection") %>%
-        dplyr::rename(blood_spot_collection_id = id) %>%
-        dplyr::select(-c(total, exhausted))
+      dbReadTable(con, "blood_spot_collection") %>%
+      dplyr::rename(blood_spot_collection_id = id) %>%
+      dplyr::select(-c(total, exhausted)),
+      by = setNames(
+        c("malaria_blood_control_id", "dbs_control_sheet_id"),
+        c("malaria_blood_control_id", "dbs_control_sheet_id")
+      )
     ) %>%
-    dplyr::select(blood_spot_collection_id, all_of(colnames(df.payload)))
+    dplyr::select(blood_spot_collection_id, dbs_control_sheet_id, all_of(colnames(df.payload)))
   
   return(df.updated)
 }
@@ -658,11 +666,13 @@ rejoin_with_updated_blood_spot_collections <- function(df.payload, con) {
 #' @return A dataframe with processed blood spot collection details.
 process_blood_spot_collection_data <- function(df.payload, con, count_col) {
 
+  browser()
+
   # Join with blood spot collections
   df.payload <- join_blood_spot_collections(df.payload, con)
 
   # Add new blood spot collections if they don't exist
-  res <- add_new_blood_spot_collections(df.payload, con, count_col)
+  res <- add_new_blood_spot_collections(df.payload, con, count_col, "dbs_control_sheet_id")
 
   cat("Blood Spot Collections Added: ", res, "\n")
 
@@ -670,31 +680,6 @@ process_blood_spot_collection_data <- function(df.payload, con, count_col) {
   df.payload <- rejoin_with_updated_blood_spot_collections(df.payload, con)
 
   return(df.payload)
-}
-
-#' Update the junction table for blood spot collections and DBS control sheets
-#'
-#' @param df.payload A dataframe with payload data.
-#' @param con A database connection object.
-#' @return A dataframe after updating the junction table.
-update_blood_spot_collection_dbs_control_sheet <- function(df.payload, con) {
-
-  df <- df.payload %>%
-    left_join(
-      dbReadTable(con, "blood_spot_collection_dbs_control_sheet") %>%
-        dplyr::rename(blood_spot_collection_dbs_control_sheet_id = id),
-      by = c("blood_spot_collection_id", "dbs_control_sheet_id")
-    ) %>%
-    select(blood_spot_collection_dbs_control_sheet_id, all_of(colnames(df.payload)))
-
-  res <- dbAppendTable(con, "blood_spot_collection_dbs_control_sheet", df %>%
-    filter(is.na(blood_spot_collection_dbs_control_sheet_id)) %>%
-    select(blood_spot_collection_id, dbs_control_sheet_id)
-  )
-
-  cat("Blood Spot Collection DBS Control Sheet Junction Updated: ", res, "\n")
-
-  return(df)
 }
 
 #' Create Control Label with Density and Composition Values
@@ -782,11 +767,6 @@ upload_dbs_sheet <- function(user_data, database) {
 
 		## At this point, collapse the user data as we're no longer intereste edin retain specific sheet information
 		user_data_distinct <- user_data_with_blood_spot_collection_ids %>% distinct()
-
-		## Update the junction table storing which bags blood collections can be found in. This is done so that blood collections from a batch
-		## can span over multiple bags, and bags can contain mulitple types of blood collections (from the same batch or otherwise (this would
-		## be a validation piece)).
-		user_data_final <- update_blood_spot_collection_dbs_control_sheet(user_data_distinct, con)
 
 		dbCommit(con)
 		n.uploaded=sum(as.integer(user_data[["Count"]]))

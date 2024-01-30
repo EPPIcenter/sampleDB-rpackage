@@ -603,11 +603,10 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
   })
 
   observeEvent(input$Delete, ignoreInit = TRUE, { 
+
     message(sprintf("DelArch action: %s", "delete"))
     shinyjs::disable("Delete")
     showNotification("Working...", id = "ArchDelNotification", type = "message", action = NULL, duration = 5, closeButton = FALSE)
-
-    browser()
 
     if (input$DelArchSearchType == "controls" && input$DelArchSearchByControlType == "dbs_sheet") {
       con <- dbConnect(SQLite(), database)
@@ -624,17 +623,30 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
           row <- user.selected.rows[i, ]
           if(row$SpotsToDelete >= row$Total) {
             # Delete the record if the spots to delete is greater than or equal to total
-            dbExecute(con, "DELETE FROM blood_spot_collection WHERE id = :id", params = list(id = row$ControlID))
+            dbExecute(con, "DELETE FROM blood_spot_collection WHERE id = :id", params = list(id = row$CollectionID))
           } else {
             # Update the total count if spots to delete is less than total
             dbExecute(con, "UPDATE blood_spot_collection SET total = total - :spots WHERE id = :id",
-                      params = list(spots = row$SpotsToDelete, id = row$ControlID))
+                      params = list(spots = row$SpotsToDelete, id = row$CollectionID))
           }
         }
       })
       
       # Re-query the updated data from the database
-      updated_data <- dbReadTable(con, "blood_spot_collection")
+      removeNotification(id = "ArchDelNotification")
+      removeModal()
+
+      # Get the filtered data
+      updated_data <- user.filtered.rows
+
+      # Remove the selected rows from the filtered data
+      updated_data <- updated_data[!updated_data$`CollectionID` %in% user.selected.rows$`CollectionID`,]
+
+      # Update the reactable table
+      updateReactable(
+        outputId = "DelArchSearchResultsTable",
+        data = updated_data
+      )
 
     } else if (input$DelArchSearchType == "samples") {
 

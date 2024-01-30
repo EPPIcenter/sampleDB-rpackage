@@ -67,7 +67,6 @@ SearchControls <- function(filters, control_type = NULL, database = Sys.getenv("
   con <- dbConnect(RSQLite::SQLite(), Sys.getenv("SDB_PATH"))
   tryCatch({
 
-    ##
     sql = tbl(con, "composition_strain") %>%
       dplyr::rename(composition_strain_id=id) %>%
       group_by(composition_id) %>%
@@ -102,7 +101,6 @@ SearchControls <- function(filters, control_type = NULL, database = Sys.getenv("
     if (!is.null(control_type) && control_type == "dbs_sheet") {
       sql = sql %>%
         inner_join(tbl(con, "blood_spot_collection") %>% dplyr::rename(blood_spot_collection_id=id), by=c("malaria_blood_control_id")) %>%
-        inner_join(tbl(con, "blood_spot_collection_dbs_control_sheet") %>% dplyr::rename(blood_spot_collection_dbs_control_sheet=id), by=c("blood_spot_collection_id")) %>%
         inner_join(tbl(con, "dbs_control_sheet") %>% dplyr::rename(dbs_control_sheet_id=id), by = c("dbs_control_sheet_id")) %>%
         inner_join(tbl(con, "dbs_bag") %>% dplyr::rename(dbs_bag_id=id, dbs_bag_label=name), by = c("dbs_bag_id"))
     } else if (!is.null(control_type) && control_type == "whole_blood") {
@@ -128,9 +126,10 @@ SearchControls <- function(filters, control_type = NULL, database = Sys.getenv("
         dplyr::mutate(n_strain = format_composition_types(n_strain))
 
       results = results %>%
-        select(malaria_blood_control_id, batch,n_strain,density,percentage,strain,dbs_bag_label,total,exhausted,location_root,level_I,level_II) %>%
+        select(malaria_blood_control_id, blood_spot_collection_id, batch,n_strain,density,percentage,strain,dbs_bag_label,total,exhausted,location_root,level_I,level_II) %>%
         dplyr::rename(
           ControlID = malaria_blood_control_id,
+          CollectionID = blood_spot_collection_id,
           Batch = batch,
           Composition = n_strain,
           Density = density,
