@@ -159,6 +159,38 @@ ArchiveAndDeleteSamples <- function(operation, data, comment, status, verificati
   return(return_message)
 }
 
+DeleteWholeBloodSamples <- function(cryovial_tube_ids) {
+  database <- Sys.getenv("SDB_PATH")
+  conn <- RSQLite::dbConnect(RSQLite::SQLite(), database)
+  RSQLite::dbBegin(conn)
+
+  tryCatch({
+    for (tube_id in cryovial_tube_ids) {
+      # Check if it's the last tube for a study_subject
+      study_subject_id <- RSQLite::dbGetQuery(conn, paste("SELECT study_subject_id FROM whole_blood_tube WHERE id = ", tube_id))
+      tube_count <- RSQLite::dbGetQuery(conn, paste("SELECT COUNT(*) FROM whole_blood_tube WHERE study_subject_id = ", study_subject_id))
+
+      if (tube_count == 1) {
+        # Delete study_subject and associated malaria_blood_control
+        RSQLite::dbExecute(conn, paste("DELETE FROM study_subject WHERE id = ", study_subject_id))
+        RSQLite::dbExecute(conn, paste("DELETE FROM malaria_blood_control WHERE study_subject_id = ", study_subject_id))
+      }
+
+      # Delete the cryovial_tube
+      RSQLite::dbExecute(conn, paste("DELETE FROM whole_blood_tube WHERE id = ", tube_id))
+    }
+
+    RSQLite::dbCommit(conn)
+    message(paste("Deleted", length(cryovial_tube_ids), "whole blood samples successfully."))
+  }, error = function(e) {
+    RSQLite::dbRollback(conn)
+    message("Error occurred: ", e$message)
+  }, finally = {
+    RSQLite::dbDisconnect(conn)
+  })
+}
+
+
 .GetDatabaseTables <- function(database){
   database.tables <- list(table.storage_container = CheckTable(database = database, "storage_container"),
                           table.specimen = CheckTable(database = database, "specimen"),

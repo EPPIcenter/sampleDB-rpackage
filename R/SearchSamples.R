@@ -154,9 +154,10 @@ SearchControls <- function(filters, control_type = NULL, database = Sys.getenv("
         dplyr::mutate(n_strain = format_composition_types(n_strain))
 
       results = results %>%
-        select(malaria_blood_control_id, batch,n_strain,density,percentage,strain,position,cryovial_box_name,location_root,level_I,level_II) %>%
+        select(malaria_blood_control_id, whole_blood_tube_id, batch,n_strain,density,percentage,strain,position,cryovial_box_name,location_root,level_I,level_II) %>%
         dplyr::rename(
           ControlID = malaria_blood_control_id,
+          TubeID = whole_blood_tube_id,
           Batch = batch,
           `Composition Type` = n_strain,
           Density = density,
