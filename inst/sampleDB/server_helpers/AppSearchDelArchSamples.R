@@ -547,30 +547,41 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
     # If this is a DBS sheet, we need to ask how many spots should be deleted.
     } else if (input$DelArchSearchByControlType == "dbs_sheet") {
 
-      # Updated rt definition
-      rt <- reactive({
-        reactable(
-          user.selected.rows,
-          defaultColDef = colDef(
-            minWidth = 95,
-            html = TRUE,
-            sortable = TRUE,
-            resizable = FALSE,
-            na = "-", 
-            align = "center"
-          ),
-          columns = list(
-            DeleteControl = colDef(cell = function(value, index) {
-              inputId <- paste0("deleteControl_", index)
-              tags$div(
-                HTML(sprintf('<input id="%s" type="number" value="1" min="0" class="shiny-bound-input" data-shiny-input-type="number">', inputId))
-              )
-            })
-          ),
-          elementId = "reactable-delete"
+      # Format the 'Percentage' and 'Strain' columns
+      user.selected.rows <- user.selected.rows %>%
+        select(-c(ControlID)) %>%
+        mutate(
+          Percentage = sapply(Percentage, function(x) paste(x, collapse = ",")),
+          Strain = sapply(Strain, function(x) paste(x, collapse = ","))
+        )
+      
+      # Build the HTML table
+      table_rows <- lapply(seq_len(nrow(user.selected.rows)), function(i) {
+        row <- user.selected.rows[i, ]
+        tags$tr(
+          tags$td(style = "position: sticky; left: 0; background: white;", # Make the delete spots column sticky
+                  numericInput(inputId = paste0("deleteControl_", i), label = NULL, value = 1, min = 0, width = '80px')),
+          # Generate a cell for each column in your data
+          lapply(row, function(value) tags$td(as.character(value)))
         )
       })
-
+      
+      table_header <- tags$tr(
+        tags$th(style = "position: sticky; left: 0; background: white;", "Delete Spots"), # Make the delete spots header sticky
+        # Generate headers for other columns in your data
+        lapply(names(user.selected.rows), function(name) tags$th(name))
+      )
+      
+      # Create a scrollable div to contain the table
+      scrollable_table <- div(
+        style = "overflow-x: auto; overflow-y: auto; height: 400px; width: 100%; position: relative;", # Set a fixed height for vertical scrolling and auto for horizontal scrolling
+        tags$table(
+          class = "table table-striped", # Use Bootstrap classes for basic styling
+          table_header,
+          do.call(tagList, table_rows)
+        )
+      )
+      
       showModal(
         modalDialog(
           title = "Delete Controls",
@@ -579,20 +590,13 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
           tags$strong("Warning: deleted controls are permanently removed. Do you wish to continue?", style = "color:red"),
           tags$p("You may cancel by selecting", tags$em("Dismiss"), "below or by clicking outside of the dialog box."),
           tags$hr(),
-          renderReactable({ rt() }),
-          tags$script(HTML("
-            $(document).on('shiny:modal', function(event) {
-              var tableId = 'reactable-delete';
-              $('#' + tableId + ' .rt-tbody .rt-tr-group').each(function(index) {
-                var inputId = 'deleteControl_' + (index + 1);
-                var inputHtml = '<input id=\"' + inputId + '\" type=\"number\" value=\"1\" min=\"0\" class=\"shiny-bound-input\" data-shiny-input-type=\"number\">';
-                $(this).find('.rt-td').first().append(inputHtml);
-              });
-            });
-          ")),
+          scrollable_table, # Insert the scrollable div here
           easyClose = TRUE,
           fade = TRUE,
-          footer = tagList(actionButton("Delete", label = "Delete"), modalButton("Dismiss"))
+          footer = tagList(
+            actionButton("Delete", label = "Delete"), 
+            modalButton("Dismiss")
+          )
         )
       )
     }
@@ -603,35 +607,66 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
     shinyjs::disable("Delete")
     showNotification("Working...", id = "ArchDelNotification", type = "message", action = NULL, duration = 5, closeButton = FALSE)
 
-    user.filtered.rows =  filtered_data()
-    user.selected.rows = user.filtered.rows[selected(), ]
-    user.selected.rows$storage_container_id <- if (input$DelArchSearchType == "samples") 
-      user.selected.rows$`Sample ID`
-    else
-      user.selected.rows$ControlID
+    browser()
 
-    ArchiveAndDeleteSamples(
-      operation = "delete",
-      data = user.selected.rows,
-      comment = input$DelArchComment,
-      status = input$DelArchStatus,
-      verification = FALSE
-    )
+    if (input$DelArchSearchType == "controls" && input$DelArchSearchByControlType == "dbs_sheet") {
+      con <- dbConnect(SQLite(), database)
+      user.filtered.rows <- filtered_data()
+      user.selected.rows <- user.filtered.rows[selected(), ]
+      spots_to_delete <- sapply(seq_len(nrow(user.selected.rows)), function(i) {
+        as.numeric(input[[paste0("deleteControl_", i)]])
+      })
+      user.selected.rows$SpotsToDelete <- spots_to_delete
+      
+      # Start the transaction
+      dbWithTransaction(con, {
+        for(i in seq_len(nrow(user.selected.rows))) {
+          row <- user.selected.rows[i, ]
+          if(row$SpotsToDelete >= row$Total) {
+            # Delete the record if the spots to delete is greater than or equal to total
+            dbExecute(con, "DELETE FROM blood_spot_collection WHERE id = :id", params = list(id = row$ControlID))
+          } else {
+            # Update the total count if spots to delete is less than total
+            dbExecute(con, "UPDATE blood_spot_collection SET total = total - :spots WHERE id = :id",
+                      params = list(spots = row$SpotsToDelete, id = row$ControlID))
+          }
+        }
+      })
+      
+      # Re-query the updated data from the database
+      updated_data <- dbReadTable(con, "blood_spot_collection")
 
-    removeNotification(id = "ArchDelNotification")
-    removeModal()
+    } else if (input$DelArchSearchType == "samples") {
 
-    # Get the filtered data
-    updated_data <- user.filtered.rows
+      user.filtered.rows =  filtered_data()
+      user.selected.rows = user.filtered.rows[selected(), ]
+      user.selected.rows$storage_container_id <- user.selected.rows$`Sample ID`
 
-    # Remove the selected rows from the filtered data
-    updated_data <- updated_data[!updated_data$`Sample ID` %in% user.selected.rows$`Sample ID`,]
+      ArchiveAndDeleteSamples(
+        operation = "delete",
+        data = user.selected.rows,
+        comment = input$DelArchComment,
+        status = input$DelArchStatus,
+        verification = FALSE
+      )
 
-    # Update the reactable table
-    updateReactable(
-      outputId = "DelArchSearchResultsTable",
-      data = updated_data
-    )
+      removeNotification(id = "ArchDelNotification")
+      removeModal()
+
+      # Get the filtered data
+      updated_data <- user.filtered.rows
+
+      # Remove the selected rows from the filtered data
+      updated_data <- updated_data[!updated_data$`Sample ID` %in% user.selected.rows$`Sample ID`,]
+
+      # Update the reactable table
+      updateReactable(
+        outputId = "DelArchSearchResultsTable",
+        data = updated_data
+      )
+    } else {
+      stop("No delete implementation for this type.")
+    }
   })
 
   observe({
