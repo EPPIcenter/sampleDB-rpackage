@@ -15,9 +15,6 @@ CREATE TABLE "blood_spot_collection" (
 	FOREIGN KEY("malaria_blood_control_id") REFERENCES "malaria_blood_control"("id")
 );
 
--- Drop the control_collection table
-DROP TABLE IF EXISTS "control_collection";
-
 -- Create a table to store archived whole blood
 CREATE TABLE "archived_dbs_blood_spots" (
     "id" INTEGER NOT NULL,

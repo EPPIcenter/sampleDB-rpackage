@@ -411,6 +411,8 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
 
   observeEvent(input$ArchiveAction, ignoreInit = TRUE, {
 
+    con <- DBI::dbConnect(RSQLite::SQLite(), Sys.getenv("SDB_PATH"))
+
     user.filtered.rows = filtered_data()
     user.selected.rows = user.filtered.rows[selected(), ]
 
@@ -419,18 +421,18 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
 
       showModal(
         modalDialog(
-          title = "Archive Samples",
+          title = "Archive DBS Blood Spots",
           size = "l",
           tags$em("Please review the following fields and your selected controls below.", style = "color: grey;font-size: 18px;"),
           hr(),
           fluidRow( 
             column(width = 6, selectizeInput("DelArchStatus", tags$strong("Status:"), choices = c("", RSQLite::dbGetQuery(con, "SELECT * FROM view_archive_statuses") %>% pull(name)), width = '75%')),
-            column(width = 6, tags$p("Please enter a status for the samples you selected for", tags$strong("archival"), ". This is a", tags$strong("required"), "field, and is used to indicate why the sample is no longer", tags$em("In Use"), "."))
+            column(width = 6, tags$p("Please enter a status for the samples you selected for", tags$strong("archival"), ". This is a", tags$strong("required"), "field, and is used to indicate why the control is no longer", tags$em("In Use"), "."))
           ),
           hr(),
           fluidRow( 
             column(width = 6, textInput(label = tags$strong("Comment:"), inputId = "DelArchComment", width = '75%')),
-            column(width = 6, tags$p("You may", tags$em("optionally"), "add a comment to further annotate why this sample is archived"))
+            column(width = 6, tags$p("You may", tags$em("optionally"), "add a comment to further annotate why this control is archived"))
           ),
           tags$hr(),
           tags$p("Please review your selected blood spots below before submitting. You may cancel by selecting", tags$em("Dismiss"), "below or by clicking outside of the dialog box."),
@@ -456,7 +458,7 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
 
       showModal(
         modalDialog(
-          title = "Archive Samples",
+          title = "Archive Whole Blood",
           size = "l",
           tags$em("Please review the following fields and your selected controls below.", style = "color: grey;font-size: 18px;"),
           hr(),
@@ -493,8 +495,6 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
       )
 
       rv$operation = "archive"
-
-      con <- DBI::dbConnect(RSQLite::SQLite(), Sys.getenv("SDB_PATH"))
 
       showModal(
         modalDialog(
@@ -543,6 +543,7 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
   })
 
   observeEvent(input$Archive, ignoreInit = TRUE, { 
+
     message(sprintf("DelArch action: %s", "archive"))
     shinyjs::disable("Archive")
     showNotification("Working...", id = "ArchDelNotification", type = "message", action = NULL, duration = 5, closeButton = FALSE)
@@ -578,10 +579,6 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
       removeNotification(id = "ArchDelNotification")
       removeModal()
 
-      # Update the reactable table
-      updated_data <- user.filtered.rows[!user.filtered.rows$CollectionID %in% user.selected.rows$CollectionID,]
-      updateReactable(outputId = "DelArchSearchResultsTable", data = updated_data)
-
     } else if (input$DelArchSearchType == "controls" && input$DelArchSearchByControlType == "whole_blood") {
       con <- dbConnect(SQLite(), database)
       on.exit(dbDisconnect(con), add = TRUE)
@@ -604,10 +601,6 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
       removeNotification(id = "ArchDelNotification")
       removeModal()
 
-      # Update the reactable table
-      updated_data <- user.filtered.rows[!user.filtered.rows$TubeID %in% user.selected.rows$TubeID,]
-      updateReactable(outputId = "DelArchSearchResultsTable", data = updated_data)
-
     } else if (input$DelArchSearchType == "samples") {
       user.filtered.rows = filtered_data()
       user.selected.rows = user.filtered.rows[selected(), ]
@@ -624,17 +617,6 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
       removeNotification(id = "ArchDelNotification")
       removeModal()
 
-      # Get the filtered data
-      updated_data <- user.filtered.rows
-
-      # Remove the selected rows from the filtered data
-      updated_data <- updated_data[!updated_data$`Sample ID` %in% user.selected.rows$`Sample ID`,]
-
-      # Update the reactable table
-      updateReactable(
-        outputId = "DelArchSearchResultsTable",
-        data = updated_data
-      )
     } else {
       stop("No archive implementation available!")
     }
@@ -681,40 +663,7 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
     # If this is a DBS sheet, we need to ask how many spots should be deleted.
     } else if (input$DelArchSearchByControlType == "dbs_sheet") {
 
-      # Format the 'Percentage' and 'Strain' columns
-      user.selected.rows <- user.selected.rows %>%
-        select(-c(ControlID)) %>%
-        mutate(
-          Percentage = sapply(Percentage, function(x) paste(x, collapse = ",")),
-          Strain = sapply(Strain, function(x) paste(x, collapse = ","))
-        )
-      
-      # Build the HTML table
-      table_rows <- lapply(seq_len(nrow(user.selected.rows)), function(i) {
-        row <- user.selected.rows[i, ]
-        tags$tr(
-          tags$td(style = "position: sticky; left: 0; background: white;", # Make the delete spots column sticky
-                  numericInput(inputId = paste0("deleteControl_", i), label = NULL, value = 1, min = 0, width = '80px')),
-          # Generate a cell for each column in your data
-          lapply(row, function(value) tags$td(as.character(value)))
-        )
-      })
-      
-      table_header <- tags$tr(
-        tags$th(style = "position: sticky; left: 0; background: white;", "Delete Spots"), # Make the delete spots header sticky
-        # Generate headers for other columns in your data
-        lapply(names(user.selected.rows), function(name) tags$th(name))
-      )
-      
-      # Create a scrollable div to contain the table
-      scrollable_table <- div(
-        style = "overflow-x: auto; overflow-y: auto; height: 400px; width: 100%; position: relative;", # Set a fixed height for vertical scrolling and auto for horizontal scrolling
-        tags$table(
-          class = "table table-striped", # Use Bootstrap classes for basic styling
-          table_header,
-          do.call(tagList, table_rows)
-        )
-      )
+      scrollable_table <- CreateScrollableTable(user.selected.rows)
       
       showModal(
         modalDialog(
@@ -765,6 +714,8 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
 
   observeEvent(input$Delete, ignoreInit = TRUE, { 
 
+    browser()
+
     message(sprintf("DelArch action: %s", "delete"))
     shinyjs::disable("Delete")
     showNotification("Working...", id = "ArchDelNotification", type = "message", action = NULL, duration = 5, closeButton = FALSE)
@@ -796,18 +747,6 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
       # Re-query the updated data from the database
       removeNotification(id = "ArchDelNotification")
       removeModal()
-
-      # Get the filtered data
-      updated_data <- user.filtered.rows
-
-      # Remove the selected rows from the filtered data
-      updated_data <- updated_data[!updated_data$`CollectionID` %in% user.selected.rows$`CollectionID`,]
-
-      # Update the reactable table
-      updateReactable(
-        outputId = "DelArchSearchResultsTable",
-        data = updated_data
-      )
 
     } else if (input$DelArchSearchType == "samples") {  
 
@@ -841,7 +780,7 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
       user.filtered.rows =  filtered_data()
       user.selected.rows = user.filtered.rows[selected(), ]
 
-      DeleteWholeBloodSamples(user.selected.rows$ControlID)
+      DeleteWholeBloodSamples(user.selected.rows$TubeID)
 
       removeNotification(id = "ArchDelNotification")
       removeModal()
@@ -850,7 +789,7 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
       updated_data <- user.filtered.rows
 
       # Remove the selected rows from the filtered data
-      updated_data <- updated_data[!updated_data$ControlID %in% user.selected.rows$ControlID,]
+      updated_data <- updated_data[!updated_data$TubeID %in% user.selected.rows$TubeID,]
     } else {
       stop("No delete implementation for this type.")
     }
