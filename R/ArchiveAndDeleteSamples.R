@@ -59,17 +59,12 @@ ArchiveAndDeleteControls <- function(operation, control_type, data, comment, sta
 
 }
 
-ArchiveAndDeleteSamples <- function(operation, data, comment, status, verification = TRUE){
+ArchiveAndDeleteSamples <- function(operation, data, comment, status_id, verification = TRUE){
 
   database <- Sys.getenv("SDB_PATH")
   conn <-  RSQLite::dbConnect(RSQLite::SQLite(), database)
   RSQLite::dbBegin(conn)
 
-  if (operation %in% "archive") {
-    stopifnot("Status is not valid" = status %in% CheckTable("status")$name)
-  }
-
-  status_id <- filter(CheckTable("status"), name %in% status)$id
   state_id <- filter(CheckTable("state"), name %in% "Archived")$id
 
   stopifnot("Operation is not valid" = operation %in% c("archive", "delete", "unarchive"))

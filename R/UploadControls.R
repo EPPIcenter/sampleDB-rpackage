@@ -590,7 +590,6 @@ process_dbs_control_sheet_data <- function(df.payload, con, dbs_sheet_name_col) 
 #' @param con A database connection object.
 #' @return A dataframe after joining with blood spot collections.
 join_blood_spot_collections <- function(df.payload, con) {
-  browser()
   df <- df.payload %>%
     left_join(
       dbReadTable(con, "blood_spot_collection") %>%
@@ -641,7 +640,6 @@ add_new_blood_spot_collections <- function(df.payload, con, count_col, dbs_contr
 #' @param con A database connection object.
 #' @return A dataframe with rejoined blood spot collections.
 rejoin_with_updated_blood_spot_collections <- function(df.payload, con) {
-  browser()
   df.updated <- df.payload %>%
     dplyr::select(-c(blood_spot_collection_id)) %>%
     dplyr::inner_join(
@@ -665,8 +663,6 @@ rejoin_with_updated_blood_spot_collections <- function(df.payload, con) {
 #' @param count_col Count column.
 #' @return A dataframe with processed blood spot collection details.
 process_blood_spot_collection_data <- function(df.payload, con, count_col) {
-
-  browser()
 
   # Join with blood spot collections
   df.payload <- join_blood_spot_collections(df.payload, con)
