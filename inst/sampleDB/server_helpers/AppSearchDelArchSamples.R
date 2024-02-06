@@ -20,7 +20,7 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
   con <- init_db_conn(database)
 
   updateSelectInput(session, "DelArchSearchByState", selected = "Active", choices = tbl(con, "state") %>% pull(name))
-  updateSelectInput(session, "DelArchSearchByStatus", selected = "In Use", choices = tbl(con, "status") %>% pull(name))
+  updateSelectInput(session, "DelArchSearchByStatus", selected = "In Use", choices = c("In Use"))
   
   DBI::dbDisconnect(con)
 
@@ -167,11 +167,28 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
     UpdateSelections(session, input, TRUE)
   })
 
+  observeEvent(input$DelArchSearchType, ignoreInit = TRUE, {
+    UpdateSelections(session, input, TRUE)
+  })
+
+
+  # Updates to be made by search type
   observeEvent(input$DelArchSearchType, {
 
     if (input$DelArchSearchType == "samples") {
+      # Only allow active states and in use status for controls
+      shinyjs::enable("DelArchSearchByState")
+      shinyjs::enable("DelArchSearchByStatus")
+
       accordion_panel_update("DelArchSubjectsPanel", "Study & Subjects")
     } else {
+
+      # Only allow active states and in use status for controls
+      shinyjs::disable("DelArchSearchByState")
+      shinyjs::disable("DelArchSearchByStatus")
+      updateSelectizeInput(session, "DelArchSearchByState", selected="Active")
+      updateSelectizeInput(session, "DelArchSearchByStatus", selected="In Use")
+
       accordion_panel_update("DelArchSubjectsPanel", "Batch & Controls")
     }
 
