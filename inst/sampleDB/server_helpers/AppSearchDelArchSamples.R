@@ -123,20 +123,17 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
 
   # Your main observe block using most_recent_data()
   observe({
-  output$DelArchSearchResultsTable <- renderReactable({
-    # If most_recent_data is null (e.g. both filtered_data and study_subject_search_results are null initially)
-    if (is.null(most_recent_data())) {
-      return(NULL)
-    }
+    output$DelArchSearchResultsTable <- renderReactable({
+      # If most_recent_data is null (e.g. both filtered_data and study_subject_search_results are null initially)
+      if (is.null(most_recent_data())) {
+        return(NULL)
+      }
 
-    # Get filtered data from the most recent data source
-    type <- isolate({ input$DelArchSearchType })
-    if (type == "samples") {
-      search_table <- most_recent_data() %>% select(-c(`Sample ID`))
-    } else {
-      search_table <- most_recent_data() %>% select(-c(ControlID))
-    }
-      
+      # Get filtered data from the most recent data source
+      type <- isolate({ input$DelArchSearchType })
+      columns_to_remove <- c("Sample ID", "ControlID", "CollectionID", "TubeID")
+      search_table <- most_recent_data() %>% select(-any_of(columns_to_remove))
+        
       reactable(
         search_table,
         defaultColDef = colDef(minWidth = ifelse(type == "samples", 105, 150), html = TRUE, sortable = TRUE, resizable = FALSE, na = "-", align = "center"),
@@ -541,7 +538,11 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
     # If this is a DBS sheet, we need to ask how many spots should be deleted.
     if (input$DelArchSearchType == "controls" && input$DelArchSearchByControlType == "dbs_sheet") {
 
-      scrollable_table <- CreateNumericInputScrollableTable(user.selected.rows, "Total")
+      user.selected.rows.selected <- user.selected.rows %>% 
+        mutate(MaxSpots = Total - Exhausted) %>% 
+        select(-all_of(c("CollectionID", "ControlID")))
+
+      scrollable_table <- CreateNumericInputScrollableTable(user.selected.rows.selected, "MaxSpots")
       
       showModal(
         modalDialog(
@@ -639,13 +640,16 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
       })
 
       user.selected.rows$SpotsToDelete <- spots_to_delete
+
+      # Duplicated from 'DeleteAction' but that's fine for now
+      user.selected.rows$MaxSpots <- user.selected.rows$Total - user.selected.rows$Exhausted
       
       # Start the transaction
       tryCatch({
         dbWithTransaction(con, {
           for(i in seq_len(nrow(user.selected.rows))) {
             row <- user.selected.rows[i, ]
-            if(row$SpotsToDelete >= row$Total) {
+            if(row$SpotsToDelete >= row$Total || row$SpotsToDelete == row$MaxSpots) {
               # Delete the record if the spots to delete is greater than or equal to total
               dbExecute(con, "DELETE FROM blood_spot_collection WHERE id = :id", params = list(id = row$CollectionID))
             } else {
