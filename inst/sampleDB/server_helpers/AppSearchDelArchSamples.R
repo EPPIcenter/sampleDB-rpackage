@@ -164,28 +164,11 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
     UpdateSelections(session, input, TRUE)
   })
 
-  observeEvent(input$DelArchSearchType, ignoreInit = TRUE, {
-    UpdateSelections(session, input, TRUE)
-  })
-
-
-  # Updates to be made by search type
   observeEvent(input$DelArchSearchType, {
 
     if (input$DelArchSearchType == "samples") {
-      # Only allow active states and in use status for controls
-      shinyjs::enable("DelArchSearchByState")
-      shinyjs::enable("DelArchSearchByStatus")
-
       accordion_panel_update("DelArchSubjectsPanel", "Study & Subjects")
     } else {
-
-      # Only allow active states and in use status for controls
-      shinyjs::disable("DelArchSearchByState")
-      shinyjs::disable("DelArchSearchByStatus")
-      updateSelectizeInput(session, "DelArchSearchByState", selected="Active")
-      updateSelectizeInput(session, "DelArchSearchByStatus", selected="In Use")
-
       accordion_panel_update("DelArchSubjectsPanel", "Batch & Controls")
     }
 
@@ -437,67 +420,130 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
 
     user.filtered.rows = filtered_data()
     user.selected.rows = user.filtered.rows[selected(), ]
+    user.selected.rows.selected <- user.selected.rows %>% 
+        mutate(MaxSpots = Total - Exhausted) %>% 
+        select(-all_of(c("CollectionID", "ControlID")))
 
-    rt <- reactable(
-      user.selected.rows,
-      defaultColDef = colDef(
-        minWidth = 95,
-        html = TRUE,
-        sortable = TRUE,
-        resizable = FALSE,
-        na = "-", 
-        align = "center"
+    if (input$DelArchSearchType == "controls" && input$DelArchSearchByControlType == "dbs_sheet") {
+      scrollable_table <- CreateNumericInputScrollableTable(user.selected.rows.selected, "MaxSpots")
+
+      showModal(
+        modalDialog(
+          title = "Archive DBS Blood Spots",
+          size = "l",
+          tags$em("Please review the following fields and your selected controls below.", style = "color: grey;font-size: 18px;"),
+          hr(),
+          fluidRow( 
+            column(width = 6, selectizeInput("DelArchStatus", tags$strong("Status:"), choices = c("", RSQLite::dbGetQuery(con, "SELECT * FROM view_archive_statuses") %>% pull(id, name=name)), width = '75%')),
+            column(width = 6, tags$p("Please enter a status for the samples you selected for", tags$strong("archival"), ". This is a", tags$strong("required"), "field, and is used to indicate why the control is no longer", tags$em("In Use"), "."))
+          ),
+          hr(),
+          fluidRow( 
+            column(width = 6, textInput(label = tags$strong("Comment:"), inputId = "DelArchComment", width = '75%')),
+            column(width = 6, tags$p("You may", tags$em("optionally"), "add a comment to further annotate why this control is archived"))
+          ),
+          tags$hr(),
+          tags$p("Please review your selected blood spots below before submitting. You may cancel by selecting", tags$em("Dismiss"), "below or by clicking outside of the dialog box."),
+          scrollable_table, # Insert the scrollable div here
+          easyClose = TRUE,
+          fade = TRUE,
+          footer = tagList(actionButton("Archive", label = "Archive"), modalButton("Dismiss"))
+        )
       )
-    )
 
-    rv$operation = "archive"
-
-    showModal(
-      modalDialog(
-        title = "Archive Samples",
-        size = "l",
-        tags$em("Please review the following fields and your selected samples below.", style = "color: grey;font-size: 18px;"),
-        hr(),
-        fluidRow( 
-          column(width = 6, selectizeInput("DelArchStatus", tags$strong("Status:"), choices = c("", RSQLite::dbGetQuery(con, "SELECT * FROM view_archive_statuses") %>% pull(id, name=name)), width = '75%')),
-          column(width = 6, tags$p("Please enter a status for the samples you selected for", tags$strong("archival"), ". This is a", tags$strong("required"), "field, and is used to indicate why the sample is no longer", tags$em("In Use"), "."))
-        ),
-        hr(),
-        fluidRow( 
-          column(width = 6, textInput(label = tags$strong("Comment:"), inputId = "DelArchComment", width = '75%')),
-          column(width = 6, tags$p("You may", tags$em("optionally"), "add a comment to further annotate why this sample is archived"))
-        ),
-        tags$hr(),
-        tags$p("Please review your selected samples below before submitting. You may cancel by selecting", tags$em("Dismiss"), "below or by clicking outside of the dialog box."),
-        renderReactable({ rt }),
-        easyClose = TRUE,
-        fade = TRUE,
-        footer = tagList(actionButton("Archive", label = "Archive"), modalButton("Dismiss"))
+    } else if (input$DelArchSearchType == "controls" && input$DelArchSearchByControlType == "whole_blood") {
+      rt <- reactable(
+        user.selected.rows,
+        defaultColDef = colDef(
+          minWidth = 95,
+          html = TRUE,
+          sortable = TRUE,
+          resizable = FALSE,
+          na = "-", 
+          align = "center"
+        )
       )
-    )
+
+      showModal(
+        modalDialog(
+          title = "Archive Whole Blood",
+          size = "l",
+          tags$em("Please review the following fields and your selected controls below.", style = "color: grey;font-size: 18px;"),
+          hr(),
+          fluidRow( 
+            column(width = 6, selectizeInput("DelArchStatus", tags$strong("Status:"), choices = c("", RSQLite::dbGetQuery(con, "SELECT * FROM view_archive_statuses") %>% pull(id, name=name)), width = '75%')),
+            column(width = 6, tags$p("Please enter a status for the samples you selected for", tags$strong("archival"), ". This is a", tags$strong("required"), "field, and is used to indicate why the sample is no longer", tags$em("In Use"), "."))
+          ),
+          hr(),
+          fluidRow( 
+            column(width = 6, textInput(label = tags$strong("Comment:"), inputId = "DelArchComment", width = '75%')),
+            column(width = 6, tags$p("You may", tags$em("optionally"), "add a comment to further annotate why this sample is archived"))
+          ),
+          tags$hr(),
+          tags$p("Please review your selected whole blood below before submitting. You may cancel by selecting", tags$em("Dismiss"), "below or by clicking outside of the dialog box."),
+          rt, # Insert the reactable here
+          easyClose = TRUE,
+          fade = TRUE,
+          footer = tagList(actionButton("Archive", label = "Archive"), modalButton("Dismiss"))
+        )
+      )
+
+    } else if (input$DelArchSearchByControlType == "samples") {
+
+      rt <- reactable(
+        user.selected.rows,
+        defaultColDef = colDef(
+          minWidth = 95,
+          html = TRUE,
+          sortable = TRUE,
+          resizable = FALSE,
+          na = "-", 
+          align = "center"
+        )
+      )
+
+      rv$operation = "archive"
+
+      showModal(
+        modalDialog(
+          title = "Archive Samples",
+          size = "l",
+          tags$em("Please review the following fields and your selected samples below.", style = "color: grey;font-size: 18px;"),
+          hr(),
+          fluidRow( 
+            column(width = 6, selectizeInput("DelArchStatus", tags$strong("Status:"), choices = c("", RSQLite::dbGetQuery(con, "SELECT * FROM view_archive_statuses") %>% pull(name)), width = '75%')),
+            column(width = 6, tags$p("Please enter a status for the samples you selected for", tags$strong("archival"), ". This is a", tags$strong("required"), "field, and is used to indicate why the sample is no longer", tags$em("In Use"), "."))
+          ),
+          hr(),
+          fluidRow( 
+            column(width = 6, textInput(label = tags$strong("Comment:"), inputId = "DelArchComment", width = '75%')),
+            column(width = 6, tags$p("You may", tags$em("optionally"), "add a comment to further annotate why this sample is archived"))
+          ),
+          tags$hr(),
+          tags$p("Please review your selected samples below before submitting. You may cancel by selecting", tags$em("Dismiss"), "below or by clicking outside of the dialog box."),
+          renderReactable({ rt }),
+          easyClose = TRUE,
+          fade = TRUE,
+          footer = tagList(actionButton("Archive", label = "Archive"), modalButton("Dismiss"))
+        )
+      )
+    } else {
+      stop("No archive implementation available!")
+    }
 
     DBI::dbDisconnect(con)
   })
 
-  # Button enable / disable state monitoring
   observe({
-
-    # Enable the Archive button if a status is selected (status is required by the user)
     if (!is.null(input$DelArchStatus) && input$DelArchStatus != "") {
       shinyjs::enable("Archive")
     } else {
       shinyjs::disable("Archive")
     }
 
-    # Enable the Archive button if there are selected rows
     if (length(selected()) > 0) {
-      if (input$DelArchSearchType == "samples") {
-        shinyjs::enable("ArchiveAction")
-        shinyjs::enable("DeleteAction")
-      } else {
-        shinyjs::disable("ArchiveAction")  # archival disabled for controls
-        shinyjs::enable("DeleteAction")
-      }
+      shinyjs::enable("ArchiveAction")
+      shinyjs::enable("DeleteAction")
     } else {
       shinyjs::disable("ArchiveAction")
       shinyjs::disable("DeleteAction")
@@ -510,20 +556,70 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
     shinyjs::disable("Archive")
     showNotification("Working...", id = "ArchDelNotification", type = "message", action = NULL, duration = 5, closeButton = FALSE)
 
-    user.filtered.rows = filtered_data()
-    user.selected.rows = user.filtered.rows[selected(), ]
-    user.selected.rows$storage_container_id <- user.selected.rows$`Sample ID`
+    if (input$DelArchSearchType == "controls" && input$DelArchSearchByControlType == "dbs_sheet") {
+      con <- dbConnect(SQLite(), database)
+      on.exit(dbDisconnect(con), add = TRUE)
 
-    ArchiveAndDeleteSamples(
-      operation = "archive",
-      data = user.selected.rows,
-      comment = input$DelArchComment,
-      status = input$DelArchStatus,
-      verification = FALSE
-    )
+      user.filtered.rows <- filtered_data()
+      user.selected.rows <- user.filtered.rows[selected(), ]
+      spots_to_archive <- sapply(seq_len(nrow(user.selected.rows)), function(i) {
+          as.numeric(input[[paste0("modifyControl_", i)]])
+      })
+      user.selected.rows$SpotsToArchive <- spots_to_archive
+
+      # Start the transaction
+      dbWithTransaction(con, {
+        for(i in seq_len(nrow(user.selected.rows))) {
+          row <- user.selected.rows[i, ]
+          if(row$SpotsToArchive > 0) {
+            # Update the exhausted count in blood_spot_collection
+            dbExecute(con, "UPDATE blood_spot_collection SET exhausted = exhausted + :spots WHERE id = :id",
+                      params = list(spots = row$SpotsToArchive, id = row$CollectionID))
+            
+            # Insert into archived_dbs_blood_spots
+            dbExecute(con, "INSERT INTO archived_dbs_blood_spots (blood_spot_collection_id, archived_spots_count, reason, status_id) VALUES (:id, :spots, :reason, :status_id)",
+                      params = list(id = row$CollectionID, spots = row$SpotsToArchive, reason = input$DelArchComment, status_id = input$DelArchStatus))
+          }
+        }
+      })
+
+    } else if (input$DelArchSearchType == "controls" && input$DelArchSearchByControlType == "whole_blood") {
+      con <- dbConnect(SQLite(), database)
+      on.exit(dbDisconnect(con), add = TRUE)
+
+      user.filtered.rows <- filtered_data()
+      user.selected.rows <- user.filtered.rows[selected(), ]
+      archived.state.id <- 2  # "Archived" state
+
+      # Start the transaction for whole blood archival
+      dbWithTransaction(con, {
+        for(i in seq_len(nrow(user.selected.rows))) {
+          row <- user.selected.rows[i, ]
+
+          # Archive the whole blood tube
+          dbExecute(con, "UPDATE whole_blood_tube SET state_id = :state_id, status_id = :status_id, reason = :reason WHERE id = :tube_id",
+                    params = list(state_id = archived.state.id, status_id = input$DelArchStatus, reason = input$DelArchComment, tube_id = row$TubeID))
+        }
+      })
+
+    } else if (input$DelArchSearchType == "samples") {
+      user.filtered.rows = filtered_data()
+      user.selected.rows = user.filtered.rows[selected(), ]
+      user.selected.rows$storage_container_id <- user.selected.rows$`Sample ID`
+
+      ArchiveAndDeleteSamples(
+        operation = "archive",
+        data = user.selected.rows,
+        comment = input$DelArchComment,
+        status = input$DelArchStatus,
+        verification = FALSE
+      )
+
+    } else {
+      stop("No archive implementation available!")
+    }
 
     force_update(TRUE)
-
     removeNotification(id = "ArchDelNotification")
     removeModal()
   })
@@ -640,16 +736,13 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
       })
 
       user.selected.rows$SpotsToDelete <- spots_to_delete
-
-      # Duplicated from 'DeleteAction' but that's fine for now
-      user.selected.rows$MaxSpots <- user.selected.rows$Total - user.selected.rows$Exhausted
       
       # Start the transaction
       tryCatch({
         dbWithTransaction(con, {
           for(i in seq_len(nrow(user.selected.rows))) {
             row <- user.selected.rows[i, ]
-            if(row$SpotsToDelete >= row$Total || row$SpotsToDelete == row$MaxSpots) {
+            if(row$SpotsToDelete >= row$Total) {
               # Delete the record if the spots to delete is greater than or equal to total
               dbExecute(con, "DELETE FROM blood_spot_collection WHERE id = :id", params = list(id = row$CollectionID))
             } else {
@@ -864,7 +957,7 @@ CreateNumericInputScrollableTable <- function(data, max_value_column) {
     numeric_input <- numericInput(
       inputId = paste0("modifyControl_", i), 
       label = NULL, 
-      value = 1, 
+      value = 0, 
       min = 0, 
       max = max_spots, 
       width = '80px'
