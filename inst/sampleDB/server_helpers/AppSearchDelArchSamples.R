@@ -413,6 +413,17 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
   ###### Delarch specific functionality
 
   selected <- reactive(getReactableState("DelArchSearchResultsTable", "selected"))
+  archiveWarning <- reactiveVal(NULL)
+
+  observe({
+    output$archiveWarningUI <- renderUI({
+      if (length(archiveWarning()) > 0) {
+        invalid_rows_str <- paste(archiveWarning(), collapse = ", ")
+        tags$div(class = "alert alert-warning", 
+                 HTML(sprintf("The sum of archived spots exceeds the total available spots in rows: %s. Please adjust the values in these rows.", invalid_rows_str)))
+      }
+    })
+  })
 
   observeEvent(input$ArchiveAction, ignoreInit = TRUE, {
 
@@ -426,6 +437,10 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
 
     if (input$DelArchSearchType == "controls" && input$DelArchSearchByControlType == "dbs_sheet") {
       scrollable_table <- CreateNumericInputScrollableTable(user.selected.rows.selected, "MaxSpots")
+
+      # If we are updating archived sub-collections, then make sure we track whether the user is updating more 
+      # than the total number of spots in the collection using the sum of the archived sub-collections. If the 
+      # sum is greater than the total, display a warning and disable the archive button.
 
       showModal(
         modalDialog(
@@ -445,6 +460,7 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
           tags$hr(),
           tags$p("Please review your selected blood spots below before submitting. You may cancel by selecting", tags$em("Dismiss"), "below or by clicking outside of the dialog box."),
           scrollable_table, # Insert the scrollable div here
+          uiOutput("archiveWarningUI"), 
           easyClose = TRUE,
           fade = TRUE,
           footer = tagList(actionButton("Archive", label = "Archive"), modalButton("Dismiss"))
@@ -481,7 +497,7 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
           ),
           tags$hr(),
           tags$p("Please review your selected whole blood below before submitting. You may cancel by selecting", tags$em("Dismiss"), "below or by clicking outside of the dialog box."),
-          rt, # Insert the reactable here
+          rt, # Insert the reactable here,
           easyClose = TRUE,
           fade = TRUE,
           footer = tagList(actionButton("Archive", label = "Archive"), modalButton("Dismiss"))
@@ -553,7 +569,6 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
   observeEvent(input$Archive, ignoreInit = TRUE, { 
 
     message(sprintf("DelArch action: %s", "archive"))
-    shinyjs::disable("Archive")
     showNotification("Working...", id = "ArchDelNotification", type = "message", action = NULL, duration = 5, closeButton = FALSE)
 
     if (input$DelArchSearchType == "controls" && input$DelArchSearchByControlType == "dbs_sheet") {
@@ -566,6 +581,30 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
           as.numeric(input[[paste0("modifyControl_", i)]])
       })
       user.selected.rows$SpotsToArchive <- spots_to_archive
+
+      # Calculate whether the number of archived samples is greater than the total number of spots in the collection
+      # If so, prevent the archival and let the user know which rows need to be adjusted
+      user.selected.rows.new.archived <- user.selected.rows %>%
+        dplyr::group_by(CollectionID) %>%
+        dplyr::summarise(
+          Total = first(Total),
+          Exhausted = first(Exhausted),
+          SpotsToArchive = sum(SpotsToArchive)
+        ) %>%
+        dplyr::mutate(NewArchiveCount = Total - Exhausted - SpotsToArchive)
+
+      collection.ids <- user.selected.rows.new.archived %>%
+        filter(user.selected.rows.new.archived$NewArchiveCount < 0) %>%
+        pull(CollectionID)
+
+      if (length(collection.ids) > 0) {
+        rows.exceeding.total <- which(user.selected.rows$CollectionID %in% collection.ids)
+        archiveWarning(rows.exceeding.total)
+        return(NULL)
+      }
+
+      # Disable the archive button while the transaction is in progress
+      shinyjs::disable("Archive")
 
       # Start the transaction
       dbWithTransaction(con, {
