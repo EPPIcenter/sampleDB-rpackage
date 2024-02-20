@@ -4,15 +4,15 @@ DROP TABLE IF EXISTS "blood_spot_collection_dbs_control_sheet";
 -- Drop the blood_spot_collection table
 DROP TABLE IF EXISTS "blood_spot_collection";
 
--- Recreate the blood_spot_collection table with the new dbs_control_sheet_id column
+-- Recreate the blood_spot_collection table with the new dbs_control_sheet_id and exhausted_at columns
 CREATE TABLE "blood_spot_collection" (
-	"id"			INTEGER NOT NULL,
-	"malaria_blood_control_id" INTEGER NOT NULL,
-	"total"			INTEGER NOT NULL CHECK ("total" > 0),
-	"exhausted"		INTEGER	NOT NULL DEFAULT 0 CHECK ("exhausted" <= "total" AND "exhausted" >= 0),
-	"dbs_control_sheet_id"	INTEGER REFERENCES "dbs_control_sheet"("id"),
-	PRIMARY KEY("id"),
-	FOREIGN KEY("malaria_blood_control_id") REFERENCES "malaria_blood_control"("id")
+    "id"                        INTEGER NOT NULL,
+    "malaria_blood_control_id"  INTEGER NOT NULL,
+    "total"                     INTEGER NOT NULL CHECK ("total" > 0),
+    "exhausted"                 INTEGER NOT NULL DEFAULT 0 CHECK ("exhausted" <= "total" AND "exhausted" >= 0),
+    "dbs_control_sheet_id"      INTEGER REFERENCES "dbs_control_sheet"("id"),
+    PRIMARY KEY("id"),
+    FOREIGN KEY("malaria_blood_control_id") REFERENCES "malaria_blood_control"("id")
 );
 
 -- Create a table to store archived whole blood
@@ -43,6 +43,5 @@ UPDATE "whole_blood_tube"
 SET "state_id" = 1, "status_id" = 1 
 WHERE "state_id" IS NULL AND "status_id" IS NULL;
 
-
 -- Update database version to reflect these changes
-INSERT OR ROLLBACK INTO version (name) VALUES ('2.1.0');
+INSERT OR ROLLBACK INTO "version" (name) VALUES ('2.1.0');

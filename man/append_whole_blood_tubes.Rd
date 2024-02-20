@@ -4,7 +4,13 @@
 \alias{append_whole_blood_tubes}
 \title{Add whole blood tubes to the database if they don't exist}
 \usage{
-append_whole_blood_tubes(user_data, con, barcode_col, position_col)
+append_whole_blood_tubes(
+  user_data,
+  con,
+  barcode_col,
+  position_col,
+  comment_col
+)
 }
 \arguments{
 \item{user_data}{A dataframe containing the payload data.}
@@ -14,6 +20,8 @@ append_whole_blood_tubes(user_data, con, barcode_col, position_col)
 \item{barcode_col}{Column name in user_data for barcode.}
 
 \item{position_col}{Column name in user_data for position.}
+
+\item{comment_col}{Column name in user_data for comment.}
 }
 \value{
 A result from the dbAppendTable indicating if the tubes were added successfully.

@@ -33,7 +33,7 @@
     "minus80_wb_storage": {
       "location_root": "WB_FreezerName",
       "level_i": "WB_RackName",
-      "level_ii": "WB_RackPosition"      
+      "level_ii": "WB_RackPosition"
     }
   },
   "containers": {

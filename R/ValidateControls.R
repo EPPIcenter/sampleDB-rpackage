@@ -176,7 +176,7 @@ validate_dbs_sheet_extraction <- function(dbs_sheet_test) {
   dbs_sheet_test(validate_empty_micronix_well_upload, "ExtractedDNAPosition", "PlateName", "PlateBarcode")
 
   # References check
-  dbs_sheet_test(check_control_exists, "ControlID", "Batch", error_if_exists = FALSE)
+  dbs_sheet_test(check_control_exists, "ControlUID", "Batch", error_if_exists = FALSE)
   dbs_sheet_test(validate_study_reference_db, "Batch")
 
   # Validate source location
@@ -232,6 +232,35 @@ perform_whole_blood_db_validations <- function(database, user_data, action) {
   return(errors)
 }
 
+#' Validate Cryovial Tube Exists
+#'
+#' This function checks that a cryovial exists by position, boxname, and barcode and box barcode, if provided.
+#'
+#' @return A list containing validation errors, if any.
+#' @export
+#' @keywords validation
+validate_whole_blood_tube_exists <- function(con, table_name, row_number_col, position_col, box_name_col, box_barcode_col, control_uid_col, batch_col) {
+  
+  df <- tbl(con, table_name) %>%
+    dplyr::left_join(tbl(con, "whole_blood_tube") %>% dplyr::rename(whole_blood_tube_id=id), by = setNames("position", position_col)) %>%
+    dplyr::left_join(tbl(con, "cryovial_box") %>% dplyr::rename(cryovial_box_id=id, box_barcode=barcode), by = "cryovial_box_id") %>%
+    dplyr::filter(name == !!sym(box_name_col) | box_barcode == !!sym(box_barcode_col)) %>%
+    dplyr::left_join(tbl(con, "malaria_blood_control") %>% dplyr::rename(malaria_blood_control_id=id), by = "malaria_blood_control_id") %>%
+    dplyr::left_join(tbl(con, "study_subject") %>% dplyr::rename(study_subject_id=id, control_uid=name), by = "study_subject_id") %>%
+    dplyr::left_join(tbl(con, "study") %>% dplyr::rename(study_id=id), by = "study_id") %>%
+    dplyr::filter(control_uid == !!sym(control_uid_col) & short_code == !!sym(batch_col)) %>%
+    dplyr::filter(is.na(whole_blood_tube_id) | is.na(cryovial_box_id) | is.na(malaria_blood_control_id) | is.na(study_subject_id) | is.na(study_id)) %>%
+    dplyr::select(all_of(c(row_number_col, position_col, box_name_col, box_barcode_col))) %>%
+    dplyr::collect()
+
+  if (nrow(df) > 0) {
+    error_message <- "Cryovial tube could not be found."
+    return(ErrorData$new(description = error_message, data_frame = df))
+  }
+  
+  return(NULL)  
+}
+
 #' Validate Whole Blood Create
 #'
 #' Conducts specific validation checks for creating whole blood controls.
@@ -245,7 +274,7 @@ validate_whole_blood_create <- function(whole_blood_test) {
   # References check
   whole_blood_test(check_composition_id_exists, "Label", "Index", "LegacyLabel")
   whole_blood_test(validate_study_reference_db, "Batch", controls = TRUE)
-  whole_blood_test(validate_location_reference_db, "WB_Minus80", "WB_RackName", "WB_RackPosition")
+  whole_blood_test(validate_location_reference_db, "WB_FreezerName", "WB_RackName", "WB_RackPosition")
 
   # Whole blood is stored in cryovials so reuse cryovial tests
   whole_blood_test(validate_empty_cryovial_well_upload, "ControlOriginPosition", "BoxName", "BoxBarcode")
@@ -261,17 +290,17 @@ validate_whole_blood_create <- function(whole_blood_test) {
 #' @keywords validation
 validate_whole_blood_extraction <- function(whole_blood_test) {
 
-  # Add your validation function calls here
+  # Add validation function calls here
   whole_blood_test(check_micronix_barcodes_exist, "Barcode", error_if_exists = TRUE)
   whole_blood_test(validate_empty_micronix_well_upload, "ExtractedDNAPosition", "PlateName", "PlateBarcode")
-  whole_blood_test(validate_cryovial_tube_exists, "ControlOriginPosition", "BoxName", "BoxBarcode")
 
   # References check
   whole_blood_test(validate_study_reference_db, "Batch", controls = TRUE)
-  whole_blood_test(check_control_exists, "ControlID", "Batch", error_if_exists = TRUE)
+  whole_blood_test(check_control_exists, "ControlUID", "Batch", error_if_exists = FALSE)
+  whole_blood_test(validate_whole_blood_tube_exists, "ControlOriginPosition", "BoxName", "BoxBarcode", "ControlUID", "Batch")
 
   # Validate source location
-  whole_blood_test(validate_location_reference_db, "WB_Minus80", "WB_RackName", "WB_RackPosition")
+  whole_blood_test(validate_location_reference_db, "WB_FreezerName", "WB_RackName", "WB_RackPosition")
 
   # Validate destination location
   whole_blood_test(validate_location_reference_db, "FreezerName", "ShelfName", "BasketName")

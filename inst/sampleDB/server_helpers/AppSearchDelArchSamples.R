@@ -131,7 +131,7 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
 
       # Get filtered data from the most recent data source
       type <- isolate({ input$DelArchSearchType })
-      columns_to_remove <- c("Sample ID", "ControlID", "CollectionID", "TubeID")
+      columns_to_remove <- c("Sample ID", "ControlID", "CollectionID", "TubeID", "ArchivedSpotsID")
       search_table <- most_recent_data() %>% select(-any_of(columns_to_remove))
         
       reactable(
@@ -431,16 +431,36 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
 
     user.filtered.rows = filtered_data()
     user.selected.rows = user.filtered.rows[selected(), ]
-    user.selected.rows.selected <- user.selected.rows %>% 
-        mutate(MaxSpots = Total - Exhausted) %>% 
-        select(-all_of(c("CollectionID", "ControlID")))
 
     if (input$DelArchSearchType == "controls" && input$DelArchSearchByControlType == "dbs_sheet") {
-      scrollable_table <- CreateNumericInputScrollableTable(user.selected.rows.selected, "MaxSpots")
+
+      if (input$DelArchSearchByState == "Active") {
+        # Make sure to check for spots if we are archiving DBS spots
+        user.selected.rows.selected <- user.selected.rows %>% 
+          mutate(MaxSpots = Total - Exhausted) %>% 
+          select(-all_of(c("CollectionID", "ControlID")))
+
+        scrollable_table <- CreateNumericInputScrollableTable(user.selected.rows.selected, "MaxSpots")
+
+      } else {
+        user.selected.rows.selected <- user.selected.rows %>% 
+          select(-all_of(c("ControlID", "ArchivedSpotsID")))
+
+        scrollable_table <- CreateNumericInputScrollableTable(user.selected.rows.selected, enabled = FALSE)
+      } 
 
       # If we are updating archived sub-collections, then make sure we track whether the user is updating more 
       # than the total number of spots in the collection using the sum of the archived sub-collections. If the 
       # sum is greater than the total, display a warning and disable the archive button.
+
+      # Fetch the statuses from the database
+      status_df <- RSQLite::dbGetQuery(con, "SELECT id, name FROM view_archive_statuses")
+
+      # Filter out the 'Exhausted' status (we do not want to manually set controls to 'Exhausted')
+      filtered_status_df <- filter(status_df, name != "Exhausted")
+
+      # Convert to a named vector
+      dbs_spot_archive_choices <- filtered_status_df %>% pull(id, name=name)
 
       showModal(
         modalDialog(
@@ -449,7 +469,7 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
           tags$em("Please review the following fields and your selected controls below.", style = "color: grey;font-size: 18px;"),
           hr(),
           fluidRow( 
-            column(width = 6, selectizeInput("DelArchStatus", tags$strong("Status:"), choices = c("", RSQLite::dbGetQuery(con, "SELECT * FROM view_archive_statuses") %>% pull(id, name=name)), width = '75%')),
+            column(width = 6, selectizeInput("DelArchStatus", tags$strong("Status:"), choices = c("", dbs_spot_archive_choices), width = '75%')),
             column(width = 6, tags$p("Please enter a status for the samples you selected for", tags$strong("archival"), ". This is a", tags$strong("required"), "field, and is used to indicate why the control is no longer", tags$em("In Use"), "."))
           ),
           hr(),
@@ -504,7 +524,7 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
         )
       )
 
-    } else if (input$DelArchSearchByControlType == "samples") {
+    } else if (input$DelArchSearchType == "samples") {
 
       rt <- reactable(
         user.selected.rows,
@@ -527,7 +547,7 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
           tags$em("Please review the following fields and your selected samples below.", style = "color: grey;font-size: 18px;"),
           hr(),
           fluidRow( 
-            column(width = 6, selectizeInput("DelArchStatus", tags$strong("Status:"), choices = c("", RSQLite::dbGetQuery(con, "SELECT * FROM view_archive_statuses") %>% pull(name)), width = '75%')),
+            column(width = 6, selectizeInput("DelArchStatus", tags$strong("Status:"), choices = c("", RSQLite::dbGetQuery(con, "SELECT * FROM view_archive_statuses") %>% pull(id, name=name)), width = '75%')),
             column(width = 6, tags$p("Please enter a status for the samples you selected for", tags$strong("archival"), ". This is a", tags$strong("required"), "field, and is used to indicate why the sample is no longer", tags$em("In Use"), "."))
           ),
           hr(),
@@ -577,50 +597,73 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
 
       user.filtered.rows <- filtered_data()
       user.selected.rows <- user.filtered.rows[selected(), ]
-      spots_to_archive <- sapply(seq_len(nrow(user.selected.rows)), function(i) {
-          as.numeric(input[[paste0("modifyControl_", i)]])
-      })
-      user.selected.rows$SpotsToArchive <- spots_to_archive
 
-      # Calculate whether the number of archived samples is greater than the total number of spots in the collection
-      # If so, prevent the archival and let the user know which rows need to be adjusted
-      user.selected.rows.new.archived <- user.selected.rows %>%
-        dplyr::group_by(CollectionID) %>%
-        dplyr::summarise(
-          Total = first(Total),
-          Exhausted = first(Exhausted),
-          SpotsToArchive = sum(SpotsToArchive)
-        ) %>%
-        dplyr::mutate(NewArchiveCount = Total - Exhausted - SpotsToArchive)
+      if (input$DelArchSearchByState == "Active") {
+        spots_to_archive <- sapply(seq_len(nrow(user.selected.rows)), function(i) {
+            as.numeric(input[[paste0("modifyControl_", i)]])
+        })
+        user.selected.rows$SpotsToArchive <- spots_to_archive
 
-      collection.ids <- user.selected.rows.new.archived %>%
-        filter(user.selected.rows.new.archived$NewArchiveCount < 0) %>%
-        pull(CollectionID)
+        # Calculate whether the number of archived samples is greater than the total number of spots in the collection
+        # If so, prevent the archival and let the user know which rows need to be adjusted
+        user.selected.rows.new.archived <- user.selected.rows %>%
+          dplyr::group_by(CollectionID) %>%
+          dplyr::summarise(
+            Total = first(Total),
+            Exhausted = first(Exhausted),
+            SpotsToArchive = sum(SpotsToArchive)
+          ) %>%
+          dplyr::mutate(NewArchiveCount = Total - Exhausted - SpotsToArchive)
 
-      if (length(collection.ids) > 0) {
-        rows.exceeding.total <- which(user.selected.rows$CollectionID %in% collection.ids)
-        archiveWarning(rows.exceeding.total)
-        return(NULL)
-      }
+        collection.ids <- user.selected.rows.new.archived %>%
+          filter(user.selected.rows.new.archived$NewArchiveCount < 0) %>%
+          pull(CollectionID)
 
-      # Disable the archive button while the transaction is in progress
-      shinyjs::disable("Archive")
-
-      # Start the transaction
-      dbWithTransaction(con, {
-        for(i in seq_len(nrow(user.selected.rows))) {
-          row <- user.selected.rows[i, ]
-          if(row$SpotsToArchive > 0) {
-            # Update the exhausted count in blood_spot_collection
-            dbExecute(con, "UPDATE blood_spot_collection SET exhausted = exhausted + :spots WHERE id = :id",
-                      params = list(spots = row$SpotsToArchive, id = row$CollectionID))
-            
-            # Insert into archived_dbs_blood_spots
-            dbExecute(con, "INSERT INTO archived_dbs_blood_spots (blood_spot_collection_id, archived_spots_count, reason, status_id) VALUES (:id, :spots, :reason, :status_id)",
-                      params = list(id = row$CollectionID, spots = row$SpotsToArchive, reason = input$DelArchComment, status_id = input$DelArchStatus))
-          }
+        if (length(collection.ids) > 0) {
+          rows.exceeding.total <- which(user.selected.rows$CollectionID %in% collection.ids)
+          archiveWarning(rows.exceeding.total)
+          return(NULL)
         }
-      })
+
+        # Disable the archive button while the transaction is in progress
+        shinyjs::disable("Archive")
+
+        # Start the transaction
+        dbWithTransaction(con, {
+          for(i in seq_len(nrow(user.selected.rows))) {
+            row <- user.selected.rows[i, ]
+            if(row$SpotsToArchive > 0) {
+              # Update the exhausted count in blood_spot_collection
+              dbExecute(con, "UPDATE blood_spot_collection SET exhausted = exhausted + :spots WHERE id = :id",
+                        params = list(spots = row$SpotsToArchive, id = row$CollectionID))
+              
+              # Insert into archived_dbs_blood_spots
+              dbExecute(con, "INSERT INTO archived_dbs_blood_spots (blood_spot_collection_id, archived_spots_count, reason, status_id) VALUES (:id, :spots, :reason, :status_id)",
+                        params = list(id = row$CollectionID, spots = row$SpotsToArchive, reason = input$DelArchComment, status_id = input$DelArchStatus))
+            }
+          }
+        })
+      } else {
+
+        # No spots are being archived as they were already archived, and 
+        # this is represented as reassigning the previously archived spots back
+        # to `SpotsToArchive`, which effectively does not change the value in the table.
+        user.selected.rows$SpotsToArchive <- user.selected.rows$ArchivedSpots
+
+        shinyjs::disable("Archive")
+
+        # Start the transaction
+        dbWithTransaction(con, {
+          for(i in seq_len(nrow(user.selected.rows))) {
+            row <- user.selected.rows[i, ]
+            if(row$SpotsToArchive > 0) {
+              # Update existing row in archived_dbs_blood_spots
+              dbExecute(con, "UPDATE archived_dbs_blood_spots SET archived_spots_count = :spots, reason = :reason, status_id = :status_id WHERE id = :id",
+                        params = list(id = row$ArchivedSpotsID, spots = row$SpotsToArchive, reason = input$DelArchComment, status_id = input$DelArchStatus))
+            }
+          }
+        })
+      }
 
     } else if (input$DelArchSearchType == "controls" && input$DelArchSearchByControlType == "whole_blood") {
       con <- dbConnect(SQLite(), database)
@@ -673,11 +716,20 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
     # If this is a DBS sheet, we need to ask how many spots should be deleted.
     if (input$DelArchSearchType == "controls" && input$DelArchSearchByControlType == "dbs_sheet") {
 
-      user.selected.rows.selected <- user.selected.rows %>% 
-        mutate(MaxSpots = Total - Exhausted) %>% 
-        select(-all_of(c("CollectionID", "ControlID")))
+      if (input$DelArchSearchByState == "Active") {
+        # Make sure to check for spots if we are archiving DBS spots
+        user.selected.rows.selected <- user.selected.rows %>% 
+          mutate(MaxSpots = Total - Exhausted) %>% 
+          select(-all_of(c("CollectionID", "ControlID")))
 
-      scrollable_table <- CreateNumericInputScrollableTable(user.selected.rows.selected, "MaxSpots")
+        scrollable_table <- CreateNumericInputScrollableTable(user.selected.rows.selected, "MaxSpots")
+
+      } else {
+        user.selected.rows.selected <- user.selected.rows %>% 
+          select(-all_of(c("ControlID", "ArchivedSpotsID")))
+
+        scrollable_table <- CreateNumericInputScrollableTable(user.selected.rows.selected, enabled = FALSE)
+      } 
       
       showModal(
         modalDialog(
@@ -766,10 +818,27 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
     shinyjs::disable("Delete")
     showNotification("Working...", id = "ArchDelNotification", type = "message", action = NULL, duration = 5, closeButton = FALSE)
 
-    if (input$DelArchSearchType == "controls" && input$DelArchSearchByControlType == "dbs_sheet") {
+    user.filtered.rows =  filtered_data()
+    user.selected.rows = user.filtered.rows[selected(), ]
+
+    if (input$DelArchSearchType == "controls" && input$DelArchSearchByControlType == "dbs_sheet" && input$DelArchSearchByState == "Archived") {
+
       con <- dbConnect(SQLite(), database)
-      user.filtered.rows <- filtered_data()
-      user.selected.rows <- user.filtered.rows[selected(), ]
+      on.exit(dbDisconnect(con), add = TRUE)
+
+      # Start the transaction
+      dbWithTransaction(con, {
+        for(i in seq_len(nrow(user.selected.rows))) {
+          row <- user.selected.rows[i, ]
+
+          # Delete rows from archived_dbs_blood_spots based on the condition
+          dbExecute(con, "DELETE FROM archived_dbs_blood_spots WHERE id = :id",
+                    params = list(id = row$ArchivedSpotsID))
+        }
+      })
+
+    } else if (input$DelArchSearchType == "controls" && input$DelArchSearchByControlType == "dbs_sheet") {
+      con <- dbConnect(SQLite(), database)
       spots_to_delete <- sapply(seq_len(nrow(user.selected.rows)), function(i) {
         as.numeric(input[[paste0("modifyControl_", i)]])
       })
@@ -797,14 +866,11 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
       })
 
     } else if (input$DelArchSearchType == "controls" && input$DelArchSearchByControlType == "whole_blood") {
-      user.filtered.rows =  filtered_data()
-      user.selected.rows = user.filtered.rows[selected(), ]
 
       DeleteWholeBloodSamples(user.selected.rows$TubeID)
 
     } else if (input$DelArchSearchType == "samples") {
-      user.filtered.rows =  filtered_data()
-      user.selected.rows = user.filtered.rows[selected(), ]
+      
       user.selected.rows$storage_container_id <- user.selected.rows$`Sample ID`
 
       ArchiveAndDeleteSamples(
@@ -978,10 +1044,28 @@ UpdateControlSelections <- function(session, input, keepCurrentSelection = FALSE
   DBI::dbDisconnect(con)
 }
 
-CreateNumericInputScrollableTable <- function(data, max_value_column) {
+#' Create a Scrollable Table with Numeric Inputs for Each Row
+#'
+#' This function generates a scrollable HTML table where each row contains a numeric input element. 
+#' The numeric inputs can have their maximum values and default values set dynamically based on the data frame columns specified. 
+#' Additionally, these inputs can be enabled or disabled globally.
+#'
+#' @param data A data frame containing the data to be displayed in the table. 
+#' The data frame can optionally include columns specified by `max_value_column` and `default_value_column` to dynamically set properties of the numeric inputs.
+#' @param max_value_column The name of the column in `data` that contains the maximum value for the numeric inputs.
+#' If this column is not found, a default max value of 100 is used.
+#' @param default_value_column Optional; the name of the column in `data` that contains the default value for the numeric inputs. 
+#' If not provided or the column is not found, a default value of 0 is used for all inputs.
+#' @param enabled A logical value indicating whether the numeric inputs should be enabled (`TRUE`) or disabled (`FALSE`).
+#' By default, inputs are enabled.
+#'
+#' @return An HTML div element containing a scrollable table. Each row of the table includes a numeric input 
+#' with properties determined by the function parameters and the corresponding row in the input data frame.
+#'
+CreateNumericInputScrollableTable <- function(data, max_value_column = NULL, default_value_column = NULL, enabled = TRUE) {
   # Format the 'Percentage' and 'Strain' columns, if they exist
   if ("Percentage" %in% names(data)) {
-    data$Percentage <- sapply(data$Percentage, function(x) paste(x, collapse = ","))
+    data$Percentage <- sapply(data$Percentage, function(x) paste(x, "%", collapse = ","))
   }
   if ("Strain" %in% names(data)) {
     data$Strain <- sapply(data$Strain, function(x) paste(x, collapse = ","))
@@ -990,21 +1074,19 @@ CreateNumericInputScrollableTable <- function(data, max_value_column) {
   # Build the HTML table rows
   table_rows <- lapply(seq_len(nrow(data)), function(i) {
     row <- data[i, ]
-    # Use the specified max_value_column to set 'max' attribute, with a default if missing
-    max_spots <- if (max_value_column %in% names(row)) as.numeric(row[[max_value_column]]) else 100
     
-    numeric_input <- numericInput(
-      inputId = paste0("modifyControl_", i), 
-      label = NULL, 
-      value = 0, 
-      min = 0, 
-      max = max_spots, 
-      width = '80px'
-    )
+    max_spots <- if (!is.null(max_value_column) && max_value_column %in% names(row)) row[[max_value_column]] else 100
+    default_value <- if (!is.null(default_value_column) && default_value_column %in% names(row)) row[[default_value_column]] else 0
     
-    # Generate table row with numeric input and other data values
+    # Manually creating the numeric input HTML
+    numeric_input_id <- paste0("modifyControl_", i)
+    disabled_attr <- ifelse(enabled, "", "disabled")
+    numeric_input_html <- tags$input(type = "number", id = numeric_input_id, class = "form-control", 
+                                     style = "width: 80px;", min = 0, max = max_spots, 
+                                     value = default_value, disabled_attr)
+    
     tags$tr(
-      tags$td(style = "position: sticky; left: 0; background: white;", numeric_input),
+      tags$td(style = "position: sticky; left: 0; background: white;", numeric_input_html),
       lapply(row, function(value) tags$td(as.character(value)))
     )
   })
@@ -1023,5 +1105,4 @@ CreateNumericInputScrollableTable <- function(data, max_value_column) {
   
   return(scrollable_table)
 }
-
 

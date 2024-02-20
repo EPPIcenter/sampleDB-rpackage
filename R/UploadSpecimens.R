@@ -124,21 +124,29 @@ upload_extracted_dna <- function(user_data, control_extraction, database = Sys.g
 .UpdateActiveControlCount <- function(user_data, control_extraction, con) {
 
   if ("dbs_sheet" == control_extraction) {
-    df.payload = user_data %>%
-      inner_join(dbReadTable(con, "study") %>% dplyr::rename(study_id=id), by=c("study_short_code"="short_code")) %>%
-      inner_join(dbReadTable(con, "study_subject") %>% dplyr::rename(study_subject_id=id, study_subject=name), by = c("study_id", "study_subject")) %>%
-      inner_join(dbReadTable(con, "blood_spot_collection") %>% dplyr::rename(blood_spot_collection_id=id), by = c("study_subject_id")) %>%
-      inner_join(dbReadTable(con, "dbs_control_sheet") %>% dplyr::rename(dbs_control_sheet_id=id), by=c("dbs_control_sheet_id", "sheet_uid")) %>%
-      group_by(study_subject, sheet_uid, blood_spot_collection_id) %>% # could just be the blood_spot_collection_id
-      dplyr::reframe(count=n(), exhausted = count + exhausted)
+    # Fetch data necessary for determining exhaustion status
+    df.payload <- user_data %>%
+      inner_join(dbReadTable(con, "study") %>% dplyr::rename(study_id = id), by = c("study_short_code" = "short_code")) %>%
+      inner_join(dbReadTable(con, "study_subject") %>% dplyr::rename(study_subject_id = id, study_subject = name), by = c("study_id", "study_subject")) %>%
+      inner_join(dbReadTable(con, "blood_spot_collection") %>% dplyr::rename(blood_spot_collection_id = id), by = c("study_subject_id")) %>%
+      collect()
 
-    for (ii in 1:nrow(df.payload)) {
-      DBI::dbExecute(con, sprintf("UPDATE blood_spot_collection SET exhausted = %d WHERE id = %d;", df.payload[ii,]$exhausted, df.payload[ii,]$blood_spot_collection_id))
+    # Check the total and exhausted count for each blood spot collection,
+    # and the exhausted spots to archived_dbs_blood_spots
+    if (nrow(df.payload) > 0) {
+      for (ii in 1:nrow(df.payload)) {
+        # Directly use `total` and `exhausted_count` from `df.payload` without additional query
+        if (df.payload[ii,]$exhausted == df.payload[ii,]$total) {
+          dbExecute(con, sprintf("INSERT INTO archived_dbs_blood_spots (blood_spot_collection_id, archived_spots_count, reason, status_id) VALUES (%d, %d, 'Automatically archived as exhausted', 2);", df.payload[ii,]$blood_spot_collection_id, df.payload[ii,]$total))
+          message(sprintf("Archived spots for collection ID %d as exhausted.", df.payload[ii,]$blood_spot_collection_id))
+        }
+      }
     }
 
     message(sprintf("%d controls updated", nrow(df.payload)))
 
   } else if ("whole_blood" == control_extraction) {
+
     df.payload = user_data %>%
       inner_join(dbReadTable(con, "study") %>% dplyr::rename(study_id=id), by=c("study_short_code"="short_code")) %>%
       inner_join(dbReadTable(con, "study_subject") %>% dplyr::rename(study_subject_id=id, study_subject=name), by = c("study_id", "study_subject")) %>%
@@ -172,7 +180,7 @@ upload_extracted_dna <- function(user_data, control_extraction, database = Sys.g
   for(i in 1:nrow(upload_data)) {
     eval.specimen_type <- safe_extract(upload_data[i, ], "SpecimenType")
     eval.study_code <- safe_extract(upload_data[i, ], "StudyCode", "Batch")
-    eval.subject <- safe_extract(upload_data[i, ], "StudySubject", "ControlID")
+    eval.subject <- safe_extract(upload_data[i, ], "StudySubject", "ControlUID")
 
     # For fields that might exist under different names
     eval.barcode <- safe_extract(upload_data[i, ], "Barcode", "Tube ID", "TubeCode") 
@@ -301,13 +309,9 @@ upload_extracted_dna <- function(user_data, control_extraction, database = Sys.g
         eval.plate_id <- filter(CheckTableTx(conn = conn, "micronix_plate"), name == eval.container_name)$id
       }
 
-      # 7. upload micronix sample
-      AddToTable(table_name = "micronix_tube",
-                           info_list = list(id = eval.id,
-                                            manifest_id = eval.plate_id,
-                                            position = eval.position,
-                                            barcode = eval.barcode),
-                           conn = conn) %>% suppressWarnings()
+      df <- data.frame(id = eval.id, manifest_id = eval.plate_id, position = eval.position, barcode = eval.barcode)
+      DBI::dbAppendTable(conn, "micronix_tube", df)
+
     }
     # cryovial == 2
     else if (sample_type_id == "cryovial") {
@@ -319,12 +323,8 @@ upload_extracted_dna <- function(user_data, control_extraction, database = Sys.g
       }
 
       # 7. upload micronix sample
-      AddToTable(table_name = "cryovial_tube",
-                           info_list = list(id = eval.id,
-                                            manifest_id = eval.plate_id,
-                                            position = eval.position,
-                                            barcode = eval.barcode),
-                           conn = conn) %>% suppressWarnings()
+      df <- data.frame(id = eval.id, manifest_id = eval.plate_id, position = eval.position, barcode = eval.barcode)
+      DBI::dbAppendTable(conn, "cryovial_tube", df)
 
     } else {
       stop("No upload implementation for this sample type")

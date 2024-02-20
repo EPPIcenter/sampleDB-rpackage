@@ -23,9 +23,6 @@
 #' @import RSQLite
 #' @import lubridate
 #' @export
-#'
-
-#' Expects 'control_id' and control type
 ArchiveAndDeleteControls <- function(operation, control_type, data, comment, status, verification = TRUE, database = Sys.getenv("SDB_PATH")) {
   con <-  RSQLite::dbConnect(RSQLite::SQLite(), database)
 
@@ -154,29 +151,45 @@ ArchiveAndDeleteSamples <- function(operation, data, comment, status_id, verific
   return(return_message)
 }
 
-DeleteWholeBloodSamples <- function(cryovial_tube_ids) {
+#' Delete Whole Blood Controls
+#' 
+#' This function deletes whole blood controls from the database based on the provided list of whole_blood_tube IDs. 
+#' It also handles the deletion of associated records if a whole blood sample is the last one for a study subject.
+#' 
+#' @param whole_blood_tube_ids A vector containing the IDs of whole blood tubes to be deleted.
+#' @return None
+#' @export
+#' 
+#' @examples
+#' \dontrun{
+#' # Delete whole blood controls with IDs 1, 2, and 3
+#' DeleteWholeBloodSamples(c(1, 2, 3))
+#' }
+#' 
+#' @import RSQLite
+DeleteWholeBloodSamples <- function(whole_blood_tube_ids) {
   database <- Sys.getenv("SDB_PATH")
   conn <- RSQLite::dbConnect(RSQLite::SQLite(), database)
   RSQLite::dbBegin(conn)
 
   tryCatch({
-    for (tube_id in cryovial_tube_ids) {
+    for (tube_id in whole_blood_tube_ids) {
       # Check if it's the last tube for a study_subject
-      study_subject_id <- RSQLite::dbGetQuery(conn, paste("SELECT study_subject_id FROM whole_blood_tube WHERE id = ", tube_id))
-      tube_count <- RSQLite::dbGetQuery(conn, paste("SELECT COUNT(*) FROM whole_blood_tube WHERE study_subject_id = ", study_subject_id))
+      malaria_blood_control_id <- RSQLite::dbGetQuery(conn, paste("SELECT malaria_blood_control_id FROM whole_blood_tube WHERE id = ", tube_id))
+      tube_count <- RSQLite::dbGetQuery(conn, paste("SELECT COUNT(*) FROM whole_blood_tube WHERE malaria_blood_control_id = ", malaria_blood_control_id))
 
       if (tube_count == 1) {
         # Delete study_subject and associated malaria_blood_control
-        RSQLite::dbExecute(conn, paste("DELETE FROM study_subject WHERE id = ", study_subject_id))
-        RSQLite::dbExecute(conn, paste("DELETE FROM malaria_blood_control WHERE study_subject_id = ", study_subject_id))
+        RSQLite::dbExecute(conn, paste("DELETE FROM study_subject WHERE id = ", malaria_blood_control_id))
+        RSQLite::dbExecute(conn, paste("DELETE FROM malaria_blood_control WHERE id = ", malaria_blood_control_id))
       }
 
-      # Delete the cryovial_tube
+      # Delete the whole_blood_tube
       RSQLite::dbExecute(conn, paste("DELETE FROM whole_blood_tube WHERE id = ", tube_id))
     }
 
     RSQLite::dbCommit(conn)
-    message(paste("Deleted", length(cryovial_tube_ids), "whole blood samples successfully."))
+    message(paste("Deleted", length(whole_blood_tube_ids), "whole blood samples successfully."))
   }, error = function(e) {
     RSQLite::dbRollback(conn)
     message("Error occurred: ", e$message)
@@ -184,6 +197,8 @@ DeleteWholeBloodSamples <- function(cryovial_tube_ids) {
     RSQLite::dbDisconnect(conn)
   })
 }
+
+
 
 
 .GetDatabaseTables <- function(database){

@@ -132,17 +132,22 @@ rejoin_box_ids <- function(con, user_data, box_name_col, box_barcode_col) {
 #' @param con A database connection object.
 #' @param barcode_col Column name in user_data for barcode.
 #' @param position_col Column name in user_data for position.
+#' @param comment_col Column name in user_data for comment.
 #' @return A result from the dbAppendTable indicating if the tubes were added successfully.
-append_whole_blood_tubes <- function(user_data, con, barcode_col, position_col) {
+append_whole_blood_tubes <- function(user_data, con, barcode_col, position_col, comment_col) {
   ## Add the whole blood tubes
   res <- dbAppendTable(con, "whole_blood_tube", user_data %>%
-                dplyr::rename(position := !!sym(position_col)) %>%
-                select(any_of(c(barcode_col)), malaria_blood_control_id, cryovial_box_id, position) %>%
-                distinct()
+                         dplyr::rename(barcode = !!sym(barcode_col),
+                                       position = !!sym(position_col),
+                                       reason = !!sym(comment_col)) %>%
+                         dplyr::mutate(state_id = 1, status_id = 1) %>%
+                         select(barcode, malaria_blood_control_id, cryovial_box_id, position, state_id, status_id, reason) %>%
+                         distinct()
   )
 
   return(res)
 }
+
 
 #' Process Whole Blood Box Data
 #' 
@@ -171,6 +176,7 @@ append_boxes_if_not_exist <- function(con, user_data, created_col, last_updated_
 }
 
 upload_whole_blood <- function(user_data, database) {
+
   con <- DBI::dbConnect(RSQLite::SQLite(), database)
 
 	dbBegin(con)
@@ -184,9 +190,9 @@ upload_whole_blood <- function(user_data, database) {
     user_data <- prepare_control_for_upload(user_data, now)
 
     user_data_with_control_ids <- create_controls_for_batch(user_data, con, "Density", "Batch", "Control")
-    user_data_with_container_ids <- process_whole_blood_location_container(user_data_with_control_ids, con, "Created", "LastUpdated", "BoxName", "BoxBarcode", "WB_Minus80", "WB_RackName", "WB_RackPosition")
+    user_data_with_container_ids <- process_whole_blood_location_container(user_data_with_control_ids, con, "Created", "LastUpdated", "BoxName", "BoxBarcode", "WB_FreezerName", "WB_RackName", "WB_RackPosition")
     user_data_with_blood_control_ids <- process_malaria_blood_control_data(user_data_with_container_ids, con, "Density", "CompositionID")
-    res <- append_whole_blood_tubes(user_data_with_blood_control_ids, con, "Barcode", "ControlOriginPosition")
+    res <- append_whole_blood_tubes(user_data_with_blood_control_ids, con, "Barcode", "ControlOriginPosition", "Comment")
 		dbCommit(con)
 	}, error = function(e) {
     dbRollback(con)

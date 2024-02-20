@@ -9,14 +9,8 @@ check_cryovial_barcodes_exist(
   user_data,
   row_number_col,
   cryovial_col,
-  error_if_exists = TRUE
-)
-
-check_cryovial_barcodes_exist(
-  con,
-  user_data,
-  row_number_col,
-  cryovial_col,
+  cryovial_box_col,
+  cryovial_box_barcode_col,
   error_if_exists = TRUE
 )
 }
@@ -29,16 +23,17 @@ check_cryovial_barcodes_exist(
 
 \item{cryovial_col}{The column with Cryovial barcodes in the \code{user_data}.}
 
+\item{cryovial_box_col}{The column with Cryovial box IDs in the \code{user_data}.}
+
+\item{cryovial_box_barcode_col}{The column with Cryovial box barcodes in the \code{user_data}.}
+
 \item{error_if_exists}{Logical. If TRUE, an error is returned if the barcode exists in the database.}
 }
 \value{
-An instance of the ErrorData class if errors are found, or NULL if there are no errors.
-
 An instance of the ErrorData class or NULL.
 }
 \description{
-This function checks whether Cryovial barcodes provided in a user-uploaded table
-exist or don't exist (based on \code{error_if_exists} parameter) in the main database.
+Check Cryovial Barcodes in Database
 }
 \keyword{cryovial}
 \keyword{validation,}

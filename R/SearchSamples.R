@@ -106,18 +106,15 @@ SearchControls <- function(filters, control_type = NULL, database = Sys.getenv("
       if (filters$state == "Archived") {
 
         sql <- sql %>%
-          left_join(tbl(con, "archived_dbs_blood_spots") %>% dplyr::rename(archived_dbs_blood_spot_id = id), by = c("blood_spot_collection_id")) %>%
-          left_join(tbl(con, "status") %>% dplyr::rename(status_id = id, status = name), by = c("status_id"))
-        
-        if (filters$status == "Exhausted") {
-          sql <- sql %>% filter(status == "Exhausted" || total == exhausted)
-        } else {
-          sql <- sql %>% filter(status == local(filters$status))
-        }
+          inner_join(tbl(con, "archived_dbs_blood_spots") %>% dplyr::rename(archived_dbs_blood_spot_id = id), by = c("blood_spot_collection_id")) %>%
+          inner_join(tbl(con, "status") %>% dplyr::rename(status_id = id, status = name), by = c("status_id")) %>%
+          filter(status %in% local(filters$status))
+
       } else if (filters$state == "Active") {
+        # Filter so that only collections that have active spots are returned
         if (filters$status == "In Use") {
           sql <- sql %>% filter(exhausted < total)
-        } 
+        }
       }
 
     } else if (!is.null(control_type) && control_type == "whole_blood") {
@@ -151,15 +148,16 @@ SearchControls <- function(filters, control_type = NULL, database = Sys.getenv("
           dplyr::mutate(n_strain = format_composition_types(n_strain))
 
         results = results %>%
-          dplyr::select(malaria_blood_control_id, blood_spot_collection_id, archived_spots_count, reason, archived_date, batch,n_strain,density,percentage,strain,dbs_bag_label,total,exhausted,location_root,level_I,level_II) %>%
+          dplyr::select(malaria_blood_control_id, archived_dbs_blood_spot_id, archived_spots_count, reason, archived_date, batch,control_uid,n_strain,density,percentage,strain,dbs_bag_label,total,exhausted,location_root,level_I,level_II) %>%
           dplyr::mutate(reason = ifelse(reason == "", NA, reason)) %>%  # NA will be translated to '-' in the UI)
           dplyr::rename(
             ControlID = malaria_blood_control_id,
-            CollectionID = blood_spot_collection_id,
+            ArchivedSpotsID = archived_dbs_blood_spot_id,  # Archived Spots
             ArchivedSpots = archived_spots_count,
             Reason = reason,
             ArchivedDate = archived_date,
             Batch = batch,
+            ControlUID = control_uid,
             Composition = n_strain,
             Density = density,
             Percentage = percentage,
@@ -171,6 +169,7 @@ SearchControls <- function(filters, control_type = NULL, database = Sys.getenv("
             ShelfName = level_I,
             BasketName = level_II
           )
+
       } else {
 
         results <- results %>%
@@ -182,11 +181,12 @@ SearchControls <- function(filters, control_type = NULL, database = Sys.getenv("
           dplyr::mutate(n_strain = format_composition_types(n_strain))
       
         results = results %>%
-          select(malaria_blood_control_id, blood_spot_collection_id, batch,n_strain,density,percentage,strain,dbs_bag_label,total,exhausted,location_root,level_I,level_II) %>%
+          select(malaria_blood_control_id, blood_spot_collection_id, batch,control_uid,n_strain,density,percentage,strain,dbs_bag_label,total,exhausted,location_root,level_I,level_II) %>%
           dplyr::rename(
             ControlID = malaria_blood_control_id,
-            CollectionID = blood_spot_collection_id,
+            CollectionID = blood_spot_collection_id,  # Active spots
             Batch = batch,
+            ControlUID = control_uid,
             Composition = n_strain,
             Density = density,
             Percentage = percentage,
@@ -211,11 +211,12 @@ SearchControls <- function(filters, control_type = NULL, database = Sys.getenv("
           dplyr::mutate(n_strain = format_composition_types(n_strain))
 
         results = results %>%
-          select(malaria_blood_control_id, whole_blood_tube_id, batch,n_strain,density,percentage,strain,position,cryovial_box_name,location_root,level_I,level_II,state,status) %>%
+          select(malaria_blood_control_id, whole_blood_tube_id, batch,control_uid,n_strain,density,percentage,strain,position,cryovial_box_name,location_root,level_I,level_II,state,status) %>%
           dplyr::rename(
             ControlID = malaria_blood_control_id,
             TubeID = whole_blood_tube_id,
             Batch = batch,
+            ControlUID = control_uid,
             `Composition Type` = n_strain,
             Density = density,
             Percentage = percentage,
