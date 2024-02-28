@@ -124,17 +124,26 @@ upload_extracted_dna <- function(user_data, control_extraction, database = Sys.g
 .UpdateActiveControlCount <- function(user_data, control_extraction, con) {
 
   if ("dbs_sheet" == control_extraction) {
+
     # Fetch data necessary for determining exhaustion status
     df.payload <- user_data %>%
-      inner_join(dbReadTable(con, "study") %>% dplyr::rename(study_id = id), by = c("study_short_code" = "short_code")) %>%
-      inner_join(dbReadTable(con, "study_subject") %>% dplyr::rename(study_subject_id = id, study_subject = name), by = c("study_id", "study_subject")) %>%
-      inner_join(dbReadTable(con, "blood_spot_collection") %>% dplyr::rename(blood_spot_collection_id = id), by = c("study_subject_id")) %>%
-      collect()
+      dplyr::inner_join(dbReadTable(con, "study") %>% dplyr::rename(study_id = id), by = c("Batch" = "short_code")) %>%
+      dplyr::inner_join(dbReadTable(con, "study_subject") %>% dplyr::rename(study_subject_id = id, ControlUID = name), by = c("study_id", "ControlUID")) %>%
+      dplyr::inner_join(dbReadTable(con, "malaria_blood_control") %>% dplyr::rename(malaria_blood_control_id=id), by = c("study_subject_id")) %>%
+      dplyr::inner_join(dbReadTable(con, "blood_spot_collection") %>% dplyr::rename(blood_spot_collection_id = id), by = c("malaria_blood_control_id")) %>%
+      select(blood_spot_collection_id, exhausted, total) %>%
+      group_by(blood_spot_collection_id) %>%
+      mutate(exhausted = exhausted + n()) %>%
+      distinct()
 
     # Check the total and exhausted count for each blood spot collection,
     # and the exhausted spots to archived_dbs_blood_spots
     if (nrow(df.payload) > 0) {
       for (ii in 1:nrow(df.payload)) {
+
+        dbExecute(con, sprintf("UPDATE blood_spot_collection SET exhausted = %d WHERE id = %d;", df.payload[ii,]$exhausted, df.payload[ii,]$blood_spot_collection_id))
+        message(sprintf("Updated exhausted count for collection ID %d.", df.payload[ii,]$blood_spot_collection_id))
+
         # Directly use `total` and `exhausted_count` from `df.payload` without additional query
         if (df.payload[ii,]$exhausted == df.payload[ii,]$total) {
           dbExecute(con, sprintf("INSERT INTO archived_dbs_blood_spots (blood_spot_collection_id, archived_spots_count, reason, status_id) VALUES (%d, %d, 'Automatically archived as exhausted', 2);", df.payload[ii,]$blood_spot_collection_id, df.payload[ii,]$total))
@@ -142,8 +151,6 @@ upload_extracted_dna <- function(user_data, control_extraction, database = Sys.g
         }
       }
     }
-
-    message(sprintf("%d controls updated", nrow(df.payload)))
 
   } else if ("whole_blood" == control_extraction) {
 
@@ -156,9 +163,9 @@ upload_extracted_dna <- function(user_data, control_extraction, database = Sys.g
     for (ii in 1:nrow(df.payload)) {
       DBI::dbExecute(con, sprintf("DELETE FROM whole_blood_tube WHERE id = %d;", df.payload[ii,]$whole_blood_tube_id))
     }
-
-    message(sprintf("%d controls updated", nrow(df.payload)))
   }
+
+  message(sprintf("%d controls updated", nrow(df.payload)))
 }
 
 
@@ -177,6 +184,7 @@ upload_extracted_dna <- function(user_data, control_extraction, database = Sys.g
 #' @importFrom RSQLite dbReadTable
 #' @keywords internal
 .UploadSpecimens <- function(upload_data, sample_type_id, conn){
+
   for(i in 1:nrow(upload_data)) {
     eval.specimen_type <- safe_extract(upload_data[i, ], "SpecimenType")
     eval.study_code <- safe_extract(upload_data[i, ], "StudyCode", "Batch")

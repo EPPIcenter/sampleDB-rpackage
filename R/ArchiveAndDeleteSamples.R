@@ -56,6 +56,11 @@ ArchiveAndDeleteControls <- function(operation, control_type, data, comment, sta
 
 }
 
+#' Archive and Delete Samples
+#' @return None
+#' @export
+#' 
+#' @import RSQLite
 ArchiveAndDeleteSamples <- function(operation, data, comment, status_id, verification = TRUE){
 
   database <- Sys.getenv("SDB_PATH")
@@ -226,8 +231,12 @@ DeleteWholeBloodSamples <- function(whole_blood_tube_ids) {
                               table_name = "specimen",
                               id = as.character(specimen_id))
 
-    # DELETE INTERNAL DATA -- delete study subject if it is no longer being reference
-    if(!study_subject_id %in% CheckTableTx(conn = conn, "specimen")$study_subject_id){
+    # DELETE INTERNAL DATA -- delete study subject if it is no longer being referenced,
+    # and it is not a control
+    control_ids <- tbl(con, "malaria_blood_control") %>%
+      pull(study_subject_id)
+
+    if(!study_subject_id %in% CheckTableTx(conn = conn, "specimen")$study_subject_id && !study_subject_id %in% control_ids){
       DeleteFromTable(conn = conn,
                                 table_name = "study_subject",
                                 id = as.character(study_subject_id))

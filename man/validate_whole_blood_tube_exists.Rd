@@ -8,7 +8,7 @@ validate_whole_blood_tube_exists(
   con,
   table_name,
   row_number_col,
-  barcode_position_col,
+  position_col,
   box_name_col,
   box_barcode_col,
   control_uid_col,

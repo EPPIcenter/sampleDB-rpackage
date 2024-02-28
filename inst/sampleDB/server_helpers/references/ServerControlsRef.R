@@ -34,7 +34,7 @@ ControlReference <- function(session, input, output, database, dbUpdateEvent) {
         show_success_notification(session, "strain", res)
       }
     }, error = function(e) {
-      show_general_error_modal(e)
+      show_general_error_modal(e, input, output)
     })
   })
 
@@ -68,7 +68,7 @@ ControlReference <- function(session, input, output, database, dbUpdateEvent) {
         FALSE
       },
       error = function(e) {
-        show_general_error_modal(e)
+        show_general_error_modal(e, input, output)
         FALSE
       })
 
@@ -81,7 +81,7 @@ ControlReference <- function(session, input, output, database, dbUpdateEvent) {
       show_success_notification(session, "strain", res)
     },
     error = function(e) {
-      show_general_error_modal(e)
+      show_general_error_modal(e, input, output)
     },
     finally = {
       rv$user_file <- NULL
@@ -144,7 +144,7 @@ ControlReference <- function(session, input, output, database, dbUpdateEvent) {
       show_validation_error_modal(output, e)
     },
     error = function(e) {
-      show_general_error_modal(e)
+      show_general_error_modal(e, input, output)
     })
   })
 
@@ -193,7 +193,7 @@ ControlReference <- function(session, input, output, database, dbUpdateEvent) {
         FALSE
       },
       error = function(e) {
-        show_general_error_modal(e)
+        show_general_error_modal(e, input, output)
         FALSE
       })
 
@@ -206,7 +206,7 @@ ControlReference <- function(session, input, output, database, dbUpdateEvent) {
       show_success_notification(session, "composition", length(all_labels))
     },
     error = function(e) {
-      show_general_error_modal(e)
+      show_general_error_modal(e, input, output)
     },
     finally = {
       rv$user_file <- NULL

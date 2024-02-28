@@ -193,7 +193,7 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
       show_formatting_error_modal(e)
     },
     error = function(e) {
-      show_general_error_modal(e)
+      show_general_error_modal(e, input, output)
     })
   })
 
@@ -233,7 +233,7 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
       show_formatting_error_modal(e)
     },
     error = function(e) {
-      show_general_error_modal(e)
+      show_general_error_modal(e, input, output)
     })
 
     results
@@ -862,7 +862,7 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
         })
       },
       error = function(e) {
-        show_general_error_modal(e)
+        show_general_error_modal(e, input, output)
       })
 
     } else if (input$DelArchSearchType == "controls" && input$DelArchSearchByControlType == "whole_blood") {
