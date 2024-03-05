@@ -593,6 +593,9 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
             mutate(across(where(is.list), concatenate_list))
         }
 
+        # Quick Request Fix: Just remove the spaces from column names here
+        names(user.selected.rows) <- gsub(" ", "", names(user.selected.rows), fixed = TRUE)
+
         write.csv(user.selected.rows, con, row.names = FALSE, quote = FALSE)
       }
     )

@@ -500,9 +500,9 @@ extract_search_criteria <- function(user_csv, search_type) {
   user_file[] <- lapply(user_file, function(x) as.character(gsub("[\n\t,]", "", x)))
 
   # Set possible names for columns
-  possible_study_subject_names <- c("Study Subject", "Study Subjects", "StudySubjects")
+  possible_study_subject_names <- c("Study Subject", "Study Subjects", "StudySubjects", "StudySubject")
   possible_collection_date_names <- c("Collection Date", "CollectionDate", "Collection Dates", "CollectionDates")
-  possible_study_code_names <- c("Study Codes", "StudyCodes", "Studies", "Study Code")
+  possible_study_code_names <- c("Study Codes", "StudyCodes", "Studies", "Study Code", "StudyCode")
   possible_specimen_type_names <- c("Specimen Type", "SpecimenType", "Specimen Types", "SpecimenTypes")
 
   # Set required and optional column names based on search type
@@ -668,6 +668,17 @@ search_by_study_subject_file_upload <- function(sample_storage_type, filters, da
     sql <- inner_join(sql, dbReadTable(con, "location") %>% dplyr::rename(location_id = id) %>% select(location_id, location_root, level_I, level_II), by = c("location_id"))
 
     db.results <- sql %>% select("storage_container_id", names(dbmap)) %>% dplyr::rename(`Sample ID` = storage_container_id)
+
+    # Safe approach to only rename columns that are present in both db.results and dbmap
+    possible_identifiers <- c("Sample ID")
+    for (col in names(db.results)) {
+      if (col %in% possible_identifiers) {
+        next
+      }
+      if (col %in% names(dbmap)) {
+        names(db.results)[names(db.results) == col] <- dbmap[[col]]
+      }
+    }
   }, finally = {
     dbDisconnect(con)
   })
