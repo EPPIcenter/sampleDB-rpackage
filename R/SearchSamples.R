@@ -539,6 +539,7 @@ SearchSamples <- function(sample_storage_type, filters = NULL, format = "na", da
 }
 
 
+
 #' Extract Search Criteria from User CSV File
 #'
 #' This function reads a CSV file provided by the user and extracts
@@ -642,6 +643,58 @@ extract_search_criteria <- function(user_csv, search_type) {
 
   message("Required columns detected.")
   return(user_file)
+}
+
+#' Search Micronix Tube Samples
+#'
+#' This function searches through Micronix tube samples in the database to find matches
+#' based on a given DataFrame. It identifies discrepancies in positions, missing samples,
+#' or samples that are in an archived status.
+#'
+#' @param database A string specifying the path to the SQLite database.
+#' @param micronix_search_df A DataFrame containing the micronix tube samples to be searched.
+#'   The DataFrame must contain at least a 'barcode' column.
+#' @return A list containing three DataFrames: `missing_from_db`, `additional_in_db`, and
+#'   `archived_samples`. Each DataFrame provides details on samples that are missing from the
+#'   database, additional in the database but not in the search DataFrame, and samples that are
+#'   in an archived status, respectively.
+#' @export
+search_micronix_tube <- function(database, micronix_search_df) {
+  # Establish database connection
+  con <- dbConnect(RSQLite::SQLite(), database)
+  
+  # Set up lazy loading for database tables
+  micronix_tube <- tbl(con, "micronix_tube")
+  storage_container <- tbl(con, "storage_container")
+  status <- tbl(con, "status")
+  archived_statuses <- tbl(con, sql("SELECT id, name FROM view_archive_statuses"))
+  
+  # Convert scanner_input into a lazy table
+  dplyr::copy_to(con, micronix_search_df)
+  micronix_search_tbl <- tbl(con, "micronix_search_df")
+  
+  # Join tables to compare positions and check statuses
+  comparison_result <- micronix_tube %>%
+    dplyr::rename(db_position = position, micronix_id = id) %>%
+    dplyr::inner_join(storage_container, by = c("id" = "id")) %>%
+    dplyr::inner_join(status, by = c("status_id" = "id")) %>%
+    dplyr::left_join(micronix_search_tbl, by = c("barcode" = "Barcode")) %>%
+    dplyr::filter(!is.na(Barcode)) %>%
+    dplyr::select(barcode, Position, db_position, status_name = name)
+
+  # Identify missing, additional, and archived samples
+  missing_from_db <- dplyr::filter(comparison_result, is.na(db_position) && status_name == "In Use")
+  additional_in_db <- dplyr::filter(comparison_result, is.na(Position))
+  archived_samples <- dplyr::filter(comparison_result, status_name %in% (archived_statuses %>% dplyr::pull(name)))
+  
+  # Close database connection
+  dbDisconnect(con)
+  
+  list(
+    missing_from_db = missing_from_db,
+    additional_in_db = additional_in_db,
+    archived_samples = archived_samples
+  )
 }
 
 

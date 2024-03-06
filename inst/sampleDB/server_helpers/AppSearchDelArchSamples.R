@@ -917,6 +917,90 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
       }
     )
   })
+
+  ## Advanced search link
+  # Observer for Advanced Search Link
+  observeEvent(input$DelArchAdvancedSearchLink, {
+    showModal(modalDialog(
+      title = "Advanced Micronix Tube Search",
+      fileInput("AdvancedSearchFileUpload", "Choose CSV Files", 
+                accept = c("text/csv", "text/comma-separated-values,text/plain", ".csv"), multiple = TRUE),
+      actionButton("AdvancedSearchAction", "Run Search"),
+      uiOutput("dynamicTabs"), # Placeholder for dynamic tabs
+      size = "l"
+    ))
+  })
+
+  observeEvent(input$AdvancedSearchAction, {
+    req(input$AdvancedSearchFileUpload) # Ensure files are uploaded
+
+    required_vals <- c("PlateName", "Position", "Barcode")
+    optional_vals <- c("PlateBarcode") # Assuming you might use this later for extended logic
+
+    # This list will hold the results for each file
+    results_list <- list()
+
+    browser()
+
+    # Process each file
+    for (i in seq_along(input$AdvancedSearchFileUpload$name)) {
+      bExitEarly <- tryCatch({
+        file_path <- input$AdvancedSearchFileUpload$datapath[i]
+        micronix_search_df <- read_and_preprocess_csv(file_path)
+        micronix_search_df <- set_user_file_header(micronix_search_df, list(required = required_vals))
+        
+        # Check if all required columns are present
+        missing_columns <- setdiff(required_vals, names(micronix_search_df))
+        if (length(missing_columns) > 0) {
+          stop_formatting_error("Missing required columns:", format_error(missing_columns))
+        }
+
+        # Run the search function for each file
+        results <- search_micronix_tube(database, micronix_search_df)
+        names(results) <- c("missing_from_db", "additional_in_db", "archived_samples") # Example names
+        results_list[[i]] <- list(filename = input$AdvancedSearchFileUpload$name[i], results = results)
+
+      },
+      formatting_error = function(e) {
+        show_formatting_error_modal(e)
+        return(FALSE)
+      }, error = function(e) {
+        show_general_error_modal(e)
+        return(FALSE)
+      })
+
+      if (bExitEarly) {
+        return(NULL)
+      }
+    }
+
+    # Create dynamic UI for tabs
+    output$dynamicTabs <- renderUI({
+      tabs <- lapply(seq_along(results_list), function(i) {
+        tabPanel(
+          title = results_list[[i]]$filename,
+          lapply(names(results_list[[i]]$results), function(result_name) {
+            DTOutput(outputId = paste0("dt_", i, "_", result_name))
+          })
+        )
+      })
+      do.call(tabsetPanel, tabs)
+    })
+
+    # Render DataTables for each result set
+    for (i in seq_along(results_list)) {
+      for (result_name in names(results_list[[i]]$results)) {
+        local({
+          local_i <- i
+          local_result_name <- result_name
+          outputId <- paste0("dt_", local_i, "_", local_result_name)
+          output[[outputId]] <- renderDT({
+            datatable(results_list[[local_i]]$results[[local_result_name]])
+          })
+        })
+      }
+    }
+  })
 }
 
 UpdateSelections <- function(session, input, keepCurrentSelection = FALSE) {

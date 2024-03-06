@@ -10,6 +10,7 @@
 #' read_user_csv("path/to/file.csv")
 #' }
 #' @export
+
 read_user_csv <- function(user_csv) {
   read.csv(file = user_csv, header = FALSE, na.strings = "", blank.lines.skip = TRUE)
 }
@@ -176,7 +177,9 @@ remove_na_columns_in_row <- function(data, row_num) {
 #' @param file_column_attr A colum attribute object containing required columns.
 #' @importFrom purrr is_empty
 #' @return A data frame with the appropriate header row set.
+#' @export
 set_user_file_header <- function(user_file, file_column_attr) {
+  browser()
   header_row <- find_header(user_file, file_column_attr$required, valid_header_rows = 1:2)
   if (is.null(header_row)) {
     stop_formatting_error("Could not find required columns", format_error(file_column_attr$required))
