@@ -662,38 +662,61 @@ extract_search_criteria <- function(user_csv, search_type) {
 search_micronix_tube <- function(database, micronix_search_df) {
   # Establish database connection
   con <- dbConnect(RSQLite::SQLite(), database)
+  on.exit(dbDisconnect(con), add = TRUE)
   
   # Set up lazy loading for database tables
   micronix_tube <- tbl(con, "micronix_tube")
+  micronix_plate <- tbl(con, "micronix_plate")
   storage_container <- tbl(con, "storage_container")
   status <- tbl(con, "status")
   archived_statuses <- tbl(con, sql("SELECT id, name FROM view_archive_statuses"))
-  
+
+  # Sanity check
+  if (nrow(micronix_search_df) == 0) {
+    stop("No samples to search for.")
+  }
+
+  # Add RowNumber so that we keep track of the original barcodes from the plate   
+  micronix_search_df <- micronix_search_df %>%
+    group_by(PlateName) %>%
+    mutate(RowNumber = row_number()) %>%
+    ungroup()
+
   # Convert scanner_input into a lazy table
   dplyr::copy_to(con, micronix_search_df)
   micronix_search_tbl <- tbl(con, "micronix_search_df")
   
   # Join tables to compare positions and check statuses
   comparison_result <- micronix_tube %>%
-    dplyr::rename(db_position = position, micronix_id = id) %>%
-    dplyr::inner_join(storage_container, by = c("id" = "id")) %>%
+    dplyr::rename(db_position = position, micronix_id = id, micronix_barcode = barcode) %>%
+    dplyr::inner_join(micronix_plate, by = c("manifest_id" = "id")) %>%
+    dplyr::rename(plate_barcode = barcode, plate_name = name) %>%
+    dplyr::inner_join(storage_container, by = c("micronix_id" = "id")) %>%
     dplyr::inner_join(status, by = c("status_id" = "id")) %>%
-    dplyr::left_join(micronix_search_tbl, by = c("barcode" = "Barcode")) %>%
-    dplyr::filter(!is.na(Barcode)) %>%
-    dplyr::select(barcode, Position, db_position, status_name = name)
+    dplyr::full_join(micronix_search_tbl, by = c("micronix_barcode" = "Barcode")) %>%
+    dplyr::filter((is.na(RowNumber) & !is.na(plate_name)) | !is.na(PlateName)) %>%
+    dplyr::select(micronix_id, RowNumber, micronix_barcode, Position, db_position, status_name = name, plate_name, PlateName)
 
-  # Identify missing, additional, and archived samples
-  missing_from_db <- dplyr::filter(comparison_result, is.na(db_position) && status_name == "In Use")
-  additional_in_db <- dplyr::filter(comparison_result, is.na(Position))
-  archived_samples <- dplyr::filter(comparison_result, status_name %in% (archived_statuses %>% dplyr::pull(name)))
-  
-  # Close database connection
-  dbDisconnect(con)
-  
+  # Find samples that are not in the database but are in the scanned plate
+  missing_from_db <- dplyr::filter(comparison_result, !is.na(RowNumber) & is.na(micronix_id)) %>%
+    dplyr::select(RowNumber, Barcode = micronix_barcode, ExpectedPosition = Position, ActualPosition = db_position, ExpectedPlate = PlateName, ActualPlate = plate_name, ActualStatus = status_name) %>%
+    dplyr::collect()
+
+  # Find samples that are on the scanned plate and in the database, but not on the expected plate 
+  different_plate <- dplyr::filter(comparison_result, !is.na(RowNumber) & !is.na(micronix_id) & plate_name != PlateName) %>%
+    dplyr::select(RowNumber, Barcode = micronix_barcode, ExpectedPosition = Position, ActualPosition = db_position, ExpectedPlate = PlateName, ActualPlate = plate_name, ActualStatus = status_name) %>%
+    dplyr::collect()
+
+  # Find samples that are on the scanned plate and are in the database on that plate, but have been set to archived
+  archived_samples <- dplyr::filter(comparison_result, !is.na(RowNumber)) %>%
+    collect() %>% 
+    filter(status_name %in% (archived_statuses %>% dplyr::pull(name))) %>%
+    select(RowNumber, Barcode = micronix_barcode, ExpectedPosition = Position, ActualPosition = db_position, ExpectedPlate = PlateName, ActualPlate = plate_name, ActualStatus = status_name)
+
   list(
-    missing_from_db = missing_from_db,
-    additional_in_db = additional_in_db,
-    archived_samples = archived_samples
+    missing_from_db = if (nrow(missing_from_db) > 0) missing_from_db else NULL,
+    different_plate = if (nrow(different_plate) > 0) different_plate else NULL,
+    archived_samples = if (nrow(archived_samples) > 0) archived_samples else NULL
   )
 }
 
