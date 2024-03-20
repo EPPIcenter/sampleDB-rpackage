@@ -10,7 +10,7 @@
 #' @examples
 #' \dontrun{
 #' move_data <- list("move_csv1_container_name" = dataframe(), "move_csv2_container_name" = dataframe())
-#' MoveSamples(sample_type = 1, move_data = move_data)
+#' MoveSamples(sample_type = "micronix", move_data = move_data)
 #' }
 #' @import dplyr
 #' @import RSQLite
@@ -87,7 +87,7 @@ MoveSamples <- function(sample_type, move_data){
 
     # Get sample data
     for (i in 1:nrow(samples)){
-      if(sample_type == 1){
+      if(sample_type == "micronix"){
         eval.barcode <- safe_extract(samples[i,], "Barcode", "Tube ID", "TubeCode")
         eval.well_pos <- safe_extract(samples[i,], "Position", "ExtractedDNAPosition")
 
@@ -100,7 +100,7 @@ MoveSamples <- function(sample_type, move_data){
         # Use move data to place sample into proper container position
         stacked_orphaned_sample_data[m, "position"] <- eval.well_pos
       }
-      else if(sample_type == 2){
+      else if(sample_type == "cryovial"){
 
         eval.barcode <- safe_extract(samples[i,], "Barcode", "Tube ID", "TubeCode")
         eval.well_pos <- safe_extract(samples[i,], "Position", "ExtractedDNAPosition")
@@ -113,6 +113,8 @@ MoveSamples <- function(sample_type, move_data){
 
         # Use move data to place sample into proper container position
         stacked_orphaned_sample_data[m, "position"] <- eval.well_pos
+      } else {
+        stop("Invalid Sample Type!!!")
       }
     }
   }
@@ -138,7 +140,7 @@ MoveSamples <- function(sample_type, move_data){
   for(i in 1:length(names(move_data_list))) {
     container.name <- names(move_data_list)[i]
 
-    if(sample_type == 1){
+    if(sample_type == "micronix"){
 
       # Get sample's container id
       existing.container <- filter(CheckTableTx(conn = conn, "micronix_plate"), name == container.name)$id
@@ -160,7 +162,7 @@ MoveSamples <- function(sample_type, move_data){
       }
     }
 
-    else if(sample_type == 2){
+    else if(sample_type == "cryovial"){
 
       # Get sample's container id
       existing.container <- filter(CheckTableTx(conn = conn, "cryovial_box"), name == container.name)$id
@@ -180,6 +182,8 @@ MoveSamples <- function(sample_type, move_data){
                       id = id) %>% suppressWarnings()
           }
       }
+    } else {
+      stop("Invalid Sample Type!!!")
     }
   }
 }
@@ -289,6 +293,8 @@ MoveSamples <- function(sample_type, move_data){
     sample_type <- "cryovial_tube"
     colname.container_name <- "name"
     colname.container_id <- "manifest_id" 
+  } else {
+    stop("Invalid Sample Type!!!")
   }
 
   tbl.plate_names <- CheckTable(database = database, container_type) %>%
@@ -322,7 +328,7 @@ MoveSamples <- function(sample_type, move_data){
     #keeping plate information for the time being.
     if(0 < nrow(sample_data[[eval.container_id]])) {
       sample_data[[eval.container_id]] <- sample_data[[eval.container_id]] %>%
-        filter(sample_type %in% 1 & !is.na(sample_data[[eval.container_id]]$position))
+        filter(sample_type == "micronix" & !is.na(sample_data[[eval.container_id]]$position))
 
       if (nrow(sample_data[[eval.container_id]]) > 0)
         sample_data[[eval.container_id]] <- sample_data[[eval.container_id]] %>%

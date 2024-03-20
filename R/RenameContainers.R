@@ -52,8 +52,6 @@ RenameContainers <- function(sample_type, new_container_name, current_container_
                           info_list = list(name = new_container_name),
                           id = container_id)
     return_message <- paste0("Successfully Renamed Container\nWas: ", current_container_name, "\nNow: ", new_container_name)
-  } else if (sample_type == 3) {
-    # need to implement
   } else {
     return_message <- "ERROR: sample type is invalid"
   }
