@@ -582,11 +582,15 @@ get_control_file_columns <- function(control_type, action, file_type = "na", con
 
   # NOTE: quick fix
   optional_vals <- c(optional_vals, unlist(unname(dereferenced_values[names(dereferenced_values) %in% optional_keys_combined])))
+  if (action=="extraction") {
+    optional_vals <- c(optional_vals, "PlateBarcode")
+  }
 
   # Cleaning up null values
   required_vals <- required_vals[!is.null(required_vals)]
   conditional_vals <- conditional_vals[!is.null(conditional_vals)]
   optional_vals <- optional_vals[!is.null(optional_vals)]
+
 
   return(ColumnData(
     required = required_vals,

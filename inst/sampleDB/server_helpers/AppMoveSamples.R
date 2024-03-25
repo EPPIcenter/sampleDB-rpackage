@@ -376,7 +376,7 @@ AppMoveSamples <- function(session, input, output, database) {
         TRUE
       },
       error = function(e) {
-        show_general_error_modal(e)
+        show_general_error_modal(e, input, output)
         TRUE
       }
     )

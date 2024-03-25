@@ -23,21 +23,50 @@
 #' @import RSQLite
 #' @import lubridate
 #' @export
-#'
+ArchiveAndDeleteControls <- function(operation, control_type, data, comment, status, verification = TRUE, database = Sys.getenv("SDB_PATH")) {
+  con <-  RSQLite::dbConnect(RSQLite::SQLite(), database)
 
-
-ArchiveAndDeleteSamples <- function(operation, data, comment, status, verification = TRUE){
-
-  print(data)
-  database <- Sys.getenv("SDB_PATH")
-  conn <-  RSQLite::dbConnect(RSQLite::SQLite(), database)
-  RSQLite::dbBegin(conn)
+  RSQLite::dbBegin(con)
 
   if (operation %in% "archive") {
     stopifnot("Status is not valid" = status %in% CheckTable("status")$name)
   }
 
   status_id <- filter(CheckTable("status"), name %in% status)$id
+  state_id <- filter(CheckTable("state"), name %in% "Archived")$id
+
+  stopifnot("Operation is not valid" = operation %in% c("archive", "delete", "unarchive"))
+
+  # if (operation == "delete") {
+  #   if (control_type == "dbs_sheet") {
+  #     dbs_control_sheet_df <- tbl(con, "malaria_blood_control") %>%
+  #       inner_join(tbl(con, "blood_spot_collection") %>% dplyr::rename(malaria_blood_control_id=id), by = c("malaria_blood_control_id")) %>%
+  #       filter(id %in% data$control_id) %>%
+  #       collect()
+
+      
+
+
+
+
+  #     tbl(con, "malaria_blood_control") %>%
+  #   }
+
+  # }
+
+}
+
+#' Archive and Delete Samples
+#' @return None
+#' @export
+#' 
+#' @import RSQLite
+ArchiveAndDeleteSamples <- function(operation, data, comment, status_id, verification = TRUE){
+
+  database <- Sys.getenv("SDB_PATH")
+  conn <-  RSQLite::dbConnect(RSQLite::SQLite(), database)
+  RSQLite::dbBegin(conn)
+
   state_id <- filter(CheckTable("state"), name %in% "Archived")$id
 
   stopifnot("Operation is not valid" = operation %in% c("archive", "delete", "unarchive"))
@@ -127,6 +156,56 @@ ArchiveAndDeleteSamples <- function(operation, data, comment, status, verificati
   return(return_message)
 }
 
+#' Delete Whole Blood Controls
+#' 
+#' This function deletes whole blood controls from the database based on the provided list of whole_blood_tube IDs. 
+#' It also handles the deletion of associated records if a whole blood sample is the last one for a study subject.
+#' 
+#' @param whole_blood_tube_ids A vector containing the IDs of whole blood tubes to be deleted.
+#' @return None
+#' @export
+#' 
+#' @examples
+#' \dontrun{
+#' # Delete whole blood controls with IDs 1, 2, and 3
+#' DeleteWholeBloodSamples(c(1, 2, 3))
+#' }
+#' 
+#' @import RSQLite
+DeleteWholeBloodSamples <- function(whole_blood_tube_ids) {
+  database <- Sys.getenv("SDB_PATH")
+  conn <- RSQLite::dbConnect(RSQLite::SQLite(), database)
+  RSQLite::dbBegin(conn)
+
+  tryCatch({
+    for (tube_id in whole_blood_tube_ids) {
+      # Check if it's the last tube for a study_subject
+      malaria_blood_control_id <- RSQLite::dbGetQuery(conn, paste("SELECT malaria_blood_control_id FROM whole_blood_tube WHERE id = ", tube_id))
+      tube_count <- RSQLite::dbGetQuery(conn, paste("SELECT COUNT(*) FROM whole_blood_tube WHERE malaria_blood_control_id = ", malaria_blood_control_id))
+
+      if (tube_count == 1) {
+        # Delete study_subject and associated malaria_blood_control
+        RSQLite::dbExecute(conn, paste("DELETE FROM study_subject WHERE id = ", malaria_blood_control_id))
+        RSQLite::dbExecute(conn, paste("DELETE FROM malaria_blood_control WHERE id = ", malaria_blood_control_id))
+      }
+
+      # Delete the whole_blood_tube
+      RSQLite::dbExecute(conn, paste("DELETE FROM whole_blood_tube WHERE id = ", tube_id))
+    }
+
+    RSQLite::dbCommit(conn)
+    message(paste("Deleted", length(whole_blood_tube_ids), "whole blood samples successfully."))
+  }, error = function(e) {
+    RSQLite::dbRollback(conn)
+    message("Error occurred: ", e$message)
+  }, finally = {
+    RSQLite::dbDisconnect(conn)
+  })
+}
+
+
+
+
 .GetDatabaseTables <- function(database){
   database.tables <- list(table.storage_container = CheckTable(database = database, "storage_container"),
                           table.specimen = CheckTable(database = database, "specimen"),
@@ -152,8 +231,12 @@ ArchiveAndDeleteSamples <- function(operation, data, comment, status, verificati
                               table_name = "specimen",
                               id = as.character(specimen_id))
 
-    # DELETE INTERNAL DATA -- delete study subject if it is no longer being reference
-    if(!study_subject_id %in% CheckTableTx(conn = conn, "specimen")$study_subject_id){
+    # DELETE INTERNAL DATA -- delete study subject if it is no longer being referenced,
+    # and it is not a control
+    control_ids <- tbl(con, "malaria_blood_control") %>%
+      pull(study_subject_id)
+
+    if(!study_subject_id %in% CheckTableTx(conn = conn, "specimen")$study_subject_id && !study_subject_id %in% control_ids){
       DeleteFromTable(conn = conn,
                                 table_name = "study_subject",
                                 id = as.character(study_subject_id))

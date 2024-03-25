@@ -64,112 +64,172 @@ SearchByType <- function(sample_storage_type=NULL, control_type=NULL, filters = 
 #'
 SearchControls <- function(filters, control_type = NULL, database = Sys.getenv("SDB_PATH"), include_internal_control_id = FALSE) {
   results = NULL
-  con <- dbConnect(RSQLite::SQLite(), Sys.getenv("SDB_PATH"))
+  con <- dbConnect(RSQLite::SQLite(), database)  # Updated to use the `database` parameter
   tryCatch({
 
-    ##
     sql = tbl(con, "composition_strain") %>%
-      dplyr::rename(composition_strain_id=id) %>%
+      dplyr::rename(composition_strain_id = id) %>%
       group_by(composition_id) %>%
       dplyr::mutate(n_strain = n()) %>%
       ungroup() %>%
       left_join(tbl(con, "strain") %>% dplyr::rename(strain_id = id, strain = name), by = c("strain_id")) %>%
-      left_join(tbl(con, "composition") %>% dplyr::rename(composition_id=id), by = c("composition_id")) %>%
+      left_join(tbl(con, "composition") %>% dplyr::rename(composition_id = id), by = c("composition_id")) %>%
       left_join(tbl(con, "malaria_blood_control") %>% dplyr::rename(malaria_blood_control_id = id), by = c("composition_id")) %>%
       left_join(tbl(con, "study_subject") %>% dplyr::rename(study_subject_id = id, control_uid = name), by = c("study_subject_id")) %>%
-      left_join(tbl(con, "study") %>% dplyr::rename(study_id = id, batch_creation_date=created, batch=short_code), by = c("study_id")) %>%
+      left_join(tbl(con, "study") %>% dplyr::rename(study_id = id, batch_creation_date = created, batch = short_code), by = c("study_id")) %>%
       distinct()
 
-    # Filter by a particular strain
+    # Filter conditions updated for consistency
     if (!is.null(filters$strain) && filters$strain != "") {
-      sql = sql %>% filter(strain %in% local(filters$strain))
+      sql <- sql %>% filter(strain %in% local(filters$strain))
     }
 
-    # Filter by a density
     if (!is.null(filters$density) && filters$density != "") {
-      sql = sql %>% filter(density %in% local(filters$density))
+      sql <- sql %>% filter(density %in% local(filters$density))
     }
 
-    # filter by batch
     if (!is.null(filters$batch) && filters$batch != "") {
-      sql = sql %>% filter(batch %in% local(filters$batch))
+      sql <- sql %>% filter(batch %in% local(filters$batch))
     }
 
     if (!is.null(filters$percentage) && filters$percentage != "") {
-      sql = sql %>% filter(percentage %in% local(filters$percentage))
+      sql <- sql %>% filter(percentage %in% local(filters$percentage))
     }
 
     if (!is.null(control_type) && control_type == "dbs_sheet") {
-      sql = sql %>%
-        inner_join(tbl(con, "blood_spot_collection") %>% dplyr::rename(blood_spot_collection_id=id), by=c("malaria_blood_control_id")) %>%
-        inner_join(tbl(con, "blood_spot_collection_dbs_control_sheet") %>% dplyr::rename(blood_spot_collection_dbs_control_sheet=id), by=c("blood_spot_collection_id")) %>%
-        inner_join(tbl(con, "dbs_control_sheet") %>% dplyr::rename(dbs_control_sheet_id=id), by = c("dbs_control_sheet_id")) %>%
-        inner_join(tbl(con, "dbs_bag") %>% dplyr::rename(dbs_bag_id=id, dbs_bag_label=name), by =c("dbs_bag_id"))
+
+      sql <- sql %>%
+        inner_join(tbl(con, "blood_spot_collection") %>% dplyr::rename(blood_spot_collection_id = id), by = c("malaria_blood_control_id")) %>%
+        inner_join(tbl(con, "dbs_control_sheet") %>% dplyr::rename(dbs_control_sheet_id = id), by = c("dbs_control_sheet_id")) %>%
+        inner_join(tbl(con, "dbs_bag") %>% dplyr::rename(dbs_bag_id = id, dbs_bag_label = name), by = c("dbs_bag_id"))
+
+      if (filters$state == "Archived") {
+
+        sql <- sql %>%
+          inner_join(tbl(con, "archived_dbs_blood_spots") %>% dplyr::rename(archived_dbs_blood_spot_id = id), by = c("blood_spot_collection_id")) %>%
+          inner_join(tbl(con, "status") %>% dplyr::rename(status_id = id, status = name), by = c("status_id")) %>%
+          filter(status %in% local(filters$status))
+
+      } else if (filters$state == "Active") {
+        # Filter so that only collections that have active spots are returned
+        if (filters$status == "In Use") {
+          sql <- sql %>% filter(exhausted < total)
+        }
+      }
+
     } else if (!is.null(control_type) && control_type == "whole_blood") {
-      sql = sql %>%
-        inner_join(tbl(con, "whole_blood_tube") %>% dplyr::rename(whole_blood_tube_id=id), by=c("malaria_blood_control_id")) %>%
-        inner_join(tbl(con, "cryovial_box") %>% dplyr::rename(cryovial_box_id=id, cryovial_box_name=name), by = c("cryovial_box_id"))
+      sql <- sql %>%
+        inner_join(tbl(con, "whole_blood_tube") %>% dplyr::rename(whole_blood_tube_id = id), by = c("malaria_blood_control_id")) %>%
+        inner_join(tbl(con, "cryovial_box") %>% dplyr::rename(cryovial_box_id = id, cryovial_box_name = name), by = c("cryovial_box_id"))
+
+      sql <- sql %>%
+        inner_join(tbl(con, "state") %>% dplyr::rename(state_id = id, state = name), by = c("state_id")) %>%
+        inner_join(tbl(con, "status") %>% dplyr::rename(status_id = id, status = name), by = c("status_id")) %>%
+        filter(state %in% local(filters$state) & status %in% local(filters$status))
+
     } else {
       stop("No search implementation for this control type!")
     }
 
-    ## Filter by location
     sql = FilterByLocation(con, sql, filters$location)
 
     results = collect(sql)
 
-    print(results$n_strain)
-
     if (control_type == "dbs_sheet") {
-      results <- results %>%
-        dplyr::group_by(malaria_blood_control_id, blood_spot_collection_id, study_subject_id) %>%
-        dplyr::mutate(percentage=list(percentage)) %>%
-        dplyr::mutate(strain=list(strain)) %>%
-        dplyr::ungroup() %>%
-        dplyr::distinct() %>%
-        dplyr::mutate(n_strain = format_composition_types(n_strain))
 
-      results = results %>%
-        select(malaria_blood_control_id, batch,n_strain,density,percentage,strain,dbs_bag_label,location_root,level_I,level_II) %>%
-        dplyr::rename(
-          ControlID = malaria_blood_control_id,
-          Batch = batch,
-          Composition = n_strain,
-          Density = density,
-          Percentage = percentage,
-          Strain = strain,
-          Label = dbs_bag_label,
-          FreezerName = location_root,
-          ShelfName = level_I,
-          BasketName = level_II
-        )
-    } else {
+      if (filters$state == "Archived") {
 
-      results <- results %>%
-        dplyr::group_by(malaria_blood_control_id, study_subject_id, whole_blood_tube_id) %>%
-        dplyr::mutate(percentage=list(percentage)) %>%
-        dplyr::mutate(strain=list(strain)) %>%
-        dplyr::ungroup() %>%
-        dplyr::distinct() %>%
-        dplyr::mutate(n_strain = format_composition_types(n_strain))
+        results <- results %>%
+          dplyr::group_by(malaria_blood_control_id, blood_spot_collection_id, study_subject_id, archived_dbs_blood_spot_id) %>%
+          dplyr::mutate(percentage=list(percentage)) %>%
+          dplyr::mutate(strain=list(strain)) %>%
+          dplyr::ungroup() %>%
+          dplyr::distinct() %>%
+          dplyr::mutate(n_strain = format_composition_types(n_strain))
 
-      results = results %>%
-        select(malaria_blood_control_id, batch,n_strain,density,percentage,strain,position,cryovial_box_name,location_root,level_I,level_II) %>%
-        dplyr::rename(
-          ControlID = malaria_blood_control_id,
-          Batch = batch,
-          `Composition Type` = n_strain,
-          Density = density,
-          Percentage = percentage,
-          Strain = strain,
-          Position = position,
-          BoxName = cryovial_box_name,
-          FreezerName = location_root,
-          ShelfName = level_I,
-          BasketName = level_II
-        )
-    }
+        results = results %>%
+          dplyr::select(malaria_blood_control_id, archived_dbs_blood_spot_id, archived_spots_count, reason, archived_date, batch,control_uid,n_strain,density,percentage,strain,dbs_bag_label,total,exhausted,location_root,level_I,level_II) %>%
+          dplyr::mutate(reason = ifelse(reason == "", NA, reason)) %>%  # NA will be translated to '-' in the UI)
+          dplyr::rename(
+            ControlID = malaria_blood_control_id,
+            ArchivedSpotsID = archived_dbs_blood_spot_id,  # Archived Spots
+            ArchivedSpots = archived_spots_count,
+            Reason = reason,
+            ArchivedDate = archived_date,
+            Batch = batch,
+            ControlUID = control_uid,
+            Composition = n_strain,
+            Density = density,
+            Percentage = percentage,
+            Strain = strain,
+            Label = dbs_bag_label,
+            Total = total,
+            Exhausted = exhausted,
+            FreezerName = location_root,
+            ShelfName = level_I,
+            BasketName = level_II
+          )
 
+      } else {
+
+        results <- results %>%
+          dplyr::group_by(malaria_blood_control_id, blood_spot_collection_id, study_subject_id) %>%
+          dplyr::mutate(percentage=list(percentage)) %>%
+          dplyr::mutate(strain=list(strain)) %>%
+          dplyr::ungroup() %>%
+          dplyr::distinct() %>%
+          dplyr::mutate(n_strain = format_composition_types(n_strain))
+      
+        results = results %>%
+          select(malaria_blood_control_id, blood_spot_collection_id, batch,control_uid,n_strain,density,percentage,strain,dbs_bag_label,total,exhausted,location_root,level_I,level_II) %>%
+          dplyr::rename(
+            ControlID = malaria_blood_control_id,
+            CollectionID = blood_spot_collection_id,  # Active spots
+            Batch = batch,
+            ControlUID = control_uid,
+            Composition = n_strain,
+            Density = density,
+            Percentage = percentage,
+            Strain = strain,
+            Label = dbs_bag_label,
+            Total = total,
+            Exhausted = exhausted,
+            FreezerName = location_root,
+            ShelfName = level_I,
+            BasketName = level_II
+          )
+        }
+
+      } else {  # Whole Blood
+
+        results <- results %>%
+          dplyr::group_by(malaria_blood_control_id, study_subject_id, whole_blood_tube_id) %>%
+          dplyr::mutate(percentage=list(percentage)) %>%
+          dplyr::mutate(strain=list(strain)) %>%
+          dplyr::ungroup() %>%
+          dplyr::distinct() %>%
+          dplyr::mutate(n_strain = format_composition_types(n_strain))
+
+        results = results %>%
+          select(malaria_blood_control_id, whole_blood_tube_id, batch,control_uid,n_strain,density,percentage,strain,position,cryovial_box_name,location_root,level_I,level_II,state,status) %>%
+          dplyr::rename(
+            ControlID = malaria_blood_control_id,
+            TubeID = whole_blood_tube_id,
+            Batch = batch,
+            ControlUID = control_uid,
+            `Composition Type` = n_strain,
+            Density = density,
+            Percentage = percentage,
+            Strain = strain,
+            Position = position,
+            BoxName = cryovial_box_name,
+            FreezerName = location_root,
+            ShelfName = level_I,
+            BasketName = level_II,
+            State = state,
+            Status = status
+          )
+      }
   },
   error = function(e) {
     message(sprintf("Error in GetControls(): %s", e$message))
@@ -178,7 +238,7 @@ SearchControls <- function(filters, control_type = NULL, database = Sys.getenv("
     dbDisconnect(con)
   })
 
-  return (distinct(results))
+  return(distinct(results))
 }
 
 #' Search for Compositions in Database

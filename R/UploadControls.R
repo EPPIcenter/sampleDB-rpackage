@@ -132,17 +132,22 @@ rejoin_box_ids <- function(con, user_data, box_name_col, box_barcode_col) {
 #' @param con A database connection object.
 #' @param barcode_col Column name in user_data for barcode.
 #' @param position_col Column name in user_data for position.
+#' @param comment_col Column name in user_data for comment.
 #' @return A result from the dbAppendTable indicating if the tubes were added successfully.
-append_whole_blood_tubes <- function(user_data, con, barcode_col, position_col) {
+append_whole_blood_tubes <- function(user_data, con, barcode_col, position_col, comment_col) {
   ## Add the whole blood tubes
   res <- dbAppendTable(con, "whole_blood_tube", user_data %>%
-                dplyr::rename(position := !!sym(position_col)) %>%
-                select(any_of(c(barcode_col)), malaria_blood_control_id, cryovial_box_id, position) %>%
-                distinct()
+                         dplyr::rename(barcode = !!sym(barcode_col),
+                                       position = !!sym(position_col),
+                                       reason = !!sym(comment_col)) %>%
+                         dplyr::mutate(state_id = 1, status_id = 1) %>%
+                         select(barcode, malaria_blood_control_id, cryovial_box_id, position, state_id, status_id, reason) %>%
+                         distinct()
   )
 
   return(res)
 }
+
 
 #' Process Whole Blood Box Data
 #' 
@@ -171,6 +176,7 @@ append_boxes_if_not_exist <- function(con, user_data, created_col, last_updated_
 }
 
 upload_whole_blood <- function(user_data, database) {
+
   con <- DBI::dbConnect(RSQLite::SQLite(), database)
 
 	dbBegin(con)
@@ -184,9 +190,9 @@ upload_whole_blood <- function(user_data, database) {
     user_data <- prepare_control_for_upload(user_data, now)
 
     user_data_with_control_ids <- create_controls_for_batch(user_data, con, "Density", "Batch", "Control")
-    user_data_with_container_ids <- process_whole_blood_location_container(user_data_with_control_ids, con, "Created", "LastUpdated", "BoxName", "BoxBarcode", "WB_Minus80", "WB_RackName", "WB_RackPosition")
+    user_data_with_container_ids <- process_whole_blood_location_container(user_data_with_control_ids, con, "Created", "LastUpdated", "BoxName", "BoxBarcode", "WB_FreezerName", "WB_RackName", "WB_RackPosition")
     user_data_with_blood_control_ids <- process_malaria_blood_control_data(user_data_with_container_ids, con, "Density", "CompositionID")
-    res <- append_whole_blood_tubes(user_data_with_blood_control_ids, con, "Barcode", "ControlOriginPosition")
+    res <- append_whole_blood_tubes(user_data_with_blood_control_ids, con, "Barcode", "ControlOriginPosition", "Comment")
 		dbCommit(con)
 	}, error = function(e) {
     dbRollback(con)
@@ -594,9 +600,12 @@ join_blood_spot_collections <- function(df.payload, con) {
     left_join(
       dbReadTable(con, "blood_spot_collection") %>%
       dplyr::rename(blood_spot_collection_id = id),
-      by = setNames("malaria_blood_control_id", "malaria_blood_control_id")
+      by = setNames(
+        c("malaria_blood_control_id", "dbs_control_sheet_id"),
+        c("malaria_blood_control_id", "dbs_control_sheet_id")
+      )
     ) %>%
-    select(blood_spot_collection_id, total, all_of(colnames(df.payload)))
+    select(blood_spot_collection_id, total, dbs_control_sheet_id, all_of(colnames(df.payload)))
 
   return(df)
 }
@@ -605,12 +614,13 @@ join_blood_spot_collections <- function(df.payload, con) {
 #'
 #' @param df.payload A dataframe containing payload data.
 #' @param con A database connection object.
+#' @param count_col Column name in df.payload for count.
+#' @param dbs_control_sheet_id Column name in df.payload for DBS control sheet ID.
 #' @return Result from the dbAppendTable indicating if the collections were added successfully.
-add_new_blood_spot_collections <- function(df.payload, con, count_col) {
-
+add_new_blood_spot_collections <- function(df.payload, con, count_col, dbs_control_sheet_id) {
   res <- dbAppendTable(con, "blood_spot_collection", df.payload %>%
     filter(is.na(blood_spot_collection_id)) %>%
-    group_by(malaria_blood_control_id) %>%
+    group_by(malaria_blood_control_id, dbs_control_sheet_id) %>%
     dplyr::mutate(
       count = as.integer(!!sym(count_col)),
       total = ifelse(is.na(total), 0, as.integer(total)),
@@ -618,10 +628,9 @@ add_new_blood_spot_collections <- function(df.payload, con, count_col) {
     ) %>%
     select(-c(total)) %>%
     ungroup() %>%
-    select(malaria_blood_control_id, count) %>%
+    select(malaria_blood_control_id, dbs_control_sheet_id, count) %>%
     distinct() %>%
-    dplyr::rename(total = count) %>%
-    select(malaria_blood_control_id, total)
+    dplyr::rename(total = count)
   )
 
   return(res)
@@ -637,15 +646,18 @@ add_new_blood_spot_collections <- function(df.payload, con, count_col) {
 #' @param con A database connection object.
 #' @return A dataframe with rejoined blood spot collections.
 rejoin_with_updated_blood_spot_collections <- function(df.payload, con) {
-  
   df.updated <- df.payload %>%
     dplyr::select(-c(blood_spot_collection_id)) %>%
     dplyr::inner_join(
-      DBI::dbReadTable(con, "blood_spot_collection") %>%
-        dplyr::rename(blood_spot_collection_id = id) %>%
-        dplyr::select(-c(total, exhausted))
+      dbReadTable(con, "blood_spot_collection") %>%
+      dplyr::rename(blood_spot_collection_id = id) %>%
+      dplyr::select(-c(total, exhausted)),
+      by = setNames(
+        c("malaria_blood_control_id", "dbs_control_sheet_id"),
+        c("malaria_blood_control_id", "dbs_control_sheet_id")
+      )
     ) %>%
-    dplyr::select(blood_spot_collection_id, all_of(colnames(df.payload)))
+    dplyr::select(blood_spot_collection_id, dbs_control_sheet_id, all_of(colnames(df.payload)))
   
   return(df.updated)
 }
@@ -662,7 +674,7 @@ process_blood_spot_collection_data <- function(df.payload, con, count_col) {
   df.payload <- join_blood_spot_collections(df.payload, con)
 
   # Add new blood spot collections if they don't exist
-  res <- add_new_blood_spot_collections(df.payload, con, count_col)
+  res <- add_new_blood_spot_collections(df.payload, con, count_col, "dbs_control_sheet_id")
 
   cat("Blood Spot Collections Added: ", res, "\n")
 
@@ -670,31 +682,6 @@ process_blood_spot_collection_data <- function(df.payload, con, count_col) {
   df.payload <- rejoin_with_updated_blood_spot_collections(df.payload, con)
 
   return(df.payload)
-}
-
-#' Update the junction table for blood spot collections and DBS control sheets
-#'
-#' @param df.payload A dataframe with payload data.
-#' @param con A database connection object.
-#' @return A dataframe after updating the junction table.
-update_blood_spot_collection_dbs_control_sheet <- function(df.payload, con) {
-
-  df <- df.payload %>%
-    left_join(
-      dbReadTable(con, "blood_spot_collection_dbs_control_sheet") %>%
-        dplyr::rename(blood_spot_collection_dbs_control_sheet_id = id),
-      by = c("blood_spot_collection_id", "dbs_control_sheet_id")
-    ) %>%
-    select(blood_spot_collection_dbs_control_sheet_id, all_of(colnames(df.payload)))
-
-  res <- dbAppendTable(con, "blood_spot_collection_dbs_control_sheet", df %>%
-    filter(is.na(blood_spot_collection_dbs_control_sheet_id)) %>%
-    select(blood_spot_collection_id, dbs_control_sheet_id)
-  )
-
-  cat("Blood Spot Collection DBS Control Sheet Junction Updated: ", res, "\n")
-
-  return(df)
 }
 
 #' Create Control Label with Density and Composition Values
@@ -782,11 +769,6 @@ upload_dbs_sheet <- function(user_data, database) {
 
 		## At this point, collapse the user data as we're no longer intereste edin retain specific sheet information
 		user_data_distinct <- user_data_with_blood_spot_collection_ids %>% distinct()
-
-		## Update the junction table storing which bags blood collections can be found in. This is done so that blood collections from a batch
-		## can span over multiple bags, and bags can contain mulitple types of blood collections (from the same batch or otherwise (this would
-		## be a validation piece)).
-		user_data_final <- update_blood_spot_collection_dbs_control_sheet(user_data_distinct, con)
 
 		dbCommit(con)
 		n.uploaded=sum(as.integer(user_data[["Count"]]))

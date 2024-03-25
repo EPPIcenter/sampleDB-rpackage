@@ -101,6 +101,74 @@ check_composition_id_exists <- function(con, table_name, row_number_col, label_c
   return(NULL)
 }
 
+#' Validate Extraction Counts Against Blood Spot Collection Totals
+#'
+#' This function checks if the sum of new extractions for each blood spot collection
+#' in the provided user data does not exceed the total count available for each collection.
+#' It ensures that extractions are within the limits of available blood spots by dynamically
+#' joining user data with related tables to identify the relevant blood_spot_collection_id for each record.
+#'
+#' @param con A database connection object.
+#' @param user_data A dataframe containing the new extractions to be validated.
+#'   It must contain columns that can be used to derive blood_spot_collection_id indirectly.
+#' @param row_number_col The name of the column in `user_data` that provides a unique row identifier.
+#' @param control_uid_col The name of the column in `user_data` that corresponds to the control UID.
+#' @param batch_col The name of the column in `user_data` related to the batch information.
+#' @param sheet_name_col The name of the column in `user_data` for the sheet name.
+#' @param sheet_label_col The name of the column in `user_data` for the sheet label, which may contain NA values.
+#'
+#' @return An `ErrorData` object if any blood spot collection's new total extractions exceed its total counts,
+#'   detailing the violations. Returns `NULL` if all new extraction counts are within the allowed limits.
+#'
+#' @import dplyr
+#' @import DBI
+#' @export
+validate_extraction_counts_with_totals <- function(con, user_data, row_number_col, control_uid_col, batch_col, sheet_name_col, sheet_barcode_col) {
+  
+  # Prepare user_data with a join key combining sheet_name_col and sheet_barcode_col when both exist
+  sql <- tbl(con, user_data) %>%
+    mutate(join_key = ifelse(is.na(!!sym(sheet_barcode_col)), 
+                             !!sym(sheet_name_col), 
+                             paste(!!sym(sheet_name_col), !!sym(sheet_barcode_col), sep = "_")))
+
+  # Join user_data with necessary tables to get blood_spot_collection_id
+  # The specific joins and the conditions will depend on your database schema
+  df_payload <- sql %>%
+    inner_join(dplyr::tbl(con, "study") %>% dplyr::rename(study_id = id), by = setNames("short_code", batch_col)) %>%
+    inner_join(dplyr::tbl(con, "study_subject") %>% dplyr::rename(study_subject_id = id, control_uid=name), by = setNames("control_uid", control_uid_col)) %>%
+    inner_join(dplyr::tbl(con, "malaria_blood_control") %>% dplyr::rename(malaria_blood_control_id = id), by = "study_subject_id") %>%
+    inner_join(dplyr::tbl(con, "blood_spot_collection") %>% dplyr::rename(blood_spot_collection_id = id), by = "malaria_blood_control_id") %>%
+    select(row_number_col, blood_spot_collection_id, !!sym(row_number_col), !!sym(control_uid_col), !!sym(batch_col), !!sym(sheet_name_col)) %>%
+    group_by(blood_spot_collection_id) %>%
+    mutate(new_exhausted = n()) %>%
+    ungroup()
+
+  # Fetch current exhausted and total counts for the related blood_spot_collection_id(s)
+  df_payload <- df_payload %>%
+    dplyr::left_join(dplyr::tbl(con, "blood_spot_collection") %>%
+                dplyr::rename(blood_spot_collection_id = id) %>%
+                dplyr::select(blood_spot_collection_id, exhausted, total), by = "blood_spot_collection_id") %>%
+    dplyr::mutate(new_total_exhausted = exhausted + new_exhausted) %>%
+    dplyr::filter(new_total_exhausted > total) %>%
+    collect()
+
+  # Check if any collection exceeds the total
+  if (nrow(df_payload) > 0) {
+
+    error_rows <- df_payload %>%
+      select(!!sym(row_number_col), !!sym(control_uid_col), !!sym(batch_col), !!sym(sheet_name_col))
+
+    return(ErrorData$new(
+      description = "Extraction counts exceed totals for some blood spot collections",
+      data_frame = error_rows
+    ))
+  }
+
+  # If no violations, return NULL to indicate validation passed
+  return(NULL)
+}
+
+
 
 #' Validate DBS Sheet Control Data
 #'
@@ -174,9 +242,10 @@ validate_dbs_sheet_create <- function(dbs_sheet_test) {
 validate_dbs_sheet_extraction <- function(dbs_sheet_test) {
   dbs_sheet_test(check_micronix_barcodes_exist, "Barcode", error_if_exists = TRUE)
   dbs_sheet_test(validate_empty_micronix_well_upload, "ExtractedDNAPosition", "PlateName", "PlateBarcode")
+  dbs_sheet_test(validate_extraction_counts_with_totals, "ControlUID", "Batch", "SheetName", "SheetBarcode")
 
   # References check
-  dbs_sheet_test(check_control_exists, "ControlID", "Batch", error_if_exists = FALSE)
+  dbs_sheet_test(check_control_exists, "ControlUID", "Batch", error_if_exists = FALSE)
   dbs_sheet_test(validate_study_reference_db, "Batch")
 
   # Validate source location
@@ -232,6 +301,35 @@ perform_whole_blood_db_validations <- function(database, user_data, action) {
   return(errors)
 }
 
+#' Validate Cryovial Tube Exists
+#'
+#' This function checks that a cryovial exists by position, boxname, and barcode and box barcode, if provided.
+#'
+#' @return A list containing validation errors, if any.
+#' @export
+#' @keywords validation
+validate_whole_blood_tube_exists <- function(con, table_name, row_number_col, position_col, box_name_col, box_barcode_col, control_uid_col, batch_col) {
+  
+  df <- tbl(con, table_name) %>%
+    dplyr::left_join(tbl(con, "whole_blood_tube") %>% dplyr::rename(whole_blood_tube_id=id), by = setNames("position", position_col)) %>%
+    dplyr::left_join(tbl(con, "cryovial_box") %>% dplyr::rename(cryovial_box_id=id, box_barcode=barcode), by = "cryovial_box_id") %>%
+    dplyr::filter(name == !!sym(box_name_col) | box_barcode == !!sym(box_barcode_col)) %>%
+    dplyr::left_join(tbl(con, "malaria_blood_control") %>% dplyr::rename(malaria_blood_control_id=id), by = "malaria_blood_control_id") %>%
+    dplyr::left_join(tbl(con, "study_subject") %>% dplyr::rename(study_subject_id=id, control_uid=name), by = "study_subject_id") %>%
+    dplyr::left_join(tbl(con, "study") %>% dplyr::rename(study_id=id), by = "study_id") %>%
+    dplyr::filter(control_uid == !!sym(control_uid_col) & short_code == !!sym(batch_col)) %>%
+    dplyr::filter(is.na(whole_blood_tube_id) | is.na(cryovial_box_id) | is.na(malaria_blood_control_id) | is.na(study_subject_id) | is.na(study_id)) %>%
+    dplyr::select(all_of(c(row_number_col, position_col, box_name_col, box_barcode_col))) %>%
+    dplyr::collect()
+
+  if (nrow(df) > 0) {
+    error_message <- "Cryovial tube could not be found."
+    return(ErrorData$new(description = error_message, data_frame = df))
+  }
+  
+  return(NULL)  
+}
+
 #' Validate Whole Blood Create
 #'
 #' Conducts specific validation checks for creating whole blood controls.
@@ -245,7 +343,7 @@ validate_whole_blood_create <- function(whole_blood_test) {
   # References check
   whole_blood_test(check_composition_id_exists, "Label", "Index", "LegacyLabel")
   whole_blood_test(validate_study_reference_db, "Batch", controls = TRUE)
-  whole_blood_test(validate_location_reference_db, "WB_Minus80", "WB_RackName", "WB_RackPosition")
+  whole_blood_test(validate_location_reference_db, "WB_FreezerName", "WB_RackName", "WB_RackPosition")
 
   # Whole blood is stored in cryovials so reuse cryovial tests
   whole_blood_test(validate_empty_cryovial_well_upload, "ControlOriginPosition", "BoxName", "BoxBarcode")
@@ -261,17 +359,17 @@ validate_whole_blood_create <- function(whole_blood_test) {
 #' @keywords validation
 validate_whole_blood_extraction <- function(whole_blood_test) {
 
-  # Add your validation function calls here
+  # Add validation function calls here
   whole_blood_test(check_micronix_barcodes_exist, "Barcode", error_if_exists = TRUE)
   whole_blood_test(validate_empty_micronix_well_upload, "ExtractedDNAPosition", "PlateName", "PlateBarcode")
-  whole_blood_test(validate_cryovial_tube_exists, "ControlOriginPosition", "BoxName", "BoxBarcode")
 
   # References check
   whole_blood_test(validate_study_reference_db, "Batch", controls = TRUE)
-  whole_blood_test(check_control_exists, "ControlID", "Batch", error_if_exists = TRUE)
+  whole_blood_test(check_control_exists, "ControlUID", "Batch", error_if_exists = FALSE)
+  whole_blood_test(validate_whole_blood_tube_exists, "ControlOriginPosition", "BoxName", "BoxBarcode", "ControlUID", "Batch")
 
   # Validate source location
-  whole_blood_test(validate_location_reference_db, "WB_Minus80", "WB_RackName", "WB_RackPosition")
+  whole_blood_test(validate_location_reference_db, "WB_FreezerName", "WB_RackName", "WB_RackPosition")
 
   # Validate destination location
   whole_blood_test(validate_location_reference_db, "FreezerName", "ShelfName", "BasketName")

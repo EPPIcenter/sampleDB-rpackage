@@ -613,17 +613,55 @@ show_validation_error_modal <- function(output, error, filename = NULL) {
   )
 }
 
-show_general_error_modal <- function(error) {
-  errcall = ifelse(is.null(error$call), "No function call information available", error$call)
-  errmsg = ifelse(is.null(error$message), "No message available", error$message)
+show_general_error_modal <- function(error, input, output) {
+  # Convert the call to a single character string, checking for NULL
+  errcall <- if (is.null(error$call)) {
+    "No function call information available"
+  } else {
+    paste(as.character(error$call), collapse="\n")
+  }
+
+  errmsg <- ifelse(is.null(error$message), "No message available", error$message)
+  
+  # Initialize error details string
+  errdetails <- ""
+  
+  # Iterate over each element in the error object
+  error_names <- names(error)
+  for (name in error_names) {
+    value <- error[[name]]
+    # Convert each element to a character string
+    value_str <- toString(if(is.list(value)) {
+      sapply(value, function(x) toString(x))
+    } else {
+      value
+    })
+    errdetails <- paste(errdetails, sprintf("%s: %s\n", name, value_str), sep="\n")
+  }
+
+  # Download handler for the error report
+  output$downloadError <- downloadHandler(
+    filename = function() {
+      paste("error-details-", Sys.Date(), ".txt", sep="")
+    },
+    content = function(file) {
+      writeLines(errdetails, file)
+    }
+  )
+  
   showModal(
     modalDialog(
       size = "l",
-      title = error$title,
-      tags$p("Something went wrong - contact the app author, and report the error message below."),
+      title = "An Error Occurred",
+      tags$p(HTML("Something went wrong. Please see the error details below and contact Brian Palmer at <a href='mailto:brian.palmer@ucsf.edu'>brian.palmer@ucsf.edu</a>.")),
       tags$hr(),
-      tags$p(errcall),
-      tags$p(errmsg),
+      tags$div(
+        id = "errdetails",
+        style = "max-height: 400px; overflow-y: auto;",
+        tags$pre(style = "white-space: pre-wrap;", errdetails)
+      ),
+      tags$hr(),
+      downloadButton('downloadError', 'Download Error Details'),
       footer = modalButton("Exit")
     )
   )

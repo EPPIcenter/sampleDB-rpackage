@@ -124,22 +124,28 @@ upgrade_database <- function(database, current_version, expected_version, db_ver
     while (current_version != expected_version) {
       message("INFO: Entering upgrade loop")
       
-      upgrade_script <- generate_upgrade_script_path(current_version_idx, db_versions, pkgname)
-      message(paste("INFO: Upgrade script path:", upgrade_script))
+      upgrade_script_path <- generate_upgrade_script_path(current_version_idx, db_versions, pkgname)
+      message(paste("INFO: Upgrade script path:", upgrade_script_path))
       
-      if (!file.exists(upgrade_script)) {
-        message(paste("WARN: Upgrade script not found:", upgrade_script))
-        stop(paste("Upgrade script not found:", upgrade_script))
+      if (!file.exists(upgrade_script_path)) {
+        message(paste("WARN: Upgrade script not found:", upgrade_script_path))
+        stop(paste("Upgrade script not found:", upgrade_script_path))
       }
 
-      sql <- readr::read_lines(upgrade_script) %>%
-        glue::glue_collapse(sep = "\n") %>%
-        glue::glue_sql(.con = con) %>%
-        strsplit(., ';')
-
-      message(paste("INFO: SQL commands to be executed:", sql[[1]]))
+      # Read the entire upgrade script
+      upgrade_script <- readr::read_lines(upgrade_script_path, skip_empty_rows = FALSE)
       
-      execute_sql(con, sql[[1]])
+      # Split the script into commands based on empty lines
+      commands <- split(upgrade_script, cumsum(upgrade_script == ""))
+      
+      # Execute each command block
+      for (cmd in commands) {
+        sql_command <- paste(cmd, collapse = "\n")
+        if (nchar(sql_command) > 0) { # Ensure the command is not just an empty line
+          message(paste("INFO: SQL commands to be executed:\n", sql_command))
+          execute_sql(con, sql_command)
+        }
+      }
       
       current_version_idx <- current_version_idx + 1
       current_version <- db_versions[current_version_idx]

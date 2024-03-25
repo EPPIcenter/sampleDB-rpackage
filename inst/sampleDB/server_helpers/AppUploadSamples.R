@@ -73,7 +73,7 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
       show_validation_error_modal(output, e)
     },
     error = function(e) {
-      show_general_error_modal(e)
+      show_general_error_modal(e, input, output)
     })
   })
 
@@ -105,7 +105,7 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
       show_validation_error_modal(output, e)
     },
     error = function(e) {
-      show_general_error_modal(e)
+      show_general_error_modal(e, input, output)
     })
 
     rv$console_verbatim <- FALSE
@@ -173,7 +173,7 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
         early_stop <<- TRUE
       },
       error = function(e) {
-        show_general_error_modal(e)
+        show_general_error_modal(e, input, output)
         early_stop <<- TRUE
       })
     }
@@ -203,7 +203,7 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
         } else if (input$UploadType == "controls" && input$UploadControlAction == "create") { 
           upload_controls(user_data = rv$user_file, control_type = input$UploadControlType)
         } else if (input$UploadType == "controls" && input$UploadControlAction == "extraction") {
-          upload_extracted_dna(user_data = rv$user_file, control_extraction = input$UploadControlAction)
+          upload_extracted_dna(user_data = rv$user_file, control_extraction = input$UploadControlType)
         } else {
           message("Unknown upload type!!!")
         }
@@ -213,7 +213,7 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
       })
     },
     error = function(e) {
-      show_general_error_modal(e)
+      show_general_error_modal(e, input, output)
     },
     finally = {
       if (b_use_wait_dialog) {

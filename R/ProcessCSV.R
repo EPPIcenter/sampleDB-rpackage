@@ -973,7 +973,6 @@ prepare_control_data_for_validation <- function(control_type, user_data, action,
   # dplyr for database manipulation and querying, so doing these modification upfront
   # makes it easier to prepare the data frame for validation.
 
-
   # Check if file_column_attr is of class ColumnData
   if (!inherits(file_column_attr, "ColumnData")) {
     stop("file_column_attr must be an object of class 'ColumnData'")
@@ -997,30 +996,54 @@ prepare_control_data_for_validation <- function(control_type, user_data, action,
   ## update this after json modification
   storage_container <- get_storage_container_by_control(control_type)
 
-  # If there are position values, prepare the column that will be used by the database (`ControlOriginPosition`)
-  if (is.list(storage_container$position_keys) && !is.null(storage_container$position_keys[[1]])) {
-    user_data <- prepare_matrix_position_column(user_data, storage_container, "ControlOriginPosition")
+  # If we have whole blood, then prepare the position column
+  if (control_type == "whole_blood") {
+    dimensions <- c(9, 9)  # creations go into cryovials
+
+    # If there are position values, prepare the column that will be used by the database (`ControlOriginPosition`)
+    if (is.list(storage_container$position_keys) && !is.null(storage_container$position_keys[[1]])) {
+      position_columns <- storage_container$position_keys
+      user_data <- prepare_matrix_position_column(user_data, dimensions, position_columns, "ControlOriginPosition")
+    }
   }
   
   # NOTE: If these checks grow, then make into functions
   if (action == "extraction") {
     destination_container <- get_destination_container_by_control(control_type)
-    user_data <- prepare_matrix_position_column(user_data, destination_container, "ExtractedDNAPosition")
+    position_columns <- destination_container$position_keys
+    dimensions <- c(8, 12)  # Extractions go into micronix
+    user_data <- prepare_matrix_position_column(user_data, dimensions, position_columns, "ExtractedDNAPosition")
 
     # TODO: make this a function and add to the validation checks
     # TODO: make the data external and customizable (preferences?)
     user_data[["SpecimenType"]] <- ifelse(control_type == "whole_blood", "DNA (WB)", "DNA (DBS)")
 
-  }
-
-  if (action == "create") {
+  } else if (action == "create") {
     # Convert Density Representations to Real numbers
     user_data <- convert_density_representations(user_data, "Density")
+  } else {
+    stop("Invalid action!")
   }
 
   # Extract the label, legacy, and index from the composition ID provided by the user
   user_data <- normalize_composition_ids(user_data, "CompositionID", "Label", "Index", "LegacyLabel")
   user_data <- add_row_numbers(user_data)
+
+  # Add conditional and optional columns with NA as default values if they do not exist
+  conditional_columns <- file_column_attr$conditional
+  optional_columns <- file_column_attr$optional
+  
+  for (col in conditional_columns) {
+    if (!col %in% colnames(user_data)) {
+      user_data[[col]] <- NA
+    }
+  }
+  
+  for (col in optional_columns) {
+    if (!col %in% colnames(user_data)) {
+      user_data[[col]] <- NA
+    }
+  }
 
   return(user_data)
 }
