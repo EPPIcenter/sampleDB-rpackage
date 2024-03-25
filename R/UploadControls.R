@@ -86,16 +86,16 @@ join_locations_and_boxes <- function(con, user_data, box_name_col, box_barcode_c
   ## Find the locations and cryovial box if it already exists
   df <- user_data %>%
     inner_join(dbReadTable(con, "location") %>%
-                  select(-c(created, last_updated)) %>%
+                  dplyr::select(-c(created, last_updated)) %>%
                   dplyr::rename(location_id=id)
                 , by = location_joins) %>%
     dplyr::left_join(dbReadTable(con, "cryovial_box") %>%
-                        select(-c(created, last_updated)) %>%
+                        dplyr::select(-c(created, last_updated)) %>%
                         dplyr::rename(
                           cryovial_box_id=id,
                           cryovial_box_barcode=barcode
                         ), by=joins) %>%
-    select(location_id,cryovial_box_id, all_of(colnames(user_data)))
+    dplyr::select(location_id,cryovial_box_id, all_of(colnames(user_data)))
 
   return(df)
 
@@ -120,7 +120,7 @@ rejoin_box_ids <- function(con, user_data, box_name_col, box_barcode_col) {
     dplyr::select(-c(cryovial_box_id)) %>%
     inner_join(dbReadTable(con, "cryovial_box") %>%
                   dplyr::rename(cryovial_box_id=id), by = joins) %>%
-    select(location_id, cryovial_box_id, all_of(colnames(user_data)))
+    dplyr::select(location_id, cryovial_box_id, all_of(colnames(user_data)))
 
   return(df)
 
@@ -141,7 +141,7 @@ append_whole_blood_tubes <- function(user_data, con, barcode_col, position_col, 
                                        position = !!sym(position_col),
                                        reason = !!sym(comment_col)) %>%
                          dplyr::mutate(state_id = 1, status_id = 1) %>%
-                         select(barcode, malaria_blood_control_id, cryovial_box_id, position, state_id, status_id, reason) %>%
+                         dplyr::select(barcode, malaria_blood_control_id, cryovial_box_id, position, state_id, status_id, reason) %>%
                          distinct()
   )
 
@@ -166,8 +166,8 @@ append_boxes_if_not_exist <- function(con, user_data, created_col, last_updated_
 
   ## if the box does not exist (cryovial_box_id == `NA`), then create it
   res <- dbAppendTable(con, "cryovial_box", user_data %>%
-                          filter(is.na(cryovial_box_id)) %>%
-                          select(!!sym(created_col), !!sym(last_updated_col), location_id, !!sym(box_name_col), !!sym(box_barcode_col)) %>%
+                          dplyr::filter(is.na(cryovial_box_id)) %>%
+                          dplyr::select(!!sym(created_col), !!sym(last_updated_col), location_id, !!sym(box_name_col), !!sym(box_barcode_col)) %>%
                           dplyr::rename(created = created_col, last_updated = last_updated_col, name = box_name_col, barcode = box_barcode_col) %>%
                           distinct())
 
@@ -243,7 +243,7 @@ create_controls_for_batch <- function(
 
   # Preparing data
   df.payload <- user_data %>%
-    group_by(
+    dplyr::group_by(
       !!sym(density_col),
       !!sym(study_short_code_col)
     ) %>%
@@ -257,15 +257,15 @@ create_controls_for_batch <- function(
       by = study_subject_joins
     ) %>%
     dplyr::rename(study_subject_id=id) %>%
-    select(
+    dplyr::select(
       study_id, study_subject_id, all_of(colnames(user_data))
     ) %>%
     ungroup()
 
 	# Appending to the database
 	res <- dbAppendTable(con, "study_subject", df.payload %>%
-	                      filter(is.na(study_subject_id)) %>%
-	                      select(Created, LastUpdated, study_id, !!sym(control_col)) %>%
+	                      dplyr::filter(is.na(study_subject_id)) %>%
+	                      dplyr::select(Created, LastUpdated, study_id, !!sym(control_col)) %>%
 	                      distinct() %>%
 	                      dplyr::rename(
                           name = !!sym(control_col),
@@ -279,9 +279,9 @@ create_controls_for_batch <- function(
 
 	## Rejoin to get the study_subject_id
 	df.payload = df.payload %>%
-	  select(-c(study_subject_id)) %>%
+	  dplyr::select(-c(study_subject_id)) %>%
 		inner_join(dbReadTable(con, "study_subject") %>% dplyr::rename(study_subject_id=id), by = rejoin_by) %>%
-	  select(study_subject_id, all_of(colnames(user_data)))
+	  dplyr::select(study_subject_id, all_of(colnames(user_data)))
 
   return(df.payload)
 }
@@ -311,17 +311,17 @@ join_locations_and_bags <- function(df.payload, con, location_root_col, level_I_
   df <- df.payload %>%
     inner_join(
       dbReadTable(con, "location") %>%
-      select(-c(created, last_updated)) %>%
+      dplyr::select(-c(created, last_updated)) %>%
       dplyr::rename(location_id = id),
       by = location_joins
     ) %>%
     left_join(
       dbReadTable(con, "dbs_bag") %>%
-      select(-c(created, last_updated)) %>%
+      dplyr::select(-c(created, last_updated)) %>%
       dplyr::rename(dbs_bag_id = id),
       by = bag_joins
     ) %>%
-    select(location_id, dbs_bag_id, all_of(colnames(df.payload)))
+    dplyr::select(location_id, dbs_bag_id, all_of(colnames(df.payload)))
 
   return(df)
 }
@@ -334,7 +334,7 @@ join_locations_and_bags <- function(df.payload, con, location_root_col, level_I_
 #' @return A result from the dbAppendTable indicating if the bags were added successfully.
 add_bags_if_not_exist <- function(df.payload, con, manifest_name_col) {
   res <- dbAppendTable(con, "dbs_bag", df.payload %>%
-    filter(is.na(dbs_bag_id)) %>%
+    dplyr::filter(is.na(dbs_bag_id)) %>%
     dplyr::select(location_id, Created, LastUpdated, all_of(manifest_name_col)) %>%
     dplyr::rename(
       name = all_of(manifest_name_col),
@@ -355,11 +355,11 @@ rejoin_to_get_bag_ids <- function(df.payload, con, manifest_name_col) {
   df <- dbReadTable(con, "dbs_bag") %>%
     dplyr::rename(dbs_bag_id = id) %>%
     inner_join(
-      df.payload %>% select(-c(dbs_bag_id)),
+      df.payload %>% dplyr::select(-c(dbs_bag_id)),
       by = c("location_id", "name" = manifest_name_col)
     ) %>%
     dplyr::rename(!!manifest_name_col := "name") %>%
-    select(dbs_bag_id, all_of(colnames(df.payload)))
+    dplyr::select(dbs_bag_id, all_of(colnames(df.payload)))
 
   return(df)
 }
@@ -405,7 +405,7 @@ join_malaria_controls <- function(df.payload, con) {
         dplyr::rename(malaria_blood_control_id = id),
       by = joins
     ) %>%
-    select(malaria_blood_control_id, all_of(colnames(df.payload)))
+    dplyr::select(malaria_blood_control_id, all_of(colnames(df.payload)))
 
   return(df)
 }
@@ -422,13 +422,13 @@ rejoin_malaria_controls <- function(df.payload, con, density_col) {
   )
 
   df <- df.payload %>%
-    select(-c(malaria_blood_control_id)) %>%
+    dplyr::select(-c(malaria_blood_control_id)) %>%
     inner_join(
       dbReadTable(con, "malaria_blood_control") %>%
         dplyr::rename(malaria_blood_control_id = id),
       by = joins
     ) %>%
-    select(malaria_blood_control_id, all_of(colnames(df.payload)))
+    dplyr::select(malaria_blood_control_id, all_of(colnames(df.payload)))
 
   return(df)
 }
@@ -441,8 +441,8 @@ rejoin_malaria_controls <- function(df.payload, con, density_col) {
 #' @return A result from the dbAppendTable indicating if the controls were added successfully.
 add_malaria_blood_controls_if_not_exist <- function(df.payload, con, density_col) {
   res <- dbAppendTable(con, "malaria_blood_control", df.payload %>%
-    filter(is.na(malaria_blood_control_id)) %>%
-    select(study_subject_id, density_col, composition_id) %>%
+    dplyr::filter(is.na(malaria_blood_control_id)) %>%
+    dplyr::select(study_subject_id, density_col, composition_id) %>%
     distinct()
   )
   return(res)
@@ -467,7 +467,7 @@ join_composition_ids <- function(df.payload, con, composition_id_col) {
         dplyr::rename(composition_id = id),
       by = setNames(composition_id_col, composition_id_col)
     ) %>%
-    select(composition_id, all_of(colnames(df.payload)))
+    dplyr::select(composition_id, all_of(colnames(df.payload)))
 
   # Assuming you want to keep all columns from df.payload and any newly joined ones
   return(df)
@@ -519,7 +519,7 @@ join_dbs_control_sheets <- function(df.payload, con, sheet_name_col) {
         ),
       by = joins
     ) %>%
-    select(dbs_control_sheet_id, all_of(colnames(df.payload)))
+    dplyr::select(dbs_control_sheet_id, all_of(colnames(df.payload)))
 
   return(df)
 }
@@ -532,12 +532,12 @@ join_dbs_control_sheets <- function(df.payload, con, sheet_name_col) {
 #' @return A result from the dbAppendTable indicating if the sheets were added successfully.
 add_new_dbs_control_sheets <- function(con, df.payload, dbs_sheet_name_col) {
   res <- dbAppendTable(con, "dbs_control_sheet", df.payload %>%
-    filter(is.na(dbs_control_sheet_id)) %>%
-    group_by(dbs_bag_id, !!sym(dbs_sheet_name_col)) %>%
+    dplyr::filter(is.na(dbs_control_sheet_id)) %>%
+    dplyr::group_by(dbs_bag_id, !!sym(dbs_sheet_name_col)) %>%
     dplyr::mutate(replicates = n()) %>%
     dplyr::select(dbs_bag_id, !!sym(dbs_sheet_name_col), replicates) %>%
     dplyr::rename(label = !!sym(dbs_sheet_name_col)) %>%
-    select(dbs_bag_id, label, replicates) %>%
+    dplyr::select(dbs_bag_id, label, replicates) %>%
     distinct()
   )
   return(res)
@@ -556,13 +556,13 @@ rejoin_dbs_control_sheet_ids <- function(df.payload, con, dbs_sheet_name_col) {
   )
 
   df <- df.payload %>%
-    select(-c(dbs_control_sheet_id)) %>%
+    dplyr::select(-c(dbs_control_sheet_id)) %>%
     inner_join(
       dbReadTable(con, "dbs_control_sheet") %>%
       dplyr::rename(dbs_control_sheet_id = id),
       by = joins
     ) %>%
-    select(dbs_control_sheet_id, all_of(colnames(df.payload)))
+    dplyr::select(dbs_control_sheet_id, all_of(colnames(df.payload)))
 
   return(df)
 }
@@ -605,7 +605,7 @@ join_blood_spot_collections <- function(df.payload, con) {
         c("malaria_blood_control_id", "dbs_control_sheet_id")
       )
     ) %>%
-    select(blood_spot_collection_id, total, dbs_control_sheet_id, all_of(colnames(df.payload)))
+    dplyr::select(blood_spot_collection_id, total, dbs_control_sheet_id, all_of(colnames(df.payload)))
 
   return(df)
 }
@@ -617,49 +617,23 @@ join_blood_spot_collections <- function(df.payload, con) {
 #' @param count_col Column name in df.payload for count.
 #' @param dbs_control_sheet_id Column name in df.payload for DBS control sheet ID.
 #' @return Result from the dbAppendTable indicating if the collections were added successfully.
-add_new_blood_spot_collections <- function(df.payload, con, count_col, dbs_control_sheet_id) {
+add_new_blood_spot_collections <- function(df.payload, con, count_col) {
   res <- dbAppendTable(con, "blood_spot_collection", df.payload %>%
-    filter(is.na(blood_spot_collection_id)) %>%
-    group_by(malaria_blood_control_id, dbs_control_sheet_id) %>%
+    dplyr::filter(is.na(blood_spot_collection_id)) %>%
+    dplyr::group_by(malaria_blood_control_id, dbs_control_sheet_id) %>%
     dplyr::mutate(
       count = as.integer(!!sym(count_col)),
       total = ifelse(is.na(total), 0, as.integer(total)),
       count = sum(count) + total
     ) %>%
-    select(-c(total)) %>%
+    dplyr::select(-c(total)) %>%
     ungroup() %>%
-    select(malaria_blood_control_id, dbs_control_sheet_id, count) %>%
+    dplyr::select(malaria_blood_control_id, dbs_control_sheet_id, count) %>%
     distinct() %>%
     dplyr::rename(total = count)
   )
 
   return(res)
-}
-
-#' Re-join with updated blood spot collections
-#'
-#' This function updates the payload dataframe by rejoining with the updated blood spot collections.
-#' It removes the original 'blood_spot_collection_id' from the payload and excludes 'total' and 'exhausted' columns 
-#' from the blood spot collections during the join.
-#'
-#' @param df.payload A dataframe with payload data.
-#' @param con A database connection object.
-#' @return A dataframe with rejoined blood spot collections.
-rejoin_with_updated_blood_spot_collections <- function(df.payload, con) {
-  df.updated <- df.payload %>%
-    dplyr::select(-c(blood_spot_collection_id)) %>%
-    dplyr::inner_join(
-      dbReadTable(con, "blood_spot_collection") %>%
-      dplyr::rename(blood_spot_collection_id = id) %>%
-      dplyr::select(-c(total, exhausted)),
-      by = setNames(
-        c("malaria_blood_control_id", "dbs_control_sheet_id"),
-        c("malaria_blood_control_id", "dbs_control_sheet_id")
-      )
-    ) %>%
-    dplyr::select(blood_spot_collection_id, dbs_control_sheet_id, all_of(colnames(df.payload)))
-  
-  return(df.updated)
 }
 
 #' Process Blood Spot Collection Data
@@ -674,12 +648,9 @@ process_blood_spot_collection_data <- function(df.payload, con, count_col) {
   df.payload <- join_blood_spot_collections(df.payload, con)
 
   # Add new blood spot collections if they don't exist
-  res <- add_new_blood_spot_collections(df.payload, con, count_col, "dbs_control_sheet_id")
+  res <- add_new_blood_spot_collections(df.payload, con, count_col)
 
   cat("Blood Spot Collections Added: ", res, "\n")
-
-  # Re-join with the updated blood spot collections
-  df.payload <- rejoin_with_updated_blood_spot_collections(df.payload, con)
 
   return(df.payload)
 }
@@ -973,21 +944,21 @@ retrieve_compositions_by_identifier <- function(con, identifiers) {
 process_and_append_compositions <- function(con, user_data) {
     new_compositions <- prepare_new_compositions(user_data)
 
-    dbAppendTable(con, "composition", new_compositions %>% select(label, index, legacy))
+    dbAppendTable(con, "composition", new_compositions %>% dplyr::select(label, index, legacy))
 
     unique_labels <- unique(new_compositions$label)
     newly_added_compositions <- retrieve_compositions_by_label(con, unique_labels)
 
     composition_strain_data <- dplyr::inner_join(new_compositions, newly_added_compositions, by = c("index", "label", "legacy")) %>%
-      select(id, Strains, Percentages)
+      dplyr::select(id, Strains, Percentages)
 
     composition_strain_data_long <- split_and_unnest_columns(composition_strain_data, "Strains", "Percentages", append = "Long") %>%
         dplyr::rename(composition_id = id, strain = StrainsLong, percentage = PercentagesLong) %>%
         dplyr::left_join(dbReadTable(con, "strain") %>% dplyr::rename(strain_id = id), by = c("strain" = "name"))
 
-    appended_rows <- dbAppendTable(con, "composition_strain", composition_strain_data_long %>% select(composition_id, strain_id, percentage))
+    appended_rows <- dbAppendTable(con, "composition_strain", composition_strain_data_long %>% dplyr::select(composition_id, strain_id, percentage))
 
-    new_compositions_return <- new_compositions %>% select(label, index, legacy)
+    new_compositions_return <- new_compositions %>% dplyr::select(label, index, legacy)
     return(new_compositions_return)
 }
 
@@ -1013,13 +984,13 @@ upload_compositions <- function(user_data, database = Sys.getenv("SDB_PATH")) {
         user_data_identifiers <- get_unique_compositions_from_user_data(user_data)
         db_data_identifiers_updated <- get_unique_compositions_from_database(con)
 
-        # Full join fuzzy merge, then filter (could add the 'inner join' to the function but this is fine.)
+        # Full join fuzzy merge, then dplyr::filter (could add the 'inner join' to the function but this is fine.)
         merged_data <- fuzzy_merge_unique_compositions(user_data_identifiers, db_data_identifiers_updated) %>%
           rowwise() %>%
-          filter(!is.null(sorted_percentages_user)) # keep the data we want (user data)!
+          dplyr::filter(!is.null(sorted_percentages_user)) # keep the data we want (user data)!
 
-        matched_user_data <- merged_data %>% filter(match)
-        unmatched_user_data <- merged_data %>% filter(!match)
+        matched_user_data <- merged_data %>% dplyr::filter(match)
+        unmatched_user_data <- merged_data %>% dplyr::filter(!match)
 
         # Continue if there are matching compositions
         if(nrow(matched_user_data) > 0) {

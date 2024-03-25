@@ -36,25 +36,8 @@ ArchiveAndDeleteControls <- function(operation, control_type, data, comment, sta
   state_id <- filter(CheckTable("state"), name %in% "Archived")$id
 
   stopifnot("Operation is not valid" = operation %in% c("archive", "delete", "unarchive"))
-
-  # if (operation == "delete") {
-  #   if (control_type == "dbs_sheet") {
-  #     dbs_control_sheet_df <- tbl(con, "malaria_blood_control") %>%
-  #       inner_join(tbl(con, "blood_spot_collection") %>% dplyr::rename(malaria_blood_control_id=id), by = c("malaria_blood_control_id")) %>%
-  #       filter(id %in% data$control_id) %>%
-  #       collect()
-
-      
-
-
-
-
-  #     tbl(con, "malaria_blood_control") %>%
-  #   }
-
-  # }
-
 }
+
 
 #' Archive and Delete Samples
 #' @return None
@@ -114,19 +97,7 @@ ArchiveAndDeleteSamples <- function(operation, data, comment, status_id, verific
       return_message <- paste("Archived", length(data$storage_container_id), "Successfully")
       message(return_message)
     }
-  }
-
-  # else if(operation == "unarchive"){
-  #   for(eval.id in sample_id){
-  #     ModifyTable(database = database,
-  #                           "storage_container",
-  #                           info_list = list(exhausted = 0),
-  #                           id = eval.id)
-  #   }
-  # message(paste("Un-archived", length(sample_id), "Successfully"))
-  # }
-
- else{
+  } else{
 
     # VERIFY DELETION
     if(verification == TRUE){
