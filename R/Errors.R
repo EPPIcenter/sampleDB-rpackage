@@ -77,6 +77,7 @@ ErrorData <- R6::R6Class(
     description = NULL,
     columns = NULL,
     rows = NULL,
+    data_frame = NULL,
 
     #' @description Initialize method for the ErrorData class.
     #' @details This method sets up a new ErrorData object. If a data.frame is provided, it will use its column names
@@ -89,16 +90,16 @@ ErrorData <- R6::R6Class(
     #' Default is NULL.
     #' @return An initialized ErrorData object.
     initialize = function(description = NULL, columns = NULL, rows = NULL, data_frame = NULL) {
+      self$description <- description
+      
       if (!is.null(data_frame)) {
-        self$columns = colnames(data_frame)
-        self$rows = data_frame$RowNumber
-      } else if (!is.null(columns) && !is.null(rows)) {
+        self$data_frame <- data_frame
+        self$columns <- colnames(data_frame)
+        self$rows <- data_frame$RowNumber
+      } else {
         self$columns <- columns
         self$rows <- rows
-      } else {
-        stop("Either provide a data.frame or both columns and rows.")
       }
-      self$description <- description
     }
   )
 )
@@ -168,7 +169,7 @@ ValidationErrorCollection <- R6::R6Class(
     #' @method ValidationErrorCollection get_combined_error_data
     #' @description This method combines the error details with the user data and returns it as a data frame.
     get_combined_error_data = function() {
-      # Create an error description data frame
+      # Initial creation of an error description dataframe
       error_desc_df <- do.call(rbind, lapply(self$error_data_list, function(error) {
         data.frame(
           RowNumber = error$rows,
@@ -182,16 +183,35 @@ ValidationErrorCollection <- R6::R6Class(
       
       # Merge the error descriptions with the user data
       combined_data <- dplyr::left_join(self$user_data, error_desc_df, by = "RowNumber")
-
+      
+      # Identify new columns from ErrorData that are not in the user data
+      new_columns <- Reduce(union, lapply(self$error_data_list, function(error) error$columns))
+      existing_columns <- names(self$user_data)
+      new_columns_to_add <- setdiff(new_columns, existing_columns)
+      
+      # Initialize these new columns in combined_data with NA
+      combined_data[new_columns_to_add] <- lapply(new_columns_to_add, function(nc) NA)
+      
+      # Populate new column values for the respective rows based on ErrorData
+      lapply(self$error_data_list, function(error) {
+        if (!is.null(error$data_frame)) {
+          # Use the error's data_frame directly to update combined_data for the specified rows
+          for (column in error$columns) {
+            combined_data[error$rows, column] <- error$data_frame[[column]]
+          }
+        }
+      })
+      
       # Replace NA in Description with "No error"
       combined_data$Description[is.na(combined_data$Description)] <- "No error"
-
-      # Sort the data frame so that rows with errors are on top
+      
+      # Sort the dataframe so that rows with errors are on top
       combined_data <- combined_data[order(combined_data$Description != "No error", decreasing = TRUE), ]
-
-      # Reorder the columns to make sure RowNumber and Description are first
-      combined_data <- combined_data[, c("RowNumber", "Description", setdiff(names(combined_data), c("RowNumber", "Description")))]
-
+      
+      # Ensure 'RowNumber' and 'Description' are the first columns, followed by the original and new columns
+      column_order <- c("RowNumber", "Description", existing_columns, new_columns_to_add)
+      combined_data <- combined_data[, column_order]
+      
       return(combined_data)
     }
   )

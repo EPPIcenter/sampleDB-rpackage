@@ -3,7 +3,7 @@ library(RSQLite)
 library(DBI)
 library(stringr)
 library(htmltools)
-
+library(tidyr)
 
 AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEvent) {
 
@@ -914,6 +914,188 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
         names(user.selected.rows) <- gsub(" ", "", names(user.selected.rows), fixed = TRUE)
 
         write.csv(user.selected.rows, con, row.names = FALSE, quote = FALSE)
+      }
+    )
+  })
+
+  observeEvent(input$DelArchAdvancedSearchLink, {
+    showModal(modalDialog(
+      title = "Advanced Micronix Tube Search",
+      tags$p("Upload a scanned micronix plate file to search for samples."),
+      tags$ul(
+        tags$li("Only one file may be uploaded at a time"),
+        tags$li("The name of the file should be name of the plate (e.g. 'Plate1.csv')")
+      ),
+      hr(),
+      radioButtons("AdvancedSearchUploadFileType", "Choose a file type", choices = get_file_types_for_sample("micronix"), inline = TRUE),
+      fileInput("AdvancedSearchFileUpload", "Choose CSV File", accept = c("text/csv", "text/comma-separated-values,text/plain", ".csv"), multiple = FALSE),
+      conditionalPanel(
+        condition = "input.AdvancedSearchUploadFileType == 'traxcer'",
+        checkboxInput("AdvanceSearchTraxcerStripFromFilename", "Remove datetime strip from filename",value = TRUE, width = NULL)
+      ),
+      actionButton("AdvancedSearchAction", "Run Search"),
+      tags$div(id = "resultsSummary", uiOutput("resultsList")),
+      downloadButton("downloadErrors", "Download Error Details"),
+      size = "l",
+      footer = modalButton("Close")
+    ))
+  })
+
+  observeEvent(input$AdvancedSearchAction, {
+    req(input$AdvancedSearchFileUpload) # Ensure a file is uploaded
+
+    results <- NULL
+    plate_name <- NULL
+
+    bOk <- tryCatch({
+      file_path <- input$AdvancedSearchFileUpload$datapath[1]
+      file_column_attr <- get_sample_file_columns("micronix", "move", input$AdvancedSearchUploadFileType)
+
+      actual_plate_name <- sub('\\.csv$', '', input$AdvancedSearchFileUpload$name)
+
+      if(input$AdvancedSearchUploadFileType == "traxcer" && input$AdvanceSearchTraxcerStripFromFilename) {
+        plate_name <- substr(actual_plate_name, 1, nchar(actual_plate_name)-16)
+        if (nchar(plate_name) == 0) {
+          stop_formatting_error(
+            "Traxcer name was completely removed - did you mean to remove the datetime string from the filename?",
+            format_error(
+              actual_plate_name,
+              "If you check the box, the filename must contain the datetime added by Traxcer",
+              "File name was too short"
+            )
+          )
+        }
+      } else {
+        plate_name <- actual_plate_name
+      }
+
+      micronix_search_df <- read_and_preprocess_csv(file_path)
+      micronix_search_df <- set_user_file_header(micronix_search_df, file_column_attr)
+
+      # Find missing columns.
+      missing_columns <- detect_missing_specimen_columns(micronix_search_df, file_column_attr)
+
+      # If there are any missing columns still, throw!
+      if (length(missing_columns) > 0) {
+        stop_formatting_error("Missing required columns", format_error(missing_columns))
+      }
+
+      # Add the plate name column. This function will throw if it already exists in the csv.
+      micronix_search_df <- bind_new_data(micronix_search_df, setNames(plate_name, "PlateName"))
+
+      position_col <- get_position_column_by_sample("micronix", input$AdvancedSearchUploadFileType)
+      micronix_search_df$Position <- dplyr::pull(micronix_search_df, !!rlang::sym(position_col))
+      micronix_search_df$Barcode <- dplyr::pull(micronix_search_df, any_of(c("Barcode", "Tube ID")))
+      micronix_search_df <- dplyr::select(micronix_search_df, Barcode, Position, PlateName)
+
+      # Run the search function for the file
+      results <- search_micronix_tube(database, micronix_search_df)
+      TRUE
+
+    }, formatting_error = function(e) {
+      show_formatting_error_modal(e)
+      FALSE
+    }, error = function(e) {
+      show_general_error_modal(e, input, output)
+      FALSE
+    })
+
+    # Exit early if there is an issue
+    if (!bOk) return (NULL)
+
+    # Extract test names (descriptions) from 'errorCollection'
+    testDescriptionsToUIIDs <- list(
+      "Scanned samples are missing from the database" = "NotFound",
+      "Scanned samples found on a different plate than expected" = "IncorrectLocation",
+      "Samples on the scanned plate have been archived" = "Archived"
+    )
+
+    fileTestDescriptionsToUIIDs <- list(
+      "Scanned sample does not exist in SampleDB" = "NotFound",
+      "Scanned sample is on a different plate than expected" = "IncorrectLocation",
+      "Scanned sample is archived" = "Archived",
+      "No Error" = "Empty",
+      "No Error" = "Correct"
+    )
+
+    get_test_description <- function(test, map) {
+      testDescIdx <- which(map == test)
+      if (length(testDescIdx) == 0) {
+        stop("Test description not found in testDescriptionsToUIIDs")
+      }
+
+      names(map)[testDescIdx]
+    }
+
+    # A helper function to summarize error types from the results DataFrame
+    summarise_error_types <- function(df) {
+      error_split <- df %>%
+        mutate(Status = strsplit(as.character(Status), ";")) %>%
+        unnest(Status) %>%
+        filter(Status != "Correct" & Status != "NoError")
+
+      # Count occurrences of each error type
+      error_summary <- error_split %>%
+        group_by(Status) %>%
+        summarise(count = n(), .groups = 'drop') %>%
+        mutate(errorType = Status) %>%
+        select(errorType, count)
+      
+      return(as.data.frame(error_summary))
+    }
+
+
+    output$resultsList <- renderUI({
+      # Initialize an empty list to store UI elements
+      ui_elements <- list()
+      
+      # Define a mapping for statuses to UI icons and colors for error instances
+      status_ui_mapping <- list(
+        iconError = shiny::icon("exclamation-triangle", class = "text-danger"),
+        textStyleError = "color: #dc3545;",
+        iconNoError = shiny::icon("check-circle", class = "text-secondary"),
+        textStyleNoError = "color: #6c757d;"
+      )
+
+      # Create a summary of errors based on the 'Status' column in 'results'
+      if (!is.null(results) && nrow(results) > 0) {
+        error_summary <- summarise_error_types(results)
+        
+        # Iterate over each status in the mapping
+        for (status in c("NotFound", "IncorrectLocation", "Archived")) {
+          count <- ifelse(status %in% error_summary$errorType, error_summary$count[error_summary$errorType == status], 0)
+          if (count > 0) {
+            ui_element <- tags$div(
+              style = status_ui_mapping$textStyleError,
+              status_ui_mapping$iconError,
+              " ",
+              sprintf("%s: %d instances", status, count)
+            )
+          } else {  # Grey out the error icon and text if there are no instances of the error
+            ui_element <- tags$div(
+              style = status_ui_mapping$textStyleNoError,
+              status_ui_mapping$iconNoError,
+              " ",
+              sprintf("%s: %d instances", status, count)
+            )
+          }
+
+          ui_elements <- c(ui_elements, list(ui_element))
+        }
+      } else {
+        ui_elements <- list(tags$p("No data available."))
+      }
+      
+      do.call(tagList, ui_elements)
+    })
+
+    # Adjust the download button functionality for the consolidated DataFrame
+    output$downloadErrors <- downloadHandler(
+      filename = function() {
+        paste0(sprintf("micronix-plate-search_%s_", plate_name), Sys.Date(), ".csv")
+      },
+      content = function(file) {
+        write.csv(results, file, row.names = FALSE, quote = TRUE)
       }
     )
   })
