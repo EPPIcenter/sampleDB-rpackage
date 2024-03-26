@@ -670,6 +670,10 @@ search_micronix_tube <- function(database, micronix_search_df) {
   storage_container <- tbl(con, "storage_container")
   status <- tbl(con, "status")
   archived_statuses <- tbl(con, sql("SELECT id, name FROM view_archive_statuses"))
+  locations <- tbl(con, "location")
+  study_subject <- tbl(con, "study_subject") %>% dplyr::rename(subject = name)
+  specimen <- tbl(con, "specimen")
+  study <- tbl(con, "study")
 
   # Sanity check
   if (nrow(micronix_search_df) == 0) {
@@ -695,29 +699,52 @@ search_micronix_tube <- function(database, micronix_search_df) {
     dplyr::inner_join(status, by = c("status_id" = "id")) %>%
     dplyr::full_join(micronix_search_tbl, by = c("micronix_barcode" = "Barcode")) %>%
     dplyr::filter((is.na(RowNumber) & !is.na(plate_name)) | !is.na(PlateName)) %>%
-    dplyr::select(micronix_id, RowNumber, micronix_barcode, Position, db_position, status_name = name, plate_name, PlateName)
+    dplyr::left_join(locations, by = c("location_id" = "id")) %>%
+    dplyr::left_join(specimen, by = c("specimen_id" = "id")) %>%
+    dplyr::left_join(study_subject, by = c("study_subject_id" = "id")) %>%
+    dplyr::left_join(study, by = c("study_id" = "id")) %>%
+    dplyr::select(
+      micronix_id,
+      RowNumber,
+      Barcode = micronix_barcode,
+      CurrentWell = Position,
+      DBWell = db_position,
+      status_name = name,
+      DBPlate = plate_name,
+      PlateName,
+      DBFreezer = level_I,
+      DBBasket = level_II,
+      Study = short_code,
+      ID = subject,
+      Date = collection_date
+    ) %>%
+    collect()
 
-  # Find samples that are not in the database but are in the scanned plate
-  missing_from_db <- dplyr::filter(comparison_result, !is.na(RowNumber) & is.na(micronix_id)) %>%
-    dplyr::select(RowNumber, Barcode = micronix_barcode, ExpectedPosition = Position, ActualPosition = db_position, ExpectedPlate = PlateName, ActualPlate = plate_name, ActualStatus = status_name) %>%
-    dplyr::collect()
+  # Output data frame 
+  g <- expand.grid(LETTERS[1:8], 1:12)
+  g <- data.frame(CurrentWell = sprintf("%s%02d", g$Var1, g$Var2))
 
-  # Find samples that are on the scanned plate and in the database, but not on the expected plate 
-  different_plate <- dplyr::filter(comparison_result, !is.na(RowNumber) & !is.na(micronix_id) & plate_name != PlateName) %>%
-    dplyr::select(RowNumber, Barcode = micronix_barcode, ExpectedPosition = Position, ActualPosition = db_position, ExpectedPlate = PlateName, ActualPlate = plate_name, ActualStatus = status_name) %>%
-    dplyr::collect()
+  # Create the confusion matrix. `CorrectError` and `EmptyError` represent the correct (TP)
+  # and non-existing (TN) samples, respectively. `NotFoundError` and `IncorrectLocationError`
+  # represent the missing (FN) and incorrect (FP) samples, respectively. `ArchivedError` indicates
+  # if any scanned samples are in archived status.
+  g %>%
+    dplyr::left_join(comparison_result, by = "CurrentWell") %>%
+    mutate(
+      NotFoundError = ifelse(is.na(micronix_id) & !is.na(Barcode), "NotFound", NA_character_),
+      EmptyError = ifelse(is.na(DBWell) & is.na(Barcode), "Empty", NA_character_),
+      IncorrectLocationError = ifelse(DBPlate != PlateName | DBWell != CurrentWell, "IncorrectLocation", NA_character_),
+      ArchivedError = ifelse(status_name %in% (archived_statuses %>% dplyr::pull(name)), "Archived", NA_character_),
+      CorrectError = ifelse(DBPlate == PlateName & DBWell == CurrentWell, "Correct", NA_character_)
+    ) %>%
+    rowwise() %>%
+    mutate(
+      Status = paste(na.omit(c(NotFoundError, EmptyError, IncorrectLocationError, ArchivedError, CorrectError)), collapse = ";")
+    ) %>%
+    ungroup() %>%
+    select(CurrentWell, Barcode, Status, DBWell, DBPlate, DBBasket, DBFreezer, Study, ID, Date) %>%
+    arrange(CurrentWell)
 
-  # Find samples that are on the scanned plate and are in the database on that plate, but have been set to archived
-  archived_samples <- dplyr::filter(comparison_result, !is.na(RowNumber)) %>%
-    collect() %>% 
-    filter(status_name %in% (archived_statuses %>% dplyr::pull(name))) %>%
-    select(RowNumber, Barcode = micronix_barcode, ExpectedPosition = Position, ActualPosition = db_position, ExpectedPlate = PlateName, ActualPlate = plate_name, ActualStatus = status_name)
-
-  list(
-    missing_from_db = if (nrow(missing_from_db) > 0) missing_from_db else NULL,
-    different_plate = if (nrow(different_plate) > 0) different_plate else NULL,
-    archived_samples = if (nrow(archived_samples) > 0) archived_samples else NULL
-  )
 }
 
 

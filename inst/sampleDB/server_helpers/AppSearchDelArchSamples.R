@@ -3,7 +3,7 @@ library(RSQLite)
 library(DBI)
 library(stringr)
 library(htmltools)
-
+library(tidyr)
 
 AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEvent) {
 
@@ -921,6 +921,12 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
   observeEvent(input$DelArchAdvancedSearchLink, {
     showModal(modalDialog(
       title = "Advanced Micronix Tube Search",
+      tags$p("Upload a scanned micronix plate file to search for samples."),
+      tags$ul(
+        tags$li("Only one file may be uploaded at a time"),
+        tags$li("The name of the file should be name of the plate (e.g. 'Plate1.csv')")
+      ),
+      hr(),
       radioButtons("AdvancedSearchUploadFileType", "Choose a file type", choices = get_file_types_for_sample("micronix"), inline = TRUE),
       fileInput("AdvancedSearchFileUpload", "Choose CSV File", accept = c("text/csv", "text/comma-separated-values,text/plain", ".csv"), multiple = FALSE),
       conditionalPanel(
@@ -939,6 +945,7 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
     req(input$AdvancedSearchFileUpload) # Ensure a file is uploaded
 
     results <- NULL
+    plate_name <- NULL
 
     bOk <- tryCatch({
       file_path <- input$AdvancedSearchFileUpload$datapath[1]
@@ -989,7 +996,7 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
       show_formatting_error_modal(e)
       FALSE
     }, error = function(e) {
-      show_general_error_modal(e)
+      show_general_error_modal(e, input, output)
       FALSE
     })
 
@@ -998,15 +1005,17 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
 
     # Extract test names (descriptions) from 'errorCollection'
     testDescriptionsToUIIDs <- list(
-      "Scanned samples are missing from the database" = "missing_from_db",
-      "Scanned samples found on a different plate than expected" = "different_plate",
-      "Samples on the scanned plate have been archived" = "archived_samples"
+      "Scanned samples are missing from the database" = "NotFound",
+      "Scanned samples found on a different plate than expected" = "IncorrectLocation",
+      "Samples on the scanned plate have been archived" = "Archived"
     )
 
     fileTestDescriptionsToUIIDs <- list(
-      "Scanned sample does not exist in SampleDB" = "missing_from_db",
-      "Scanned sample is on a different plate than expected" = "different_plate",
-      "Scanned sample is archived" = "archived_samples"
+      "Scanned sample does not exist in SampleDB" = "NotFound",
+      "Scanned sample is on a different plate than expected" = "IncorrectLocation",
+      "Scanned sample is archived" = "Archived",
+      "No Error" = "Empty",
+      "No Error" = "Correct"
     )
 
     get_test_description <- function(test, map) {
@@ -1018,73 +1027,75 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
       names(map)[testDescIdx]
     }
 
-    output$resultsList <- renderUI({ 
-      testList <- lapply(names(results), function(test) {  
-        hasError <- !is.null(results[[test]])
+    # A helper function to summarize error types from the results DataFrame
+    summarise_error_types <- function(df) {
+      error_split <- df %>%
+        mutate(Status = strsplit(as.character(Status), ";")) %>%
+        unnest(Status) %>%
+        filter(Status != "Correct" & Status != "NoError")
 
-        statusIcon <- if(hasError) {
-          shiny::icon("exclamation-triangle", class = "text-danger") # Alert icon for failed tests
-        } else {
-          shiny::icon("check-circle", class = "text-secondary") # Gray icon for passed tests
+      # Count occurrences of each error type
+      error_summary <- error_split %>%
+        group_by(Status) %>%
+        summarise(count = n(), .groups = 'drop') %>%
+        mutate(errorType = Status) %>%
+        select(errorType, count)
+      
+      return(as.data.frame(error_summary))
+    }
+
+
+    output$resultsList <- renderUI({
+      # Initialize an empty list to store UI elements
+      ui_elements <- list()
+      
+      # Define a mapping for statuses to UI icons and colors for error instances
+      status_ui_mapping <- list(
+        iconError = shiny::icon("exclamation-triangle", class = "text-danger"),
+        textStyleError = "color: #dc3545;",
+        iconNoError = shiny::icon("check-circle", class = "text-secondary"),
+        textStyleNoError = "color: #6c757d;"
+      )
+
+      # Create a summary of errors based on the 'Status' column in 'results'
+      if (!is.null(results) && nrow(results) > 0) {
+        error_summary <- summarise_error_types(results)
+        
+        # Iterate over each status in the mapping
+        for (status in c("NotFound", "IncorrectLocation", "Archived")) {
+          count <- ifelse(status %in% error_summary$errorType, error_summary$count[error_summary$errorType == status], 0)
+          if (count > 0) {
+            ui_element <- tags$div(
+              style = status_ui_mapping$textStyleError,
+              status_ui_mapping$iconError,
+              " ",
+              sprintf("%s: %d instances", status, count)
+            )
+          } else {  # Grey out the error icon and text if there are no instances of the error
+            ui_element <- tags$div(
+              style = status_ui_mapping$textStyleNoError,
+              status_ui_mapping$iconNoError,
+              " ",
+              sprintf("%s: %d instances", status, count)
+            )
+          }
+
+          ui_elements <- c(ui_elements, list(ui_element))
         }
-        
-        textStyle <- if(hasError) "color: #dc3545;" else "color: #6c757d;" # Red for error, gray for pass
-        testDesc <- get_test_description(test, testDescriptionsToUIIDs)
-        
-        tags$div(style = paste("margin-bottom: 5px;", textStyle),
-                 statusIcon,
-                 " ",
-                 testDesc)
-      })
-      do.call(tagList, testList)
+      } else {
+        ui_elements <- list(tags$p("No data available."))
+      }
+      
+      do.call(tagList, ui_elements)
     })
 
+    # Adjust the download button functionality for the consolidated DataFrame
     output$downloadErrors <- downloadHandler(
       filename = function() {
-        paste0("combined_search_results-", Sys.Date(), ".csv")
+        paste0(sprintf("micronix-plate-search_%s_", plate_name), Sys.Date(), ".csv")
       },
       content = function(file) {
-
-        # Initialize an empty data frame to hold the combined results
-        combined_errors_df <- bind_rows(
-          lapply(names(results), function(test) {
-            df <- results[[test]]
-            if (!is.null(df)) {
-              df$ErrorType <- get_test_description(test, fileTestDescriptionsToUIIDs)
-              return(df)
-            }
-          })
-        )
-        
-        # If there were no errors, create an empty data frame with the same columns as micronix_search_df
-        if (is.null(combined_errors_df)) {
-          combined_errors_df <- micronix_search_df[integer(0), ]
-        }
-
-        # Make sure ErrotTypes are all kept
-        combined_errors_df <- combined_errors_df %>%
-          group_by(RowNumber) %>%
-          mutate(ErrorType = paste(ErrorType, collapse = ";")) %>%
-          ungroup() %>%
-          distinct()
-
-        # Add Rownumbers to join onto the combined errors df
-        micronix_search_df <- micronix_search_df %>%
-          mutate(RowNumber = row_number()) %>%
-          select(RowNumber)
-
-        # Join back onto the orginal dataframe
-        final_combined_df <- left_join(micronix_search_df, combined_errors_df, by = "RowNumber")
-        
-        # Add an "ErrorType" column to the original micronix_search_df for rows without errors
-        final_combined_df$ErrorType[is.na(final_combined_df$ErrorType)] <- "No error"
-        
-        final_combined_df_output <- final_combined_df %>% 
-          select(ErrorType, Barcode, ExpectedPosition, ActualPosition, ExpectedPlate, ActualPlate, ActualStatus) %>%
-          arrange(desc(ErrorType))
-
-        # Write the combined data frame to CSV
-        write.csv(final_combined_df_output, file, row.names = FALSE)
+        write.csv(results, file, row.names = FALSE, quote = TRUE)
       }
     )
   })

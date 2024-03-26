@@ -33,7 +33,10 @@ UISearchDelArchSamples <- function() {
         fileInput("DelArchSearchByBarcode", label = "Sample Barcodes"),
         selectizeInput("DelArchSearchByManifest", label = "Container", choices = c())
       ),
-      actionLink("DelArchAdvancedSearchLink", "Advanced..."),
+      conditionalPanel(
+        condition = "input.DelArchSearchType == 'samples' && input.DelArchSearchBySampleType == 'micronix'",
+        actionLink("DelArchAdvancedSearchLink", "Advanced...")
+      ),
       conditionalPanel(
         condition = "input.DelArchSearchType == 'controls'",
         radioButtons("DelArchSearchByControlType", "Control Type", choices = get_control_types())
