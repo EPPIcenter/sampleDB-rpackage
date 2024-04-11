@@ -204,7 +204,7 @@ DeleteWholeBloodSamples <- function(whole_blood_tube_ids) {
 
     # DELETE INTERNAL DATA -- delete study subject if it is no longer being referenced,
     # and it is not a control
-    control_ids <- tbl(con, "malaria_blood_control") %>%
+    control_ids <- tbl(conn, "malaria_blood_control") %>%
       pull(study_subject_id)
 
     if(!study_subject_id %in% CheckTableTx(conn = conn, "specimen")$study_subject_id && !study_subject_id %in% control_ids){

@@ -294,9 +294,9 @@ create_controls_for_batch <- function(
 #' @param location_root_col Column name in df.payload for the root location.
 #' @param level_I_col Column name in df.payload for level I location.
 #' @param level_II_col Column name in df.payload for level II location.
-#' @param manifest_name_col Column name in df.payload for manifest name.
+#' @param dbs_bag_col Column name in df.payload for DBS bag name.
 #' @return A dataframe with joined location and bag details.
-join_locations_and_bags <- function(df.payload, con, location_root_col, level_I_col, level_II_col, manifest_name_col) {
+join_locations_and_bags <- function(df.payload, con, location_root_col, level_I_col, level_II_col, dbs_bag_col) {
 
   location_joins <- setNames(
     c("location_root", "level_I", "level_II"),
@@ -305,7 +305,7 @@ join_locations_and_bags <- function(df.payload, con, location_root_col, level_I_
 
   bag_joins <- setNames(
     c("name", "location_id"),
-    c(manifest_name_col, "location_id")
+    c(dbs_bag_col, "location_id")
   )
 
   df <- df.payload %>%

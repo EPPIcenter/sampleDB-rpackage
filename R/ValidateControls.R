@@ -216,6 +216,60 @@ perform_dbs_sheet_db_validations <- function(database, user_data, action) {
   return(errors)
 }
 
+#' Validate DBS Bag Label is unique at a location
+#'
+#' This function checks that the DBS bag label is unique at a location.
+#'
+#' @param con A database connection.
+#' @param table_name The name of the table to check.
+#' @param row_number_col The name of the row number column.
+#' @param bag_label_col The name of the bag label column.
+#' @param freezer_col The name of the freezer column.
+#' @param shelf_col The name of the shelf column.
+#' @param basket_col The name of the basket column.
+#' @param error_if_exists If TRUE, returns an error if the bag label exists. If FALSE, 
+#'   returns an error if the bag label does not exist.
+#' 
+#' @return A list containing validation errors, if any.
+#' @export
+#' @keywords validation
+validate_dbs_bag_label_is_unique <- function(con, table_name, row_number_col, bag_label_col, freezer_col, shelf_col, basket_col, error_if_exists = FALSE) {
+  
+  dbs_bag_tbl <- tbl(con, "dbs_bag") %>% dplyr::rename(dbs_bag_id=id, bag_label=name)
+  location_tbl <- tbl(con, "location") %>% dplyr::rename(location_id=id)
+  
+  # Join tables
+  dbs_bag_location_tbl <- location_tbl %>%
+    inner_join(dbs_bag_tbl, "location_id")
+
+  # Columns to join user table and bag-location table
+  dbs_bag_location_joins <- setNames(
+    c("bag_label", "location_root", "level_I", "level_II"),
+    c(bag_label_col, shelf_col, freezer_col, basket_col)
+  )
+
+  df <- tbl(con, table_name) %>%
+    dplyr::inner_join(dbs_bag_location_tbl, by = dbs_bag_location_joins) %>%
+    dplyr::select(all_of(c(row_number_col, bag_label_col, freezer_col, shelf_col, basket_col))) %>%
+    dplyr::collect()
+
+  if (error_if_exists) {
+    if (nrow(df) > 0) {
+      error_message <- sprintf("DBS bag label is not unique at location %s.", basket_col)
+      return(ErrorData$new(description = error_message, data_frame = df))
+    }
+  } else {
+    if (nrow(df) == 0) {
+      error_message <- sprintf("DBS bag label could not be found at location %s.", basket_col)
+      return(ErrorData$new(description = error_message, data_frame = df))
+    }
+  }
+  
+  return(NULL)  
+}
+
+
+
 #' Validate DBS Sheet Create
 #'
 #' Conducts specific validation checks for creating DBS sheet controls.
@@ -229,6 +283,7 @@ validate_dbs_sheet_create <- function(dbs_sheet_test) {
   dbs_sheet_test(check_composition_id_exists, "Label", "Index", "LegacyLabel", error_if_exists = FALSE)
   dbs_sheet_test(validate_study_reference_db, "Batch", controls = TRUE)
   dbs_sheet_test(validate_location_reference_db, "DBS_FreezerName", "DBS_ShelfName", "DBS_BasketName")
+  dbs_sheet_test(validate_dbs_bag_label_is_unique, "BagName", "DBS_FreezerName", "DBS_ShelfName", "DBS_BasketName", error_if_exists = TRUE)
 }
 
 #' Validate DBS Sheet Extraction

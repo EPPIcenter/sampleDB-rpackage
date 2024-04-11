@@ -30,7 +30,13 @@ read_user_csv <- function(user_csv) {
 preprocess_csv <- function(user_file) {
 
   user_file[user_file == ""] <- NA
-  user_file[] <- lapply(user_file, function(x) as.character(gsub("[\n\t,]", "", x)))
+  
+  # Remove unwanted characters and trim whitespace
+  user_file[] <- lapply(user_file, function(x) {
+    x <- as.character(x)
+    x <- gsub("[\n\t,]", "", x)  # Remove newline, tab, and commas
+    trimws(x)  # Trim leading and trailing whitespaces
+  })
 
   empty_rows <- rowSums(user_file == "" | is.na(user_file) | is.null(user_file)) == ncol(user_file)
   empty_cols <- colSums(user_file == "" | is.na(user_file) | is.null(user_file)) == nrow(user_file)
@@ -821,6 +827,8 @@ prepare_matrix_position_column <- function(user_data, dimensions, expected_posit
 #' This function processes a dataframe to convert density values that might be in various 
 #' representations (e.g., "10K", "10k") into their real number equivalents. 
 #' For instance, "10K" or "10k" will be converted to 10000.
+#'
+#' If the density value is "neg" or "unk", it will be converted to 0 and -1, respectively.
 #'
 #' @param user_data A dataframe containing user data with density values.
 #' @param density_col A string specifying the column name of the density values in `user_data`.

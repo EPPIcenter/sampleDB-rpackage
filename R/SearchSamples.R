@@ -100,7 +100,7 @@ SearchControls <- function(filters, control_type = NULL, database = Sys.getenv("
 
       sql <- sql %>%
         inner_join(tbl(con, "blood_spot_collection") %>% dplyr::rename(blood_spot_collection_id = id), by = c("malaria_blood_control_id")) %>%
-        inner_join(tbl(con, "dbs_control_sheet") %>% dplyr::rename(dbs_control_sheet_id = id), by = c("dbs_control_sheet_id")) %>%
+        inner_join(tbl(con, "dbs_control_sheet") %>% dplyr::rename(dbs_control_sheet_id = id, sheet_label=label), by = c("dbs_control_sheet_id")) %>%
         inner_join(tbl(con, "dbs_bag") %>% dplyr::rename(dbs_bag_id = id, dbs_bag_label = name), by = c("dbs_bag_id"))
 
       if (filters$state == "Archived") {
@@ -148,7 +148,7 @@ SearchControls <- function(filters, control_type = NULL, database = Sys.getenv("
           dplyr::mutate(n_strain = format_composition_types(n_strain))
 
         results = results %>%
-          dplyr::select(malaria_blood_control_id, archived_dbs_blood_spot_id, archived_spots_count, reason, archived_date, batch,control_uid,n_strain,density,percentage,strain,dbs_bag_label,total,exhausted,location_root,level_I,level_II) %>%
+          dplyr::select(malaria_blood_control_id, archived_dbs_blood_spot_id, archived_spots_count, reason, archived_date, batch,control_uid,n_strain,density,percentage,strain,sheet_label,dbs_bag_label,total,exhausted,location_root,level_I,level_II) %>%
           dplyr::mutate(reason = ifelse(reason == "", NA, reason)) %>%  # NA will be translated to '-' in the UI)
           dplyr::rename(
             ControlID = malaria_blood_control_id,
@@ -162,7 +162,8 @@ SearchControls <- function(filters, control_type = NULL, database = Sys.getenv("
             Density = density,
             Percentage = percentage,
             Strain = strain,
-            Label = dbs_bag_label,
+            SheetName = sheet_label,
+            BagName = dbs_bag_label,
             Total = total,
             Exhausted = exhausted,
             FreezerName = location_root,
@@ -181,7 +182,7 @@ SearchControls <- function(filters, control_type = NULL, database = Sys.getenv("
           dplyr::mutate(n_strain = format_composition_types(n_strain))
       
         results = results %>%
-          select(malaria_blood_control_id, blood_spot_collection_id, batch,control_uid,n_strain,density,percentage,strain,dbs_bag_label,total,exhausted,location_root,level_I,level_II) %>%
+          select(malaria_blood_control_id, blood_spot_collection_id, batch,control_uid,n_strain,density,percentage,strain,sheet_label,dbs_bag_label,total,exhausted,location_root,level_I,level_II) %>%
           dplyr::rename(
             ControlID = malaria_blood_control_id,
             CollectionID = blood_spot_collection_id,  # Active spots
@@ -191,7 +192,8 @@ SearchControls <- function(filters, control_type = NULL, database = Sys.getenv("
             Density = density,
             Percentage = percentage,
             Strain = strain,
-            Label = dbs_bag_label,
+            SheetName = sheet_label,
+            BagName = dbs_bag_label,
             Total = total,
             Exhausted = exhausted,
             FreezerName = location_root,
@@ -555,11 +557,10 @@ extract_search_criteria <- function(user_csv, search_type) {
   }
 
   # Read the user CSV
-  user_file <- read.csv(file = user_csv, header = FALSE, na.strings = "", blank.lines.skip = TRUE)
-  user_file[user_file == ""] <- NA
-  user_file[] <- lapply(user_file, function(x) as.character(gsub("[\n\t,]", "", x)))
+  user_file <- read_and_preprocess_csv(user_csv)
 
   # Set possible names for columns
+  possible_barcode_names <- c("Barcode", "Barcodes", "Tube Code", "Tube Codes", "TubeCode", "TubeCodes", "TubeID", "Tube ID")
   possible_study_subject_names <- c("Study Subject", "Study Subjects", "StudySubjects", "StudySubject")
   possible_collection_date_names <- c("Collection Date", "CollectionDate", "Collection Dates", "CollectionDates")
   possible_study_code_names <- c("Study Codes", "StudyCodes", "Studies", "Study Code", "StudyCode")
@@ -567,7 +568,7 @@ extract_search_criteria <- function(user_csv, search_type) {
 
   # Set required and optional column names based on search type
   if (search_type == "barcode") {
-    required_user_column_names <- "Barcodes"
+    required_user_column_names <- possible_barcode_names
     optional_user_column_names <- NULL
   } else if (search_type == "study_subject") {
     required_user_column_names <- possible_study_subject_names
@@ -638,6 +639,10 @@ extract_search_criteria <- function(user_csv, search_type) {
     user_file$CollectionDate <- find_and_add_column(user_file, possible_collection_date_names)
     user_file$StudyCode <- find_and_add_column(user_file, possible_study_code_names)
     user_file$SpecimenType <- find_and_add_column(user_file, possible_specimen_type_names)
+  } else if (search_type == "barcode") {
+    user_file$Barcodes <- find_and_add_column(user_file, possible_barcode_names)
+  } else {
+    stop("Invalid search type!!!")
   }
 
   message("Required columns detected.")

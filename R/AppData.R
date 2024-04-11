@@ -586,6 +586,10 @@ get_control_file_columns <- function(control_type, action, file_type = "na", con
     optional_vals <- c(optional_vals, "PlateBarcode")
   }
 
+  if (control_type == "dbs_sheet") {
+    required_vals <- c(required_vals, "BagName") # Just hardcode this for now
+  }
+
   # Cleaning up null values
   required_vals <- required_vals[!is.null(required_vals)]
   conditional_vals <- conditional_vals[!is.null(conditional_vals)]
