@@ -541,6 +541,7 @@ SearchSamples <- function(sample_storage_type, filters = NULL, format = "na", da
 }
 
 
+
 #' Extract Search Criteria from User CSV File
 #'
 #' This function reads a CSV file provided by the user and extracts
@@ -647,6 +648,108 @@ extract_search_criteria <- function(user_csv, search_type) {
 
   message("Required columns detected.")
   return(user_file)
+}
+
+#' Search Micronix Tube Samples
+#'
+#' This function searches through Micronix tube samples in the database to find matches
+#' based on a given DataFrame. It identifies discrepancies in positions, missing samples,
+#' or samples that are in an archived status.
+#'
+#' @param database A string specifying the path to the SQLite database.
+#' @param micronix_search_df A DataFrame containing the micronix tube samples to be searched.
+#'   The DataFrame must contain at least a 'barcode' column.
+#' @return A list containing three DataFrames: `missing_from_db`, `additional_in_db`, and
+#'   `archived_samples`. Each DataFrame provides details on samples that are missing from the
+#'   database, additional in the database but not in the search DataFrame, and samples that are
+#'   in an archived status, respectively.
+#' @export
+search_micronix_tube <- function(database, micronix_search_df) {
+  # Establish database connection
+  con <- dbConnect(RSQLite::SQLite(), database)
+  on.exit(dbDisconnect(con), add = TRUE)
+  
+  # Set up lazy loading for database tables
+  micronix_tube <- tbl(con, "micronix_tube")
+  micronix_plate <- tbl(con, "micronix_plate")
+  storage_container <- tbl(con, "storage_container")
+  status <- tbl(con, "status")
+  archived_statuses <- tbl(con, sql("SELECT id, name FROM view_archive_statuses"))
+  locations <- tbl(con, "location")
+  study_subject <- tbl(con, "study_subject") %>% dplyr::rename(subject = name)
+  specimen <- tbl(con, "specimen")
+  study <- tbl(con, "study")
+
+  # Sanity check
+  if (nrow(micronix_search_df) == 0) {
+    stop("No samples to search for.")
+  }
+
+  # Add RowNumber so that we keep track of the original barcodes from the plate   
+  micronix_search_df <- micronix_search_df %>%
+    group_by(PlateName) %>%
+    mutate(RowNumber = row_number()) %>%
+    ungroup()
+
+  # Convert scanner_input into a lazy table
+  dplyr::copy_to(con, micronix_search_df)
+  micronix_search_tbl <- tbl(con, "micronix_search_df")
+  
+  # Join tables to compare positions and check statuses
+  comparison_result <- micronix_tube %>%
+    dplyr::rename(db_position = position, micronix_id = id, micronix_barcode = barcode) %>%
+    dplyr::inner_join(micronix_plate, by = c("manifest_id" = "id")) %>%
+    dplyr::rename(plate_barcode = barcode, plate_name = name) %>%
+    dplyr::inner_join(storage_container, by = c("micronix_id" = "id")) %>%
+    dplyr::inner_join(status, by = c("status_id" = "id")) %>%
+    dplyr::full_join(micronix_search_tbl, by = c("micronix_barcode" = "Barcode")) %>%
+    dplyr::filter((is.na(RowNumber) & !is.na(plate_name)) | !is.na(PlateName)) %>%
+    dplyr::left_join(locations, by = c("location_id" = "id")) %>%
+    dplyr::left_join(specimen, by = c("specimen_id" = "id")) %>%
+    dplyr::left_join(study_subject, by = c("study_subject_id" = "id")) %>%
+    dplyr::left_join(study, by = c("study_id" = "id")) %>%
+    dplyr::select(
+      micronix_id,
+      RowNumber,
+      Barcode = micronix_barcode,
+      CurrentWell = Position,
+      DBWell = db_position,
+      status_name = name,
+      DBPlate = plate_name,
+      PlateName,
+      DBFreezer = level_I,
+      DBBasket = level_II,
+      Study = short_code,
+      ID = subject,
+      Date = collection_date
+    ) %>%
+    collect()
+
+  # Output data frame 
+  g <- expand.grid(LETTERS[1:8], 1:12)
+  g <- data.frame(CurrentWell = sprintf("%s%02d", g$Var1, g$Var2))
+
+  # Create the confusion matrix. `CorrectError` and `EmptyError` represent the correct (TP)
+  # and non-existing (TN) samples, respectively. `NotFoundError` and `IncorrectLocationError`
+  # represent the missing (FN) and incorrect (FP) samples, respectively. `ArchivedError` indicates
+  # if any scanned samples are in archived status.
+  g %>%
+    dplyr::left_join(comparison_result, by = "CurrentWell") %>%
+    mutate(
+      NotFoundError = ifelse(is.na(micronix_id) & !is.na(Barcode), "NotFound", NA_character_),
+      EmptyError = ifelse(is.na(DBWell) & is.na(Barcode), "Empty", NA_character_),
+      IncorrectLocationError = ifelse(DBPlate != PlateName | DBWell != CurrentWell, "IncorrectLocation", NA_character_),
+      ArchivedError = ifelse(status_name %in% (archived_statuses %>% dplyr::pull(name)), "Archived", NA_character_),
+      CorrectError = ifelse(DBPlate == PlateName & DBWell == CurrentWell, "Correct", NA_character_)
+    ) %>%
+    rowwise() %>%
+    mutate(
+      Status = paste(na.omit(c(NotFoundError, EmptyError, IncorrectLocationError, ArchivedError, CorrectError)), collapse = ";")
+    ) %>%
+    ungroup() %>%
+    select(CurrentWell, Barcode, Status, DBWell, DBPlate, DBBasket, DBFreezer, Study, ID, Date) %>%
+    arrange(CurrentWell)
+
 }
 
 
