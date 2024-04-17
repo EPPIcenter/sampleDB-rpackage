@@ -314,6 +314,10 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
       if (sample_storage_type == "micronix" && file_type=="traxcer") {
         message(sprintf("Removed %d rows with no barcode entries.", sum(is.na(user_file$`Tube ID`))))
         user_file <- user_file[!is.na(user_file$`Tube ID`),]
+
+        # Remove rows with No Code
+        message(sprintf("Removed %d rows with `No Code` in the barcode.", sum(user_file$`Tube ID` == "No Code")))
+        user_file <- user_file[user_file$`Tube ID` != "No Code", ]
       }
 
       user_file <- CheckFormattedFileData(
