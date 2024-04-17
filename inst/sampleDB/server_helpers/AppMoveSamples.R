@@ -415,6 +415,13 @@ AppMoveSamples <- function(session, input, output, database) {
             container_name = manifest_name
           )
 
+          # Special Case. The file can contain the plate name
+          # and will override what is extracted from the file path.
+          # Reassign manifest name the value that is in the resulting
+          # dataframe because it is guaranteed to have either the value
+          # in the file of the value extracted from the filename.
+          manifest_name <- unique(result$manifest_name)
+
           move_data_list <- c(move_data_list, list(result))
           names(move_data_list)[i] <- manifest_name
         }
