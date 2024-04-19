@@ -7,7 +7,13 @@ UpdateLabStudies <- function(session, input, output, database){
   
   #check freezer update
   StudyChangesChecks(input, database, output, ui_elements = ui_elements)
-  
+
+  # Initialize Dropdowns
+  observeEvent(TRUE, {
+    UpdateStudyDropdowns(database, session)
+  }, ignoreNULL = TRUE, once = TRUE)
+
+
   #option1: add study to the database
   observeEvent(
     input[[ui_elements$ui.input$AddStudyAction]],
