@@ -255,40 +255,39 @@ check_micronix_barcodes_exist <- function(con, user_data, row_number_col, micron
 #'
 #' @keywords validation, cryovial
 #' @return An instance of the ErrorData class or NULL.
-check_cryovial_barcodes_exist <- function(con, user_data, row_number_col, cryovial_col, cryovial_box_col, cryovial_box_barcode_col, error_if_exists = TRUE) {
-
+check_cryovial_barcodes_exist <- function(con, user_data, row_number_col, cryovial_col, cryovial_box_col, error_if_exists = TRUE) {
+  
+  # Start by pulling data from user_data table
   df <- tbl(con, user_data) %>%
     filter(!is.na(!!sym(cryovial_col))) %>%
-    left_join(tbl(con, "cryovial_tube"), by = setNames(c("barcode"), c(cryovial_col))) %>%
-    left_join(tbl(con, "cryovial_box") %>% dplyr::rename(cryovial_box_id = id), by = setNames(c("cryovial_box_id"), c(cryovial_box_col)))
+    select(!!sym(row_number_col), !!sym(cryovial_col), !!sym(cryovial_box_col))
 
-  # Adjust join for handling NA in cryovial_box_barcode_col
+  cryovial_tube <- tbl(con, "cryovial_tube") %>% dplyr::select(cryovial_id = id, barcode, manifest_id)
+  cryovial_box <- tbl(con, "cryovial_box") %>% dplyr::select(manifest_id = id, box_name = name)
+
+  container_df <- cryovial_tube %>%
+    left_join(cryovial_box, by = c("manifest_id"))
+
+  # Join with cryovial_tube based on cryovial barcode
   df <- df %>%
-    mutate(cryovial_box_barcode = coalesce(!!sym(cryovial_box_barcode_col), NA_character_)) %>%
-    left_join(tbl(con, "cryovial_box") %>% dplyr::rename(cryovial_box_id = id), by = c("cryovial_box_barcode" = "barcode"))
+    left_join(container_df, by = setNames(c("barcode", "box_name"), c(cryovial_col, cryovial_box_col)))
 
-  # Filter based on unique cryovial barcode within a box, considering the box barcode
-  df <- df %>%
-    group_by(!!sym(cryovial_box_col), !!sym(cryovial_box_barcode_col), !!sym(cryovial_col)) %>%
-    add_count() %>%
-    mutate(duplicate_within_box = n > 1) %>%
-    ungroup()
-
-  # Error handling
+  # Error handling based on existence and duplication criteria
   if (error_if_exists) {
-    df <- df %>% filter(!is.na(id) | duplicate_within_box)
+    df <- df %>% filter(!is.na(cryovial_id))
     error_desc <- "Cryovial is duplicated within a box"
   } else {
-    df <- df %>% filter(is.na(id) & !duplicate_within_box)
+    df <- df %>% filter(is.na(cryovial_id))
     error_desc <- "Cryovial barcode not found in database"
   }
 
+  # Collect the final set of data and check for errors
   df <- df %>% select(!!sym(row_number_col), !!sym(cryovial_col)) %>% collect()
 
   if (nrow(df) > 0) {
     return(ErrorData$new(
       description = error_desc,
-      columns = c(row_number_col, cryovial_col, cryovial_box_col, cryovial_box_barcode_col),
+      columns = c(row_number_col, cryovial_col, cryovial_box_col),
       rows = df[[row_number_col]]
     ))
   }
@@ -296,6 +295,74 @@ check_cryovial_barcodes_exist <- function(con, user_data, row_number_col, cryovi
   return(NULL)
 }
 
+#' Check if boxes have enough unique cryovial barcodes to be easily identifiable.
+#'
+#' @description This function is meant to check whether a box of cryovials is overly similar to another
+#' box in that it could potentially be confused to the end user. This can also be used to quickly
+#' check if a cryovial box has already been uploaded to the database (ie. prevent duplicated uploads). 
+#' This is a problem for cryovials because barcodes must only be unique within a box; they are not universally unique. 
+#'
+#' @param con A database connection object.
+#' @param user_data The name of the table where the user data is temporarily stored in the database.
+#' @param row_number_col The column with the row number in the `user_data`.
+#' @param cryovial_col The column with Cryovial barcodes in the `user_data`.
+#' @param cryovial_box_col The column with Cryovial box IDs in the `user_data`.
+#' @param similarity_tolerance The percent similarity that is tolerated.
+#'
+#' @keywords validation, cryovial
+#' @return An instance of the ErrorData class or NULL.
+validate_box_uniqueness <- function(con, user_data, row_number_col, cryovial_col, cryovial_box_col, similarity_tolerance = 10) {
+
+  # Retrieve user data for cryovial barcodes and box names
+  user_df <- tbl(con, user_data) %>%
+    select(!!sym(row_number_col), !!sym(cryovial_col), !!sym(cryovial_box_col)) %>%
+    collect()
+
+  # Retrieve existing cryovial data from the database
+  existing_cryovials <- tbl(con, "cryovial_tube") %>%
+    select(cryovial_id = id, barcode, manifest_id) %>%
+    collect()
+
+  # Retrieve existing box data from the database
+  existing_boxes <- tbl(con, "cryovial_box") %>%
+    select(manifest_id = id, existing_box_name = name) %>%
+    collect()
+
+  # Join user data with existing cryovial data to find matches
+  matches <- user_df %>%
+    inner_join(existing_cryovials, by = setNames(c("barcode"), c(cryovial_col))) %>%
+    left_join(existing_boxes, by = "manifest_id")
+
+  # Make sure to keep the names of boxes from user data and existing data separate
+  matches <- matches %>%
+    select(!!sym(row_number_col), !!sym(cryovial_col), user_box_name = !!sym(cryovial_box_col), existing_box_name)
+
+  # Calculate the percentage of barcodes from each user's box found in each existing box
+  comparison <- matches %>%
+    group_by(user_box_name, existing_box_name) %>%
+    summarise(count = n(), .groups = "drop") %>%
+    left_join(user_df %>% count(!!sym(cryovial_box_col)), by = c("user_box_name" = cryovial_box_col)) %>%
+    mutate(similarity = count / n * 100) %>%
+    filter(similarity >= similarity_tolerance) %>%
+    ungroup() %>%
+    select(user_box_name, existing_box_name, similarity) %>%
+    left_join(matches, by = c("user_box_name", "existing_box_name")) %>%
+    select(!!sym(row_number_col), !!sym(cryovial_col), user_box_name, existing_box_name) %>%
+    collect() %>%
+    rename(!!sym(cryovial_box_col) := user_box_name)
+
+  # Return results or NULL if no issues are found
+  if (nrow(comparison) > 0) {
+    error_desc <- sprintf("Similarity threshold (%s%%) exceeded between uploaded and existing boxes: %s", similarity_tolerance, paste(unique(comparison$existing_box_name), collapse = ", "))
+    return(ErrorData$new(
+      description = error_desc,
+      columns = c(row_number_col, cryovial_col, cryovial_box_col),
+      rows = unique(comparison[[row_number_col]])
+    ))
+  }
+
+  return(NULL)
+}
 
 #' Validate if barcodes already exist for a given study
 #'
@@ -350,6 +417,7 @@ validate_non_longitudinal_study_subjects <- function(con, table_name, row_number
     inner_join(tbl(con, "study"), by = study_joins, suffix = c("", "_study")) %>%
     inner_join(tbl(con, "study_subject"), by = study_subject_joins, suffix = c("", "_study_subject")) %>%
     filter(is_longitudinal == 0 & !is.na(id_study_subject)) %>%
+    select(all_of(c(row_number_col, study_subject_col, study_short_code_col))) %>%
     collect()
 
   if(nrow(df) > 0) {
@@ -705,7 +773,8 @@ validate_micronix_moves <- function(micronix_test, variable_colnames) {
 #' @return A list object containing validation errors, if any.
 #' @keywords validation
 validate_cryovial_uploads <- function(cryovial_test) {
-  cryovial_test(check_cryovial_barcodes_exist, "Barcode", "BoxName", "BoxBarcode", error_if_exists = TRUE)
+  cryovial_test(check_cryovial_barcodes_exist, "Barcode", "BoxName", error_if_exists = TRUE)
+  cryovial_test(validate_box_uniqueness, "Barcode", "BoxName", similarity_tolerance = 10)
   cryovial_test(check_longitudinal_study_dates, "StudyCode", "CollectionDate")
   cryovial_test(validate_non_longitudinal_study_subjects, "StudyCode", "StudySubject")
   cryovial_test(validate_longitudinal_study, "StudyCode", "StudySubject", "CollectionDate")
