@@ -19,6 +19,9 @@ This function processes a dataframe to convert density values that might be in v
 representations (e.g., "10K", "10k") into their real number equivalents.
 For instance, "10K" or "10k" will be converted to 10000.
 }
+\details{
+If the density value is "neg" or "unk", it will be converted to 0 and -1, respectively.
+}
 \examples{
 user_df <- data.frame(Density = c("1", "10k", "100K"))
 convert_density_representations(user_df, "Density")

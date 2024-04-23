@@ -279,17 +279,10 @@ ControlReference <- function(session, input, output, database, dbUpdateEvent) {
         searchable = TRUE,
         selection = "multiple", 
         onClick = "select",
-        columns = list(
-        .selection = colDef(
-          headerStyle = list(pointerEvents = "none")
-        )
-        ),
         striped = TRUE,
         showPageSizeOptions = TRUE,
         theme = reactableTheme(
           headerStyle = list(
-            "& input[type='checkbox']" = list(display = "none"),
-            "&:hover[aria-sort]" = list(background = "hsl(0, 0%, 96%)"),
             "&[aria-sort='ascending'], &[aria-sort='descending']" = list(background = "hsl(0, 0%, 96%)"),
             borderColor = "#555"
           ),

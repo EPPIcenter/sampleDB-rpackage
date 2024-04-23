@@ -4,12 +4,7 @@
 \alias{add_new_blood_spot_collections}
 \title{Add New Blood Spot Collections}
 \usage{
-add_new_blood_spot_collections(
-  df.payload,
-  con,
-  count_col,
-  dbs_control_sheet_id
-)
+add_new_blood_spot_collections(df.payload, con, count_col)
 }
 \arguments{
 \item{df.payload}{A dataframe containing payload data.}

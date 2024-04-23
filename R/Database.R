@@ -263,3 +263,66 @@ init_db_conn <- function(db_path = Sys.getenv("SDB_PATH")) {
 
   return(con)
 }
+
+
+#' Flatten all database tables by sample type
+#' 
+#' This function is a utility function to pull all samples from the database.
+#'
+#' @param sample_storage_type Samples to view by type. Options are 'micronix' and 'cryovial'.
+#' @param database The path to the database.
+#' 
+#' @import RSQLite
+#' @import dplyr
+#' @import tidyr
+#' @export
+create_flat_view_by_sample_type <- function(sample_storage_type, database = Sys.getenv("SDB_PATH")) {
+  
+  stopifnot("Sample storage type is not available for this function." = sample_storage_type %in% c('micronix', 'cryovial'))
+  
+  con <- dbConnect(SQLite(), database)
+  
+  join_by_sample_metadata <- function(sample_sql) {
+    study_tbl <- tbl(con, "study") %>% select(study_id = id, short_code)
+    study_subject_tbl <- tbl(con, "study_subject") %>% select(study_subject_id = id, study_subject = name, study_id)
+    specimen_tbl <- tbl(con, "specimen") %>% select(specimen_type_id, specimen_id = id, study_subject_id, collection_date)
+    specimen_type_tbl <- tbl(con, "specimen_type") %>% select(specimen_type = name, specimen_type_id = id)
+    storage_container_tbl <- tbl(con, "storage_container") %>% select(id, specimen_id, state_id, status_id)
+    
+    sample_sql %>%
+      inner_join(storage_container_tbl, by = "id") %>%
+      inner_join(specimen_tbl, by = "specimen_id") %>%
+      inner_join(specimen_type_tbl, by = "specimen_type_id") %>%
+      inner_join(study_subject_tbl, by = "study_subject_id") %>%
+      inner_join(study_tbl, by = "study_id")
+  }
+  
+  location_tbl <- tbl(con, "location") %>% select(location_id = id, location_root, level_I, level_II)
+  state_tbl <- tbl(con, "state") %>% select(state_id = id, state = name)
+  status_tbl <- tbl(con, "status") %>% select(status_id = id, status = name)
+  
+  if (sample_storage_type == "micronix") {
+    micronix_tbl <- tbl(con, "micronix_tube") %>% select(id, barcode, position, manifest_id)
+    micronix_plate_tbl <- tbl(con, "micronix_plate") %>% select(manifest_id = id, plate_name = name, plate_barcode = barcode, location_id)
+    sql <- micronix_tbl %>% 
+      inner_join(micronix_plate_tbl, by = "manifest_id")
+    sql <- join_by_sample_metadata(sql)
+  } else if (sample_storage_type == "cryovial") {
+    cryovial_tbl <- tbl(con, "cryovial_tube") %>% select(id, barcode, position, manifest_id)
+    cryovial_box_tbl <- tbl(con, "cryovial_box") %>% select(manifest_id = id, box_name = name, box_barcode = barcode, location_id)
+    sql <- cryovial_tbl %>%
+      inner_join(cryovial_box_tbl, by = "manifest_id")
+    sql <- join_by_sample_metadata(sql)
+  } else {
+    stop("Unimplemented sample storage type!!!")
+  }
+  
+  # Join the remaining sample data tables and return the results
+  sql %>% 
+    inner_join(location_tbl, by = "location_id") %>%
+    inner_join(state_tbl, by = "state_id") %>%
+    inner_join(status_tbl, by = "status_id") %>%
+    select(!ends_with("_id")) %>%
+    collect()
+
+}

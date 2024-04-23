@@ -10,7 +10,7 @@ join_locations_and_bags(
   location_root_col,
   level_I_col,
   level_II_col,
-  manifest_name_col
+  dbs_bag_col
 )
 }
 \arguments{
@@ -24,7 +24,7 @@ join_locations_and_bags(
 
 \item{level_II_col}{Column name in df.payload for level II location.}
 
-\item{manifest_name_col}{Column name in df.payload for manifest name.}
+\item{dbs_bag_col}{Column name in df.payload for DBS bag name.}
 }
 \value{
 A dataframe with joined location and bag details.
