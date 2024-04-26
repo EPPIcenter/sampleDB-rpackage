@@ -1040,6 +1040,18 @@ prepare_control_data_for_validation <- function(control_type, user_data, action,
   user_data <- normalize_composition_ids(user_data, "CompositionID", "Label", "Index", "LegacyLabel")
   user_data <- add_row_numbers(user_data)
 
+  # Batches are dates and must be in YYYY-MM-DD
+  # format because that is how they are stored in the database.
+  # If the batch in the CSV does not have the correct zero-fill,
+  # then it will fail validation. Add the zero fill for the user
+  # here since the batch in the database is generated programatically,
+  # and all we need is for the user to match it.
+  #
+  # 'Batch' column is guaranteed to exist at this stage but throw if it does not
+  # exist for whatever reason.
+  stopifnot("Batch could not be found!!!" = ("Batch" %in% colnames(user_data)))
+  user_data$Batch <- as.character(lubridate::as_date(user_data$Batch))
+
   # Add conditional and optional columns with NA as default values if they do not exist
   conditional_columns <- file_column_attr$conditional
   optional_columns <- file_column_attr$optional
