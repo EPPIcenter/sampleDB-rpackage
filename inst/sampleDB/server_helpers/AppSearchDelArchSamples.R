@@ -1149,7 +1149,7 @@ UpdateSampleSelections <- function(session, input, keepCurrentSelection = FALSE)
   
   sapply(names(choices_list), function(input_name) {
     # Adjust the selected argument based on keepCurrentSelection parameter
-    current_selected <- if (keepCurrentSelection) input[[input_name]] else FALSE
+    current_selected <- if (keepCurrentSelection) input[[input_name]] else ""
     
     updateSelectizeInput(
       session,
