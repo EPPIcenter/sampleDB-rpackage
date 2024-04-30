@@ -227,11 +227,11 @@ upload_extracted_dna <- function(user_data, control_extraction, database = Sys.g
       eval.study_subject_id <- filter(CheckTableTx(conn = conn, "study_subject"), name == eval.subject, study_id == eval.study_id)$id
 
       #3a. check if this sample exists (subject+study+specimen_type) in the database
-
-      tmp_table.specimen = dbReadTable(conn, "specimen") %>%
-        select(study_subject_id, specimen_type_id, collection_date) %>%
-        dplyr::mutate(collection_date=as.character(lubridate::as_date(collection_date))) %>%
-        inner_join(tibble(study_subject_id = eval.study_subject_id, specimen_type_id = eval.specimen_type_id, collection_date = eval.collection_date), by = c("study_subject_id", "specimen_type_id", "collection_date"))
+      tmp_table.specimen <- inner_join(dbReadTable(conn = conn, "specimen") %>%
+                                        select("study_subject_id", "specimen_type_id", "collection_date") %>%
+                                        dplyr::mutate(collection_date = as.character(collection_date)),
+                                       tibble(study_subject_id = eval.study_subject_id, specimen_type_id = eval.specimen_type_id, collection_date = eval.collection_date),
+                                       by = c("study_subject_id", "specimen_type_id", "collection_date"))
 
       #if this upload item's sample exists in the database, then get the necessary "specimen" id
       if(nrow(tmp_table.specimen) > 0){
