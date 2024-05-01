@@ -743,7 +743,7 @@ validate_micronix_uploads <- function(micronix_test, variable_colnames) {
   micronix_test(validate_study_reference_db, "StudyCode")
   micronix_test(validate_specimen_type_db, "SpecimenType")
   micronix_test(validate_location_reference_db, "FreezerName", "ShelfName", "BasketName")
-
+  micronix_test(validate_non_longitudinal_study_subjects, "StudyCode", "StudySubject")
   micronix_test(check_longitudinal_study_dates, "StudyCode", "CollectionDate")
   micronix_test(validate_empty_micronix_well_upload,  "Position", "PlateName", "PlateBarcode")
 }
