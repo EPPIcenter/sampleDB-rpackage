@@ -414,9 +414,12 @@ validate_non_longitudinal_study_subjects <- function(con, table_name, row_number
   study_subject_joins <- setNames(c("name"), c(study_subject_col))
 
   df <- tbl(con, table_name) %>%
-    inner_join(tbl(con, "study"), by = study_joins, suffix = c("", "_study")) %>%
-    inner_join(tbl(con, "study_subject"), by = study_subject_joins, suffix = c("", "_study_subject")) %>%
-    filter(is_longitudinal == 0 & !is.na(id_study_subject)) %>%
+    dplyr::left_join(tbl(con, "study"), by = study_joins, suffix = c("", "_study")) %>%
+    dplyr::left_join(tbl(con, "study_subject"), by = study_subject_joins, suffix = c("", "_study_subject")) %>%
+    dplyr::group_by(!!rlang::sym(study_subject_col)) %>%
+    dplyr::mutate(n = n()) %>%
+    filter(is_longitudinal == 0 & (!is.na(id_study_subject) | n > 1)) %>%
+    ungroup() %>%
     select(all_of(c(row_number_col, study_subject_col, study_short_code_col))) %>%
     collect()
 
