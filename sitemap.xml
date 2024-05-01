@@ -1,51 +1,60 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://eppicenter.github.io/sampleDB-rpackage/404.html</loc>
+    <loc>https://eppicenter.github.io/sampleDB/404.html</loc>
   </url>
   <url>
-    <loc>https://eppicenter.github.io/sampleDB-rpackage/LICENSE-text.html</loc>
+    <loc>https://eppicenter.github.io/sampleDB/LICENSE-text.html</loc>
   </url>
   <url>
-    <loc>https://eppicenter.github.io/sampleDB-rpackage/LICENSE.html</loc>
+    <loc>https://eppicenter.github.io/sampleDB/LICENSE.html</loc>
   </url>
   <url>
-    <loc>https://eppicenter.github.io/sampleDB-rpackage/authors.html</loc>
+    <loc>https://eppicenter.github.io/sampleDB/authors.html</loc>
   </url>
   <url>
-    <loc>https://eppicenter.github.io/sampleDB-rpackage/index.html</loc>
+    <loc>https://eppicenter.github.io/sampleDB/index.html</loc>
   </url>
   <url>
-    <loc>https://eppicenter.github.io/sampleDB-rpackage/reference/ArchiveAndDeleteSamples.html</loc>
+    <loc>https://eppicenter.github.io/sampleDB/reference/ArchiveAndDeleteSamples.html</loc>
   </url>
   <url>
-    <loc>https://eppicenter.github.io/sampleDB-rpackage/reference/DeleteEmptyContainer.html</loc>
+    <loc>https://eppicenter.github.io/sampleDB/reference/DeleteEmptyContainer.html</loc>
   </url>
   <url>
-    <loc>https://eppicenter.github.io/sampleDB-rpackage/reference/MoveContainers.html</loc>
+    <loc>https://eppicenter.github.io/sampleDB/reference/MoveContainers.html</loc>
   </url>
   <url>
-    <loc>https://eppicenter.github.io/sampleDB-rpackage/reference/MoveSamples.html</loc>
+    <loc>https://eppicenter.github.io/sampleDB/reference/MoveSamples.html</loc>
   </url>
   <url>
-    <loc>https://eppicenter.github.io/sampleDB-rpackage/reference/RenameContainers.html</loc>
+    <loc>https://eppicenter.github.io/sampleDB/reference/ProcessCSV.html</loc>
   </url>
   <url>
-    <loc>https://eppicenter.github.io/sampleDB-rpackage/reference/Run_SampleDB.html</loc>
+    <loc>https://eppicenter.github.io/sampleDB/reference/RenameContainers.html</loc>
   </url>
   <url>
-    <loc>https://eppicenter.github.io/sampleDB-rpackage/reference/SampleDB_Setup.html</loc>
+    <loc>https://eppicenter.github.io/sampleDB/reference/Run_SampleDB.html</loc>
   </url>
   <url>
-    <loc>https://eppicenter.github.io/sampleDB-rpackage/reference/SearchSamples.html</loc>
+    <loc>https://eppicenter.github.io/sampleDB/reference/SampleDB_Setup.html</loc>
   </url>
   <url>
-    <loc>https://eppicenter.github.io/sampleDB-rpackage/reference/UpdateReferences.html</loc>
+    <loc>https://eppicenter.github.io/sampleDB/reference/SearchSamples.html</loc>
   </url>
   <url>
-    <loc>https://eppicenter.github.io/sampleDB-rpackage/reference/UploadSamples.html</loc>
+    <loc>https://eppicenter.github.io/sampleDB/reference/UpdateReferences.html</loc>
   </url>
   <url>
-    <loc>https://eppicenter.github.io/sampleDB-rpackage/reference/index.html</loc>
+    <loc>https://eppicenter.github.io/sampleDB/reference/UploadSamples.html</loc>
+  </url>
+  <url>
+    <loc>https://eppicenter.github.io/sampleDB/reference/cryovial_na.html</loc>
+  </url>
+  <url>
+    <loc>https://eppicenter.github.io/sampleDB/reference/index.html</loc>
+  </url>
+  <url>
+    <loc>https://eppicenter.github.io/sampleDB/reference/micronix_na.html</loc>
   </url>
 </urlset>
