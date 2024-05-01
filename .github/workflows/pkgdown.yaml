@@ -15,7 +15,7 @@ jobs:
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - uses: r-lib/actions/setup-pandoc@v2
 
@@ -27,6 +27,12 @@ jobs:
         with:
           extra-packages: any::pkgdown
           needs: website
+
+      # Add a step to install your package explicitly
+      - name: Install sampleDB Package
+        run: |
+          R -e 'install.packages("remotes")'
+          Rscript -e 'remotes::install_local(dependencies = TRUE)'
 
       - name: Deploy package
         run: |
