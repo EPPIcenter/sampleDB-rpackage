@@ -1,5 +1,3 @@
-library(jsonlite)
-
 #' Helper function to read JSON files
 #'
 #' Reads the JSON files provided by the filename.
@@ -7,7 +5,7 @@ library(jsonlite)
 #' @param filename The name of the JSON file to be read.
 #' 
 #' @return A list structure containing the contents of the JSON file.
-#' 
+#' @importFrom jsonlite fromJSON
 #' @keywords internal
 #' @noRd
 read_json_file <- function(filename) {

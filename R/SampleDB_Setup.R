@@ -626,7 +626,7 @@ get_expected_versions <- function(pkgname) {
 #'   SampleDB_Setup(env = TRUE, db = TRUE, server = TRUE)
 #' }
 #' @export
-#' @import jsonlite
+#' @importFrom jsonlite fromJSON
 #' @keywords setup
 SampleDB_Setup <- function(env=TRUE, db=TRUE, server=TRUE, reset_env_variables=FALSE) {
 

@@ -1,6 +1,6 @@
 library(shiny)
 library(shinyjs)
-library(purrr)
+# library(purrr)
 library(RSQLite)
 library(reactable)
 library(shinybusy)

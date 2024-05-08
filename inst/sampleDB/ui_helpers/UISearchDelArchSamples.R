@@ -58,8 +58,10 @@ UISearchDelArchSamples <- function() {
           ),
           conditionalPanel(
             condition = "input.DelArchSearchType == 'controls'",
-            selectizeInput("DelArchCompositionTypes", label = "Composition Type", choices = c()),
-            selectizeInput("DelArchSearchByStrains", label = "Strains", choices = c())
+            selectizeInput("DelArchCompositionTypes", label = "Composition Types", choices = c()),
+            selectizeInput("DelArchSearchByStrains", label = "Strains", choices = c()),
+            selectizeInput("DelArchSearchByPercentages", label = "Percentages", choices = c()),
+            selectizeInput("DelArchSearchByDensity", label = "Density", choices = c())
           )
         ),
         conditionalPanel(

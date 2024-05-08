@@ -4,6 +4,7 @@ library(DBI)
 library(stringr)
 library(htmltools)
 library(tidyr)
+library(purrr)
 
 AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEvent) {
 
@@ -15,6 +16,11 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
       status = "In Use"
     )
   )
+
+  # Initialize Dropdowns
+  observeEvent(TRUE, {
+    UpdateSelections(session, input, FALSE)
+  }, ignoreNULL = TRUE, once = TRUE)
 
   #' Initialize dropdowns that are not control or sample specific
   con <- init_db_conn(database)
@@ -35,19 +41,30 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
       collection_date = list(
         date.from = input$DelArchdateRange[1],
         date.to = input$DelArchdateRange[2]
-      ), 
+      ),
       location = list(
         location_root = input$DelArchSearchByLocation,
         level_I = input$DelArchSearchByLevelI,
         level_II = input$DelArchSearchByLevelII
       ),
       state = input$DelArchSearchByState,
-      status = input$DelArchSearchByStatus
+      status = input$DelArchSearchByStatus,
+      control_type = input$DelArchSearchByControlType,
+      composition_type = input$DelArchCompositionTypes,
+      strain = input$DelArchSearchByStrains,
+      percentage = input$DelArchSearchByPercentages,
+      density = input$DelArchSearchByDensity
     )
 
     # Remove empty or NULL values from new_filters
     new_filters <- purrr::map(new_filters, ~purrr::discard(.x, function(x) is.null(x) || "" %in% x || length(x) == 0))
     new_filters <- purrr::discard(new_filters, ~is.null(.x) || length(.x) == 0)
+
+    # If composition type is in the filters, update it to use a number.
+    if ("composition_type" %in% names(new_filters)) {
+      new_filters$composition_type <- as.integer(
+        sub("-strain", "", new_filters$composition_type))
+    }
 
     # Insert the new filters
     filter_set$insert(new_filters)
@@ -85,6 +102,8 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
     # Check for non-NULL and non-empty strings
     req(nzchar(input$DelArchSearchByState), nzchar(input$DelArchSearchByStatus))
     
+    print(filter_set$get())
+
     if (input$DelArchSearchType == "samples") {
       results <- SearchSamples(input$DelArchSearchBySampleType, filters = filter_set$get(), include_internal_sample_id = TRUE)
     } else {
@@ -154,24 +173,42 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
     })
   })
 
-   # Use the filtered data to update selections
-   # NOTE: make one observeEvnet for the two
+  # Use the filtered data to update selections
+  # NOTE: make one observeEvnet for the two
   observeEvent(input$DelArchSearchBySampleType, ignoreInit = TRUE, {
+    print(sprintf("Updating selections for sample type: %s", input$DelArchSearchBySampleType))
     UpdateSelections(session, input, TRUE)
   })
 
   observeEvent(input$DelArchSearchByControlType, ignoreInit = TRUE, {
+    print(sprintf("Updating selections for control type: %s", input$DelArchSearchByControlType))
     UpdateSelections(session, input, TRUE)
   })
 
   observeEvent(input$DelArchSearchType, {
 
-    if (input$DelArchSearchType == "samples") {
-      accordion_panel_update("DelArchSubjectsPanel", "Study & Subjects")
+    newTitle <- if (input$DelArchSearchType == "samples") {
+      "Study & Subjects"
     } else {
-      accordion_panel_update("DelArchSubjectsPanel", "Batch & Controls")
+      "Batch & Controls"
     }
+    
+    accordion_panel_update(
+      id = "DelArchSubjectsPanel",   # ID of the accordion
+      target = "DelArchSubjectsPanel",  # The value that identifies the panel
+      title = newTitle,              # New title based on user input
+      session = session              # Current Shiny session
+    )
 
+    # Update all of the filters 
+    UpdateSelections(session, input, FALSE)
+
+    # Hide the search by study subject option if we are searching by controls
+    if (input$DelArchSearchType == "samples") {
+      shinyjs::show("DelArchSubjectUIDSearchType")
+    } else {
+      shinyjs::hide("DelArchSubjectUIDSearchType")      
+    }
   })
 
   ### DelArchSearch by file
@@ -205,29 +242,35 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
       ## format the file
       rv$user_file <- extract_search_criteria(
         user_csv = dataset$datapath,
-        search_type = "study_subject"
+        search_type = if (input$DelArchSearchType == "samples") {
+          "study_subject" 
+          } else {
+          "control"
+          }
       )
 
-      # Begin by renaming just StudySubject which will always be present
-      new_filter <- rv$user_file %>%
-        select(StudySubject) %>%
-        dplyr::rename(study_subject = StudySubject)
-
+      new_filter <- NULL
       # Add optional columns based on their presence in the dataset
-      if ("StudyCode" %in% names(rv$user_file)) {
-        new_filter$short_code <- rv$user_file$StudyCode
-      }
-      
-      if ("CollectionDate" %in% names(rv$user_file)) {
-        new_filter$collection_date <- rv$user_file$CollectionDate
-      }
+      if (input$DelArchSearchType == "samples") {
+        # Begin by renaming just StudySubject which will always be present
+        new_filter <- rv$user_file %>%
+          select(StudySubject) %>%
+          dplyr::rename(study_subject = StudySubject)
 
-      if ("SpecimenType" %in% names(rv$user_file)) {
-        new_filter$specimen_type <- rv$user_file$SpecimenType
-      }
+        if ("StudyCode" %in% names(rv$user_file)) {
+          new_filter$short_code <- rv$user_file$StudyCode
+        }
+        
+        if ("CollectionDate" %in% names(rv$user_file)) {
+          new_filter$collection_date <- rv$user_file$CollectionDate
+        }
+
+        if ("SpecimenType" %in% names(rv$user_file)) {
+          new_filter$specimen_type <- rv$user_file$SpecimenType
+        }
+      } 
 
       search_by_study_subject_file_upload(input$DelArchSearchBySampleType, new_filter)
-
     },
     formatting_error = function(e) {
       show_formatting_error_modal(e)
@@ -898,6 +941,7 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
       content = function(con) {
 
         user.filtered.rows =  most_recent_data()
+        print(user.filtered.rows)
         user.selected.rows <- if (length(selected() > 0)) user.filtered.rows[selected(), ] else user.filtered.rows
 
         if (input$DelArchSearchType == "controls") {
@@ -1188,6 +1232,8 @@ UpdateControlSelections <- function(session, input, keepCurrentSelection = FALSE
   found_controls <- controls %>% pull(name, name = id)
   found_batches <- batches %>% pull(short_code, name = id)
   composition_types <- get_composition_types(con)
+  densities <- get_densities(con)
+  percentages <- get_percentages(con)
 
   ## Get the identifiers and strains
   strains <- get_strains(con)
@@ -1199,7 +1245,9 @@ UpdateControlSelections <- function(session, input, keepCurrentSelection = FALSE
     DelArchSearchBySpecimenType = c(), # leave empty for now
     DelArchSearchByLocation = unique(tbl(con, "location") %>% pull(location_root)),
     DelArchCompositionTypes = unique(composition_types),
-    DelArchSearchByStrains = unique(strains)
+    DelArchSearchByStrains = unique(strains),
+    DelArchSearchByPercentages = unique(percentages),
+    DelArchSearchByDensity = unique(densities)
   )
   
   labels_list <- list(
@@ -1208,13 +1256,13 @@ UpdateControlSelections <- function(session, input, keepCurrentSelection = FALSE
     DelArchSearchBySubjectUID = "Control ID",
     DelArchSearchBySpecimenType = "Specimen Type",
     DelArchSearchByLocation = "Storage Location",
-    DelArchCompositionTypes = "Composition Type",
-    DelArchSearchByStrains = "Strain"
+    DelArchCompositionTypes = "Composition Types",
+    DelArchSearchByStrains = "Strains"
   )
   
   sapply(names(choices_list), function(input_name) {
     # Adjust the selected argument based on keepCurrentSelection parameter
-    current_selected <- if (keepCurrentSelection) input[[input_name]] else FALSE
+    current_selected <- if (keepCurrentSelection) input[[input_name]] else ""
     
     updateSelectizeInput(
       session,

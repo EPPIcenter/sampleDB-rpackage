@@ -3,7 +3,7 @@ library(sampleDB)
 library(shiny)
 library(lubridate)
 library(DT)
-library(purrr)
+# library(purrr)
 
 #load helper files
 for(server_helper in list.files(path = "server_helpers", full.names = T, recursive = T)){

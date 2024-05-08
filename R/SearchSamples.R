@@ -88,12 +88,20 @@ SearchControls <- function(filters, control_type = NULL, database = Sys.getenv("
       sql <- sql %>% filter(density %in% local(filters$density))
     }
 
-    if (!is.null(filters$batch) && filters$batch != "") {
-      sql <- sql %>% filter(batch %in% local(filters$batch))
+    if (!is.null(filters$short_code) && filters$short_code != "") {
+      sql <- sql %>% filter(batch %in% local(filters$short_code))
     }
 
     if (!is.null(filters$percentage) && filters$percentage != "") {
       sql <- sql %>% filter(percentage %in% local(filters$percentage))
+    }
+
+    if (!is.null(filters$composition_type) && filters$composition_type != "") {
+      sql <- sql %>% filter(n_strain %in% local(filters$composition_type))
+    }
+
+    if (!is.null(filters$study_subject) && filters$study_subject != "") {
+      sql <- sql %>% filter(control_uid %in% local(filters$study_subject))
     }
 
     if (!is.null(control_type) && control_type == "dbs_sheet") {

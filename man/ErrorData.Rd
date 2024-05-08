@@ -16,6 +16,8 @@ It includes the error description and the row numbers and column names where the
 \item{\code{columns}}{A character vector of column names where the error was found.}
 
 \item{\code{rows}}{An integer vector of row numbers where the error was found.}
+
+\item{\code{data_frame}}{A dataframe of the samples that triggered the error.}
 }
 \if{html}{\out{</div>}}
 }

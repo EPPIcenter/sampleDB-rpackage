@@ -74,6 +74,26 @@ get_batches <- function(con) {
     pull()
 }
 
+#' Get all densities from the database
+#' 
+#' @param con A database connection
+#' @return A character vector of all batches in the database
+#' @export
+#' @examples
+#' con <- dbConnect(RSQLite::SQLite(), ":memory:")
+#' get_batches(con)
+#' dbDisconnect(con)
+#' @keywords utility database
+#' @return A character vector of all studies in the database
+get_densities <- function(con) {
+
+  ## Temporary way to identify a batch from a study
+  dbReadTable(con, "malaria_blood_control") %>%
+    distinct(density) %>%
+    arrange(density) %>%
+    pull()
+}
+
 #' Get all batches from the database
 #' 
 #' @param con A database connection
