@@ -1028,7 +1028,18 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
       micronix_search_df <- bind_new_data(micronix_search_df, setNames(plate_name, "PlateName"))
 
       position_col <- get_position_column_by_sample("micronix", input$AdvancedSearchUploadFileType)
-      micronix_search_df$Position <- dplyr::pull(micronix_search_df, !!rlang::sym(position_col))
+
+      # Create the position column
+      micronix_search_df$Position <- if (input$AdvancedSearchUploadFileType == "na") {
+        sprintf(
+          "%s%02d",
+          micronix_search_df[[position_col[1]]], # Row
+          as.integer(micronix_search_df[[position_col[2]]]) # Column
+        )
+      } else {
+        dplyr::pull(micronix_search_df, !!rlang::sym(position_col))
+      }
+
       micronix_search_df$Barcode <- dplyr::pull(micronix_search_df, any_of(c("Barcode", "Tube ID")))
       micronix_search_df <- dplyr::select(micronix_search_df, Barcode, Position, PlateName)
 

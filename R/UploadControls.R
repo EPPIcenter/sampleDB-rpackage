@@ -887,7 +887,7 @@ prepare_new_compositions <- function(user_data) {
            index = if_else(!legacy & strain_count > 1, ave(strain_count, strain_count, FUN = seq_along, na.rm = TRUE), NA_integer_),
            label = case_when(
                legacy ~ if_else(strain_count == 1, as.character(Strains), LegacyLabel),
-               strain_count > 1 ~ paste0("S", strain_count, "_", index),
+               strain_count > 1 ~ paste0("S", strain_count),
                TRUE ~ NA_character_
            )
     )

@@ -352,15 +352,15 @@ ControlReference <- function(session, input, output, database, dbUpdateEvent) {
     # Start the transaction
     dbBegin(con)
 
-    tryCatch({
+    bEarlyExit <- tryCatch({
+      print(user.selected.rows)
       # Go through each id and check if it's in use. If not delete it.
       for (id in user.selected.rows$composition_id) {
         in_use <- dbGetQuery(con, sprintf("SELECT COUNT(*) as count FROM malaria_blood_control WHERE composition_id = %d", id))
         if (in_use$count > 0) {
           # Abort the transaction if the composition_id is in use
-          dbRollback(con)
-          showNotification(sprintf("Deletion aborted: Composition ID %d is in use.", id), type = "error")
-          break
+          errmsg <- sprintf("Deletion aborted: Composition ID %d is in use.", id)
+          stop(errmsg)
         } else {
           # If not in use, delete related entries from composition_strain table
           dbExecute(con, sprintf("DELETE FROM composition_strain WHERE composition_id = %d", id))
@@ -370,16 +370,20 @@ ControlReference <- function(session, input, output, database, dbUpdateEvent) {
       }
       dbCommit(con)
       showNotification("Composition deleted successfully", type = "default")
+
+      return(FALSE)
     }, error = function(e) {
       dbRollback(con)
       message(e$message)
       showNotification("Failed to delete composition: ", e$message, type = "error")
+      return(TRUE)
     })
 
     dbDisconnect(con)
-
-    removeNotification(id = "ArchDelNotification")
     removeModal()
+
+    # if we errored, just return. we do not need to update the table.
+    if (bEarlyExit) return(NULL)
 
     # Get the filtered data
     updated_data <- user.filtered.rows
