@@ -1,8 +1,18 @@
 pandoc: 3.1.11
 pkgdown: 2.0.9
 pkgdown_sha: ~
-articles: {}
-last_built: 2024-05-01T23:40Z
+articles:
+  Delete--Archive-Samples: Delete--Archive-Samples.html
+  How-to-Move-Micronix-Samples: How-to-Move-Micronix-Samples.html
+  How-to-Upload-Controls: How-to-Upload-Controls.html
+  How-to-Upload-Extracted-Controls: How-to-Upload-Extracted-Controls.html
+  Preferences: Preferences.html
+  Searching-SampleDB: Searching-SampleDB.html
+  Updating-References: Updating-References.html
+  Uploading-Cryovial-Specimens: Uploading-Cryovial-Specimens.html
+  Uploading-Micronix-Specimens: Uploading-Micronix-Specimens.html
+  Validation: Validation.html
+last_built: 2024-05-15T00:33Z
 urls:
   reference: https://eppicenter.github.io/sampleDB/reference
   article: https://eppicenter.github.io/sampleDB/articles
