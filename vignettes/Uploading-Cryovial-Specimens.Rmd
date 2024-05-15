@@ -1,0 +1,117 @@
+---
+title: 'Uploading Cryovial Specimens'
+output: rmarkdown::html_document
+vignette: >
+  %\VignetteIndexEntry{Uploading Cryovial Specimens}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+The cryovial upload workflow is quite similar to micronix uploads, but
+there are some differences in requirements and validation checks. To
+start, cryovials are often shipped to the lab in boxes. These boxes may
+be able to be scanned, but we currently cannot scan all of the tubes
+together as we can with micronix tubes (eg. using the traxcer scanner).
+Cryovials also do not always have barcodes, and they may not always be
+unique. We therefore have a different set of requirements for cryovials
+in our uploads.
+
+### Steps to Upload Cryovials
+
+#### Verify that the physical samples & sample metadata align
+
+When we receive a shipment, we should receive a manifest of
+the contents in the box. Either scan the barcodes, or do some spot
+checks to ensure the order aligns with your map.
+
+#### Build CSV and upload
+
+At the upload interface, choose "Samples" under "Choose Your Upload
+Type", and "Cryovial" under "Sample Storage Type". Download the template
+by selecting "Download" in the main page Enter the information you have
+into the provided headers (refer to "*Modify CSV file to include all
+metadata"* for more information about the headers). Make sure the date
+format is "YYYY-MM-DD" for all entries under CollectionDate. Finally,
+save the document as a CSV.
+
+### Validation for Cryovials
+
+Cryovials have some similar validation checks as micronix samples. For
+example, a tube cannot be placed in the same location as an existing,
+active tube. The positions must also have letters as rows - this can
+introduce some confusion as manifests may use numbers instead, so you
+will want to convert the numbers to letters. There are also tests
+applied that are unique to cryovials that are in place due to the
+different constraints of cryovials (barcodes may or may not exist,
+barcodes may not be unique, etc.). Additional validation is put in place
+to ensure that each cryovial is identifiable.
+
+The following validation tests will be applied when you upload a
+cryovial:
+
+1.  **Barcode uniqueness within a box.** When two tubes within a box
+    have the same barcodes, the samples will be flagged.
+
+    a.  *Message: "Cryovial is duplicated within a box"*
+
+2.  **Box uniqueness.** This will check whether another box exists in
+    the database that is similar to the box you are uploading. By
+    similar, 10% of samples must share the same barcode. If a box is
+    found, the samples that have the shared barcodes are flagged in
+    your upload.
+
+    a.  *Message: \"Similarity threshold (10%) exceeded between uploaded
+        and existing boxes:\[List of boxes that had 10% of the same
+        barcodes as the upload\]\"*
+
+3.  **Check that the dates are present if the samples are part of a
+    longitudinal study.** Samples that fail will be flagged.
+
+    a.  *Message: "Missing collection date found for sample in
+        longitudinal study"*
+
+4.  **Check that study subjects are unique within a non-longitudinal
+    study.** If your upload contains a study subject that will
+    introduce a duplicate into the database, the sample will be
+    flagged.
+
+    a.  *Message: \"Study subjects must be unique in studies that are
+        not longitudinal\"*
+
+5.  **Validate that study subjects and collection dates are unique for a
+    longitudinal study.**
+
+    a.  *Message: \"Study subject and collection date must be unique
+        within a longitudinal study\"*
+
+6.  **Confirm that cryovials with no barcode have collection dates if
+    there is already a sample from that study subject.** This is to
+    ensure that there is some identifying information for the sample
+    from the subject.
+
+    a.  *Message: \"Sample must have a collection date if there is no
+        barcode provided and there is already a sample from this study
+        subject.\"*
+
+7.  **Validate the study, specimen type, and locations exist in the
+    database.** Any subject with missing metadata will be flagged.
+    NOTE: All of these should have been entered already in the
+    "references" tab. If your samples are flagged, first look here to
+    make sure your data exists in the database.
+
+    a.  Messages:
+
+        i.  *\"Study already exists in the database\"*
+
+        ii. *"Specimen Type Reference Validation\"*
+
+        iii. *"The following FreezerName, RackName, and/or RackPosition
+             > are not found in the database\"*
+
+8.  **Validate that cryovials are uploaded to empty wells.** Samples
+    that are uploaded to a position shared by another cryovial will be
+    flagged.
+
+    a.  *Message: \"Uploading sample to Cryovial well location that
+        already has an active sample\"*
+

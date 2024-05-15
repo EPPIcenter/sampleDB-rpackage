@@ -1,0 +1,72 @@
+---
+title: 'Updating References'
+output: rmarkdown::html_document
+vignette: >
+  %\VignetteIndexEntry{Updating References}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+### Freezer names
+
+SampleDB requires freezers to be entered into the system before samples can be uploaded.
+Every location should have 3 levels of information.
+
+- The top level is the `FreezerName`. This is the freezer identifier.
+- The second and third level *can* be used as coordinates to identify samples
+on a shelf. 
+
+Every sample will need these three levels of information during an upload. The
+exact first, second and third level information can be found in the database
+under `References` > `Locations`. If you are uploading samples, it is recommended 
+that you search for your freezer in the locations table to get the exact
+position information you need for your upload.
+
+### Specimen Types
+
+Establish and add common specimen types under `References` > `Specimen Types`. 
+Every uploaded sample *must* have an associated specimen type. 
+
+Specimen types should be easy to understand. Below are some examples:
+
+| Specimen Type | Description                       |
+|---------------|-----------------------------------|
+| DNA (WB)      | Extracted DNA from whole blood    |
+| DNA (DBS)     | Extracted DNA from DBS            |
+| DNA (RDT)     | Extracted DNA from RDTs           |
+| DNA (MG)      | Extracted DNA from midguts        |
+| Plasma (WB)   | Plasma from whole blood           |
+| Serum (DBS)   | Serum from DBS                    |
+
+### Adding a study
+
+Pick a Study Title, Study Description, Lead Person, and Study Short
+Code for any new study entered into SampleDB. Before adding new
+studies be sure to check that study does not already exist, otherwise
+you will have multiple names for the same study. You can have
+different types of specimens from the same study and should use the
+same study name.
+
+a.  Study title should be the name of the study, ie. "LLINEUP2" or
+    "IMMRSE-U".
+
+b.  The study short code will need to be included in the CSV whenever
+    samples are uploaded. For example, a good study short code for
+    PRISM Border Cohort would be PBC. For IMMRSE-U, use IM. For
+    LLINEUP2, LN2.
+
+c.  The study description should be as specific as possible, so that if
+    someone unfamiliar with the study is using the database they would
+    understand how the samples were obtained. "IMMRSE-U" could be
+    described as "DBS collected from 30 malaria reference centers for
+    malaria genomic surveillance from 2022-2025". "LLINEUP2" could be
+    described as "DBS collected from repeated cross-sectional surveys
+    at 64 sites as part of a cluster-RCT trial of bednets from
+    2020-2023".
+
+d.  The lead person should be specific, so that if someone is
+    referencing this database in the future, they know who to contact.
+
+\*\*\*The above steps must be done before attempting to upload plates
+for a study.\*\*\*
+
