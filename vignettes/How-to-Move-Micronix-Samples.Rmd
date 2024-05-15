@@ -1,0 +1,51 @@
+---
+title: 'How to Move Samples and Controls'
+output: rmarkdown::html_document
+vignette: >
+  %\VignetteIndexEntry{How to Move Samples and Controls}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+> Release note: There is currently no way to move controls. This
+> may be updated in a new version.
+
+[Purpose:]{.underline} The Move Samples function updates the locations
+of samples that already exist in SampleDB. (If they do not already exist
+in SampleDB, they will need to be uploaded before they can be moved!)
+The Move Samples function should be used **EVERY** time samples are
+rearranged for **ANY** reason. When moving samples, be sure to include
+**EVERY** plate where samples are moved.
+
+[Use case:]{.underline} You only need to run or repeat an assay on
+certain samples. You first find the samples you need using "Search,
+Delete & Archive Samples." Then you physically move them all to another
+Micronics plate so that the assay is easier to run. Now scan the new
+plate, and use the "Move Samples" function to update their locations in
+SampleDB.
+
+1.  If you move samples on a plate, you must rescan that plate and
+    upload under "Move Samples". If you move samples from one plate to
+    another, you only need to upload the destination plate.
+
+2.  Filenames for all plates should always be their human readable name
+    in the database. For example, HumanReadablePlateName.csv, or
+    IM-22-015-001.csv.
+
+### Move micronic plate from one location to another
+
+1.  If moving samples to a new plate that is not in SampleDB, then you
+    will "Create Container" first. Enter the required information to create the plate.
+
+2.  If you created a new plate and moved samples to that new plate, scan
+    the new plate and upload using the "Browse" button under the "Move
+    Samples" tab.
+
+#### Move cryovial samples inside a box
+
+#### Add cryovial samples to existing box
+
+#### Move samples from one box to another
+
+#### Move box from one location to another
+

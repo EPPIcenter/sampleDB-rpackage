@@ -1,0 +1,108 @@
+---
+title: 'Delete and Archive Samples and Controls'
+output: rmarkdown::html_document
+vignette: >
+  %\VignetteIndexEntry{Delete and Archive Samples and Controls}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+> Release Note: While archived samples will persist in the database,
+> unarchiving is still in development.
+
+**Purpose:** In addition to keeping track of locations, sample state and
+status should be kept to keep a history of all wet lab specimens in the
+lab.
+
+### The 5 status' of DB
+
+Once a sample has been uploaded to SampleDB there are [5]{.underline}
+statuses it can be in:
+
+**In use. (Default).** The sample must have a location on a plate.
+
+**Exhausted (empty).** The physical sample tube has been thrown away
+because there is no sample left. In SampleDB, it no longer needs to have
+a location on a plate. But SampleDB needs to keep the Micronix Barcode,
+Study Subject, Date, StudyCode, SpecimenType so that we can
+retrospectively link the Micronix Barcode to the sample metadata. The
+user should be able to see that it is empty/ depleted/ whatever term we
+want to use so that it is clear that it cannot be used again in the
+future.
+
+**Bad.** The physical sample tube has been thrown away because there is
+something wrong with the sample. For example, bacterial growth, left at
+room temp, etc. As with an empty sample, SampleDB no longer needs to
+have a location but does need to keep Micronix Barcode, Study Subject,
+Date, StudyCode, SpecimenType so that we can retrospectively link the
+Micronix Barcode to the sample metadata. The user should be able to see
+that it is \"bad." It would be great to also include a brief description
+of why it was marked bad in "comment."
+
+**Missing:** This is useful as a temporary status to flag samples that
+cannot be found. This is by no means a final status; missing samples
+should be searched and their status updated.
+
+**Shipped:** In some cases, samples need to be distributed to other labs
+and collaborators. This status helps keep track of which samples have
+been sent to others.
+
+### Archiving samples
+
+Archiving samples, e.g. changing from "In Use" to Exhausted, Bad,
+Missing, or Shipped:
+
+To modify the status of your samples, open the "Search, Delete & Archive
+Samples" panel and search for your samples using any of the
+aforementioned search techniques (by plate, by study subject ID, by
+barcode, etc. as detailed under "Search Samples." Once completed, select
+the rows in the table of the samples you wish to modify. A selected row
+will be highlighted with light blue. To unselect, click on the
+highlighted rows. Choose the status of the ALL selected samples with the
+"Status" dropdown below the table. Finally, click on the panel tab on
+the bottom right hand of the screen and press the "Archive Samples
+button. This will present all selected samples for you to review before
+final archival. You will be required to enter a status for the samples
+listed. You may optionally add a comment to the selected samples using
+the "Comment" field. You can cancel if something does not look correct
+to you by clicking outside of the dialog or closing the dialog box.
+
+### Deleting samples or plates
+
+Delete is used only when a sample(s) or plate(s) were uploaded
+incorrectly. It is a **PERMANENT** decision and cannot be undone and should
+not be used unless you are fixing an upload error. You can search for
+samples to delete by barcode (single, or a file with multiple barcodes)
+or by plate name. Once you have selected your erroneous samples, click
+on the panel tab on the bottom right hand of the screen and press the
+"Delete Samples" button. This will present all selected samples for you
+to review before final deletion. You can cancel if something does not
+look correct to you by clicking outside of the dialog or closing the
+dialog box.
+
+### Delete & Archive Controls
+
+The process for deleting & archiving controls is identical to samples,
+with the exception of dried blood spots because they are stored in
+collections and not an individual tube. You should first identify the
+blood spots you want to modify (e.g., SheetID & BagName, Composition,
+Percentage, Density). Once done, select the collection and select
+'Archive Samples' or 'Delete Samples' as you would do for samples. The
+dialog that appears will give you a numeric input for each collection to
+update the number of spots you will delete or archive. Once done, select
+'Delete' or 'Archive' to commit your changes. If you are deleting spots,
+this will *decrease* the number of 'Total' spots by the number you
+entered for that collection. If you are archiving spots, this will
+*increase* the number of 'Exhausted' spots by the number you entered.
+These changes will be visible the next time you search for this
+collection.
+
+**Important:** When archiving spots, you have the option to set a
+status, just like in samples. The 'Exhausted' status is reserved for
+when a spot is punched, which is used automatically by the system when
+extractions are recorded.
+
+If you archive spots, this will automatically put those spots in an
+'Archive' state and assign them the 'Status' you set. You can find those
+spots using the State and Status filters in the search panel.
+

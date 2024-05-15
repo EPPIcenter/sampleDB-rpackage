@@ -1,0 +1,179 @@
+---
+title: 'Uploading Micronix Specimens'
+output: rmarkdown::html_document
+vignette: >
+  %\VignetteIndexEntry{Uploading Micronix Specimens}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+[Purpose:]{.underline} To upload linked sample metadata and Micronix
+barcodes to SampleDB. ALL samples extracted into Micronix tubes should
+be uploaded with linked metadata into SampleDB [on the day they are put
+in Micronix tubes.]{.underline} Delaying this can result in samples in
+Micronix tubes without any identifying metadata, which makes it
+impossible to know where valuable samples are.
+
+SampleDB accepts three formats for micronix uploads: **Traxcer**,
+**Visionmate**, and **'NA'**, which is the default SampleDB upload
+template.
+
+-   **Traxcer** and **Visionmate** are separate platforms for scanning
+    plates, and the files produced by those platforms should be used
+    as starting points for your file upload.
+
+-   The **NA** format should be chosen if you are not using those
+    platforms.
+
+All three templates are available to download by clicking on 'Download'
+button on the main page of 'Upload New Specimens'. This button will
+download the template meant for whatever file type you have selected
+under 'Choose a file type'.
+
+### Steps to Upload Micronix Plates
+
+#### Scan a Plate
+
+1.  Ensure the format of the Micronix Scanner is appropriate; for
+    example, if your metadata is A01-A12 format, you want the scanner
+    to scan by rows; if your metadata is in A01-H01 format, you want
+    the scanner to scan by columns Change by clicking settings .
+
+2.  **Align A1 on the Micronix plate to A1 on the scanner.** Scan the
+    micronix plate, this should result in a .csv file with columns as
+    follows:
+
+  Tube Position   Tube ID      Rack ID      Date       Time     Free Text   Status
+  --------------- ------------ ------------ ---------- -------- ----------- -------------
+  A01             4064903036   3000768170   20220325   140124               Code OK
+  B01             4064903039   3000768170   20220325   140124               Code not OK
+
+#### Modify CSV file to include all Specimen and Logistical Metadata
+
+Open the .csv using Excel or a CSV editor (ie. ModernCSV). Add new
+columns: StudyCode, StudySubject, SpecimenType, CollectionDate. These
+columns will hold the specimen level metadata needed to record your
+sample.
+
+1.  **StudyCode** - This is the study that is associated with your sample.
+    It must match one of the study codes in the database already. To find
+    the study code for your study, you can go to `References` > `Studies`,
+    and search for you study using the `Search` bar in the upper right hand
+    corner. The code will be under `Study Code`.
+
+2.  **StudySubject** - The unique identifier of the participant or sample
+    in the study (e.g. cohort ID for PRISM Border Cohort).
+
+3.  **SpecimenType** - Must match exactly one of the specimen types in "References"
+    under the "Specimen Type" panel. Usually plates will hold one specimen
+    type.
+
+4.  **CollectionDate** - Date the sample was collected (**NOT** the date entered into
+    SampleDB). Format is "YYYY-MM-DD". In Excel, highlight the column,
+    right-click on "Format Cells" chose "Date," under "Language" chose
+    "English (UK)" under "Type" chose "YYYY-MM-DD"
+
+    i.  A longitudinal study will **need a date** to link that sample to
+        the correct participant/ date, because multiple samples are
+        from different days. If you use a study subject identifier
+        from a non-longitudinal study (which will be uniquehas a
+        unique study subject identifier), no date is necessary. If you
+        have a collection date, it is **always** better to include it.
+
+    ii. See example (without CollectionDate):
+
+  Tube Position   Tube ID      Rack ID      StudyCode   StudySubject   SpecimenType
+  --------------- ------------ ------------ ----------- -------------- --------------
+  A01             4064903036   3000768170   PRISM       B620           DNA (DBS)
+  B02             4064903039   3000768170   PRISM       B621           DNA (DBS)
+
+iii. If there is *no collection date* for a sample in a longitudinal
+     study, use "UNK" or "UNKNOWN" placeholder. Longitudinal studies
+     require a CollectionDate column.
+
+You will also need to include information about the location of the
+plate. Add new columns: `FreezerName`, `ShelfName`, and `BasketName`. These
+columns simply provide a way to identify a plate using three levels of
+information and can be defined by your lab. Below is a simple example as
+to how you may choose to define plate locations in a freezer.
+
+1.  **FreezerName** - This is the name of the freezer where your
+    micronix plate will go.
+
+2.  **ShelfName -** This is the shelf where the micronix plate will go.
+
+3.  **BasketName -** This is the part of the shelf where your samples
+    will go.
+
+#### Upload Micronix tubes CSV
+
+Navigate to the "Upload Specimens" panel
+
+1.  Select "Micronix" under "Sample Storage Type"
+
+2.  Choose scanner type (Traxcer, Visionmate, or NA). Browse for the
+    CSV.
+
+3.  Push "Upload Samples"
+
+### Validation for Micronix Uploads
+
+As soon as you load your file, each sample will be checked against a
+series of validation functions. The validation functions will flag any
+samples that do not pass their check, and will block the upload from
+happening. If this happens, you will see a dialog appear that will
+provide a message for each failed test, and a list of the samples that
+failed that particular test.
+
+The following validation tests will be applied when you upload micronix
+samples:
+
+1.  **Check for micronix barcode uniqueness:** All micronix barcodes
+    should be unique. If a barcode in your file is found in the
+    database (or more than once in your file), the sample will be
+    flagged:
+
+    a.  *Message: "Micronix barcode already exists in database"*
+
+2.  **Validate the study, specimen type, and locations exist in the
+    database.** Any subject with missing metadata will be flagged.
+    NOTE: All of these should have been entered already in the
+    "references" tab. If your samples are flagged, first look here to
+    make sure your data exists in the database.
+
+    a.  Messages:
+
+        i.  *\"Study already exists in the database\"*
+
+        ii. *"Specimen Type Reference Validation\"*
+
+        iii. *"The following FreezerName, ShelfName, and/or
+             > BasketPosition are not found in the database\"*
+
+3.  **Check that the dates are present if the samples are part of a
+    longitudinal study.** Samples that fail will be flagged.
+
+    a.  *Message: "Missing collection date found for sample in
+        longitudinal study"*
+
+4.  **Check that study subjects are unique within a non-longitudinal
+    study.** If your upload contains a study subject that will
+    introduce a duplicate into the database, the sample will be
+    flagged.
+
+    a.  *Message: \"Study subjects must be unique in studies that are
+        not longitudinal\"*
+
+5.  **Validate that study subjects and collection dates are unique for a
+    longitudinal study.**
+
+    a.  *Message: \"Study subject and collection date must be unique
+        within a longitudinal study\"*
+
+6.  **Validate that micronix are uploaded to empty wells.** Samples that
+    are uploaded to a position shared by another micronix tube will be
+    flagged.
+
+    a.  *Message: \"Uploading sample to Micronix well location that
+        already has an active sample\"*
+

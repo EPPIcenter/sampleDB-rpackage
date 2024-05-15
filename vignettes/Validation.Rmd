@@ -1,0 +1,24 @@
+---
+title: 'Validation'
+output: rmarkdown::html_document
+vignette: >
+  %\VignetteIndexEntry{Validation}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+When you upload your file, it will be checked for any formatting issues
+(ie. all expected columns are present) or validation issues (ie. a
+barcode is already found in the database). The validation process will
+give you as much information as possible about what needs to change in
+your file. Some validation steps are dependent on others. For example,
+before checking date formats, it will inform you if it cannot find the
+'CollectionDate' column.
+
+If there are validation issues, a dialog will appear listing what errors
+were found. By clicking on the errors, you can view the rows that
+triggered the error from your file in a table. You can additionally
+download your uploaded file from this dialog with the errors included
+under a new 'Errors' column. Rows with multiple errors will have both
+concatenated with a semicolon (';') delimiter.
+
