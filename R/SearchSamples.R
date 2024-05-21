@@ -639,7 +639,7 @@ extract_search_criteria <- function(user_csv, search_type) {
         return(data[[col_name]])
       }
     }
-    return(NA_character_) # return NA if none of the possible names are found
+    return(NULL) # return NULL if none of the possible names are found
   }
 
   ## Grab the possible columns if this is a study subject search (possible because they may not all be there, which is okay)
@@ -835,7 +835,7 @@ search_by_study_subject_file_upload <- function(sample_storage_type, filters, da
     sql <- inner_join(sql, tbl(con, "storage_container") %>% dplyr::rename(storage_container_id = id) %>% select(-c(created, last_updated)), by = c("specimen_id"))
 
     # Filter by study subject
-    sql <- filters %>% inner_join(collect(sql), by = c("study_subject", "short_code", "collection_date", "specimen_type"))
+    sql <- filters %>% inner_join(collect(sql)) # columns can change depending on what the user chooses to include in the search
 
     sql <- inner_join(sql, dbReadTable(con, "status") %>% dplyr::rename(status_id = id, status = name), by = c("status_id"))
     sql <- inner_join(sql, dbReadTable(con, "state") %>% dplyr::rename(state_id = id, state = name), by = c("state_id"))
