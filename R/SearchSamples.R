@@ -111,17 +111,17 @@ SearchControls <- function(filters, control_type = NULL, database = Sys.getenv("
         inner_join(tbl(con, "dbs_control_sheet") %>% dplyr::rename(dbs_control_sheet_id = id, sheet_label=label), by = c("dbs_control_sheet_id")) %>%
         inner_join(tbl(con, "dbs_bag") %>% dplyr::rename(dbs_bag_id = id, dbs_bag_label = name), by = c("dbs_bag_id"))
 
-      if (filters$state == "Archived") {
 
-        sql <- sql %>%
-          inner_join(tbl(con, "archived_dbs_blood_spots") %>% dplyr::rename(archived_dbs_blood_spot_id = id), by = c("blood_spot_collection_id")) %>%
-          inner_join(tbl(con, "status") %>% dplyr::rename(status_id = id, status = name), by = c("status_id")) %>%
-          filter(status %in% local(filters$status))
+      sql <- sql %>%
+        left_join(tbl(con, "archived_dbs_blood_spots") %>% dplyr::rename(archived_dbs_blood_spot_id = id), by = c("blood_spot_collection_id")) %>%
+        left_join(tbl(con, "status") %>% dplyr::rename(status_id = id, status = name), by = c("status_id"))
 
-      } else if (filters$state == "Active") {
-        # Filter so that only collections that have active spots are returned
-        if (filters$status == "In Use") {
-          sql <- sql %>% filter(exhausted < total)
+      # Filter so that only collections that have active spots are returned
+      if (!is.null(filters$state) && !is.null(filters$status)) {
+        if (filters$state == "Active" && filters$status == "In Use") {
+          sql <- sql %>% filter(is.na(status_id) | status != "Exhausted")
+        } else if (filters$state == "Archived") {
+          sql <- sql %>% filter(status %in% local(filters$status))
         }
       }
 

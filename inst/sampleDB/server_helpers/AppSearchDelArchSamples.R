@@ -457,6 +457,8 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
 
   selected <- reactive(getReactableState("DelArchSearchResultsTable", "selected"))
   archiveWarning <- reactiveVal(NULL)
+  editWarning <- reactiveVal(NULL)
+  archiveWarningExhaustedStatus <- reactiveVal(NULL)
 
   observe({
     output$archiveWarningUI <- renderUI({
@@ -464,6 +466,22 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
         invalid_rows_str <- paste(archiveWarning(), collapse = ", ")
         tags$div(class = "alert alert-warning", 
                  HTML(sprintf("The sum of archived spots exceeds the total available spots in rows: %s. Please adjust the values in these rows.", invalid_rows_str)))
+      }
+    })
+
+    output$archiveWarningExhaustedStatusUI <- renderUI({
+      if (length(archiveWarningExhaustedStatus()) > 0) {
+        invalid_rows_str <- paste(archiveWarningExhaustedStatus(), collapse = ", ")
+        tags$div(class = "alert alert-warning", 
+                 HTML(sprintf("The number of exhausted spots ('Exhausted') does not equal the total ('Total') in rows: %s. Please archive remaining spots if necessary with a status other than 'Exhausted'.", invalid_rows_str)))
+      }
+    })
+
+    output$editWarningUI <- renderUI({
+      if (length(editWarning()) > 0) {
+        invalid_rows_str <- paste(editWarning(), collapse = ", ")
+        tags$div(class = "alert alert-warning", 
+                 HTML(sprintf("Invalid rows detected: %s. Exhausted counts can only be reduced and must not include any spots that were exhausted by archival. Please double check your input.", invalid_rows_str)))
       }
     })
   })
@@ -486,14 +504,21 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
         scrollable_table <- CreateNumericInputScrollableTable(user.selected.rows.selected, "MaxSpots")
 
         already_archived_spots_df <- dbReadTable(con, "archived_dbs_blood_spots") %>%
-          dplyr::select(CollectionID = id, ArchivedSpotsCount = archived_spots_count)
+          dplyr::select(CollectionID = blood_spot_collection_id, ArchivedSpotsCount = archived_spots_count)
 
         user.selected.rows.selected.archived <- user.selected.rows %>%
           dplyr::left_join(already_archived_spots_df, by = join_by("CollectionID")) %>%
-          dplyr::mutate(ArchivedSpotsCount = replace_na(ArchivedSpotsCount, 0))
+          dplyr::mutate(ArchivedSpotsCount = replace_na(ArchivedSpotsCount, 0)) %>%
+          dplyr::select(-dplyr::all_of(c("CollectionID", "ControlID")))
 
         # Create the scrollable table for editing counts
-        scrollable_table_edit <- CreateExhaustedTotalCountsTable(user.selected.rows.selected.archived, enabled = TRUE, "ArchivedSpotsCount")
+        scrollable_table_edit <- CreateNumericInputScrollableTable(
+          user.selected.rows.selected.archived,
+          max_value_column = "Exhausted",
+          default_value_column = "Exhausted",
+          min_value_column = "ArchivedSpotsCount",
+          enabled = TRUE
+        )
 
       } else {
         user.selected.rows.selected <- user.selected.rows %>% 
@@ -542,15 +567,18 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
           conditionalPanel(
             condition = "input.DelArchDBSAction == 'edit' && input.DelArchSearchByState == 'Active'",
             tags$strong("Information:"),
-            tags$p("When editing blood collections, you must make sure the new number of exhausted spots are less than or equal to the total count. Additionally, you will not be able to lower either the exhausted count or total count below the number of existing archived spots. For example, if 30 spots are 'Shipped', you will not be able to edit the exhausted or total counts below 30."),
-            tags$p("If you set the exhausted counts equal to the total counts, this will automatically archive the spots as 'Exhausted' and will set the reason to 'Manually archived as exhausted'."),
+            tags$p("The number of exhausted dry blood spot (DBS) controls may be decremented, if needed. A case when this may be helpful is if you upload an extraction, delete the uploaded extractions because of an error you later notice, and then reupload. This will cause the application to increase the exhausted counts again, which may interfere with your upload if the collection becomes exhausted. The correct action is to manually reduce the exhausted counts by the number of extractions you performed from each DBS collection, BEFORE you reupload."),
+            tags$p("You will not be able to lower the exhausted count below the number of existing archived spots ('ArchivedSpotsCount'). For example, if 30 spots are 'Shipped', you will not be able to edit the exhausted counts below 30. If the exhausted count equals the number of existing archived spots, please dismiss this window and exclude this collection while editing other collections."),
+            tags$p("You must reduce spots in all collections to continue. If you cannot in one, then you must start over and exclude the collection from the table."),
             scrollable_table_edit
           ),
           conditionalPanel(
             condition = "input.DelArchDBSAction == 'archive'",
             scrollable_table
           ),
-          uiOutput("archiveWarningUI"), 
+          uiOutput("archiveWarningUI"),
+          uiOutput("editWarningUI"),
+          uiOutput("archiveWarningExhaustedStatusUI"),
           easyClose = TRUE,
           fade = TRUE,
           footer = tagList(actionButton("Archive", label = "Submit"), modalButton("Dismiss"))
@@ -693,6 +721,22 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
             ) %>%
             dplyr::mutate(NewArchiveCount = Total - Exhausted - SpotsToArchive)
 
+          # If the status is exhausted, we need to double check that the number of 
+          # exhausted spots equal the total, and flag if that is not the case. Spots
+          # can be archived as exhausted if the exhausted count equals the total.
+          # REMINDER: The exhausted count can be increased by archiving spots.
+          if (input$DelArchStatus == 2) {
+            collection.ids <- user.selected.rows.new.archived %>%
+              filter(Exhausted != Total) %>%
+              pull(CollectionID)
+
+            if (length(collection.ids) > 0) {
+              rows.exceeding.total <- which(user.selected.rows$CollectionID %in% collection.ids)
+              archiveWarningExhaustedStatus(rows.exceeding.total)
+              return(NULL)
+            }
+          }
+
           collection.ids <- user.selected.rows.new.archived %>%
             filter(user.selected.rows.new.archived$NewArchiveCount < 0) %>%
             pull(CollectionID)
@@ -710,28 +754,29 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
           dbWithTransaction(con, {
             for(i in seq_len(nrow(user.selected.rows))) {
               row <- user.selected.rows[i, ]
+
+              # Insert new archived spots if they are any status other than 'Exhausted', OR if we
+              # are exhausting spots (Status set to 'Exhausted', zero spots to archive, and 'Total' equals 'Exhausted')
+              if (row$SpotsToArchive > 0 || (input$DelArchStatus == 2 && row$SpotsToArchive == 0 && row$Total == row$Exhausted)) {
+                # Insert into archived_dbs_blood_spots
+                dbExecute(con, "INSERT INTO archived_dbs_blood_spots (blood_spot_collection_id, archived_spots_count, reason, status_id) VALUES (:id, :spots, :reason, :status_id)",
+                          params = list(id = row$CollectionID, spots = row$SpotsToArchive, reason = input$DelArchComment, status_id = input$DelArchStatus))
+              } 
+
               if(row$SpotsToArchive > 0) {
                 # Update the exhausted count in blood_spot_collection
                 dbExecute(con, "UPDATE blood_spot_collection SET exhausted = exhausted + :spots WHERE id = :id",
                           params = list(spots = row$SpotsToArchive, id = row$CollectionID))
                 
-                # Insert into archived_dbs_blood_spots
-                dbExecute(con, "INSERT INTO archived_dbs_blood_spots (blood_spot_collection_id, archived_spots_count, reason, status_id) VALUES (:id, :spots, :reason, :status_id)",
-                          params = list(id = row$CollectionID, spots = row$SpotsToArchive, reason = input$DelArchComment, status_id = input$DelArchStatus))
               }
             }
           })
         } else if (input$DelArchDBSAction == "edit") {
           spots_to_exhaust <- sapply(seq_len(nrow(user.selected.rows)), function(i) {
-              as.numeric(input[[paste0("exhaustedCount_", i)]])
-          })
-
-          spots_to_total <- sapply(seq_len(nrow(user.selected.rows)), function(i) {
-              as.numeric(input[[paste0("totalCount_", i)]])
+              as.numeric(input[[paste0("modifyControl_", i)]])
           })
 
           user.selected.rows$SpotsToExhaust <- spots_to_exhaust
-          user.selected.rows$SpotsToTotal <- spots_to_total
 
           # This will be used to specify how many spots we want to archive if
           # we exhausted == total. The number of exhausted spots will be the 
@@ -744,16 +789,16 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
             dplyr::left_join(already_archived_spots_df, by = join_by("CollectionID")) %>%
             dplyr::mutate(ArchivedSpotsCount = replace_na(ArchivedSpotsCount, 0))
 
-          # Validation to ensure that we have valid exhasuted and total counts. Exhausted
-          # counts should never be above total counds and should be greater than or equal
-          # to the already archived counts.
+          # Validation to ensure that we have valid exhasuted counts. Exhausted
+          # counts should never be above total counts and should be greater than or equal
+          # to the already archived counts. We also only allow exhausted counts to be decremented.
           collection.ids <- user.selected.rows.selected.archived %>%
-            filter(SpotsToExhaust < 0 | SpotsToTotal < 0 | SpotsToExhaust < ArchivedSpotsCount | SpotsToTotal < ArchivedSpotsCount | SpotsToExhaust > SpotsToTotal) %>%
+            filter(SpotsToExhaust < 0 | SpotsToExhaust < ArchivedSpotsCount | SpotsToExhaust > Total | SpotsToExhaust > Exhausted) %>%
             pull(CollectionID)
 
           if (length(collection.ids) > 0) {
             invalid.rows <- which(user.selected.rows.selected.archived$CollectionID %in% collection.ids)
-            archiveWarning(invalid.rows)
+            editWarning(invalid.rows)
             return(NULL)
           }
 
@@ -764,16 +809,10 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
           dbWithTransaction(con, {
             for(i in seq_len(nrow(user.selected.rows.selected.archived))) {
               row <- user.selected.rows.selected.archived[i, ]
-              if(row$SpotsToExhaust > 0 && row$SpotsToExhaust <= row$SpotsToTotal && row$SpotsToTotal > 0) {
+              if(row$SpotsToExhaust > 0 && row$SpotsToExhaust > row$ArchivedSpotsCount) {
                 # Update the exhausted count in blood_spot_collection
-                dbExecute(con, "UPDATE blood_spot_collection SET exhausted = :exhausted, total = :total WHERE id = :id",
-                          params = list(exhausted = row$SpotsToExhaust, total = row$SpotsToTotal, id = row$CollectionID))
-              }
-
-              if (row$SpotsToExhaust == row$SpotsToTotal) {
-                # Insert into archived_dbs_blood_spots
-                dbExecute(con, "INSERT INTO archived_dbs_blood_spots (blood_spot_collection_id, archived_spots_count, reason, status_id) VALUES (:id, :spots, :reason, :status_id)",
-                          params = list(id = row$CollectionID, spots = row$SpotsToTotal - row$ArchivedSpotsCount, reason = 'Manually archived as exhausted', status_id = 2))
+                dbExecute(con, "UPDATE blood_spot_collection SET exhausted = :exhausted WHERE id = :id",
+                          params = list(exhausted = row$SpotsToExhaust, id = row$CollectionID))
               }
             }
           })
@@ -1400,7 +1439,7 @@ UpdateControlSelections <- function(session, input, keepCurrentSelection = FALSE
 #' @return An HTML div element containing a scrollable table. Each row of the table includes a numeric input 
 #' with properties determined by the function parameters and the corresponding row in the input data frame.
 #'
-CreateNumericInputScrollableTable <- function(data, max_value_column = NULL, default_value_column = NULL, enabled = TRUE, max_value_input = FALSE) {
+CreateNumericInputScrollableTable <- function(data, max_value_column = NULL, default_value_column = NULL, enabled = TRUE, min_value_column = NULL) {
   # Format the 'Percentage' and 'Strain' columns, if they exist
   if ("Percentage" %in% names(data)) {
     data$Percentage <- sapply(data$Percentage, function(x) paste(x, "%", collapse = ","))
@@ -1414,13 +1453,14 @@ CreateNumericInputScrollableTable <- function(data, max_value_column = NULL, def
     row <- data[i, ]
     
     max_spots <- if (!is.null(max_value_column) && max_value_column %in% names(row)) row[[max_value_column]] else 100
+    min_spots <- if (!is.null(min_value_column) && min_value_column %in% names(row)) row[[min_value_column]] else 0
     default_value <- if (!is.null(default_value_column) && default_value_column %in% names(row)) row[[default_value_column]] else 0
     
     # Manually creating the numeric input HTML
     numeric_input_id <- paste0("modifyControl_", i)
     disabled_attr <- ifelse(enabled, "", "disabled")
     numeric_input_html <- tags$input(type = "number", id = numeric_input_id, class = "form-control", 
-                                     style = "width: 80px;", min = 0, max = max_spots, 
+                                     style = "width: 80px;", min = min_spots, max = max_spots, 
                                      value = default_value, disabled_attr)
     
     tags$tr(
@@ -1444,64 +1484,3 @@ CreateNumericInputScrollableTable <- function(data, max_value_column = NULL, def
   return(scrollable_table)
 }
 
-
-#' Create a Scrollable Table with Numeric Inputs for Exhausted and Total Counts
-#'
-#' This function generates a scrollable HTML table where each row contains numeric input elements for exhausted counts and total counts.
-#' The numeric inputs can be enabled or disabled globally.
-#'
-#' @param data A data frame containing the data to be displayed in the table.
-#' The data frame should include columns for the current values of the exhausted and total counts.
-#' @param enabled A logical value indicating whether the numeric inputs should be enabled (`TRUE`) or disabled (`FALSE`).
-#' By default, inputs are enabled.
-#'
-#' @return An HTML div element containing a scrollable table. Each row of the table includes numeric inputs for exhausted and total counts
-#' with properties determined by the corresponding row in the input data frame.
-#'
-CreateExhaustedTotalCountsTable <- function(data, enabled = TRUE, min_value_column = NULL) {
-  # Ensure the data frame has the required columns
-  if (!("Exhausted" %in% names(data)) || !("Total" %in% names(data))) {
-    stop("Data frame must contain 'Exhausted' and 'Total' columns.")
-  }
-  
-  # Build the HTML table rows
-  table_rows <- lapply(seq_len(nrow(data)), function(i) {
-    row <- data[i, ]
-    
-    exhausted_default <- row[["Exhausted"]]
-    total_default <- row[["Total"]]
-    min_spots <- if (!is.null(min_value_column) && min_value_column %in% names(row)) row[[min_value_column]] else 100
-
-    # Manually creating the numeric input HTML for exhausted and total counts
-    exhausted_input_id <- paste0("exhaustedCount_", i)
-    total_input_id <- paste0("totalCount_", i)
-    disabled_attr <- ifelse(enabled, "", "disabled")
-    
-    exhausted_input_html <- tags$input(type = "number", id = exhausted_input_id, class = "form-control", 
-                                       style = "width: 80px;", min = min_spots, value = exhausted_default, disabled_attr)
-    
-    total_input_html <- tags$input(type = "number", id = total_input_id, class = "form-control", 
-                                   style = "width: 80px;", min = min_spots, value = total_default, disabled_attr)
-    
-    tags$tr(
-      tags$td(exhausted_input_html),
-      tags$td(total_input_html),
-      lapply(row, function(value) tags$td(as.character(value)))
-    )
-  })
-
-  # Create table header, including headers for the numeric inputs
-  table_header <- tags$tr(
-    tags$th("Exhausted Count"),
-    tags$th("Total Count"),
-    lapply(names(data), function(name) tags$th(name))
-  )
-  
-  # Create a scrollable div to contain the table
-  scrollable_table <- div(
-    style = "overflow-x: auto; overflow-y: auto; height: 400px; width: 100%; position: relative;",
-    tags$table(class = "table table-striped", table_header, do.call(tagList, table_rows))
-  )
-  
-  return(scrollable_table)
-}

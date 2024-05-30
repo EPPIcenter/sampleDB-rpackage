@@ -140,15 +140,8 @@ upload_extracted_dna <- function(user_data, control_extraction, database = Sys.g
     # and the exhausted spots to archived_dbs_blood_spots
     if (nrow(df.payload) > 0) {
       for (ii in 1:nrow(df.payload)) {
-
         dbExecute(con, sprintf("UPDATE blood_spot_collection SET exhausted = %d WHERE id = %d;", df.payload[ii,]$exhausted, df.payload[ii,]$blood_spot_collection_id))
         message(sprintf("Updated exhausted count for collection ID %d.", df.payload[ii,]$blood_spot_collection_id))
-
-        # Directly use `total` and `exhausted_count` from `df.payload` without additional query
-        if (df.payload[ii,]$exhausted == df.payload[ii,]$total) {
-          dbExecute(con, sprintf("INSERT INTO archived_dbs_blood_spots (blood_spot_collection_id, archived_spots_count, reason, status_id) VALUES (%d, %d, 'Automatically archived as exhausted', 2);", df.payload[ii,]$blood_spot_collection_id, df.payload[ii,]$total))
-          message(sprintf("Archived spots for collection ID %d as exhausted.", df.payload[ii,]$blood_spot_collection_id))
-        }
       }
     }
 
