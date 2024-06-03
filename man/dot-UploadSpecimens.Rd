@@ -4,7 +4,7 @@
 \alias{.UploadSpecimens}
 \title{Upload Specimens to SampleDB}
 \usage{
-.UploadSpecimens(upload_data, sample_type_id, conn)
+.UploadSpecimens(upload_data, sample_type_id, conn, extraction = FALSE)
 }
 \arguments{
 \item{upload_data}{A data frame containing the specimen data.}
@@ -12,6 +12,11 @@
 \item{sample_type_id}{A character or numeric identifier for the sample type.}
 
 \item{conn}{A database connection object.}
+
+\item{extraction}{This is an extraction from a control, not a regular sample.
+This will enforce some checks to make sure we are not writing to the database
+when we should only be reading from certain tables. An example is the study subject table,
+which we should only read from during an extraction.}
 }
 \description{
 This internal function uploads specimen data to the SampleDB database.

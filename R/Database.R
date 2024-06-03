@@ -346,3 +346,34 @@ create_flat_view_by_sample_type <- function(sample_storage_type, database = Sys.
     collect()
 
 }
+
+#' View all extractions in the database 
+#' 
+#' This function is a utility function to pull all extractions from the database.
+#'
+#' @param database The path to the database.
+#' 
+#' @import RSQLite
+#' @import dplyr
+#' @import tidyr
+#' @export
+create_flat_view_of_extractions <- function(database = Sys.getenv("SDB_PATH")) {
+
+  con <- init_db_conn(db_path = database)
+
+  study_subject <- tbl(con, "study_subject") %>% dplyr::select(study_subject_id = id, study_id, ControlUID = name)
+  batches <- tbl(con, "study") %>% dplyr::select(study_id = id, Batch = short_code)
+  malaria_blood_controls <- tbl(con, "malaria_blood_control") %>% dplyr::select(study_subject_id)
+  specimens <- tbl(con, "specimen") %>% dplyr::select(SpecimenID = id, study_subject_id)
+  storage_containers <- tbl(con, "storage_container") %>% select(ExtractionID=id, SpecimenID = specimen_id)
+  micronix_tubes <- tbl(con, "micronix_tube") %>% select(Barcode = barcode, ExtractionID = id)
+
+  study_subject %>%
+    dplyr::inner_join(batches, by = join_by(study_id)) %>%
+    dplyr::inner_join(malaria_blood_controls, by = join_by(study_subject_id)) %>%
+    dplyr::inner_join(specimens, by = join_by(study_subject_id)) %>%
+    dplyr::inner_join(storage_containers, by = join_by(SpecimenID)) %>%
+    dplyr::inner_join(micronix_tubes, by = join_by(ExtractionID)) %>%
+    dplyr::select(ExtractionID, Barcode, ControlUID, Batch) %>%
+    collect()
+}
