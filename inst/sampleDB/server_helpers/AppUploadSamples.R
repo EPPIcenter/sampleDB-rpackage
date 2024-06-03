@@ -256,7 +256,6 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
       "cryovial" = "cryovial_box"
     )
 
-
     updateSelectizeInput(
       session,
       "UploadManifestName",
@@ -310,7 +309,7 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
       "UploadFileType",
       choices = get_file_types_for_sample(input$UploadSampleType),
       inline = TRUE,
-      selected = FALSE
+      selected = "na",
     )
 
     updateSelectInput(
@@ -327,7 +326,12 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
     manifest <- switch(
       input$UploadSampleType,
       "micronix" = "micronix_plate",
-      "cryovial" = "cryovial_box"
+      "cryovial" = "cryovial_box",
+      "dbs_sample" = switch(
+        input$UploadDBSSampleManifest,
+        "dbs_sheet" = "dbs_bag",
+        "box" = "box"
+      )
     )
 
     updateSelectizeInput(
@@ -336,7 +340,12 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
       label = switch(
         input$UploadSampleType,
         "micronix" = "Plate Name",
-        "cryovial" = "Box Name"
+        "cryovial" = "Box Name",
+        "dbs_sample" = switch(
+          input$UploadDBSSampleManifest,
+          "dbs_sheet" = "Bag",
+          "box" = "Box"
+        )
       ),
       selected = FALSE,
       choices = DBI::dbReadTable(con, manifest) %>% pull(name),

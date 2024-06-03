@@ -17,6 +17,16 @@
       "location_key": "cryovial_locations",
       "container_key": "cryovial_box",
       "container_barcode_key": "cryovial_box"
+    },
+    "dbs_sample": {
+      "id": 3,
+      "name": "DBS",
+      "file_types": ["na"],
+      "actions": ["upload"],
+      "location_key": ["micronix_locations"],
+      "storage_location": "minus20_dbs_storage",
+      "container_key": "dbs_sheet",
+      "container_barcode_key": "dbs_sheet"
     }
   },
   "action_requirements": {

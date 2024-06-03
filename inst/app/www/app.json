@@ -11,7 +11,7 @@
     "extraction": "Extract"
   },
   "initialization": {
-    "samples": ["micronix", "cryovial"],
+    "samples": ["micronix", "cryovial", "paper"],
     "controls": ["dbs_sheet", "whole_blood"]
   },
   "locations": {
