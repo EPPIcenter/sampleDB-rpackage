@@ -170,13 +170,17 @@ upload_extracted_dna <- function(user_data, control_extraction, database = Sys.g
 #' @param upload_data A data frame containing the specimen data.
 #' @param sample_type_id A character or numeric identifier for the sample type.
 #' @param conn A database connection object.
+#' @param extraction This is an extraction from a control, not a regular sample. 
+#' This will enforce some checks to make sure we are not writing to the database 
+#' when we should only be reading from certain tables. An example is the study subject table,
+#' which we should only read from during an extraction.
 #'
 #' @importFrom dplyr filter inner_join select rename
 #' @importFrom DBI dbReadTable
 #' @importFrom lubridate now as_date ymd
 #' @importFrom RSQLite dbReadTable
 #' @keywords internal
-.UploadSpecimens <- function(upload_data, sample_type_id, conn){
+.UploadSpecimens <- function(upload_data, sample_type_id, conn, extraction = FALSE) {
 
   for(i in 1:nrow(upload_data)) {
     eval.specimen_type <- safe_extract(upload_data[i, ], "SpecimenType")
@@ -214,6 +218,11 @@ upload_extracted_dna <- function(user_data, control_extraction, database = Sys.g
     tmp_table.study_subject <- inner_join(CheckTableTx(conn = conn, "study_subject")[, c("name", "study_id")],
                                           tibble(name = eval.subject, study_id = eval.study_id),
                                           by = c("name", "study_id"))
+
+    if (extraction && nrow(tmp_table.study_subject) == 0) {
+      errmsg <- sprintf("No control (study subject) was detected for this extraction!!! [StudySubject = %s; Batch = %s]", eval.subject, eval.study_code)
+      stop(errmsg)
+    }
 
     #if this upload item's StudySubject exists in the database, then get the necessary "study_subject" id
     if(nrow(tmp_table.study_subject) > 0){

@@ -16,25 +16,19 @@
 #'   appropriate description and data frame.
 
 check_control_exists <- function(con, table_name, row_number_col, control_col, batch_col, error_if_exists = FALSE) {
-  
-  control_joins <- setNames(
-    c("name"),
-    c(control_col)
-  )
 
-  batch_joins <- setNames(
-    c("short_code"),
-    c(batch_col)
-  )
+  study_subject <- tbl(con, "study_subject") %>% dplyr::select(study_subject_id = id, study_id, ControlUID = name)
+  batches <- tbl(con, "study") %>% dplyr::select(study_id = id, Batch = short_code)
+
+  batch_uid_joined <- study_subject %>%
+    inner_join(batches, by = join_by(study_id))
 
   df <- tbl(con, table_name) %>%
-    left_join(tbl(con, "study_subject") %>% 
-              dplyr::rename(control_id = id), by = control_joins) %>%
-    left_join(tbl(con, "study") %>% dplyr::rename(study_id = id), by = batch_joins) 
+    left_join(batch_uid_joined, by = join_by(Batch, ControlUID))
   
   if (error_if_exists) {
     df <- df %>%
-      filter(!is.na(control_id)) %>%
+      filter(!is.na(study_subject_id)) %>%
       select(all_of(c(row_number_col, control_col, batch_col))) %>%
       collect()
     
@@ -44,7 +38,7 @@ check_control_exists <- function(con, table_name, row_number_col, control_col, b
     
   } else {
     df <- df %>%
-      filter(is.na(control_id)) %>%
+      filter(is.na(study_subject_id)) %>%
       select(all_of(c(row_number_col, control_col, batch_col))) %>%
       collect()
     
