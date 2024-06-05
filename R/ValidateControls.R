@@ -445,7 +445,15 @@ validate_controls <- function(database, user_data, control_type, user_action) {
 
   validation_result <- NULL
   if (user_action == "created") {
-    validation_result <- validate_dates_with_tokens(user_data, "Batch", "%Y-%m-%d",  c("unk", "UNK", "unknown", "UNKNOWN"))
+    validation_result <- validate_date_format(user_data, "Batch", "%Y-%m-%d")
+
+    if (inherits(validation_result, "ErrorData")) {
+      errors <- add_to_errors(errors, validation_result)
+    }
+  }
+
+  if (user_action == "extraction") {
+    validation_result <- validate_date_format(user_data, "ExtractedOn", "%Y-%m-%d")
 
     if (inherits(validation_result, "ErrorData")) {
       errors <- add_to_errors(errors, validation_result)

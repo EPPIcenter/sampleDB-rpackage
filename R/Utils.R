@@ -178,7 +178,7 @@ validate_date_format <- function(data, date_col, allowed_date_formats) {
   invalid_rows <- which(!is.na(data[[date_col]]) & is.na(parsed_dates))
   
   if (length(invalid_rows) > 0) {
-    return(ErrorData$new(description = "Unrecognized strings found in collection date column. Use recognized date formats.", columns = date_col, rows = invalid_rows))
+    return(ErrorData$new(description = sprintf("Unrecognized strings found in collection date column. Use recognized date formats: %s.", paste(allowed_date_formats, collapse = ", ")), columns = date_col, rows = invalid_rows))
   }
   return(NULL) 
 }

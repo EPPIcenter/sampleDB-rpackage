@@ -410,16 +410,21 @@ validate_existing_barcodes_by_study <- function(con, user_data, row_number_col, 
 validate_non_longitudinal_study_subjects <- function(con, table_name, row_number_col, study_short_code_col, study_subject_col) {
   
   # Setup joins
-  study_joins <- setNames(c("short_code"), c(study_short_code_col))
-  study_subject_joins <- setNames(c("name"), c(study_subject_col))
+  joins <- setNames(c("short_code", "name"), c(study_short_code_col, study_subject_col))
 
+  study_subject_study_joined <- tbl(con, "study") %>%
+    dplyr::rename(study_id = id) %>%
+    dplyr::filter(is_longitudinal == 0) %>%
+    dplyr::inner_join(tbl(con, "study_subject"), by = join_by("study_id"), suffix = c("", "_study_subject"))
+
+  # Check for duplicates in the database as well as duplicates
+  # in the file. 
   df <- tbl(con, table_name) %>%
-    dplyr::left_join(tbl(con, "study"), by = study_joins, suffix = c("", "_study")) %>%
-    dplyr::left_join(tbl(con, "study_subject"), by = study_subject_joins, suffix = c("", "_study_subject")) %>%
-    dplyr::group_by(!!rlang::sym(study_subject_col)) %>%
+    dplyr::left_join(study_subject_study_joined, by = joins) %>%
+    dplyr::group_by(!!rlang::sym(study_subject_col), !!rlang::sym(study_short_code_col)) %>%
     dplyr::mutate(n = n()) %>%
-    filter(is_longitudinal == 0 & (!is.na(id_study_subject) | n > 1)) %>%
-    ungroup() %>%
+    dplyr::ungroup() %>%
+    filter((is_longitudinal == 0 & !is.na(id) & !is.na(study_id)) | n > 1) %>%
     select(all_of(c(row_number_col, study_subject_col, study_short_code_col))) %>%
     collect()
 
