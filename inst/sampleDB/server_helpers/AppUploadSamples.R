@@ -38,7 +38,7 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
           column_data <- get_sample_file_columns(input$UploadSampleType, "upload", input$UploadFileType)
         } else if (input$UploadType == "controls") {
           # Retrieve column data for controls based on selected control type
-          column_data <- get_control_file_columns(input$UploadControlType, "create")  # Using action from the input
+          column_data <- get_control_file_columns(input$UploadControlType, input$UploadControlAction)  # Using action from the input
         }
         
         # Generate an empty data frame with the correct column names for downloading
