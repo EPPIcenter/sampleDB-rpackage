@@ -424,7 +424,7 @@ validate_non_longitudinal_study_subjects <- function(con, table_name, row_number
     dplyr::group_by(!!rlang::sym(study_subject_col), !!rlang::sym(study_short_code_col)) %>%
     dplyr::mutate(n = n()) %>%
     dplyr::ungroup() %>%
-    filter((is_longitudinal == 0 & !is.na(id) & !is.na(study_id)) | n > 1) %>%
+    filter(!is.na(id) & !is.na(study_id) | n > 1) %>%
     select(all_of(c(row_number_col, study_subject_col, study_short_code_col))) %>%
     collect()
 
