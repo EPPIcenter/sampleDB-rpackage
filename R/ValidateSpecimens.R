@@ -408,23 +408,23 @@ validate_existing_barcodes_by_study <- function(con, user_data, row_number_col, 
 #' @return ErrorData object or NULL if no errors found.
 #' @keywords validation, cryovial
 validate_non_longitudinal_study_subjects <- function(con, table_name, row_number_col, study_short_code_col, study_subject_col) {
-  
-  # Setup joins
-  joins <- setNames(c("short_code", "name"), c(study_short_code_col, study_subject_col))
 
-  study_subject_study_joined <- tbl(con, "study") %>%
-    dplyr::rename(study_id = id) %>%
-    dplyr::filter(is_longitudinal == 0) %>%
-    dplyr::inner_join(tbl(con, "study_subject"), by = join_by("study_id"), suffix = c("", "_study_subject"))
+  # Setup joins
+  study_joins <- setNames(c("short_code"), c(study_short_code_col))
+  study_subject_joins <- setNames(c("name", "study_id"), c(study_subject_col, "study_id"))
+
+  study_tbl <- tbl(con, "study") %>% dplyr::rename(study_id = id)
+  study_subject_tbl <- tbl(con, "study_subject")
 
   # Check for duplicates in the database as well as duplicates
-  # in the file. 
+  # in the file.
   df <- tbl(con, table_name) %>%
-    dplyr::left_join(study_subject_study_joined, by = joins) %>%
+    dplyr::left_join(study_tbl, by = study_joins) %>%
+    dplyr::left_join(study_subject_tbl, by = study_subject_joins) %>%
     dplyr::group_by(!!rlang::sym(study_subject_col), !!rlang::sym(study_short_code_col)) %>%
     dplyr::mutate(n = n()) %>%
     dplyr::ungroup() %>%
-    filter(!is.na(id) & !is.na(study_id) | n > 1) %>%
+    dplyr::filter(is_longitudinal == 0 & (!is.na(id) & !is.na(study_id) | n > 1)) %>%
     select(all_of(c(row_number_col, study_subject_col, study_short_code_col))) %>%
     collect()
 
