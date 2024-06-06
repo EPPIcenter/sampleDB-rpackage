@@ -63,7 +63,7 @@ find_header <- function(user_file, required_user_column_names, valid_header_rows
 
   # Sanity check
   if (nrow(user_file) <= 1) {
-    stop("File is empty or contains only one row.")
+    stop_formatting_error("File is empty or contains only one row. The following columns were not checked yet.", format_error(required_user_column_names, reason = "File has no data", trigger = "File has no data"))
   }
 
   # Check each potential header row for the presence of required column names
@@ -77,8 +77,6 @@ find_header <- function(user_file, required_user_column_names, valid_header_rows
   # Return NULL if no valid header row found
   return(NULL)
 }
-
-
 
 #' Check if the collection date column should be required
 #'
