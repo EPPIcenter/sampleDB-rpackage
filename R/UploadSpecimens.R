@@ -147,9 +147,11 @@ upload_extracted_dna <- function(user_data, control_extraction, database = Sys.g
 
   } else if ("whole_blood" == control_extraction) {
 
+    browser()
+
     df.payload = user_data %>%
-      inner_join(dbReadTable(con, "study") %>% dplyr::rename(study_id=id), by=c("study_short_code"="short_code")) %>%
-      inner_join(dbReadTable(con, "study_subject") %>% dplyr::rename(study_subject_id=id, study_subject=name), by = c("study_id", "study_subject")) %>%
+      inner_join(dbReadTable(con, "study") %>% dplyr::rename(study_id=id), by=c("Batch"="short_code")) %>%
+      inner_join(dbReadTable(con, "study_subject") %>% dplyr::rename(study_subject_id=id, ControlUID=name), by = c("study_id", "ControlUID")) %>%
       inner_join(dbReadTable(con, "malaria_blood_control") %>% dplyr::rename(malaria_blood_control_id=id), by = c("study_subject_id")) %>%
       inner_join(dbReadTable(con, "whole_blood_tube") %>% dplyr::rename(whole_blood_tube_id=id), by = c("malaria_blood_control_id"))
 

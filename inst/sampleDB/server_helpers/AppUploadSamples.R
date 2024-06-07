@@ -26,7 +26,13 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
     output$UploadFileTemplate <- downloadHandler(
       filename = function() {
         if (input$UploadType == "samples") {
-          paste(paste(c(input$UploadSampleType, input$UploadFileType, "upload", "template"), collapse = "_"), ".csv", sep = "")
+          filename_base <- paste(c(input$UploadSampleType, input$UploadFileType, "upload", "template"), collapse = "_")
+          filename_base <- if (input$UploadSampleType == "dbs_sample") {
+            paste(c(filename_base, input$UploadDBSSampleManifest), collapse = "_")
+          } else {
+            filename_base
+          }
+          paste(filename_base, ".csv", sep = "")
         } else {
           paste(paste(c(input$UploadControlType, input$UploadControlAction, "template"), collapse = "_"), ".csv", sep = "")
         }
@@ -35,7 +41,7 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
          # Check if the user is uploading samples or controls
         if (input$UploadType == "samples") {
           # Retrieve column data for samples based on selected sample type
-          column_data <- get_sample_file_columns(input$UploadSampleType, "upload", input$UploadFileType)
+          column_data <- get_sample_file_columns(input$UploadSampleType, "upload", input$UploadFileType, input$UploadDBSSampleManifest)
         } else if (input$UploadType == "controls") {
           # Retrieve column data for controls based on selected control type
           column_data <- get_control_file_columns(input$UploadControlType, "create")  # Using action from the input

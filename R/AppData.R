@@ -507,7 +507,7 @@ get_sample_file_columns <- function(sample_type, action, file_type = "na", conta
       stop("DBS specimens need to have a container type specified.")
     }
     if (container_type == "box") {
-      required_vals <- c(required_vals, "Position", "BoxName", "BoxBarcode") 
+      required_vals <- c(required_vals, "BoxRow", "BoxColumn", "BoxName", "BoxBarcode")
     }
     else if (container_type == "bag") {
       required_vals <- c(required_vals, "BagName")
