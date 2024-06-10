@@ -96,7 +96,8 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
           user_csv = dataset$datapath,
           user_action = "upload",
           file_type = input$UploadFileType,
-          sample_type = input$UploadSampleType
+          sample_type = input$UploadSampleType,
+          container_type = input$UploadDBSSampleManifest
         )
       },
       message = function(m) {
@@ -459,13 +460,19 @@ build_annotated_csv <- function(e) {
 # Error handling should be improved upon in the future to be done at the server level.
 check_if_special_columns_missing <- function(e, rv, input) {
 
+  if (input$UploadSampleType == "dbs_sample") {
+    message("NOTE: Input after upload is not permitted for DBS specimens.")
+    return(NULL)
+  }
+
   message("Checking whether to ask user for input.")
   # Use the get_sample_file_columns function to retrieve file column attributes
 
   file_column_attr <- get_sample_file_columns(
     sample_type = input$UploadSampleType,
     action = "upload",
-    file_type = input$UploadFileType
+    file_type = input$UploadFileType,
+    container_type = input$UploadDBSSampleManifest
   )
 
   locations <- get_location_by_sample(input$UploadSampleType)

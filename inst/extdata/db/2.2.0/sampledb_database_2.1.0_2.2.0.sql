@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS "paper" (
 	"label"	VARCHAR NOT NULL,
 	FOREIGN KEY("id") REFERENCES "storage_container"("id"),
 	PRIMARY KEY("id"),
-	CHECK("container_type" IN ("box", "bag")),
+	CHECK("manifest_type" IN ("box", "bag")),
 	CONSTRAINT "label_container_uc" UNIQUE("label","manifest_id","manifest_type")
 );
 

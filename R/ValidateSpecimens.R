@@ -597,21 +597,23 @@ validate_empty_micronix_well_upload <- function(con, table_name, row_number_col,
 validate_dbs_sample_label_uniqueness <- function(con, user_data, row_number_col, label_col, container_name_col, table_name, error_if_exists) {
   # Directly define the join conditions using named vectors
   user_table_joins <- setNames(
-    c(label_col, container_name_col),
-    c("label", "name") # some of these are from renames!!!
+    c("label", "name"),
+    c(label_col, container_name_col)
   )
 
   paper_tbl <- tbl(con, "paper") %>%
     dplyr::filter(manifest_type == !!table_name)
 
   container_class_tbl <- tbl(con, table_name) %>%
-    dplyr::left_join(paper_tbl, by = c("manifest_id"="id"))
+    dplyr::rename(manifest_id=id) %>%
+    dplyr::left_join(paper_tbl, by = c("manifest_id"))
 
   df <- tbl(con, user_data) %>%
     dplyr::left_join(container_class_tbl, by = user_table_joins) %>%
     dplyr::group_by(!!rlang::sym(container_name_col), !!rlang::sym(label_col)) %>%
     dplyr::mutate(n = n()) %>%
     ungroup() %>%
+    filter(n > 1 | !is.na(manifest_id)) %>%
     select(all_of(c(row_number_col, label_col, container_name_col))) %>%
     collect()
 
@@ -956,20 +958,13 @@ validate_dbs_sample_uploads <- function(dbs_sample_test, variable_colnames) {
   dbs_sample_test(validate_location_reference_db, "FreezerName", "ShelfName", "BasketName")
   dbs_sample_test(validate_non_longitudinal_study_subjects, "StudyCode", "StudySubject")
   dbs_sample_test(check_longitudinal_study_dates, "StudyCode", "CollectionDate")
-  # If it's a box, then make sure the position is not already taken
-  if ("BoxName" == variable_colnames[["container"]]) {
-    dbs_sample_test(validate_matrix_container, "BoxName", "Position", "box", error_if_exists = TRUE)
-    dbs_sample_test(validate_dbs_sample_label_uniqueness, "Label", "BoxName", "box", error_if_exists = TRUE)
-  } else if ("BagName" == variable_colnames[["container"]]) {
-    dbs_sample_test(validate_dbs_sample_label_uniqueness, "Label", "BoxName", "bag", error_if_exists = TRUE)
-  } else {
-    stop("Invalid dbs container type detected while validating dbs specimen upload!!!")
-  }
+  table_name <- if ("BoxName" == variable_colnames[["container"]]) "box" else "bag"
+  dbs_sample_test(validate_dbs_sample_label_uniqueness, "Label", variable_colnames[["container"]], table_name, error_if_exists = TRUE)
 }
 
-#' Validate Cryovial Moves
+#' Validate DBS Specimen Moves
 #'
-#' Conducts specific validation checks for moving Cryovial specimens.
+#' Conducts specific validation checks for moving DBS Specimen specimens.
 #'
 #' @param con The database connection.
 #' @param cryovial_upload_test The utility function for performing tests.

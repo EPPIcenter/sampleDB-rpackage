@@ -507,12 +507,12 @@ get_sample_file_columns <- function(sample_type, action, file_type = "na", conta
       stop("DBS specimens need to have a container type specified.")
     }
     if (container_type == "box") {
-      required_vals <- c(required_vals, "BoxRow", "BoxColumn", "BoxName", "BoxBarcode")
+      required_vals <- c(required_vals, "BoxName", "BoxBarcode")
     }
     else if (container_type == "bag") {
       required_vals <- c(required_vals, "BagName")
     } else {
-      stop("Invalid specimen type!!!")
+      stop("Invalid container type!!!")
     }
   }
 
@@ -783,6 +783,11 @@ get_container_by_sample <- function(sample_type, sample_file = "samples.json", a
   # If there's only one container, make it a list for consistency
   if (!is.list(container_keys)) {
     container_keys <- list(container_keys)
+  }
+
+  if (is.null(container_keys[[1]])) {
+    errmsg <- sprintf("Container keys are not defined for %s", sample_type)
+    stop(errmsg)
   }
   
   # Fetch the complete container data from app_data using the keys
