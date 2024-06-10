@@ -30,7 +30,14 @@ UISearchDelArchSamples <- function() {
       conditionalPanel(
         condition = "input.DelArchSearchType == 'samples'",
         radioButtons("DelArchSearchBySampleType", "Sample Type", choices = get_sample_types()),
-        fileInput("DelArchSearchByBarcode", label = "Sample Barcodes"),
+        conditionalPanel(
+          condition = "input.DelArchSearchType == 'samples' && input.DelArchSearchBySampleType == 'dbs_sample'",
+          radioButtons("SearchDBSSampleManifest", "Select a DBS Container", inline = TRUE, choices = c("Box" = "box", "Bag" = "bag"), selected = "box")
+        ),
+        conditionalPanel(
+          condition = "input.DelArchSearchBySampleType == 'micronix' || input.DelArchSearchBySampleType == 'cryovial'",
+          fileInput("DelArchSearchByBarcode", label = "Sample Barcodes")
+        ),
         selectizeInput("DelArchSearchByManifest", label = "Container", choices = c())
       ),
       conditionalPanel(

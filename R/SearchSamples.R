@@ -339,7 +339,7 @@ FilterByLocation <- function(con, sql, location) {
 SearchSamples <- function(sample_storage_type, filters = NULL, format = "na", database = Sys.getenv("SDB_PATH"), config_yml = Sys.getenv("SDB_CONFIG"), include_internal_sample_id = FALSE) {
   db.results <- NULL
 
-  if (is.null(sample_storage_type) || !sample_storage_type %in% c("micronix", "cryovial", "all")) {
+  if (is.null(sample_storage_type) || !sample_storage_type %in% c("micronix", "cryovial", "dbs_sample")) {
     stop("No search implemenation available for this sample_storage_type")
   }
 
@@ -347,11 +347,17 @@ SearchSamples <- function(sample_storage_type, filters = NULL, format = "na", da
     container_tables <- list(
       "manifest" = switch(sample_storage_type,
         "micronix" = "micronix_plate",
-        "cryovial" = "cryovial_box"
+        "cryovial" = "cryovial_box",
+        "dbs_sample" = switch(
+          filters$container_type,
+          "bag" = "bag",
+          "box" = "box"
+        )
       ),
       "container_class" = switch(sample_storage_type,
         "micronix" = "micronix_tube",
-        "cryovial" = "cryovial_tube"
+        "cryovial" = "cryovial_tube",
+        "dbs_sample" = "paper"
       )
     )
 
@@ -389,13 +395,6 @@ SearchSamples <- function(sample_storage_type, filters = NULL, format = "na", da
     }
 
     sql <- inner_join(sql, tbl(con, "storage_container") %>% dplyr::rename(storage_container_id = id) %>% select(-c(created, last_updated)), by = c("specimen_id"))
-
-    sample_storage_type_id <- switch(
-      sample_storage_type,
-      "micronix" = 1,
-      "cryovial" = 2
-    )
-
     sql <- inner_join(sql, tbl(con, "status") %>% dplyr::rename(status_id = id, status = name), by = c("status_id"))
     sql <- inner_join(sql, tbl(con, "state") %>% dplyr::rename(state_id = id, state = name), by = c("state_id"))
 
@@ -409,14 +408,22 @@ SearchSamples <- function(sample_storage_type, filters = NULL, format = "na", da
 
     sql <- inner_join(sql, tbl(con, container_tables[["container_class"]]) %>% dplyr::rename(storage_container_id = id), by = c("storage_container_id")) %>% collapse()
 
-    # note: dbs does not have a barcode
-    if (!is.null(filters$barcode) && sample_storage_type != 3) {
+    if (!is.null(filters$barcode)) {
       sql <- filter(sql, barcode %in% local(filters$barcode))
     }
 
     # Join manifest table
-    sql <- inner_join(sql, tbl(con, container_tables[["manifest"]]) %>% dplyr::rename(manifest_id = id, manifest = name, manifest_barcode = barcode), by = c("manifest_id")) %>% collapse()
-    
+    if (sample_storage_type %in% c("cryovial", "micronix")) {
+      sql <- inner_join(sql, tbl(con, container_tables[["manifest"]]) %>% dplyr::rename(manifest_id = id, manifest = name, manifest_barcode = barcode), by = c("manifest_id")) %>% collapse()
+    } else if (sample_storage_type == "dbs_sample"){
+      sql <- inner_join(sql, tbl(con, container_tables[["manifest"]]) %>%
+        dplyr::rename(manifest_id = id, manifest = name), by = c("manifest_id")) %>%
+      filter(manifest_type == !!container_tables[["manifest"]]) %>%
+      collapse()
+    } else {
+      stop("Invalid sample storage type!!!")
+    }
+
     if (!is.null(filters$manifest)) {
       sql <- filter(sql, manifest == local(filters$manifest))
     }
@@ -425,64 +432,7 @@ SearchSamples <- function(sample_storage_type, filters = NULL, format = "na", da
 
     ## map results to the final columns
     ## note: order matters here
-
-    dbmap <- list()
-
-    ## Micronix
-    if (!is.null(format) && sample_storage_type == "micronix" && format == "na") {
-      dbmap$barcode <- "Barcode"
-      dbmap$position <- "Position"
-    } else if (!is.null(format) && sample_storage_type == "micronix" && format == "traxcer") {
-      dbmap$barcode <- "Tube"
-
-      dbmap$position <- ifelse(
-        !is.na(config$traxcer_position$override),
-        config$traxcer_position$override,
-        config$traxcer_position$default
-      )
-
-    } else if (!is.null(format) && sample_storage_type == "micronix" && format == "visionmate") {
-      dbmap$barcode <- "TubeCode"
-      dbmap$position <- "Position"
-    }
-
-    ## Cryovial
-    else if (sample_storage_type == "cryovial") {
-      dbmap$barcode <- "Barcode"
-      dbmap$position <-  "Position"
-
-    ## DBS
-    } else if (sample_storage_type == "dbs") {
-      dbmap$position <- "Position"
-    } else {
-      dbmap$barcode <- "Barcode"
-      dbmap$position <- "Position"
-    }
-
-    dbmap$short_code <- "Study Code"
-    dbmap$study_subject <- "Study Subject"
-    dbmap$specimen_type <- "Specimen Type"
-    dbmap$collection_date <- "Collection Date"
-
-    dbmap$location_root <- "Location"
-    if (sample_storage_type == "micronix") {
-      dbmap$location_root <- "Freezer Name"
-      dbmap$level_I <- "Shelf Name"
-      dbmap$level_II <- "Basket Name"
-      dbmap$manifest <- "Plate Name"
-      dbmap$manifest_barcode <- "Plate Barcode"
-    } else if (sample_storage_type == "cryovial") {
-      dbmap$location_root <- "Freezer Name"
-      dbmap$level_I <- "Rack Number"
-      dbmap$level_II <- "Rack Position"
-      dbmap$manifest <- "Box Name"
-      dbmap$manifest_barcode <- "Box Barcode"
-    }
-
-    dbmap$comment <- "Comment"
-    dbmap$state <- "State"
-    dbmap$status <- "Status"
-
+    dbmap <- get_db_map(sample_storage_type, format = format, config = config_yml, filters = filters)
 
     if (include_internal_sample_id) {
 
@@ -863,25 +813,24 @@ search_by_study_subject_file_upload <- function(sample_storage_type, filters, da
 }
 
 
-
-
-get_db_map <- function(sample_storage_type, format = "na", config = Sys.getenv("SDB_CONFIG")) {
+get_db_map <- function(sample_storage_type, format = "na", config = Sys.getenv("SDB_CONFIG"), filters = NULL) {
 
     dbmap <- list()
+    if (sample_storage_type == "dbs_sample" && (is.null(filters) || is.null(filters$container_type))) {
+      stop("Must have container type selected for dbs samples.")
+    }
 
    ## Micronix
     if (!is.null(format) && sample_storage_type == "micronix" && format == "na") {
       dbmap$barcode <- "Barcode"
       dbmap$position <- "Position"
     } else if (!is.null(format) && sample_storage_type == "micronix" && format == "traxcer") {
-      dbmap$barcode <- "Tube"
-
+      dbmap$barcode <- "Tube ID"
       dbmap$position <- ifelse(
         !is.na(config$traxcer_position$override),
         config$traxcer_position$override,
         config$traxcer_position$default
       )
-
     } else if (!is.null(format) && sample_storage_type == "micronix" && format == "visionmate") {
       dbmap$barcode <- "TubeCode"
       dbmap$position <- "Position"
@@ -891,24 +840,17 @@ get_db_map <- function(sample_storage_type, format = "na", config = Sys.getenv("
     else if (sample_storage_type == "cryovial") {
       dbmap$barcode <- "Barcode"
       dbmap$position <-  "Position"
-
-    ## DBS
-    } else if (sample_storage_type == "dbs") {
-      dbmap$position <- "Position"
-    } else {
-      dbmap$barcode <- "Barcode"
-      dbmap$position <- "Position"
     }
-
-    if (sample_storage_type == "dbs") {
-      dbmap$`0.05` <- "0.05"
-      dbmap$`0.1` <- "0.1"
-      dbmap$`1` <- "1"
-      dbmap$`10` <- "10"
-      dbmap$`100` <- "100"
-      dbmap$`1k` <- "1k"
-      dbmap$`10k` <- "10k"
-      dbmap$strain <- "Strain"
+    ## DBS doesn't have a position or barcode but has label
+    else if (sample_storage_type == "dbs_sample" && !is.null(filters$container_type)) {
+      dbmap$label <- "Label"
+      if (filters$container_type == "bag") {
+        dbmap$manifest <- "Bag Name"
+      } else if (filters$container_type == "box") {
+        dbmap$manifest <- "Box Name"
+      }
+    } else {
+      stop("Invalid sample type!!!")
     }
 
     dbmap$short_code <- "Study Code"
@@ -929,19 +871,13 @@ get_db_map <- function(sample_storage_type, format = "na", config = Sys.getenv("
       dbmap$level_II <- "Rack Position"
       dbmap$manifest <- "Box Name"
       dbmap$manifest_barcode <- "Box Barcode"
-    } else if (sample_storage_type == "dbs") {
+    } else if (sample_storage_type == "dbs_sample" && !is.null(filters$container_type)) {
       dbmap$location_root <- "Freezer Name"
-      dbmap$level_I <- "Rack Number"
-      dbmap$level_II <- "Rack Position"
-      dbmap$manifest <- "Container Label"
-      dbmap$manifest_barcode <- "Paper Barcode"
+      dbmap$level_I <- "Shelf Name"
+      dbmap$level_II <- "Basket Name"
+      
     } else {
-      # Defaults
-      dbmap$location_root <- "Location"
-      dbmap$level_I <- "Level I"
-      dbmap$level_II <- "Level II"
-      dbmap$manifest <- "Manifest Name"
-      dbmap$manifest_barcode <- "Manifest Barcode"
+      stop("Invalid container type!!!")
     }
 
     dbmap$comment <- "Comment"

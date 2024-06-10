@@ -971,7 +971,9 @@ validate_dbs_sample_uploads <- function(dbs_sample_test, variable_colnames) {
 #' @return A list object containing validation errors, if any.
 #' @keywords validation
 validate_dbs_sample_moves <- function(cryovial_test, variable_colnames) {
-  stop("DBS Sample moves not implemented!!!")
+  table_name <- if ("BoxName" == variable_colnames[["container"]]) "box" else "bag"
+  dbs_sample_test(validate_dbs_sample_label_uniqueness, "Label", variable_colnames[["container"]], table_name, error_if_exists = TRUE)
+
 }
 
 #' Validate Specimens Main Function
