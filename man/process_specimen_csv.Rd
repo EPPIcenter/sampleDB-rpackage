@@ -10,6 +10,7 @@ process_specimen_csv(
   sample_type,
   file_type = "na",
   bind_data = NULL,
+  container_type = NULL,
   database = Sys.getenv("SDB_PATH"),
   config_yml = Sys.getenv("SDB_CONFIG")
 )

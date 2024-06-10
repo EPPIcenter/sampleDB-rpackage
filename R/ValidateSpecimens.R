@@ -39,7 +39,7 @@ validate_micronix_position <- function(data,
 #' @param error_if_exists Logical. If TRUE, an error is returned if the barcode exists in the database.
 #'
 #' @return An ErrorData object if Micronix position rules are violated, or NULL otherwise.
-validate_matrix_container <- function(con, user_data, row_number_col, container_name_col, container_position_col, container_tablename, error_if_exists) {
+validate_matrix_container <- function(con, user_data, row_number_col, container_name_col, container_position_col, matrix_tablename, container_tablename, error_if_exists) {
 
   # Directly define the join conditions using named vectors
   user_table_joins <- setNames(
@@ -47,10 +47,13 @@ validate_matrix_container <- function(con, user_data, row_number_col, container_
     c(container_name_col, container_position_col)
   )
 
-  matrix_container_tbl <- tbl(con, container_tablename)
+  matrix_container_tbl <- tbl(con, matrix_tablename) %>%
+    dplyr::rename(manifest_id = id) %>%
+    dplyr::inner_join(tbl(con, container_tablename), by = join_by(manifest_id))
+
   df <- tbl(con, user_data) %>%
     dplyr::left_join(matrix_container_tbl, by = user_table_joins) %>%
-    filter(is.na(id)) %>%
+    filter(!is.na(id)) %>%
     select(all_of(c(row_number_col, container_name_col, container_position_col))) %>%
     collect()
 
@@ -886,7 +889,7 @@ perform_dbs_sample_db_validations <- function(database, user_data, action, varia
 #' @export
 #' @keywords validation
 validate_micronix_uploads <- function(micronix_test, variable_colnames) {
-  micronix_test(validate_matrix_container, "PlateName", "Position", "micronix_plate", error_if_exists = TRUE)
+  micronix_test(validate_matrix_container, "PlateName", "Position", "micronix_plate", "micronix_tube", error_if_exists = TRUE)
   micronix_test(check_micronix_barcodes_exist, variable_colnames[['barcode_col']], error_if_exists = TRUE)
   micronix_test(validate_study_reference_db, "StudyCode")
   micronix_test(validate_specimen_type_db, "SpecimenType")
@@ -922,7 +925,7 @@ validate_micronix_moves <- function(micronix_test, variable_colnames) {
 #' @keywords validation
 validate_cryovial_uploads <- function(cryovial_test) {
   cryovial_test(check_cryovial_barcodes_exist, "Barcode", "BoxName", error_if_exists = TRUE)
-  cryovial_test(validate_matrix_container, "BoxName", "Position", "cryovial_box", error_if_exists = TRUE)
+  cryovial_test(validate_matrix_container, "BoxName", "Position", "cryovial_box", "cryovial_tube", error_if_exists = TRUE)
   cryovial_test(validate_box_uniqueness, "Barcode", "BoxName", similarity_tolerance = 10)
   cryovial_test(check_longitudinal_study_dates, "StudyCode", "CollectionDate")
   cryovial_test(validate_non_longitudinal_study_subjects, "StudyCode", "StudySubject")

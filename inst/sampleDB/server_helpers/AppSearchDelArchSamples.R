@@ -311,11 +311,7 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
     dbDisconnect(con)
   })
   
-  reset_reactive <- reactive(
-    list(input$DelArchSearchReset, dbUpdateEvent())
-  )
-
-  observeEvent(reset_reactive(), ignoreInit = TRUE, {
+  observeEvent(c(input$DelArchSearchReset, dbUpdateEvent()), ignoreInit = TRUE, {
 
     filter_set$reset()  # restore defaults
 

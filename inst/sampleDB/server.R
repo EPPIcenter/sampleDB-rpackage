@@ -45,13 +45,14 @@ function(input, output, session) {
       ))
     })
   }
- 
-  dbUpdateEvent <- reactivePoll(1000 * 5, NULL,
+
+  dbUpdateEvent <- reactivePoll(1000 * 5, session,
+    function() file.mtime(Sys.getenv("SDB_PATH")),
     function() {
-      current_mtime <- file.mtime(Sys.getenv("SDB_PATH"))
-      return(current_mtime)
-    },
-    function() TRUE
+      current_filestamp <- file.mtime(Sys.getenv("SDB_PATH"))
+      message(paste("Database last updated at", current_filestamp))
+      return (current_filestamp)
+    }
   )
 
   # Reactive value to track if the database update is required

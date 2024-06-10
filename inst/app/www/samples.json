@@ -13,7 +13,7 @@
       "id": 2,
       "name": "Cryovial",
       "file_types": ["na"],
-      "actions": ["upload"],
+      "actions": ["upload", "move"],
       "location_key": "cryovial_locations",
       "container_key": "cryovial_box",
       "container_barcode_key": "cryovial_box"

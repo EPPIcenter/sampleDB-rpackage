@@ -8,6 +8,7 @@ prepare_specimen_data_for_validation(
   sample_type,
   user_data,
   file_type,
+  container_type,
   file_column_attr
 )
 }

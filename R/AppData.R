@@ -44,6 +44,24 @@ get_sample_types <- function(samples_file = "samples.json") {
   return(types)
 }
 
+#' Get sample types from a JSON file by action
+#'
+#' Retrieves a named list for sample types with "name" as the names in the list and "type" as the values, filtered by action.
+#' 
+#' @param samples_file Name of the samples JSON file. Default is "samples.json".
+#' 
+#' @return A named list of sample types.
+#' @export
+get_sample_types_by_action <- function(action, samples_file = "samples.json") {
+
+  stopifnot("Action must be 'move' or 'upload'" = action %in% c("move", "upload"))
+
+  data <- read_json_file(samples_file)
+  action_match <- sapply(data$samples, function(x) if (action %in% x$actions) x$name)
+  null_removed <- Filter(Negate(is.null), action_match)
+  setNames(names(null_removed), sapply(null_removed, function(x) x))
+}
+
 #' Get control types from a JSON file
 #'
 #' Retrieves a named list for control types with "name" as the names in the list and "type" as the values.

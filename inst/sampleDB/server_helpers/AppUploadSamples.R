@@ -41,7 +41,7 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
          # Check if the user is uploading samples or controls
         if (input$UploadType == "samples") {
           # Retrieve column data for samples based on selected sample type
-          column_data <- get_sample_file_columns(input$UploadSampleType, "upload", input$UploadFileType, input$UploadDBSSampleManifest)
+          column_data <- get_sample_file_columns(input$UploadSampleType, "upload", input$UploadFileType, container_type = input$UploadDBSSampleManifest)
         } else if (input$UploadType == "controls") {
           # Retrieve column data for controls based on selected control type
           column_data <- get_control_file_columns(input$UploadControlType, input$UploadControlAction)  # Using action from the input
@@ -85,6 +85,7 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
 
   observeEvent(input$UploadSampleDataSet, ignoreInit = TRUE, {
     dataset <- input$UploadSampleDataSet
+    rv$user_file <- NULL
 
     message(paste("Loaded", dataset$name))
 
@@ -106,7 +107,11 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
       })
     },
     formatting_error = function(e) {
-      check_if_special_columns_missing(e, rv, input)
+      if (input$UploadType == "samples" && input$UploadSampleType %in% c("micronix", "cryovial")) {
+        check_if_special_columns_missing(e, rv, input)
+      } else {
+        show_formatting_error_modal(e)
+      }
     },
     validation_error = function(e) {
       show_validation_error_modal(output, e)
@@ -148,7 +153,8 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
               user_action = "upload",
               file_type = input$UploadFileType,
               sample_type = input$UploadSampleType,
-              bind_data = user_input_data
+              bind_data = user_input_data,
+              container_type = input$UploadDBSSampleManifest
             )
           } else {
             ## format the file
@@ -172,7 +178,7 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
         early_stop <<- TRUE
       },
       formatting_error = function(e) {
-        if (input$UploadType == "samples") {
+        if (input$UploadType == "samples" && input$UploadSampleType %in% c("micronix", "cryovial")) {
           check_if_special_columns_missing(e, rv, input)
         } else {
           show_formatting_error_modal(e)

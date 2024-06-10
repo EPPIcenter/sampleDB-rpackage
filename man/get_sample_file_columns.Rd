@@ -8,6 +8,7 @@ get_sample_file_columns(
   sample_type,
   action,
   file_type = "na",
+  container_type = NULL,
   config_yml = Sys.getenv("SDB_CONFIG"),
   samples_file = "samples.json"
 )

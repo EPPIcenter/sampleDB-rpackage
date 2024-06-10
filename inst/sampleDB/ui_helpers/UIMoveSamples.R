@@ -7,7 +7,7 @@ UIMoveSamples <- function(){
       width = 4,
       HTML("<h4><b>Move Samples</b></h4>"),
       HTML("<p>To move samples please select a storage type and fill out the sections below.</p>"),
-      radioButtons("MoveSampleType","1. Sample Storage Type", get_sample_types(), inline = T),
+      radioButtons("MoveSampleType","1. Sample Storage Type", get_sample_types_by_action("move"), inline = T),
       hr(),
       radioButtons("MoveFileType", label = "2. Move File Type", choices = c("NA"="na"), inline = T),
       
