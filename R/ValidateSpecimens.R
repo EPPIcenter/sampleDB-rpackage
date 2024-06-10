@@ -28,6 +28,49 @@ validate_micronix_position <- function(data,
   return(NULL)
 }
 
+#' Validate Matrix Container position
+#'
+#' @param con A database connection object.
+#' @param user_data The name of the table where the user data is temporarily stored in the database.
+#' @param row_number_col The column with the row number in the `user_data`.
+#' @param cryovial_col The column with Cryovial barcodes in the `user_data`.
+#' @param cryovial_box_col The column with Cryovial box IDs in the `user_data`.
+#' @param cryovial_box_barcode_col The column with Cryovial box barcodes in the `user_data`.
+#' @param error_if_exists Logical. If TRUE, an error is returned if the barcode exists in the database.
+#'
+#' @return An ErrorData object if Micronix position rules are violated, or NULL otherwise.
+validate_matrix_container <- function(con, user_data, row_number_col, container_name_col, container_position_col, container_tablename, error_if_exists) {
+
+  # Directly define the join conditions using named vectors
+  user_table_joins <- setNames(
+    c("name", "position"),
+    c(container_name_col, container_position_col)
+  )
+
+  matrix_container_tbl <- tbl(con, container_tablename)
+  df <- tbl(con, user_data) %>%
+    dplyr::left_join(matrix_container_tbl, by = user_table_joins) %>%
+    filter(is.na(id)) %>%
+    select(all_of(c(row_number_col, container_name_col, container_position_col))) %>%
+    collect()
+
+  if (error_if_exists && nrow(df) > 0) {
+    return(ErrorData$new(
+      description = "A sample already exists in the specified position.",
+      columns = c(row_number_col, container_name_col, container_position_col),
+      rows = df[[row_number_col]]
+    ))
+  } else if (!error_if_exists && nrow(df) == 0) {
+    return(ErrorData$new(
+      description = "A sample does not exist in the specified position.",
+      columns = c(row_number_col, container_name_col, container_position_col),
+      rows = df[[row_number_col]]
+    ))
+  }
+
+  return(NULL)
+}
+
 #' Validate Micronix-specific barcode length rules
 #'
 #' @param data A dataframe containing the data to be validated.
@@ -544,6 +587,47 @@ validate_empty_micronix_well_upload <- function(con, table_name, row_number_col,
   return(NULL)
 }
 
+#' DBS Specimen paper identifier uniqueness check
+#'
+#' This function checks if the provided paper in the DBS specimen dataset is unique by position.
+#'
+#' @param con A database connection object.
+#' @param user_data The name of the formatted CSV table in the database.
+#' @param row_number_col The column name representing the row number in `table_name`.
+#' @param label_col The column name representing the position in `table_name`.
+#' @param container_name_col The column name representing the Cryovial container name in `table_name`.
+#'
+#' @return An object of class ErrorData. If there are no errors, NULL is returned.
+#' @keywords validation, dbs-specimen
+validate_dbs_sample_label_uniqueness <- function(con, user_data, row_number_col, label_col, container_name_col, table_name, error_if_exists) {
+  # Directly define the join conditions using named vectors
+  user_table_joins <- setNames(
+    c("label", "name"),
+    c(label_col, container_name_col)
+  )
+
+  paper_tbl <- tbl(con, "paper") %>%
+    dplyr::filter(manifest_type == !!table_name)
+
+  container_class_tbl <- tbl(con, table_name) %>%
+    dplyr::rename(manifest_id=id) %>%
+    dplyr::left_join(paper_tbl, by = c("manifest_id"))
+
+  df <- tbl(con, user_data) %>%
+    dplyr::left_join(container_class_tbl, by = user_table_joins) %>%
+    dplyr::group_by(!!rlang::sym(container_name_col), !!rlang::sym(label_col)) %>%
+    dplyr::mutate(n = n()) %>%
+    ungroup() %>%
+    filter(n > 1 | !is.na(manifest_id)) %>%
+    select(all_of(c(row_number_col, label_col, container_name_col))) %>%
+    collect()
+
+  if(nrow(df) > 0) {
+    return(ErrorData$new(data_frame = df, description = "Labels must be unique on papers with DBS specimens."))
+  }
+  return(NULL)
+
+}
 
 #' Cryovial Empty Well Validation
 #'
@@ -705,6 +789,30 @@ validate_cryovial <- function(user_data, action, database) {
   return(errors)
 }
 
+#' Validate DBS Specimen Data
+#'
+#' This function conducts a series of validation checks on DBS specimen data.
+#' The function will return any errors encountered during validation.
+#'
+#' @param user_data A data frame containing specimen data to validate.
+#' @param action The action being performed, e.g. "upload" or "move".
+#' @param database The database connection or specification to use for validation.
+#' @return A list containing validation errors, if any.
+#' @keywords validation, cryovial
+validate_dbs_sample <- function(user_data, action, database) {
+
+  variable_colnames <- list()
+  variable_colnames[['container']] <- find_column_name(user_data, c("BoxName", "BagName"))
+
+  errors <- list()
+  errors <- c(
+    errors,
+    perform_dbs_sample_db_validations(database, user_data, action, variable_colnames)
+  )
+
+  return(errors)
+}
+
 #' Perform Database-Related Validations for Cryovials
 #'
 #' This function conducts database-related validation checks for Cryovial specimen data.
@@ -737,6 +845,38 @@ perform_cryovial_db_validations <- function(database, user_data, action) {
   return(errors)
 }
 
+#' Perform Database-Related Validations for DBS Samples
+#'
+#' This function conducts database-related validation checks for DBS specimen data.
+#' It initiates a database connection, then performs upload or move validations based on the action provided.
+#'
+#' @param database The database connection or specification for validation.
+#' @param user_data The users data.
+#' @param action The action being performed, either "upload" or "move".
+#' @return A list containing validation errors, if any.
+#' @keywords validation, cryovial
+perform_dbs_sample_db_validations <- function(database, user_data, action, variable_colnames) {
+  con <- init_and_copy_to_db(database, user_data)
+  on.exit(dbDisconnect(con), add = TRUE)
+  errors <- list()
+
+  # Utility function to simplify repetitive operations
+  cryovial_test <- function(validation_func, ...) {
+    func_name <- deparse(substitute(validation_func))
+    cat("Executing function:", func_name, "\n")
+    result <- do.call(validation_func, list(con, "user_data", "RowNumber", ...))
+    errors <<- add_to_errors(errors, result)
+  }
+
+  if (action == "upload") {
+    validate_dbs_sample_uploads(cryovial_test, variable_colnames)
+  } else if (action == "move") {
+    validate_dbs_sample_moves(cryovial_test, variable_colnames)
+  }
+
+  return(errors)
+}
+
 #' Validate Micronix Uploads
 #'
 #' Conducts specific validation checks for uploading Micronix specimens.
@@ -746,7 +886,7 @@ perform_cryovial_db_validations <- function(database, user_data, action) {
 #' @export
 #' @keywords validation
 validate_micronix_uploads <- function(micronix_test, variable_colnames) {
-
+  micronix_test(validate_matrix_container, "PlateName", "Position", "micronix_plate", error_if_exists = TRUE)
   micronix_test(check_micronix_barcodes_exist, variable_colnames[['barcode_col']], error_if_exists = TRUE)
   micronix_test(validate_study_reference_db, "StudyCode")
   micronix_test(validate_specimen_type_db, "SpecimenType")
@@ -782,6 +922,7 @@ validate_micronix_moves <- function(micronix_test, variable_colnames) {
 #' @keywords validation
 validate_cryovial_uploads <- function(cryovial_test) {
   cryovial_test(check_cryovial_barcodes_exist, "Barcode", "BoxName", error_if_exists = TRUE)
+  cryovial_test(validate_matrix_container, "BoxName", "Position", "cryovial_box", error_if_exists = TRUE)
   cryovial_test(validate_box_uniqueness, "Barcode", "BoxName", similarity_tolerance = 10)
   cryovial_test(check_longitudinal_study_dates, "StudyCode", "CollectionDate")
   cryovial_test(validate_non_longitudinal_study_subjects, "StudyCode", "StudySubject")
@@ -806,6 +947,38 @@ validate_cryovial_uploads <- function(cryovial_test) {
 validate_cryovial_moves <- function(cryovial_test) {
   cryovial_test(check_cryovial_barcodes_exist, "Barcode", error_if_exists = FALSE)
   cryovial_test(check_cryovial_box_exists, "BoxName", "BoxBarcode")
+}
+
+#' Validate Micronix Uploads
+#'
+#' Conducts specific validation checks for uploading Micronix specimens.
+#'
+#' @param micronix_test The utility function for performing validation checks.
+#' @return A list containing validation errors, if any.
+#' @export
+#' @keywords validation
+validate_dbs_sample_uploads <- function(dbs_sample_test, variable_colnames) {
+  dbs_sample_test(validate_study_reference_db, "StudyCode")
+  dbs_sample_test(validate_specimen_type_db, "SpecimenType")
+  dbs_sample_test(validate_location_reference_db, "FreezerName", "ShelfName", "BasketName")
+  dbs_sample_test(validate_non_longitudinal_study_subjects, "StudyCode", "StudySubject")
+  dbs_sample_test(check_longitudinal_study_dates, "StudyCode", "CollectionDate")
+  table_name <- if ("BoxName" == variable_colnames[["container"]]) "box" else "bag"
+  dbs_sample_test(validate_dbs_sample_label_uniqueness, "Label", variable_colnames[["container"]], table_name, error_if_exists = TRUE)
+}
+
+#' Validate DBS Specimen Moves
+#'
+#' Conducts specific validation checks for moving DBS Specimen specimens.
+#'
+#' @param con The database connection.
+#' @param cryovial_upload_test The utility function for performing tests.
+#' @return A list object containing validation errors, if any.
+#' @keywords validation
+validate_dbs_sample_moves <- function(cryovial_test, variable_colnames) {
+  table_name <- if ("BoxName" == variable_colnames[["container"]]) "box" else "bag"
+  dbs_sample_test(validate_dbs_sample_label_uniqueness, "Label", variable_colnames[["container"]], table_name, error_if_exists = TRUE)
+
 }
 
 #' Validate Specimens Main Function
@@ -847,6 +1020,10 @@ validate_specimens <- function(user_data, sample_type, user_action, file_type, d
     errors <- validate_micronix(user_data, user_action, file_type, database)
   } else if (sample_type == "cryovial") {
     errors <- validate_cryovial(user_data, user_action, database)
+  } else if (sample_type == "dbs_sample") {
+    errors <- validate_dbs_sample(user_data, user_action, database)
+  } else {
+    stop("Invalid sample type!!!")
   }
 
   validation_result <- NULL

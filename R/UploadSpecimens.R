@@ -148,8 +148,8 @@ upload_extracted_dna <- function(user_data, control_extraction, database = Sys.g
   } else if ("whole_blood" == control_extraction) {
 
     df.payload = user_data %>%
-      inner_join(dbReadTable(con, "study") %>% dplyr::rename(study_id=id), by=c("study_short_code"="short_code")) %>%
-      inner_join(dbReadTable(con, "study_subject") %>% dplyr::rename(study_subject_id=id, study_subject=name), by = c("study_id", "study_subject")) %>%
+      inner_join(dbReadTable(con, "study") %>% dplyr::rename(study_id=id), by=c("Batch"="short_code")) %>%
+      inner_join(dbReadTable(con, "study_subject") %>% dplyr::rename(study_subject_id=id, ControlUID=name), by = c("study_id", "ControlUID")) %>%
       inner_join(dbReadTable(con, "malaria_blood_control") %>% dplyr::rename(malaria_blood_control_id=id), by = c("study_subject_id")) %>%
       inner_join(dbReadTable(con, "whole_blood_tube") %>% dplyr::rename(whole_blood_tube_id=id), by = c("malaria_blood_control_id"))
 
@@ -193,13 +193,14 @@ upload_extracted_dna <- function(user_data, control_extraction, database = Sys.g
     eval.comment <- safe_extract(upload_data[i, ], "Comment")
 
     eval.plate_barcode <- safe_extract(upload_data[i,], "PlateBarcode", "BoxBarcode")
-    eval.container_name <- safe_extract(upload_data[i,], "PlateName", "BoxName")
+    eval.container_name <- safe_extract(upload_data[i,], "PlateName", "BoxName", "BagName")
 
     eval.freezer_address <- list(
       location = safe_extract(upload_data[i,], "FreezerName", "FreezerName"),
       level_I = safe_extract(upload_data[i,], "ShelfName", "RackName"),
       level_II = safe_extract(upload_data[i,], "BasketName", "RackPosition")
     )
+    eval.label <- safe_extract(upload_data[i, ], "Label")
 
     eval.collection_date <- safe_extract(upload_data[i, ], "CollectionDate", "ExtractedOn")
 
@@ -336,6 +337,34 @@ upload_extracted_dna <- function(user_data, control_extraction, database = Sys.g
       df <- data.frame(id = eval.id, manifest_id = eval.plate_id, position = eval.position, barcode = eval.barcode)
       DBI::dbAppendTable(conn, "cryovial_tube", df)
 
+    } else if (sample_type_id == "dbs_sample") {
+
+      container_types <- c("BoxName", "BagName")
+      now <- lubridate::now()
+      eval.container_type <- container_types[!is.na(match(container_types, names(upload_data[i, ])))]
+
+      # 7. upload micronix sample
+      eval.manifest_type <- if ("BagName" == eval.container_type) {
+        "bag" 
+      } else if ("BoxName" == eval.container_type) {
+        "box"
+      } else {
+        stop("Invalid container name!!!")
+      }
+      eval.location_id <- filter(CheckTableTx(conn = conn, "location"), location_root == eval.freezer_address$location, level_I == eval.freezer_address$level_I, level_II == eval.freezer_address$level_II)$id
+
+      # create a new housing (if it does not already exist)
+      if(!eval.container_name %in% CheckTableTx(conn = conn, eval.manifest_type)$name){
+        # df <- data.frame(created = now, last_updated = now, location_id = eval.location_id, name = eval.container_name)
+        result <- dbGetQuery(conn, paste("INSERT INTO", eval.manifest_type, "(created, last_updated, location_id, name) VALUES (:created, :last_updated, :location_id, :name) RETURNING id"),
+          list(created = now, last_updated = now, location_id = eval.location_id, name = eval.container_name))
+        eval.plate_id <- result$id[1]
+      } else{
+        eval.plate_id <- filter(CheckTableTx(conn = conn, eval.manifest_type), name == eval.container_name)$id
+      }
+
+      df <- data.frame(id = eval.id, manifest_id = eval.plate_id, manifest_type = eval.manifest_type, label = eval.label)
+      DBI::dbAppendTable(conn, "paper", df)
     } else {
       stop("No upload implementation for this sample type")
     }

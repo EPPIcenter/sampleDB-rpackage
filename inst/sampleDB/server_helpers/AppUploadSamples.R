@@ -26,7 +26,13 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
     output$UploadFileTemplate <- downloadHandler(
       filename = function() {
         if (input$UploadType == "samples") {
-          paste(paste(c(input$UploadSampleType, input$UploadFileType, "upload", "template"), collapse = "_"), ".csv", sep = "")
+          filename_base <- paste(c(input$UploadSampleType, input$UploadFileType, "upload", "template"), collapse = "_")
+          filename_base <- if (input$UploadSampleType == "dbs_sample") {
+            paste(c(filename_base, input$UploadDBSSampleManifest), collapse = "_")
+          } else {
+            filename_base
+          }
+          paste(filename_base, ".csv", sep = "")
         } else {
           paste(paste(c(input$UploadControlType, input$UploadControlAction, "template"), collapse = "_"), ".csv", sep = "")
         }
@@ -35,7 +41,7 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
          # Check if the user is uploading samples or controls
         if (input$UploadType == "samples") {
           # Retrieve column data for samples based on selected sample type
-          column_data <- get_sample_file_columns(input$UploadSampleType, "upload", input$UploadFileType)
+          column_data <- get_sample_file_columns(input$UploadSampleType, "upload", input$UploadFileType, input$UploadDBSSampleManifest)
         } else if (input$UploadType == "controls") {
           # Retrieve column data for controls based on selected control type
           column_data <- get_control_file_columns(input$UploadControlType, input$UploadControlAction)  # Using action from the input
@@ -90,7 +96,8 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
           user_csv = dataset$datapath,
           user_action = "upload",
           file_type = input$UploadFileType,
-          sample_type = input$UploadSampleType
+          sample_type = input$UploadSampleType,
+          container_type = input$UploadDBSSampleManifest
         )
       },
       message = function(m) {
@@ -256,7 +263,6 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
       "cryovial" = "cryovial_box"
     )
 
-
     updateSelectizeInput(
       session,
       "UploadManifestName",
@@ -310,7 +316,7 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
       "UploadFileType",
       choices = get_file_types_for_sample(input$UploadSampleType),
       inline = TRUE,
-      selected = FALSE
+      selected = "na",
     )
 
     updateSelectInput(
@@ -327,7 +333,12 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
     manifest <- switch(
       input$UploadSampleType,
       "micronix" = "micronix_plate",
-      "cryovial" = "cryovial_box"
+      "cryovial" = "cryovial_box",
+      "dbs_sample" = switch(
+        input$UploadDBSSampleManifest,
+        "dbs_sheet" = "dbs_bag",
+        "box" = "box"
+      )
     )
 
     updateSelectizeInput(
@@ -336,7 +347,12 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
       label = switch(
         input$UploadSampleType,
         "micronix" = "Plate Name",
-        "cryovial" = "Box Name"
+        "cryovial" = "Box Name",
+        "dbs_sample" = switch(
+          input$UploadDBSSampleManifest,
+          "dbs_sheet" = "Bag",
+          "box" = "Box"
+        )
       ),
       selected = FALSE,
       choices = DBI::dbReadTable(con, manifest) %>% pull(name),
@@ -444,13 +460,19 @@ build_annotated_csv <- function(e) {
 # Error handling should be improved upon in the future to be done at the server level.
 check_if_special_columns_missing <- function(e, rv, input) {
 
+  if (input$UploadSampleType == "dbs_sample") {
+    message("NOTE: Input after upload is not permitted for DBS specimens.")
+    return(NULL)
+  }
+
   message("Checking whether to ask user for input.")
   # Use the get_sample_file_columns function to retrieve file column attributes
 
   file_column_attr <- get_sample_file_columns(
     sample_type = input$UploadSampleType,
     action = "upload",
-    file_type = input$UploadFileType
+    file_type = input$UploadFileType,
+    container_type = input$UploadDBSSampleManifest
   )
 
   locations <- get_location_by_sample(input$UploadSampleType)

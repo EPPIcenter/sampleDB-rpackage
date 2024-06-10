@@ -31,7 +31,8 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
   DBI::dbDisconnect(con)
 
   # Declare filters for searching and establish any filter dependencies
-  observe({
+  filter_observer <- observe({
+
     # Build the new filters
     new_filters <- list(
       manifest = input$DelArchSearchByManifest,
@@ -53,7 +54,8 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
       composition_type = input$DelArchCompositionTypes,
       strain = input$DelArchSearchByStrains,
       percentage = input$DelArchSearchByPercentages,
-      density = input$DelArchSearchByDensity
+      density = input$DelArchSearchByDensity,
+      container_type = input$SearchDBSSampleManifest
     )
 
     # Remove empty or NULL values from new_filters
@@ -100,10 +102,9 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
 
     # Ensure that state and status are set before performing any searches
     # Check for non-NULL and non-empty strings
-    req(nzchar(input$DelArchSearchByState), nzchar(input$DelArchSearchByStatus))
-    
-    print(filter_set$get())
+    req(nzchar(input$DelArchSearchByState))
 
+    # Check for non-NULL and non-empty strings    
     if (input$DelArchSearchType == "samples") {
       results <- SearchSamples(input$DelArchSearchBySampleType, filters = filter_set$get(), include_internal_sample_id = TRUE)
     } else {
@@ -310,7 +311,11 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
     dbDisconnect(con)
   })
   
-  observeEvent(input$DelArchSearchReset, ignoreInit = TRUE, {
+  reset_reactive <- reactive(
+    list(input$DelArchSearchReset, dbUpdateEvent())
+  )
+
+  observeEvent(reset_reactive(), ignoreInit = TRUE, {
 
     filter_set$reset()  # restore defaults
 
@@ -1118,6 +1123,21 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
     ))
   })
 
+  observeEvent(input$SearchDBSSampleManifest, ignoreInit = TRUE, {
+    dbs_sample_data <- list(name = input$SearchDBSSampleManifest, label = if (input$SearchDBSSampleManifest == "box") "Box Name" else "Bag Name")
+    con <- DBI::dbConnect(RSQLite::SQLite(), Sys.getenv("SDB_PATH"))
+    updateSelectizeInput(
+      session,
+      "DelArchSearchByManifest",
+      label = dbs_sample_data$label,
+      choices = tbl(con, dbs_sample_data$name) %>% pull(name) %>% unique(.),
+      selected = "", 
+      server = TRUE
+    )
+
+    dbDisconnect(con)
+  })
+
   observeEvent(input$AdvancedSearchAction, {
     req(input$AdvancedSearchFileUpload) # Ensure a file is uploaded
 
@@ -1309,18 +1329,16 @@ UpdateSampleSelections <- function(session, input, keepCurrentSelection = FALSE)
   
   manifest_types <- list(
     "micronix" = list(name = "micronix_plate", label = "Plate Name"),
-    "cryovial" = list(name = "cryovial_box", label = "Box Name")
+    "cryovial" = list(name = "cryovial_box", label = "Box Name"),
+    "dbs_sample" = list(name = input$SearchDBSSampleManifest, label = if (input$SearchDBSSampleManifest == "box") "Box Name" else "Bag Name")
   )
   
-  manifests <- if (is.null(manifest_types[[input$DelArchSearchBySampleType]])) {
-    c(unique(tbl(con, "micronix_plate") %>% pull(name)),
-      unique(tbl(con, "cryovial_box") %>% pull(name)))
-  } else {
-    unique(tbl(con, manifest_types[[input$DelArchSearchBySampleType]]$name) %>% pull(name))
+  if (is.null(manifest_types)) {
+    stop("Invalid sample type!!!")
   }
   
   choices_list <- list(
-    DelArchSearchByManifest = manifests,
+    DelArchSearchByManifest = unique(tbl(con, manifest_types[[input$DelArchSearchBySampleType]]$name) %>% pull(name)),
     DelArchSearchByStudy = unique(tbl(con, "study") %>% pull(short_code)),
     DelArchSearchBySubjectUID = unique(tbl(con, "study_subject") %>% pull(name)),
     DelArchSearchBySpecimenType = unique(tbl(con, "specimen_type") %>% pull(name)),

@@ -424,7 +424,7 @@ get_dereferenced_values <- function(dereferenced_keys, sample_values, shared_val
 #'
 #' @return A ColumnData S3 object.
 #' @export
-get_sample_file_columns <- function(sample_type, action, file_type = "na", config_yml = Sys.getenv("SDB_CONFIG"), samples_file = "samples.json") {
+get_sample_file_columns <- function(sample_type, action, file_type = "na", container_type = NULL, config_yml = Sys.getenv("SDB_CONFIG"), samples_file = "samples.json") {
 
   sample_data <- read_json_file(samples_file)
   app_data <- read_app_file()
@@ -500,6 +500,21 @@ get_sample_file_columns <- function(sample_type, action, file_type = "na", confi
   required_vals <- required_vals[!is.null(required_vals)]
   conditional_vals <- conditional_vals[!is.null(conditional_vals)]
   optional_vals <- optional_vals[!is.null(optional_vals)]
+
+  if (sample_type == "dbs_sample") {
+    required_vals <- c(required_vals, "Label")
+    if (is.null(container_type)) {
+      stop("DBS specimens need to have a container type specified.")
+    }
+    if (container_type == "box") {
+      required_vals <- c(required_vals, "BoxName", "BoxBarcode")
+    }
+    else if (container_type == "bag") {
+      required_vals <- c(required_vals, "BagName")
+    } else {
+      stop("Invalid container type!!!")
+    }
+  }
 
   return(ColumnData(
     required = required_vals,
@@ -768,6 +783,11 @@ get_container_by_sample <- function(sample_type, sample_file = "samples.json", a
   # If there's only one container, make it a list for consistency
   if (!is.list(container_keys)) {
     container_keys <- list(container_keys)
+  }
+
+  if (is.null(container_keys[[1]])) {
+    errmsg <- sprintf("Container keys are not defined for %s", sample_type)
+    stop(errmsg)
   }
   
   # Fetch the complete container data from app_data using the keys
