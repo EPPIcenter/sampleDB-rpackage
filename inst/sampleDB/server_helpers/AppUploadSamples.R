@@ -642,7 +642,11 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
       example_data$conditional <- conditional_user_column_names <- c(conditional_user_column_names, file_specs_json$shared$upload[['conditional']])
       optional_user_column_names <- c(optional_user_column_names, file_specs_json$shared$upload[['optional']])
 
-      manifest_name <- file_specs_json$shared$sample_type[[sample_type_index]]$manifest$name
+      manifest_name <- if (input$UploadFileType == "traxcer") {
+        "Rack ID"
+      } else {
+        file_specs_json$shared$sample_type[[sample_type_index]]$manifest$name
+      }
       manifest_barcode_name <- file_specs_json$shared$sample_type[[sample_type_index]]$manifest$barcode
       location_parameters <- file_specs_json$shared$sample_type[[sample_type_index]]$location
       location_parameters <- unlist(location_parameters[c("name", "level_I", "level_II")])

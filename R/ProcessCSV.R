@@ -83,6 +83,8 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
 
   ## Required Column Names
   required_user_column_names <- conditional_user_column_names <- optional_user_column_names <- NULL
+  manifest_name <- NULL
+
   if (user_action %in% c("move", "upload")) {
 
     file_index <- which(lapply(file_specs_json$file_types, function(x) x$id) == file_type)
@@ -105,7 +107,12 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
       conditional_user_column_names <- c(conditional_user_column_names, file_specs_json$shared$upload[['conditional']])
       optional_user_column_names <- c(optional_user_column_names, file_specs_json$shared$upload[['optional']])
 
-      manifest_name <- file_specs_json$shared$sample_type[[sample_type_index]]$manifest$name
+      if (file_type == "traxcer") {
+        manifest_name <- "Rack ID"
+      } else {
+        manifest_name <- file_specs_json$shared$sample_type[[sample_type_index]]$manifest$name
+      }
+
       manifest_barcode_name <- file_specs_json$shared$sample_type[[sample_type_index]]$manifest$barcode
       location_parameters <- file_specs_json$shared$sample_type[[sample_type_index]]$location
       location_parameters <- unlist(location_parameters[c("name", "level_I", "level_II")])
@@ -113,7 +120,12 @@ ProcessCSV <- function(user_csv, user_action, sample_storage_type, search_type =
       required_user_column_names <- c(required_user_column_names, c(manifest_name, unname(location_parameters)))
       optional_user_column_names <- c(optional_user_column_names, c(manifest_barcode_name))
     } else if (user_action %in% "move") {
-      manifest_name <- file_specs_json$shared$sample_type[[sample_type_index]]$manifest$name
+      if (file_type == "traxcer") {
+        manifest_name <- "Rack ID"
+      } else {
+        manifest_name <- file_specs_json$shared$sample_type[[sample_type_index]]$manifest$name
+      }
+      required_user_column_names <- c(required_user_column_names, manifest_name)
     }
   } else { ## Search
     if (search_type %in% c("barcode", "study_subject")) {
