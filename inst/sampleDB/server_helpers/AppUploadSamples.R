@@ -27,11 +27,6 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
       filename = function() {
         if (input$UploadType == "samples") {
           filename_base <- paste(c(input$UploadSampleType, input$UploadFileType, "upload", "template"), collapse = "_")
-          filename_base <- if (input$UploadSampleType == "dbs_sample") {
-            paste(c(filename_base, input$UploadDBSSampleManifest), collapse = "_")
-          } else {
-            filename_base
-          }
           paste(filename_base, ".csv", sep = "")
         } else {
           paste(paste(c(input$UploadControlType, input$UploadControlAction, "template"), collapse = "_"), ".csv", sep = "")
@@ -41,10 +36,12 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
          # Check if the user is uploading samples or controls
         if (input$UploadType == "samples") {
           # Retrieve column data for samples based on selected sample type
-          column_data <- get_sample_file_columns(input$UploadSampleType, "upload", input$UploadFileType, container_type = input$UploadDBSSampleManifest)
+          column_data <- get_sample_file_columns(input$UploadSampleType, "upload", input$UploadFileType)
         } else if (input$UploadType == "controls") {
           # Retrieve column data for controls based on selected control type
           column_data <- get_control_file_columns(input$UploadControlType, input$UploadControlAction)  # Using action from the input
+        } else {
+          stop("Invalid upload type!!!")
         }
         
         # Generate an empty data frame with the correct column names for downloading
@@ -97,8 +94,7 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
           user_csv = dataset$datapath,
           user_action = "upload",
           file_type = input$UploadFileType,
-          sample_type = input$UploadSampleType,
-          container_type = input$UploadDBSSampleManifest
+          sample_type = input$UploadSampleType
         )
       },
       message = function(m) {
@@ -153,8 +149,7 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
               user_action = "upload",
               file_type = input$UploadFileType,
               sample_type = input$UploadSampleType,
-              bind_data = user_input_data,
-              container_type = input$UploadDBSSampleManifest
+              bind_data = user_input_data
             )
           } else {
             ## format the file
@@ -315,8 +310,6 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
     shinyjs::reset("UploadLocationLevelI")
     shinyjs::reset("UploadLocationLevelII")
 
-    con <- dbConnect(SQLite(), Sys.getenv("SDB_PATH"))
-
     updateRadioButtons(
       session,
       "UploadFileType",
@@ -325,67 +318,67 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
       selected = "na",
     )
 
-    updateSelectInput(
-      session, 
-      "UploadLocationRoot",
-      selected = "",
-      choices = c("", tbl(con, "location") %>%
-        collect() %>% 
-        pull(location_root) %>%
-        unique(.)
-      )
-    )
+    if (input$UploadSampleType %in% c("micronix", "cryovial")) {
 
-    manifest <- switch(
-      input$UploadSampleType,
-      "micronix" = "micronix_plate",
-      "cryovial" = "cryovial_box",
-      "dbs_sample" = switch(
-        input$UploadDBSSampleManifest,
-        "dbs_sheet" = "dbs_bag",
-        "box" = "box"
-      )
-    )
+      con <- dbConnect(SQLite(), Sys.getenv("SDB_PATH"))
 
-    updateSelectizeInput(
-      session,
-      "UploadManifestName",
-      label = switch(
-        input$UploadSampleType,
-        "micronix" = "Plate Name",
-        "cryovial" = "Box Name",
-        "dbs_sample" = switch(
-          input$UploadDBSSampleManifest,
-          "dbs_sheet" = "Bag",
-          "box" = "Box"
+      updateSelectInput(
+        session, 
+        "UploadLocationRoot",
+        selected = "",
+        choices = c("", tbl(con, "location") %>%
+          collect() %>% 
+          pull(location_root) %>%
+          unique(.)
         )
-      ),
-      selected = FALSE,
-      choices = DBI::dbReadTable(con, manifest) %>% pull(name),
-      options = list(create = TRUE)
-    )
-
-    updateSelectInput(
-      session,
-      "UploadLocationLevelI",
-      label = switch(
-        input$UploadSampleType,
-        "micronix" = "Shelf Name", 
-        "cryovial" = "Rack Number"
       )
-    )
 
-    updateSelectInput(
-      session,
-      "UploadLocationLevelII",
-      label = switch(
+      manifest <- switch(
         input$UploadSampleType,
-        "micronix" = "Basket Name",
-        "cryovial" = "Rack Position"
+        "micronix" = "micronix_plate",
+        "cryovial" = "cryovial_box"
       )
-    )
 
-    DBI::dbDisconnect(con)
+      updateSelectizeInput(
+        session,
+        "UploadManifestName",
+        label = switch(
+          input$UploadSampleType,
+          "micronix" = "Plate Name",
+          "cryovial" = "Box Name",
+          "dbs_sample" = switch(
+            input$UploadDBSSampleManifest,
+            "dbs_sheet" = "Bag",
+            "box" = "Box"
+          )
+        ),
+        selected = FALSE,
+        choices = DBI::dbReadTable(con, manifest) %>% pull(name),
+        options = list(create = TRUE)
+      )
+
+      updateSelectInput(
+        session,
+        "UploadLocationLevelI",
+        label = switch(
+          input$UploadSampleType,
+          "micronix" = "Shelf Name", 
+          "cryovial" = "Rack Number"
+        )
+      )
+
+      updateSelectInput(
+        session,
+        "UploadLocationLevelII",
+        label = switch(
+          input$UploadSampleType,
+          "micronix" = "Basket Name",
+          "cryovial" = "Rack Position"
+        )
+      )
+
+      DBI::dbDisconnect(con)
+    }
   })
 
   observeEvent(input$UploadLocationRoot, {
@@ -477,8 +470,7 @@ check_if_special_columns_missing <- function(e, rv, input) {
   file_column_attr <- get_sample_file_columns(
     sample_type = input$UploadSampleType,
     action = "upload",
-    file_type = input$UploadFileType,
-    container_type = input$UploadDBSSampleManifest
+    file_type = input$UploadFileType
   )
 
   locations <- get_location_by_sample(input$UploadSampleType)

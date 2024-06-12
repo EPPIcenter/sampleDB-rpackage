@@ -344,12 +344,24 @@ add_to_errors <- function(errors, err) {
     return(errors)
   }
 
-  if (!is.null(err) && is.null(err$description)) {
-    stop("Error object must have a description field.")
-  }
+  if (!is.null(err) && is.list(err)) {
+    for (err.obj in err) {
+      if (!is.null(err.obj) && is.null(err.obj$description)) {
+        stop("Error object must have a description field.")
+      }
 
-  if (!is.null(err) && !is.null(err$description)) {  # Check that error data is present
-    errors[[length(errors) + 1]] <- err
+      if (!is.null(err.obj) && !is.null(err.obj$description)) {  # Check that error data is present
+        errors[[length(errors) + 1]] <- err.obj
+      }
+    }
+  } else {
+    if (!is.null(err) && is.null(err$description)) {
+      stop("Error object must have a description field.")
+    }
+
+    if (!is.null(err) && !is.null(err$description)) {  # Check that error data is present
+      errors[[length(errors) + 1]] <- err
+    }
   }
 
   return(errors)

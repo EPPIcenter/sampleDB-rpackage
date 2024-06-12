@@ -33,9 +33,10 @@ validate_micronix_position <- function(data,
 #' @param con A database connection object.
 #' @param user_data The name of the table where the user data is temporarily stored in the database.
 #' @param row_number_col The column with the row number in the `user_data`.
-#' @param cryovial_col The column with Cryovial barcodes in the `user_data`.
-#' @param cryovial_box_col The column with Cryovial box IDs in the `user_data`.
-#' @param cryovial_box_barcode_col The column with Cryovial box barcodes in the `user_data`.
+#' @param container_name_col The column with container name in `user_data`.
+#' @param container_position_col The column with container positions in the `user_data`.
+#' @param matrix_tablename The tablename in the database that should be checked.
+#' @param container_tablename The sample container tablename. This is used for position checks.
 #' @param error_if_exists Logical. If TRUE, an error is returned if the barcode exists in the database.
 #'
 #' @return An ErrorData object if Micronix position rules are violated, or NULL otherwise.
@@ -602,33 +603,61 @@ validate_empty_micronix_well_upload <- function(con, table_name, row_number_col,
 #'
 #' @return An object of class ErrorData. If there are no errors, NULL is returned.
 #' @keywords validation, dbs-specimen
-validate_dbs_sample_label_uniqueness <- function(con, user_data, row_number_col, label_col, container_name_col, table_name, error_if_exists) {
+validate_dbs_sample_label_uniqueness <- function(con, user_data, row_number_col, label_col, container_name_col, container_type_col, error_if_exists) {
   # Directly define the join conditions using named vectors
+
+  browser()
+
   user_table_joins <- setNames(
-    c("label", "name"),
-    c(label_col, container_name_col)
+    c("label", "name", "manifest_type"),
+    c(label_col, container_name_col, container_type_col)
   )
 
-  paper_tbl <- tbl(con, "paper") %>%
-    dplyr::filter(manifest_type == !!table_name)
+  errors <- NULL
 
-  container_class_tbl <- tbl(con, table_name) %>%
-    dplyr::rename(manifest_id=id) %>%
-    dplyr::left_join(paper_tbl, by = c("manifest_id"))
+  paper_box_tbl <- tbl(con, "paper") %>%
+    filter(manifest_type == "box")
 
-  df <- tbl(con, user_data) %>%
-    dplyr::left_join(container_class_tbl, by = user_table_joins) %>%
+  paper_bag_tbl <- tbl(con, "paper") %>%
+    filter(manifest_type == "bag")
+
+  box_tbl <- tbl(con, "box") %>%
+    dplyr::rename(box_id = id) %>%
+    dplyr::left_join(paper_box_tbl, by = c("box_id"="manifest_id"))
+
+  bag_tbl <- tbl(con, "bag") %>%
+    dplyr::rename(bag_id = id) %>%
+    dplyr::left_join(paper_bag_tbl, by = c("bag_id"="manifest_id"))
+
+  df_bag <- tbl(con, user_data) %>%
+    dplyr::mutate(!!sym(container_type_col) := tolower(!!sym(container_type_col))) %>%
+    dplyr::left_join(bag_tbl, by = user_table_joins) %>%
     dplyr::group_by(!!rlang::sym(container_name_col), !!rlang::sym(label_col)) %>%
     dplyr::mutate(n = n()) %>%
     ungroup() %>%
-    filter(n > 1 | !is.na(manifest_id)) %>%
+    filter(n > 1 | !is.na(bag_id)) %>%
     select(all_of(c(row_number_col, label_col, container_name_col))) %>%
     collect()
 
-  if(nrow(df) > 0) {
-    return(ErrorData$new(data_frame = df, description = "Labels must be unique on papers with DBS specimens."))
+  df_box <- tbl(con, user_data) %>%
+    dplyr::mutate(!!sym(container_type_col) := tolower(!!sym(container_type_col))) %>%
+    dplyr::left_join(box_tbl, by = user_table_joins) %>%
+    dplyr::group_by(!!rlang::sym(container_name_col), !!rlang::sym(label_col)) %>%
+    dplyr::mutate(n = n()) %>%
+    ungroup() %>%
+    filter(n > 1 | !is.na(box_id)) %>%
+    select(all_of(c(row_number_col, label_col, container_name_col))) %>%
+    collect()
+
+  if(nrow(df_bag) > 0) {
+    error.data <- ErrorData$new(data_frame = df_bag, description = "Labels must be unique on papers with DBS specimens (Bag).")
+    errors <- c(errors, error.data)
   }
-  return(NULL)
+  if (nrow(df_box) > 0) {
+    error.data <- ErrorData$new(data_frame = df_box, description = "Labels must be unique on papers with DBS specimens (Box).")
+    errors <- c(errors, error.data)
+  }
+  return(errors)
 
 }
 
@@ -804,13 +833,25 @@ validate_cryovial <- function(user_data, action, database) {
 #' @keywords validation, cryovial
 validate_dbs_sample <- function(user_data, action, database) {
 
-  variable_colnames <- list()
-  variable_colnames[['container']] <- find_column_name(user_data, c("BoxName", "BagName"))
+  if (!"ContainerType" %in% colnames(user_data)) {
+    stop("Implementation error: ContainerType must exist in users dbs sample upload.")
+  }
+
+  user.container.types <- unique(user_data$ContainerType)
+  valid.container.types <- c("Bag", "Box")
+
+  if (!all(user.container.types %in% valid.container.types)) {
+    invalids <- !user_data$ContainerType %in% valid.container.types
+    invalid.subset <- user_data[invalids, ]
+    description <- sprintf("Rows must contain valid container types: %s", paste(valid.container.types, collapse = ", "))
+    error.data <- ErrorData$new(description = description, columns = invalid.subset$ContainerType, rows = invalid.subset$RowNumber)
+    stop_validation_error("Invalid Container Types detected in your upload.", error.data)
+  }
 
   errors <- list()
   errors <- c(
     errors,
-    perform_dbs_sample_db_validations(database, user_data, action, variable_colnames)
+    perform_dbs_sample_db_validations(database, user_data, action)
   )
 
   return(errors)
@@ -858,13 +899,13 @@ perform_cryovial_db_validations <- function(database, user_data, action) {
 #' @param action The action being performed, either "upload" or "move".
 #' @return A list containing validation errors, if any.
 #' @keywords validation, cryovial
-perform_dbs_sample_db_validations <- function(database, user_data, action, variable_colnames) {
+perform_dbs_sample_db_validations <- function(database, user_data, action) {
   con <- init_and_copy_to_db(database, user_data)
   on.exit(dbDisconnect(con), add = TRUE)
   errors <- list()
 
   # Utility function to simplify repetitive operations
-  cryovial_test <- function(validation_func, ...) {
+  dbs_sample_test <- function(validation_func, ...) {
     func_name <- deparse(substitute(validation_func))
     cat("Executing function:", func_name, "\n")
     result <- do.call(validation_func, list(con, "user_data", "RowNumber", ...))
@@ -872,9 +913,9 @@ perform_dbs_sample_db_validations <- function(database, user_data, action, varia
   }
 
   if (action == "upload") {
-    validate_dbs_sample_uploads(cryovial_test, variable_colnames)
+    validate_dbs_sample_uploads(dbs_sample_test)
   } else if (action == "move") {
-    validate_dbs_sample_moves(cryovial_test, variable_colnames)
+    validate_dbs_sample_moves(dbs_sample_test)
   }
 
   return(errors)
@@ -960,14 +1001,13 @@ validate_cryovial_moves <- function(cryovial_test) {
 #' @return A list containing validation errors, if any.
 #' @export
 #' @keywords validation
-validate_dbs_sample_uploads <- function(dbs_sample_test, variable_colnames) {
+validate_dbs_sample_uploads <- function(dbs_sample_test) {
   dbs_sample_test(validate_study_reference_db, "StudyCode")
   dbs_sample_test(validate_specimen_type_db, "SpecimenType")
   dbs_sample_test(validate_location_reference_db, "FreezerName", "ShelfName", "BasketName")
   dbs_sample_test(validate_non_longitudinal_study_subjects, "StudyCode", "StudySubject")
   dbs_sample_test(check_longitudinal_study_dates, "StudyCode", "CollectionDate")
-  table_name <- if ("BoxName" == variable_colnames[["container"]]) "box" else "bag"
-  dbs_sample_test(validate_dbs_sample_label_uniqueness, "Label", variable_colnames[["container"]], table_name, error_if_exists = TRUE)
+  dbs_sample_test(validate_dbs_sample_label_uniqueness, "Label", "ContainerName", "ContainerType", error_if_exists = TRUE)
 }
 
 #' Validate DBS Specimen Moves
@@ -980,7 +1020,7 @@ validate_dbs_sample_uploads <- function(dbs_sample_test, variable_colnames) {
 #' @keywords validation
 validate_dbs_sample_moves <- function(cryovial_test, variable_colnames) {
   table_name <- if ("BoxName" == variable_colnames[["container"]]) "box" else "bag"
-  dbs_sample_test(validate_dbs_sample_label_uniqueness, "Label", variable_colnames[["container"]], table_name, error_if_exists = TRUE)
+  dbs_sample_test(validate_dbs_sample_label_uniqueness, "Label", "ContainerName", "ContainerType", error_if_exists = TRUE)
 
 }
 
