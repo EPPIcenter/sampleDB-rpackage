@@ -1124,24 +1124,44 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
       input$SearchDBSSampleManifest, "all" = "All", "box" = "Box Name", "bag" = "Bag Name"))
     con <- DBI::dbConnect(RSQLite::SQLite(), Sys.getenv("SDB_PATH"))
 
-    choices <- NULL
+    choices <- list()
     if (input$SearchDBSSampleManifest == "all") {
-      choices <- list(
-        'DBS Bag' = tbl(con, 'bag') %>% pull(name) %>% unique(.),
-        'DBS Box' = tbl(con, 'box') %>% pull(name) %>% unique(.)
+
+      box_tbl <- tbl(con, "box") %>%
+        dplyr::mutate(manifest_type = "box") %>%
+        dplyr::rename(manifest_id = id, manifest = name)
+
+      bag_tbl <- tbl(con, "bag") %>%
+        dplyr::mutate(manifest_type = "bag") %>%
+        dplyr::rename(manifest_id = id, manifest = name)
+
+      box_bag_union_df <- union_all(box_tbl, bag_tbl) %>%
+        dplyr::select(manifest, manifest_type) %>%
+        dplyr::mutate(manifest_type = ifelse(manifest_type == "bag", "Bag", "Box")) %>%
+        dplyr::collect()
+
+      updateSelectizeInput(
+        session,
+        "DelArchSearchByManifest",
+        label = "All DBS",
+        choices = box_bag_union_df$manifest,
+        selected = "", 
+        server = TRUE
       )
+
     } else {
       choices <- tbl(con, dbs_sample_data$name) %>% pull(name) %>% unique(.)
+      updateSelectizeInput(
+        session,
+        "DelArchSearchByManifest",
+        label = dbs_sample_data$label,
+        choices = choices,
+        selected = "", 
+        server = TRUE
+      )
     }
 
-    updateSelectizeInput(
-      session,
-      "DelArchSearchByManifest",
-      label = dbs_sample_data$label,
-      choices = choices,
-      selected = "", 
-      server = TRUE
-    )
+    
 
     dbDisconnect(con)
   })
