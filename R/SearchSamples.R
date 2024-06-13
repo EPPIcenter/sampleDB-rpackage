@@ -437,6 +437,10 @@ SearchSamples <- function(sample_storage_type, filters = NULL, format = "na", da
         filter(manifest_type == !!container_tables[["manifest"]]) %>%
         collapse()
       }
+
+      sql <- sql %>%
+        mutate(manifest_type = ifelse(manifest_type == "bag", "Bag", "Box"))
+
     } else {
       stop("Invalid sample storage type!!!")
     }
@@ -862,11 +866,14 @@ get_db_map <- function(sample_storage_type, format = "na", config = Sys.getenv("
     else if (sample_storage_type == "dbs_sample" && !is.null(filters$container_type)) {
       dbmap$label <- "Label"
       if (filters$container_type == "bag") {
-        dbmap$manifest <- "Bag Name"
+        dbmap$manifest <- "Container Name"
+        dbmap$manifest_type <- "Container Type"
       } else if (filters$container_type == "box") {
-        dbmap$manifest <- "Box Name"
+        dbmap$manifest <- "Container Name"
+        dbmap$manifest_type <- "Container Type"
       } else if (filters$container_type == "all") {
-        dbmap$manifest <- "All DBS"
+        dbmap$manifest <- "Container Name"
+        dbmap$manifest_type <- "Container Type"
       }
     } else {
       stop("Invalid sample type!!!")
