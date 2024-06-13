@@ -32,7 +32,7 @@ UISearchDelArchSamples <- function() {
         radioButtons("DelArchSearchBySampleType", "Sample Type", choices = get_sample_types()),
         conditionalPanel(
           condition = "input.DelArchSearchType == 'samples' && input.DelArchSearchBySampleType == 'dbs_sample'",
-          radioButtons("SearchDBSSampleManifest", "Select a DBS Container", inline = TRUE, choices = c("Box" = "box", "Bag" = "bag"), selected = "box")
+          radioButtons("SearchDBSSampleManifest", "Select a DBS Container", inline = TRUE, choices = c("All" = "all", "Box" = "box", "Bag" = "bag"), selected = "all")
         ),
         conditionalPanel(
           condition = "input.DelArchSearchBySampleType == 'micronix' || input.DelArchSearchBySampleType == 'cryovial'",

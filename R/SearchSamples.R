@@ -188,7 +188,7 @@ SearchControls <- function(filters, control_type = NULL, database = Sys.getenv("
           dplyr::ungroup() %>%
           dplyr::distinct() %>%
           dplyr::mutate(n_strain = format_composition_types(n_strain))
-      
+
         results = results %>%
           select(malaria_blood_control_id, blood_spot_collection_id, batch,control_uid,n_strain,density,percentage,strain,sheet_label,dbs_bag_label,total,exhausted,location_root,level_I,level_II) %>%
           dplyr::rename(
@@ -256,7 +256,7 @@ SearchControls <- function(filters, control_type = NULL, database = Sys.getenv("
 #' This function searches for compositions in a SQLite database using specified filters.
 #' The filters include strain, percentage, and composition types.
 #'
-#' @param filters A named list containing filter criteria. 
+#' @param filters A named list containing filter criteria.
 #'   - `strain`: a vector of strains to filter by
 #'   - `percentage`: a vector of percentages to filter by
 #'   - `composition_types`: a vector of composition types to filter by
@@ -282,8 +282,8 @@ search_compositions <- function(filters, database = Sys.getenv("SDB_PATH")) {
     dplyr::inner_join(tbl(con, "composition") %>% dplyr::rename(composition_id = id), by = c("composition_id"))
 
   # Count the number of strains in each composition
-  # This is needed to filter by composition types 
-  query <- query %>% 
+  # This is needed to filter by composition types
+  query <- query %>%
     dplyr::group_by(composition_id) %>%
     dplyr::add_count(composition_id, name = "strain_count") %>%
     dplyr::ungroup() %>%
@@ -351,7 +351,8 @@ SearchSamples <- function(sample_storage_type, filters = NULL, format = "na", da
         "dbs_sample" = switch(
           filters$container_type,
           "bag" = "bag",
-          "box" = "box"
+          "box" = "box",
+          "all" = "all"
         )
       ),
       "container_class" = switch(sample_storage_type,
@@ -416,10 +417,26 @@ SearchSamples <- function(sample_storage_type, filters = NULL, format = "na", da
     if (sample_storage_type %in% c("cryovial", "micronix")) {
       sql <- inner_join(sql, tbl(con, container_tables[["manifest"]]) %>% dplyr::rename(manifest_id = id, manifest = name, manifest_barcode = barcode), by = c("manifest_id")) %>% collapse()
     } else if (sample_storage_type == "dbs_sample"){
-      sql <- inner_join(sql, tbl(con, container_tables[["manifest"]]) %>%
-        dplyr::rename(manifest_id = id, manifest = name), by = c("manifest_id")) %>%
-      filter(manifest_type == !!container_tables[["manifest"]]) %>%
-      collapse()
+      if (filters$container_type == "all") {
+        box_tbl <- tbl(con, "box") %>%
+          dplyr::mutate(manifest_type = "box") %>%
+          dplyr::rename(manifest_id = id, manifest = name)
+
+        bag_tbl <- tbl(con, "bag") %>%
+          dplyr::mutate(manifest_type = "bag") %>%
+          dplyr::rename(manifest_id = id, manifest = name)
+
+        box_bag_union_tbl <- union_all(box_tbl, bag_tbl)
+
+        sql <- left_join(sql, box_bag_union_tbl, by = join_by(manifest_id, manifest_type)) %>%
+          collapse()
+
+      } else {
+        sql <- inner_join(sql, tbl(con, container_tables[["manifest"]]) %>%
+          dplyr::rename(manifest_id = id, manifest = name), by = c("manifest_id")) %>%
+        filter(manifest_type == !!container_tables[["manifest"]]) %>%
+        collapse()
+      }
     } else {
       stop("Invalid sample storage type!!!")
     }
@@ -567,9 +584,9 @@ extract_search_criteria <- function(user_csv, search_type) {
   }
 
   # Check for found required columns
-  found_required_column <- intersect(required_user_column_names, colnames(user_file)) 
+  found_required_column <- intersect(required_user_column_names, colnames(user_file))
 
-  if (length(found_required_column) != 1) { 
+  if (length(found_required_column) != 1) {
     df.error.formatting <- data.frame(
       column = required_user_column_names,
       reason = "At least one required",
@@ -581,7 +598,7 @@ extract_search_criteria <- function(user_csv, search_type) {
   # Add found required column
   available_columns <- c(available_columns, found_required_column)
   user_file <- select(user_file, all_of(available_columns))
-  
+
   # Utility to find the column and add to user_file
   find_and_add_column <- function(data, possible_names) {
     for (col_name in possible_names) {
@@ -626,7 +643,7 @@ search_micronix_tube <- function(database, micronix_search_df) {
   # Establish database connection
   con <- dbConnect(RSQLite::SQLite(), database)
   on.exit(dbDisconnect(con), add = TRUE)
-  
+
   # Set up lazy loading for database tables
   micronix_tube <- tbl(con, "micronix_tube")
   micronix_plate <- tbl(con, "micronix_plate")
@@ -643,7 +660,7 @@ search_micronix_tube <- function(database, micronix_search_df) {
     stop("No samples to search for.")
   }
 
-  # Add RowNumber so that we keep track of the original barcodes from the plate   
+  # Add RowNumber so that we keep track of the original barcodes from the plate
   micronix_search_df <- micronix_search_df %>%
     group_by(PlateName) %>%
     mutate(RowNumber = row_number()) %>%
@@ -652,7 +669,7 @@ search_micronix_tube <- function(database, micronix_search_df) {
   # Convert scanner_input into a lazy table
   dplyr::copy_to(con, micronix_search_df)
   micronix_search_tbl <- tbl(con, "micronix_search_df")
-  
+
   # Join tables to compare positions and check statuses
   comparison_result <- micronix_tube %>%
     dplyr::rename(db_position = position, micronix_id = id, micronix_barcode = barcode) %>%
@@ -683,7 +700,7 @@ search_micronix_tube <- function(database, micronix_search_df) {
     ) %>%
     collect()
 
-  # Output data frame 
+  # Output data frame
   g <- expand.grid(LETTERS[1:8], 1:12)
   g <- data.frame(CurrentWell = sprintf("%s%02d", g$Var1, g$Var2))
 
@@ -713,17 +730,17 @@ search_micronix_tube <- function(database, micronix_search_df) {
 
 #' Search by Study Subject (and other longitudinal study criteria)
 #'
-#' This function takes a sample storage type, filters, and optional database and config parameters 
+#' This function takes a sample storage type, filters, and optional database and config parameters
 #' to search by study subjects and retrieve relevant data.
 #'
-#' @param sample_storage_type A character string indicating the type of sample storage 
+#' @param sample_storage_type A character string indicating the type of sample storage
 #'        ("micronix", "cryovial").
 #' @param filters A list of filters to apply to the query.
-#' @param database An optional parameter indicating the database path. Defaults to the 
+#' @param database An optional parameter indicating the database path. Defaults to the
 #'        value of the environment variable 'SDB_PATH'.
-#' @param config_yml An optional parameter indicating the configuration YAML file. Defaults 
+#' @param config_yml An optional parameter indicating the configuration YAML file. Defaults
 #'        to the value of the environment variable 'SDB_CONFIG'.
-#' 
+#'
 #' @return A dataframe containing search results based on provided filters and sample storage type.
 #' @export
 #'
@@ -772,11 +789,11 @@ search_by_study_subject_file_upload <- function(sample_storage_type, filters, da
           select(specimen_id, study_subject_id, specimen_type_id, collection_date)
         , by = c("study_subject_id"))
 
-    
+
     # Join with specimen_type
-    sql <- sql %>% 
-      inner_join(tbl(con, "specimen_type") %>% 
-                   dplyr::rename(specimen_type_id = id, specimen_type = name) %>% 
+    sql <- sql %>%
+      inner_join(tbl(con, "specimen_type") %>%
+                   dplyr::rename(specimen_type_id = id, specimen_type = name) %>%
                    select(specimen_type_id, specimen_type),
                  by = c("specimen_type_id"))
 
@@ -848,6 +865,8 @@ get_db_map <- function(sample_storage_type, format = "na", config = Sys.getenv("
         dbmap$manifest <- "Bag Name"
       } else if (filters$container_type == "box") {
         dbmap$manifest <- "Box Name"
+      } else if (filters$container_type == "all") {
+        dbmap$manifest <- "All DBS"
       }
     } else {
       stop("Invalid sample type!!!")
@@ -875,7 +894,7 @@ get_db_map <- function(sample_storage_type, format = "na", config = Sys.getenv("
       dbmap$location_root <- "Freezer Name"
       dbmap$level_I <- "Shelf Name"
       dbmap$level_II <- "Basket Name"
-      
+
     } else {
       stop("Invalid container type!!!")
     }

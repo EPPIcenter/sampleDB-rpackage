@@ -1120,13 +1120,25 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
   })
 
   observeEvent(input$SearchDBSSampleManifest, ignoreInit = TRUE, {
-    dbs_sample_data <- list(name = input$SearchDBSSampleManifest, label = if (input$SearchDBSSampleManifest == "box") "Box Name" else "Bag Name")
+    dbs_sample_data <- list(name = input$SearchDBSSampleManifest, label = switch(
+      input$SearchDBSSampleManifest, "all" = "All", "box" = "Box Name", "bag" = "Bag Name"))
     con <- DBI::dbConnect(RSQLite::SQLite(), Sys.getenv("SDB_PATH"))
+
+    choices <- NULL
+    if (input$SearchDBSSampleManifest == "all") {
+      choices <- list(
+        'DBS Bag' = tbl(con, 'bag') %>% pull(name) %>% unique(.),
+        'DBS Box' = tbl(con, 'box') %>% pull(name) %>% unique(.)
+      )
+    } else {
+      choices <- tbl(con, dbs_sample_data$name) %>% pull(name) %>% unique(.)
+    }
+
     updateSelectizeInput(
       session,
       "DelArchSearchByManifest",
       label = dbs_sample_data$label,
-      choices = tbl(con, dbs_sample_data$name) %>% pull(name) %>% unique(.),
+      choices = choices,
       selected = "", 
       server = TRUE
     )
@@ -1326,15 +1338,26 @@ UpdateSampleSelections <- function(session, input, keepCurrentSelection = FALSE)
   manifest_types <- list(
     "micronix" = list(name = "micronix_plate", label = "Plate Name"),
     "cryovial" = list(name = "cryovial_box", label = "Box Name"),
-    "dbs_sample" = list(name = input$SearchDBSSampleManifest, label = if (input$SearchDBSSampleManifest == "box") "Box Name" else "Bag Name")
+    "dbs_sample" = list(name = input$SearchDBSSampleManifest, label = switch(
+      input$SearchDBSSampleManifest, "all" = "All", "box" = "Box Name", "bag" = "Bag Name"))
   )
   
   if (is.null(manifest_types)) {
     stop("Invalid sample type!!!")
   }
+
+  manifest_choices <- NULL
+  if (input$SearchDBSSampleManifest == "all") {
+    manifest_choices <- c(
+      unique(tbl(con, "box") %>% pull(name)), 
+      unique(tbl(con, "bag") %>% pull(name))
+    )
+  } else {
+    manifest_choices <- unique(tbl(con, manifest_types[[input$DelArchSearchBySampleType]]$name) %>% pull(name))
+  }
   
   choices_list <- list(
-    DelArchSearchByManifest = unique(tbl(con, manifest_types[[input$DelArchSearchBySampleType]]$name) %>% pull(name)),
+    DelArchSearchByManifest = manifest_choices,
     DelArchSearchByStudy = unique(tbl(con, "study") %>% pull(short_code)),
     DelArchSearchBySubjectUID = unique(tbl(con, "study_subject") %>% pull(name)),
     DelArchSearchBySpecimenType = unique(tbl(con, "specimen_type") %>% pull(name)),

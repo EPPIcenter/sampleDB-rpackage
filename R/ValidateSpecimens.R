@@ -606,8 +606,6 @@ validate_empty_micronix_well_upload <- function(con, table_name, row_number_col,
 validate_dbs_sample_label_uniqueness <- function(con, user_data, row_number_col, label_col, container_name_col, container_type_col, error_if_exists) {
   # Directly define the join conditions using named vectors
 
-  browser()
-
   user_table_joins <- setNames(
     c("label", "name", "manifest_type"),
     c(label_col, container_name_col, container_type_col)
