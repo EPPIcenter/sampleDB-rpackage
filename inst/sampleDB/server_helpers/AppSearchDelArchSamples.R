@@ -677,7 +677,17 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
       shinyjs::disable("DelArchDBSAction")
     }
 
-    if ((!is.null(input$DelArchStatus) && input$DelArchStatus != "" && input$DelArchDBSAction == "archive") || (!is.null(input$DelArchDBSAction) && input$DelArchDBSAction == "edit")) {
+    dbs_control_archive_selected <- !is.null(input$DelArchDBSAction) && input$DelArchDBSAction == "archive"
+    dbs_control_edit_selected <- !is.null(input$DelArchDBSAction) && input$DelArchDBSAction == "edit"
+    status_is_set <- !is.null(input$DelArchStatus) && input$DelArchStatus != ""
+
+    if (input$DelArchSearchType == "controls" && input$DelArchSearchByControlType == "dbs_sheet") {
+      if ((status_is_set && dbs_control_archive_selected) || dbs_control_edit_selected) {
+        shinyjs::enable("Archive")
+      } else {
+        shinyjs::disable("Archive")
+      }
+    } else if (status_is_set) {
       shinyjs::enable("Archive")
     } else {
       shinyjs::disable("Archive")
