@@ -538,7 +538,7 @@ validate_and_format_reference_file <- function(user_file, file_column_attr, bind
 #' # Process and validate the user specimen CSV
 #' processed_csv <- process_specimen_csv(user_file_path, action, type)
 #' }
-process_specimen_csv <- function(user_csv, user_action, sample_type, file_type = "na", bind_data = NULL, container_type = NULL, database = Sys.getenv("SDB_PATH"), config_yml = Sys.getenv("SDB_CONFIG")) {
+process_specimen_csv <- function(user_csv, user_action, sample_type, file_type = "na", bind_data = NULL, database = Sys.getenv("SDB_PATH"), config_yml = Sys.getenv("SDB_CONFIG")) {
   if (is.null(user_csv) || user_csv == "") {
     stop("No csv file was provided.")
   }
@@ -551,10 +551,10 @@ process_specimen_csv <- function(user_csv, user_action, sample_type, file_type =
   # 4. Validate and format based on requirements.
   user_data <- read_and_preprocess_csv(user_csv)
 
-  file_column_attr <- get_sample_file_columns(sample_type, user_action, file_type, container_type, config_yml)
+  file_column_attr <- get_sample_file_columns(sample_type, user_action, file_type, config_yml)
   user_data <- validate_and_format_specimen_file(user_data, user_action, sample_type, file_column_attr, bind_data)
 
-  user_data <- prepare_specimen_data_for_validation(sample_type, user_data, file_type, container_type, file_column_attr) # note: duplicate information, see fn for details
+  user_data <- prepare_specimen_data_for_validation(sample_type, user_data, file_type, file_column_attr) # note: duplicate information, see fn for details
 
   user_data <- validate_specimens(user_data, sample_type, user_action, file_type, database)
 
@@ -885,7 +885,7 @@ convert_density_representations <- function(user_data, density_col) {
 #'
 #' new_df <- prepare_specimen_data_for_validation(user_data, file_column_attr)
 #' }
-prepare_specimen_data_for_validation <- function(sample_type, user_data, file_type, container_type, file_column_attr) {
+prepare_specimen_data_for_validation <- function(sample_type, user_data, file_type, file_column_attr) {
   # Pre-processing the user data up front for the following reasons:
   # 1. The transformed data aids in various validation functions.
   # 2. Transformed data is directly copied to the SQL database for validation.
@@ -935,9 +935,8 @@ prepare_specimen_data_for_validation <- function(sample_type, user_data, file_ty
   error <- check_duplicated_rows(user_data)
 
   if (!is.null(error)) {
-    stop_validation_error("There are missing data in required fields.", error)
+    stop_validation_error("There are duplicated rows.", error)
   }
-
 
   if (sample_type %in% c("micronix", "cryovial")) {
     expected_position_column <- get_position_column_by_sample(sample_type, file_type)
@@ -945,7 +944,7 @@ prepare_specimen_data_for_validation <- function(sample_type, user_data, file_ty
     dimensions <- c(ifelse(sample_type == "micronix", 8, 10), ifelse(sample_type == "micronix", 12, 10))
     user_data <- prepare_matrix_position_column(user_data, dimensions, expected_position_column, "Position")
   }
-  
+
   user_data <- add_row_numbers(user_data)
   return(user_data)
 }

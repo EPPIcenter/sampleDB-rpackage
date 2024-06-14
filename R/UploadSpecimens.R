@@ -193,7 +193,7 @@ upload_extracted_dna <- function(user_data, control_extraction, database = Sys.g
     eval.comment <- safe_extract(upload_data[i, ], "Comment")
 
     eval.plate_barcode <- safe_extract(upload_data[i,], "PlateBarcode", "BoxBarcode")
-    eval.container_name <- safe_extract(upload_data[i,], "PlateName", "BoxName", "BagName")
+    eval.container_name <- safe_extract(upload_data[i,], "PlateName", "BoxName", "ContainerName")
 
     eval.freezer_address <- list(
       location = safe_extract(upload_data[i,], "FreezerName", "FreezerName"),
@@ -203,6 +203,7 @@ upload_extracted_dna <- function(user_data, control_extraction, database = Sys.g
     eval.label <- safe_extract(upload_data[i, ], "Label")
 
     eval.collection_date <- safe_extract(upload_data[i, ], "CollectionDate", "ExtractedOn")
+    eval.container_type <- safe_extract(upload_data[i, ], "ContainerType")
 
     # if(is.na(upload_data[i, ]$"collection_date")){
     #   eval.collection_date <- as.character(lubridate::as_date(NA))
@@ -339,18 +340,10 @@ upload_extracted_dna <- function(user_data, control_extraction, database = Sys.g
 
     } else if (sample_type_id == "dbs_sample") {
 
-      container_types <- c("BoxName", "BagName")
       now <- lubridate::now()
-      eval.container_type <- container_types[!is.na(match(container_types, names(upload_data[i, ])))]
 
       # 7. upload micronix sample
-      eval.manifest_type <- if ("BagName" == eval.container_type) {
-        "bag" 
-      } else if ("BoxName" == eval.container_type) {
-        "box"
-      } else {
-        stop("Invalid container name!!!")
-      }
+      eval.manifest_type <- tolower(eval.container_type)
       eval.location_id <- filter(CheckTableTx(conn = conn, "location"), location_root == eval.freezer_address$location, level_I == eval.freezer_address$level_I, level_II == eval.freezer_address$level_II)$id
 
       # create a new housing (if it does not already exist)

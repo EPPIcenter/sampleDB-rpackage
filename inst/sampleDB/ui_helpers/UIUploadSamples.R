@@ -15,11 +15,6 @@ UIUploadSamples <- function() {
         condition = "input.UploadType == 'samples'",
         h4("Upload Samples"),
         radioButtons("UploadSampleType","Choose a Sample Storage Type", choices = get_sample_types_by_action("upload"), selected = "micronix", inline = TRUE),
-        conditionalPanel(
-          condition = "input.UploadType == 'samples' && input.UploadSampleType == 'dbs_sample'",
-          hr(),
-          radioButtons("UploadDBSSampleManifest", "Select a DBS Container", inline = TRUE, choices = c("Box" = "box", "Bag" = "bag"), selected = "box")
-        ),
         hr(),
         radioButtons("UploadFileType", "Choose a file type", choices = get_file_types_for_sample("micronix"), inline = TRUE, selected = "na"),
         hr(),
