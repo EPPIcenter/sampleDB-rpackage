@@ -1,3 +1,7 @@
+DROP TABLE IF EXISTS "dbs_tube";
+
+DROP TABLE IF EXISTS "dbs_paper";
+
 CREATE TABLE IF NOT EXISTS "paper" (
 	"id"	INTEGER NOT NULL,
 	"manifest_id"	INTEGER NOT NULL,
