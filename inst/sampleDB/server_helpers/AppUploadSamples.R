@@ -236,6 +236,10 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
 
   observeEvent(dbUpdateEvent(), {
 
+    if (!input$UploadSampleType %in% c("micronix", "cryovial")) {
+      return(NULL)
+    }
+
     con <- dbConnect(SQLite(), Sys.getenv("SDB_PATH"))
 
     # UNUSED FOR NOW
@@ -263,6 +267,10 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
       "micronix" = "micronix_plate",
       "cryovial" = "cryovial_box"
     )
+
+    if (is.null(manifest)) {
+      stop("No implemented manifest could be found for the selected sample type")
+    }
 
     updateSelectizeInput(
       session,
