@@ -223,7 +223,8 @@ DeleteWholeBloodSamples <- function(whole_blood_tube_ids) {
   #if eval.id is not in matrix id, cryovial id, rdt id or paper id, skip over
   ids <- c(database.tables$table.micronix_tube$id,
            database.tables$table.cryovial_tube$id,
-           database.tables$table.whole_blood_tube$id)
+           database.tables$table.whole_blood_tube$id,
+           database.tables$table.dbs_sample_sheet$id)
 
   if (eval.id %in% database.tables$table.micronix_tube$id) {
 
@@ -279,7 +280,22 @@ DeleteWholeBloodSamples <- function(whole_blood_tube_ids) {
                                              plate_barcode = NA),
                             id = as.character(manifest_id))
     }
-  } 
+  } else if(eval.id %in% database.tables$table.dbs_sample_sheet$id){
+
+      # get container id before deletion
+      manifest_id <- filter(database.tables$table.dbs_sample_sheet, id %in% eval.id)$manifest_id
+      manifest_type <- filter(database.tables$table.dbs_sample_sheet, id %in% eval.id)$manifest_type
+
+      # delete container if container id is no longer in cryovial_tube table
+      if(!manifest_id %in% CheckTableTx(conn = conn, "paper")$manifest_id) {
+        ModifyTable(conn = conn,
+                            table_name = manifest_type,
+                            info_list = list(last_updated = as.character(lubridate::now()),
+                                             location_id = NA,
+                                             name = NA),
+                            id = as.character(manifest_id))
+      }
+    }
 }
 
 

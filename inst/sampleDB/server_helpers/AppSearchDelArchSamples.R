@@ -1377,7 +1377,7 @@ UpdateSampleSelections <- function(session, input, keepCurrentSelection = FALSE)
   }
 
   manifest_choices <- NULL
-  if (input$SearchDBSSampleManifest == "all") {
+  if (input$DelArchSearchType == "samples" && input$DelArchSearchBySampleType == "dbs_sample" && input$SearchDBSSampleManifest == "all") {
     manifest_choices <- c(
       unique(tbl(con, "box") %>% pull(name)), 
       unique(tbl(con, "bag") %>% pull(name))
