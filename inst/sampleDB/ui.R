@@ -84,6 +84,7 @@ ui <- page_navbar(
   ),
   nav_panel("Preferences", UIPreferences()),
   nav_spacer(),
-  nav_item(tags$a("EPPIcenter", href = "https://eppicenter.ucsf.edu/"))
+  nav_item(tags$a("EPPIcenter", href = "https://eppicenter.ucsf.edu/")),
+  nav_item(tags$a("User Guide", href = "https://eppicenter.github.io/sampleDB-rpackage/"))
 )
 
