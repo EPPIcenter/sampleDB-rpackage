@@ -6,7 +6,7 @@
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
     
 
-    <nav class="navbar fixed-top navbar-light navbar-expand-lg bg-light" data-bs-theme="light"><div class="container">
+    <nav class="navbar fixed-top navbar-dark navbar-expand-lg bg-primary" data-bs-theme="dark"><div class="container">
     
     <a class="navbar-brand me-2" href="../index.html">sampleDB</a>
 
@@ -22,10 +22,10 @@
   <a class="nav-link" href="../reference/index.html">Reference</a>
 </li>
 <li class="nav-item dropdown">
-  <a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown" role="button" aria-expanded="false" aria-haspopup="true" id="dropdown-articles">Articles</a>
-  <div class="dropdown-menu" aria-labelledby="dropdown-articles">
-    <a class="dropdown-item" href="../articles/Delete--Archive-Samples.html">Delete and Archive Samples and Controls</a>
-    <a class="dropdown-item" href="../articles/How-to-Move-Micronix-Samples.html">How to Move Samples and Controls</a>
+  <a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown" role="button" aria-expanded="false" aria-haspopup="true" id="dropdown-how-to">How To</a>
+  <div class="dropdown-menu" aria-labelledby="dropdown-how-to">
+    <a class="dropdown-item" href="../articles/Delete--Archive-Samples.html">Delete Archive Samples</a>
+    <a class="dropdown-item" href="../articles/How-to-Move-Micronix-Samples.html">How to Move Micronix Samples</a>
     <a class="dropdown-item" href="../articles/How-to-Upload-Controls.html">How to Upload Controls</a>
     <a class="dropdown-item" href="../articles/How-to-Upload-Extracted-Controls.html">How to Upload Extracted Controls</a>
     <a class="dropdown-item" href="../articles/Preferences.html">Preferences</a>
@@ -62,14 +62,39 @@
 
       <dl><dt>
           
-          <code><a href="ArchiveAndDeleteSamples.html">ArchiveAndDeleteSamples()</a></code> 
+          <code><a href="ArchiveAndDeleteControls.html">ArchiveAndDeleteControls()</a></code> 
         </dt>
         <dd>Archive and Delete Wetlab EPPIcenter Samples</dd>
+      </dl><dl><dt>
+          
+          <code><a href="ArchiveAndDeleteSamples.html">ArchiveAndDeleteSamples()</a></code> 
+        </dt>
+        <dd>Archive and Delete Samples</dd>
+      </dl><dl><dt>
+          
+          <code><a href="Backup_SampleDB.html">Backup_SampleDB()</a></code> 
+        </dt>
+        <dd>Backup Sample Database</dd>
+      </dl><dl><dt>
+          
+          <code><a href="ColumnData.html">ColumnData()</a></code> 
+        </dt>
+        <dd>Create a ColumnData S3 object</dd>
       </dl><dl><dt>
           
           <code><a href="DeleteEmptyContainer.html">DeleteEmptyContainer()</a></code> 
         </dt>
         <dd>Delete Empty Wetlab Containers in the EPPIcenter SampleDB database</dd>
+      </dl><dl><dt>
+          
+          <code><a href="DeleteWholeBloodSamples.html">DeleteWholeBloodSamples()</a></code> 
+        </dt>
+        <dd>Delete Whole Blood Controls</dd>
+      </dl><dl><dt>
+          
+          <code><a href="ErrorData.html">ErrorData</a></code> 
+        </dt>
+        <dd>ErrorData class</dd>
       </dl><dl><dt>
           
           <code><a href="MoveContainers.html">MoveContainers()</a></code> 
@@ -80,11 +105,6 @@
           <code><a href="MoveSamples.html">MoveSamples()</a></code> 
         </dt>
         <dd>Move Wetlab Samples</dd>
-      </dl><dl><dt>
-          
-          <code><a href="ProcessCSV.html">ProcessCSV()</a></code> 
-        </dt>
-        <dd>Checks the format of a csv file and validates the data given sample type and file type parameters</dd>
       </dl><dl><dt>
           
           <code><a href="RenameContainers.html">RenameContainers()</a></code> 
@@ -99,12 +119,17 @@
           
           <code><a href="SampleDB_Setup.html">SampleDB_Setup()</a></code> 
         </dt>
-        <dd>Save SampleDB's database file to a specified location</dd>
+        <dd>Set up and deploy the SampleDB environment, database, and Shiny server.</dd>
       </dl><dl><dt>
           
-          <code><a href="SearchSamples.html">SearchSamples()</a></code> 
+          <code><a href="SearchByType.html">SearchByType()</a></code> 
         </dt>
         <dd>Search for Wetlab Samples in the EPPIcenter SampleDB database</dd>
+      </dl><dl><dt>
+          
+          <code><a href="SearchControls.html">SearchControls()</a></code> 
+        </dt>
+        <dd>Get all malaria blood controls</dd>
       </dl><dl><dt>
           
           <code><a href="UpdateReferences.html">UpdateReferences()</a></code> 
@@ -112,9 +137,179 @@
         <dd>Update References in the EPPIcenter SampleDB database</dd>
       </dl><dl><dt>
           
-          <code><a href="UploadSamples.html">UploadSamples()</a></code> 
+          <code><a href="UploadSpecimens.html">UploadSpecimens()</a></code> 
         </dt>
         <dd>Upload Wetlab Samples</dd>
+      </dl><dl><dt>
+          
+          <code><a href="ValidationErrorCollection.html">ValidationErrorCollection</a></code> 
+        </dt>
+        <dd>ValidationErrorCollection class</dd>
+      </dl><dl><dt>
+          
+          <code><a href="add_bags_if_not_exist.html">add_bags_if_not_exist()</a></code> 
+        </dt>
+        <dd>Add new bags to the database if they don't exist</dd>
+      </dl><dl><dt>
+          
+          <code><a href="add_malaria_blood_controls_if_not_exist.html">add_malaria_blood_controls_if_not_exist()</a></code> 
+        </dt>
+        <dd>Add malaria blood controls to the database if they don't exist</dd>
+      </dl><dl><dt>
+          
+          <code><a href="add_new_blood_spot_collections.html">add_new_blood_spot_collections()</a></code> 
+        </dt>
+        <dd>Add New Blood Spot Collections</dd>
+      </dl><dl><dt>
+          
+          <code><a href="add_new_dbs_control_sheets.html">add_new_dbs_control_sheets()</a></code> 
+        </dt>
+        <dd>Add new DBS control sheets to the database</dd>
+      </dl><dl><dt>
+          
+          <code><a href="add_position_column.html">add_position_column()</a></code> 
+        </dt>
+        <dd>Add a position column based on column attributes</dd>
+      </dl><dl><dt>
+          
+          <code><a href="add_row_numbers.html">add_row_numbers()</a></code> 
+        </dt>
+        <dd>Add row numbers to a dataframe</dd>
+      </dl><dl><dt>
+          
+          <code><a href="add_to_errors.html">add_to_errors()</a></code> 
+        </dt>
+        <dd>Add an Error to the Error List</dd>
+      </dl><dl><dt>
+          
+          <code><a href="append_strains_to_db.html">append_strains_to_db()</a></code> 
+        </dt>
+        <dd>Append Strains to the Database Table</dd>
+      </dl><dl><dt>
+          
+          <code><a href="append_study_to_db.html">append_study_to_db()</a></code> 
+        </dt>
+        <dd>Append Studies to the Database Table</dd>
+      </dl><dl><dt>
+          
+          <code><a href="append_whole_blood_tubes.html">append_whole_blood_tubes()</a></code> 
+        </dt>
+        <dd>Add whole blood tubes to the database if they don't exist</dd>
+      </dl><dl><dt>
+          
+          <code><a href="bind_new_data.html">bind_new_data()</a></code> 
+        </dt>
+        <dd>Add Data to User Data</dd>
+      </dl><dl><dt>
+          
+          <code><a href="check_control_exists.html">check_control_exists()</a></code> 
+        </dt>
+        <dd>Check for Control Existence</dd>
+      </dl><dl><dt>
+          
+          <code><a href="check_cryovial_barcodes_exist.html">check_cryovial_barcodes_exist()</a></code> 
+        </dt>
+        <dd>Check Cryovial Barcodes in Database</dd>
+      </dl><dl><dt>
+          
+          <code><a href="check_cryovial_box_exists.html">check_cryovial_box_exists()</a></code> 
+        </dt>
+        <dd>Check If Cryovial Box Exists in the Database</dd>
+      </dl><dl><dt>
+          
+          <code><a href="check_duplicated_rows.html">check_duplicated_rows()</a></code> 
+        </dt>
+        <dd>Check for duplicated rows in a data frame</dd>
+      </dl><dl><dt>
+          
+          <code><a href="check_longitudinal_study_dates.html">check_longitudinal_study_dates()</a></code> 
+        </dt>
+        <dd>Check if collection dates are missing for samples in a longitudinal study</dd>
+      </dl><dl><dt>
+          
+          <code><a href="check_micronix_barcodes_exist.html">check_micronix_barcodes_exist()</a></code> 
+        </dt>
+        <dd>Check Micronix Barcodes in Database</dd>
+      </dl><dl><dt>
+          
+          <code><a href="check_micronix_plate_exists.html">check_micronix_plate_exists()</a></code> 
+        </dt>
+        <dd>Check If Micronix Plate Exists in the Database</dd>
+      </dl><dl><dt>
+          
+          <code><a href="check_missing_data.html">check_missing_data()</a></code> 
+        </dt>
+        <dd>Check for missing data in required fields</dd>
+      </dl><dl><dt>
+          
+          <code><a href="check_strain_percentage_match.html">check_strain_percentage_match()</a></code> 
+        </dt>
+        <dd>Validate that the strain and percentage columns have matching semicolon counts</dd>
+      </dl><dl><dt>
+          
+          <code><a href="check_unique_positions.html">check_unique_positions()</a></code> 
+        </dt>
+        <dd>Check Unique Positions</dd>
+      </dl><dl><dt>
+          
+          <code><a href="collapse_and_nest_columns.html">collapse_and_nest_columns()</a></code> 
+        </dt>
+        <dd>Collapse and Nest Strain and Percentage Columns</dd>
+      </dl><dl><dt>
+          
+          <code><a href="concat_position.html">concat_position()</a></code> 
+        </dt>
+        <dd>Concatenate Position from Column and Row Information</dd>
+      </dl><dl><dt>
+          
+          <code><a href="convert_density_representations.html">convert_density_representations()</a></code> 
+        </dt>
+        <dd>Convert Density Representations to Real Numbers</dd>
+      </dl><dl><dt>
+          
+          <code><a href="convert_density_to_numeric.html">convert_density_to_numeric()</a></code> 
+        </dt>
+        <dd>Convert string values with 'k' or 'K' to numeric values</dd>
+      </dl><dl><dt>
+          
+          <code><a href="copy_database.html">copy_database()</a></code> 
+        </dt>
+        <dd>Copy SQLite Database</dd>
+      </dl><dl><dt>
+          
+          <code><a href="copy_if_not_exists.html">copy_if_not_exists()</a></code> 
+        </dt>
+        <dd>Copy a file to a destination if it does not exist there.</dd>
+      </dl><dl><dt>
+          
+          <code><a href="create_control_label.html">create_control_label()</a></code> 
+        </dt>
+        <dd>Create Control Label with Density and Composition Values</dd>
+      </dl><dl><dt>
+          
+          <code><a href="create_controls_for_batch.html">create_controls_for_batch()</a></code> 
+        </dt>
+        <dd>Create Controls for the batch</dd>
+      </dl><dl><dt>
+          
+          <code><a href="create_flat_view_by_sample_type.html">create_flat_view_by_sample_type()</a></code> 
+        </dt>
+        <dd>Flatten all database tables by sample type</dd>
+      </dl><dl><dt>
+          
+          <code><a href="create_flat_view_of_extractions.html">create_flat_view_of_extractions()</a></code> 
+        </dt>
+        <dd>View all extractions in the database</dd>
+      </dl><dl><dt>
+          
+          <code><a href="create_unique_id.html">create_unique_id()</a></code> 
+        </dt>
+        <dd>Create a unique identifier for compositions</dd>
+      </dl><dl><dt>
+          
+          <code><a href="create_unique_id_from_sorted.html">create_unique_id_from_sorted()</a></code> 
+        </dt>
+        <dd>Create a unique identifier from sorted strains and percentages</dd>
       </dl><dl><dt>
           
           <code><a href="cryovial_na.html">cryovial_na</a></code> 
@@ -122,9 +317,829 @@
         <dd>Cryovial NA</dd>
       </dl><dl><dt>
           
+          <code><a href="denormalize_composition_ids.html">denormalize_composition_ids()</a></code> 
+        </dt>
+        <dd>Denormalize Composition IDs from User Data</dd>
+      </dl><dl><dt>
+          
+          <code><a href="display_app_url.html">display_app_url()</a></code> 
+        </dt>
+        <dd>Display the URL of the deployed Shiny application.</dd>
+      </dl><dl><dt>
+          
+          <code><a href="dot-Backup.html">.Backup()</a></code> 
+        </dt>
+        <dd>Internal function to backup a SQLite database</dd>
+      </dl><dl><dt>
+          
+          <code><a href="dot-Compress.html">.Compress()</a></code> 
+        </dt>
+        <dd>Internal function to compress a file</dd>
+      </dl><dl><dt>
+          
+          <code><a href="dot-Uncompress.html">.Uncompress()</a></code> 
+        </dt>
+        <dd>Internal function to uncompress a file</dd>
+      </dl><dl><dt>
+          
+          <code><a href="execute_sql.html">execute_sql()</a></code> 
+        </dt>
+        <dd>Execute SQL Queries on a Database</dd>
+      </dl><dl><dt>
+          
+          <code><a href="extract_search_criteria.html">extract_search_criteria()</a></code> 
+        </dt>
+        <dd>Extract Search Criteria from User CSV File</dd>
+      </dl><dl><dt>
+          
+          <code><a href="find_column_name.html">find_column_name()</a></code> 
+        </dt>
+        <dd>Find First Matching Column Name</dd>
+      </dl><dl><dt>
+          
+          <code><a href="find_header.html">find_header()</a></code> 
+        </dt>
+        <dd>Identify the row in a CSV file that matches the header based on required column names.</dd>
+      </dl><dl><dt>
+          
+          <code><a href="format_composition_types.html">format_composition_types()</a></code> 
+        </dt>
+        <dd>Format composition types</dd>
+      </dl><dl><dt>
+          
+          <code><a href="format_error.html">format_error()</a></code> 
+        </dt>
+        <dd>Create Formatting Error Data Frame</dd>
+      </dl><dl><dt>
+          
+          <code><a href="format_labels.html">format_labels()</a></code> 
+        </dt>
+        <dd>Format labels for compositions in a dplyr pipeline</dd>
+      </dl><dl><dt>
+          
+          <code><a href="fuzzy_merge_unique_compositions.html">fuzzy_merge_unique_compositions()</a></code> 
+        </dt>
+        <dd>Fuzzy Merge Unique Compositions</dd>
+      </dl><dl><dt>
+          
+          <code><a href="generate_upgrade_script_path.html">generate_upgrade_script_path()</a></code> 
+        </dt>
+        <dd>Generate Path to Database Upgrade Script</dd>
+      </dl><dl><dt>
+          
+          <code><a href="get_all_control_types.html">get_all_control_types()</a></code> 
+        </dt>
+        <dd>Get all control types</dd>
+      </dl><dl><dt>
+          
+          <code><a href="get_all_sample_types.html">get_all_sample_types()</a></code> 
+        </dt>
+        <dd>Get all sample types</dd>
+      </dl><dl><dt>
+          
+          <code><a href="get_batches.html">get_batches()</a></code> 
+        </dt>
+        <dd>Get all batches from the database</dd>
+      </dl><dl><dt>
+          
+          <code><a href="get_composition_types.html">get_composition_types()</a></code> 
+        </dt>
+        <dd>Get all composition type from the database</dd>
+      </dl><dl><dt>
+          
+          <code><a href="get_container_by_sample.html">get_container_by_sample()</a></code> 
+        </dt>
+        <dd>Get containers by specified sample type</dd>
+      </dl><dl><dt>
+          
+          <code><a href="get_container_table_name.html">get_container_table_name()</a></code> 
+        </dt>
+        <dd>Get the Relevant Table Name Based on Container Class</dd>
+      </dl><dl><dt>
+          
+          <code><a href="get_control_action_types.html">get_control_action_types()</a></code> 
+        </dt>
+        <dd>Get action types for a specific control</dd>
+      </dl><dl><dt>
+          
+          <code><a href="get_control_file_columns.html">get_control_file_columns()</a></code> 
+        </dt>
+        <dd>Retrieve ColumnData for a given control type and action</dd>
+      </dl><dl><dt>
+          
+          <code><a href="get_control_types.html">get_control_types()</a></code> 
+        </dt>
+        <dd>Get control types from a JSON file</dd>
+      </dl><dl><dt>
+          
+          <code><a href="get_db_version.html">get_db_version()</a></code> 
+        </dt>
+        <dd>Retrieve Current Database Version</dd>
+      </dl><dl><dt>
+          
+          <code><a href="get_densities.html">get_densities()</a></code> 
+        </dt>
+        <dd>Get all densities from the database</dd>
+      </dl><dl><dt>
+          
+          <code><a href="get_dereferenced_values.html">get_dereferenced_values()</a></code> 
+        </dt>
+        <dd>Get dereferenced values using sample_values and shared_values</dd>
+      </dl><dl><dt>
+          
+          <code><a href="get_destination_container_by_control.html">get_destination_container_by_control()</a></code> 
+        </dt>
+        <dd>Get destination container by specified control type</dd>
+      </dl><dl><dt>
+          
+          <code><a href="get_destination_location_by_control.html">get_destination_location_by_control()</a></code> 
+        </dt>
+        <dd>Get destination location by specified control type</dd>
+      </dl><dl><dt>
+          
+          <code><a href="get_duplicated_rows.html">get_duplicated_rows()</a></code> 
+        </dt>
+        <dd>Find duplicate rows in a data frame</dd>
+      </dl><dl><dt>
+          
+          <code><a href="get_environ_file_path.html">get_environ_file_path()</a></code> 
+        </dt>
+        <dd>Get environ file path</dd>
+      </dl><dl><dt>
+          
+          <code><a href="get_expected_versions.html">get_expected_versions()</a></code> 
+        </dt>
+        <dd>Retrieve Expected Versions from JSON File</dd>
+      </dl><dl><dt>
+          
+          <code><a href="get_file_types_for_control.html">get_file_types_for_control()</a></code> 
+        </dt>
+        <dd>Get file types for a specific control</dd>
+      </dl><dl><dt>
+          
+          <code><a href="get_file_types_for_sample.html">get_file_types_for_sample()</a></code> 
+        </dt>
+        <dd>Get file types for a specific sample</dd>
+      </dl><dl><dt>
+          
+          <code><a href="get_location_by_sample.html">get_location_by_sample()</a></code> 
+        </dt>
+        <dd>Get locations by specified sample type</dd>
+      </dl><dl><dt>
+          
+          <code><a href="get_normalized_path.html">get_normalized_path()</a></code> 
+        </dt>
+        <dd>Get normalized path</dd>
+      </dl><dl><dt>
+          
+          <code><a href="get_percentages.html">get_percentages()</a></code> 
+        </dt>
+        <dd>Get all batches from the database</dd>
+      </dl><dl><dt>
+          
+          <code><a href="get_position_column_by_sample.html">get_position_column_by_sample()</a></code> 
+        </dt>
+        <dd>Get the expected position column for a sample type</dd>
+      </dl><dl><dt>
+          
+          <code><a href="get_reference_file_columns.html">get_reference_file_columns()</a></code> 
+        </dt>
+        <dd>Retrieve ColumnData for a given reference type.</dd>
+      </dl><dl><dt>
+          
+          <code><a href="get_sample_action_types.html">get_sample_action_types()</a></code> 
+        </dt>
+        <dd>Get action types for a specific sample</dd>
+      </dl><dl><dt>
+          
+          <code><a href="get_sample_file_columns.html">get_sample_file_columns()</a></code> 
+        </dt>
+        <dd>Retrieve ColumnData for a given sample type and action.</dd>
+      </dl><dl><dt>
+          
+          <code><a href="get_sample_types.html">get_sample_types()</a></code> 
+        </dt>
+        <dd>Get sample types from a JSON file</dd>
+      </dl><dl><dt>
+          
+          <code><a href="get_sample_types_by_action.html">get_sample_types_by_action()</a></code> 
+        </dt>
+        <dd>Get sample types from a JSON file by action</dd>
+      </dl><dl><dt>
+          
+          <code><a href="get_storage_container_by_control.html">get_storage_container_by_control()</a></code> 
+        </dt>
+        <dd>Get source container by specified control type</dd>
+      </dl><dl><dt>
+          
+          <code><a href="get_storage_location_by_control.html">get_storage_location_by_control()</a></code> 
+        </dt>
+        <dd>Get source location by specified control type</dd>
+      </dl><dl><dt>
+          
+          <code><a href="get_strains.html">get_strains()</a></code> 
+        </dt>
+        <dd>Get all strains from the database</dd>
+      </dl><dl><dt>
+          
+          <code><a href="get_studies.html">get_studies()</a></code> 
+        </dt>
+        <dd>Get all studies from the database</dd>
+      </dl><dl><dt>
+          
+          <code><a href="get_unique_compositions_from_database.html">get_unique_compositions_from_database()</a></code> 
+        </dt>
+        <dd>Extract unique compositions from the database</dd>
+      </dl><dl><dt>
+          
+          <code><a href="get_unique_compositions_from_user_data.html">get_unique_compositions_from_user_data()</a></code> 
+        </dt>
+        <dd>Normalize Percentages by Group</dd>
+      </dl><dl><dt>
+          
+          <code><a href="get_values.html">get_values()</a></code> 
+        </dt>
+        <dd>Get values with priority to sample_values over shared_values.</dd>
+      </dl><dl><dt>
+          
+          <code><a href="handle_unknown_date_tokens.html">handle_unknown_date_tokens()</a></code> 
+        </dt>
+        <dd>Handle Unknown Date Tokens</dd>
+      </dl><dl><dt>
+          
+          <code><a href="handle_upgrade_error.html">handle_upgrade_error()</a></code> 
+        </dt>
+        <dd>Handle any errors during the database upgrade</dd>
+      </dl><dl><dt>
+          
+          <code><a href="init_and_copy_to_db.html">init_and_copy_to_db()</a></code> 
+        </dt>
+        <dd>Initialize Database Connection and Copy User Data</dd>
+      </dl><dl><dt>
+          
+          <code><a href="init_db_conn.html">init_db_conn()</a></code> 
+        </dt>
+        <dd>Initialize a Database Connection</dd>
+      </dl><dl><dt>
+          
+          <code><a href="initialize_database_with_base_version.html">initialize_database_with_base_version()</a></code> 
+        </dt>
+        <dd>Initialize Database with Base Version</dd>
+      </dl><dl><dt>
+          
+          <code><a href="is_linux_platform.html">is_linux_platform()</a></code> 
+        </dt>
+        <dd>Check if the system platform is Linux.</dd>
+      </dl><dl><dt>
+          
+          <code><a href="is_shiny_server_installed.html">is_shiny_server_installed()</a></code> 
+        </dt>
+        <dd>Check if Shiny server is installed.</dd>
+      </dl><dl><dt>
+          
+          <code><a href="join_blood_spot_collections.html">join_blood_spot_collections()</a></code> 
+        </dt>
+        <dd>Join Blood Spot Collections</dd>
+      </dl><dl><dt>
+          
+          <code><a href="join_composition_ids.html">join_composition_ids()</a></code> 
+        </dt>
+        <dd>Process user data to handle malaria blood control details</dd>
+      </dl><dl><dt>
+          
+          <code><a href="join_dbs_control_sheets.html">join_dbs_control_sheets()</a></code> 
+        </dt>
+        <dd>Join DBS control sheets based on bag ID and label</dd>
+      </dl><dl><dt>
+          
+          <code><a href="join_locations_and_bags.html">join_locations_and_bags()</a></code> 
+        </dt>
+        <dd>Join locations and bags from user data to the database</dd>
+      </dl><dl><dt>
+          
+          <code><a href="join_locations_and_boxes.html">join_locations_and_boxes()</a></code> 
+        </dt>
+        <dd>Process Whole Blood Box Data</dd>
+      </dl><dl><dt>
+          
+          <code><a href="join_malaria_controls.html">join_malaria_controls()</a></code> 
+        </dt>
+        <dd>Join malaria controls based on density and study subject ID</dd>
+      </dl><dl><dt>
+          
+          <code><a href="merge_configs.html">merge_configs()</a></code> 
+        </dt>
+        <dd>Merge Configuration Lists</dd>
+      </dl><dl><dt>
+          
+          <code><a href="message_not_site_install.html">message_not_site_install()</a></code> 
+        </dt>
+        <dd>Display a message indicating the need for a site install.</dd>
+      </dl><dl><dt>
+          
+          <code><a href="message_not_supported_platform.html">message_not_supported_platform()</a></code> 
+        </dt>
+        <dd>Display a message indicating Shiny server isn't supported.</dd>
+      </dl><dl><dt>
+          
+          <code><a href="message_shiny_not_installed.html">message_shiny_not_installed()</a></code> 
+        </dt>
+        <dd>Display a message indicating Shiny server isn't installed.</dd>
+      </dl><dl><dt>
+          
           <code><a href="micronix_na.html">micronix_na</a></code> 
         </dt>
         <dd>Micronix NA</dd>
+      </dl><dl><dt>
+          
+          <code><a href="normalize_composition_ids.html">normalize_composition_ids()</a></code> 
+        </dt>
+        <dd>Normalize Composition IDs from User Data</dd>
+      </dl><dl><dt>
+          
+          <code><a href="perform_batch_db_validations.html">perform_batch_db_validations()</a></code> 
+        </dt>
+        <dd>Perform Database-Related Validations for Batches</dd>
+      </dl><dl><dt>
+          
+          <code><a href="perform_composition_db_validations.html">perform_composition_db_validations()</a></code> 
+        </dt>
+        <dd>Perform Database-Related Validations for Compositions</dd>
+      </dl><dl><dt>
+          
+          <code><a href="perform_cryovial_db_validations.html">perform_cryovial_db_validations()</a></code> 
+        </dt>
+        <dd>Perform Database-Related Validations for Cryovials</dd>
+      </dl><dl><dt>
+          
+          <code><a href="perform_dbs_sample_db_validations.html">perform_dbs_sample_db_validations()</a></code> 
+        </dt>
+        <dd>Perform Database-Related Validations for DBS Samples</dd>
+      </dl><dl><dt>
+          
+          <code><a href="perform_dbs_sheet_db_validations.html">perform_dbs_sheet_db_validations()</a></code> 
+        </dt>
+        <dd>Perform Database-Related Validations for DBS Sheets</dd>
+      </dl><dl><dt>
+          
+          <code><a href="perform_micronix_db_validations.html">perform_micronix_db_validations()</a></code> 
+        </dt>
+        <dd>Perform Database-Related Validations for Micronix</dd>
+      </dl><dl><dt>
+          
+          <code><a href="perform_strain_db_validations.html">perform_strain_db_validations()</a></code> 
+        </dt>
+        <dd>Perform Database-Related Validations for Strains</dd>
+      </dl><dl><dt>
+          
+          <code><a href="perform_whole_blood_db_validations.html">perform_whole_blood_db_validations()</a></code> 
+        </dt>
+        <dd>Perform Database-Related Validations for Whole Blood Controls</dd>
+      </dl><dl><dt>
+          
+          <code><a href="prepare_control_data_for_validation.html">prepare_control_data_for_validation()</a></code> 
+        </dt>
+        <dd>Prepare DataFrame for Control Validation</dd>
+      </dl><dl><dt>
+          
+          <code><a href="prepare_control_for_upload.html">prepare_control_for_upload()</a></code> 
+        </dt>
+        <dd>Prepare Control for Upload</dd>
+      </dl><dl><dt>
+          
+          <code><a href="prepare_new_compositions.html">prepare_new_compositions()</a></code> 
+        </dt>
+        <dd>Prepare new compositions for database upload</dd>
+      </dl><dl><dt>
+          
+          <code><a href="prepare_reference_data_for_validation.html">prepare_reference_data_for_validation()</a></code> 
+        </dt>
+        <dd>Prepare DataFrame for Reference Validation</dd>
+      </dl><dl><dt>
+          
+          <code><a href="prepare_specimen_data_for_validation.html">prepare_specimen_data_for_validation()</a></code> 
+        </dt>
+        <dd>Prepare DataFrame for Specimen Validation</dd>
+      </dl><dl><dt>
+          
+          <code><a href="print.ColumnData.html">print(<i>&lt;ColumnData&gt;</i>)</a></code> 
+        </dt>
+        <dd>Print method for ColumnData objects</dd>
+      </dl><dl><dt>
+          
+          <code><a href="process_and_append_compositions.html">process_and_append_compositions()</a></code> 
+        </dt>
+        <dd>Process and append new compositions to the database</dd>
+      </dl><dl><dt>
+          
+          <code><a href="process_bag_data.html">process_bag_data()</a></code> 
+        </dt>
+        <dd>Process user data to handle bag details</dd>
+      </dl><dl><dt>
+          
+          <code><a href="process_blood_spot_collection_data.html">process_blood_spot_collection_data()</a></code> 
+        </dt>
+        <dd>Process Blood Spot Collection Data</dd>
+      </dl><dl><dt>
+          
+          <code><a href="process_control_csv.html">process_control_csv()</a></code> 
+        </dt>
+        <dd>Process and Validate Control CSV File</dd>
+      </dl><dl><dt>
+          
+          <code><a href="process_dbs_control_sheet_data.html">process_dbs_control_sheet_data()</a></code> 
+        </dt>
+        <dd>Process user data to handle DBS control sheet details</dd>
+      </dl><dl><dt>
+          
+          <code><a href="process_malaria_blood_control_data.html">process_malaria_blood_control_data()</a></code> 
+        </dt>
+        <dd>Process user data to handle malaria blood control details</dd>
+      </dl><dl><dt>
+          
+          <code><a href="process_reference_csv.html">process_reference_csv()</a></code> 
+        </dt>
+        <dd>Process and Validate Reference CSV File</dd>
+      </dl><dl><dt>
+          
+          <code><a href="process_specimen_csv.html">process_specimen_csv()</a></code> 
+        </dt>
+        <dd>Process and Validate Specimen User CSV File</dd>
+      </dl><dl><dt>
+          
+          <code><a href="process_whole_blood_location_container.html">process_whole_blood_location_container()</a></code> 
+        </dt>
+        <dd>Process Whole Blood Box Data</dd>
+      </dl><dl><dt>
+          
+          <code><a href="read_and_preprocess_csv.html">read_and_preprocess_csv()</a></code> 
+        </dt>
+        <dd>Read and Preprocess User CSV File</dd>
+      </dl><dl><dt>
+          
+          <code><a href="rejoin_dbs_control_sheet_ids.html">rejoin_dbs_control_sheet_ids()</a></code> 
+        </dt>
+        <dd>Rejoin to Get New DBS Control Sheet IDs</dd>
+      </dl><dl><dt>
+          
+          <code><a href="rejoin_malaria_controls.html">rejoin_malaria_controls()</a></code> 
+        </dt>
+        <dd>Rejoin malaria controls based on density and study subject ID</dd>
+      </dl><dl><dt>
+          
+          <code><a href="rejoin_to_get_bag_ids.html">rejoin_to_get_bag_ids()</a></code> 
+        </dt>
+        <dd>Rejoin the payload with the database to retrieve bag IDs</dd>
+      </dl><dl><dt>
+          
+          <code><a href="remove_na_columns_in_row.html">remove_na_columns_in_row()</a></code> 
+        </dt>
+        <dd>Remove columns that have NA in a row</dd>
+      </dl><dl><dt>
+          
+          <code><a href="reshape_identifier_to_long_form.html">reshape_identifier_to_long_form()</a></code> 
+        </dt>
+        <dd>Reshape Identifier Data to Long Form</dd>
+      </dl><dl><dt>
+          
+          <code><a href="retrieve_compositions_by_identifier.html">retrieve_compositions_by_identifier()</a></code> 
+        </dt>
+        <dd>Retrieve compositions from the database by identifier</dd>
+      </dl><dl><dt>
+          
+          <code><a href="retrieve_compositions_by_label.html">retrieve_compositions_by_label()</a></code> 
+        </dt>
+        <dd>Retrieve compositions from the database by label</dd>
+      </dl><dl><dt>
+          
+          <code><a href="search_by_study_subject_file_upload.html">search_by_study_subject_file_upload()</a></code> 
+        </dt>
+        <dd>Search by Study Subject (and other longitudinal study criteria)</dd>
+      </dl><dl><dt>
+          
+          <code><a href="search_compositions.html">search_compositions()</a></code> 
+        </dt>
+        <dd>Search for Compositions in Database</dd>
+      </dl><dl><dt>
+          
+          <code><a href="search_micronix_tube.html">search_micronix_tube()</a></code> 
+        </dt>
+        <dd>Search Micronix Tube Samples</dd>
+      </dl><dl><dt>
+          
+          <code><a href="select_relevant_columns.html">select_relevant_columns()</a></code> 
+        </dt>
+        <dd>Select relevant columns from the user CSV file</dd>
+      </dl><dl><dt>
+          
+          <code><a href="set_header_row.html">set_header_row()</a></code> 
+        </dt>
+        <dd>Set a Specific Row as the Header</dd>
+      </dl><dl><dt>
+          
+          <code><a href="set_user_file_header.html">set_user_file_header()</a></code> 
+        </dt>
+        <dd>Set the header row for the user CSV file</dd>
+      </dl><dl><dt>
+          
+          <code><a href="setup_database.html">setup_database()</a></code> 
+        </dt>
+        <dd>Setup or upgrade the database</dd>
+      </dl><dl><dt>
+          
+          <code><a href="setup_directory.html">setup_directory()</a></code> 
+        </dt>
+        <dd>Setup a directory if it does not exist.</dd>
+      </dl><dl><dt>
+          
+          <code><a href="split_and_sort.html">split_and_sort()</a></code> 
+        </dt>
+        <dd>Split and sort strains and percentages</dd>
+      </dl><dl><dt>
+          
+          <code><a href="split_and_unnest_columns.html">split_and_unnest_columns()</a></code> 
+        </dt>
+        <dd>Split and Unnest Strain and Percentage Columns</dd>
+      </dl><dl><dt>
+          
+          <code><a href="stop_app_error.html">stop_app_error()</a></code> 
+        </dt>
+        <dd>Stop with an application error</dd>
+      </dl><dl><dt>
+          
+          <code><a href="stop_formatting_error.html">stop_formatting_error()</a></code> 
+        </dt>
+        <dd>Stop with a formatting error</dd>
+      </dl><dl><dt>
+          
+          <code><a href="stop_validation_error.html">stop_validation_error()</a></code> 
+        </dt>
+        <dd>Stop with a validation error</dd>
+      </dl><dl><dt>
+          
+          <code><a href="update_configuration_file.html">update_configuration_file()</a></code> 
+        </dt>
+        <dd>Update Configuration File</dd>
+      </dl><dl><dt>
+          
+          <code><a href="update_env_variable.html">update_env_variable()</a></code> 
+        </dt>
+        <dd>Update environment variable</dd>
+      </dl><dl><dt>
+          
+          <code><a href="upgrade_database.html">upgrade_database()</a></code> 
+        </dt>
+        <dd>Upgrade Database</dd>
+      </dl><dl><dt>
+          
+          <code><a href="upload_compositions.html">upload_compositions()</a></code> 
+        </dt>
+        <dd>Upload compositions to the database</dd>
+      </dl><dl><dt>
+          
+          <code><a href="upload_controls.html">upload_controls()</a></code> 
+        </dt>
+        <dd>Upload Controls to the Database</dd>
+      </dl><dl><dt>
+          
+          <code><a href="upload_extracted_dna.html">upload_extracted_dna()</a></code> 
+        </dt>
+        <dd>Upload Extracted DNA Data to SampleDB</dd>
+      </dl><dl><dt>
+          
+          <code><a href="validate_and_format_control_file.html">validate_and_format_control_file()</a></code> 
+        </dt>
+        <dd>Check if the user CSV file for control meets the requirements</dd>
+      </dl><dl><dt>
+          
+          <code><a href="validate_and_format_reference_file.html">validate_and_format_reference_file()</a></code> 
+        </dt>
+        <dd>Check if the user CSV file for control meets the requirements</dd>
+      </dl><dl><dt>
+          
+          <code><a href="validate_and_format_specimen_file.html">validate_and_format_specimen_file()</a></code> 
+        </dt>
+        <dd>Check if the user CSV file meets the requirements</dd>
+      </dl><dl><dt>
+          
+          <code><a href="validate_batch.html">validate_batch()</a></code> 
+        </dt>
+        <dd>Validate Batch Data</dd>
+      </dl><dl><dt>
+          
+          <code><a href="validate_box_uniqueness.html">validate_box_uniqueness()</a></code> 
+        </dt>
+        <dd>Check if boxes have enough unique cryovial barcodes to be easily identifiable.</dd>
+      </dl><dl><dt>
+          
+          <code><a href="validate_composition.html">validate_composition()</a></code> 
+        </dt>
+        <dd>Validate Compositions Data</dd>
+      </dl><dl><dt>
+          
+          <code><a href="validate_composition_sum.html">validate_composition_sum()</a></code> 
+        </dt>
+        <dd>Validate if control compositions sum correctly</dd>
+      </dl><dl><dt>
+          
+          <code><a href="validate_controls.html">validate_controls()</a></code> 
+        </dt>
+        <dd>Validate Control Specimens</dd>
+      </dl><dl><dt>
+          
+          <code><a href="validate_cryovial.html">validate_cryovial()</a></code> 
+        </dt>
+        <dd>Validate Cryovial Specimen Data</dd>
+      </dl><dl><dt>
+          
+          <code><a href="validate_cryovial_collection_dates.html">validate_cryovial_collection_dates()</a></code> 
+        </dt>
+        <dd>Confirm that Cryovials with no barcodes have collection dates if there's already a sample from that study subject.</dd>
+      </dl><dl><dt>
+          
+          <code><a href="validate_cryovial_moves.html">validate_cryovial_moves()</a></code> 
+        </dt>
+        <dd>Validate Cryovial Moves</dd>
+      </dl><dl><dt>
+          
+          <code><a href="validate_cryovial_position.html">validate_cryovial_position()</a></code> 
+        </dt>
+        <dd>Validate Cryovial-specific position rules</dd>
+      </dl><dl><dt>
+          
+          <code><a href="validate_cryovial_uploads.html">validate_cryovial_uploads()</a></code> 
+        </dt>
+        <dd>Validate Cryovial Uploads</dd>
+      </dl><dl><dt>
+          
+          <code><a href="validate_date_format.html">validate_date_format()</a></code> 
+        </dt>
+        <dd>Validate Date Format</dd>
+      </dl><dl><dt>
+          
+          <code><a href="validate_dates_with_tokens.html">validate_dates_with_tokens()</a></code> 
+        </dt>
+        <dd>Validate Dates with Tokens</dd>
+      </dl><dl><dt>
+          
+          <code><a href="validate_dbs_bag_label_is_unique.html">validate_dbs_bag_label_is_unique()</a></code> 
+        </dt>
+        <dd>Validate DBS Bag Label is unique at a location</dd>
+      </dl><dl><dt>
+          
+          <code><a href="validate_dbs_sample.html">validate_dbs_sample()</a></code> 
+        </dt>
+        <dd>Validate DBS Specimen Data</dd>
+      </dl><dl><dt>
+          
+          <code><a href="validate_dbs_sample_label_uniqueness.html">validate_dbs_sample_label_uniqueness()</a></code> 
+        </dt>
+        <dd>DBS Specimen paper identifier uniqueness check</dd>
+      </dl><dl><dt>
+          
+          <code><a href="validate_dbs_sample_moves.html">validate_dbs_sample_moves()</a></code> 
+        </dt>
+        <dd>Validate DBS Specimen Moves</dd>
+      </dl><dl><dt>
+          
+          <code><a href="validate_dbs_sample_uploads.html">validate_dbs_sample_uploads()</a></code> 
+        </dt>
+        <dd>Validate Micronix Uploads</dd>
+      </dl><dl><dt>
+          
+          <code><a href="validate_dbs_sheet.html">validate_dbs_sheet()</a></code> 
+        </dt>
+        <dd>Validate DBS Sheet Control Data</dd>
+      </dl><dl><dt>
+          
+          <code><a href="validate_dbs_sheet_create.html">validate_dbs_sheet_create()</a></code> 
+        </dt>
+        <dd>Validate DBS Sheet Create</dd>
+      </dl><dl><dt>
+          
+          <code><a href="validate_dbs_sheet_extraction.html">validate_dbs_sheet_extraction()</a></code> 
+        </dt>
+        <dd>Validate DBS Sheet Extraction</dd>
+      </dl><dl><dt>
+          
+          <code><a href="validate_empty_cryovial_well_upload.html">validate_empty_cryovial_well_upload()</a></code> 
+        </dt>
+        <dd>Cryovial Empty Well Validation</dd>
+      </dl><dl><dt>
+          
+          <code><a href="validate_empty_micronix_well_upload.html">validate_empty_micronix_well_upload()</a></code> 
+        </dt>
+        <dd>Micronix Empty Well Validation</dd>
+      </dl><dl><dt>
+          
+          <code><a href="validate_existing_barcodes_by_study.html">validate_existing_barcodes_by_study()</a></code> 
+        </dt>
+        <dd>Validate if barcodes already exist for a given study</dd>
+      </dl><dl><dt>
+          
+          <code><a href="validate_extraction_counts_with_totals.html">validate_extraction_counts_with_totals()</a></code> 
+        </dt>
+        <dd>Validate Extraction Counts Against Blood Spot Collection Totals</dd>
+      </dl><dl><dt>
+          
+          <code><a href="validate_location_reference_db.html">validate_location_reference_db()</a></code> 
+        </dt>
+        <dd>Validate location references (Database Version)</dd>
+      </dl><dl><dt>
+          
+          <code><a href="validate_longitudinal_study.html">validate_longitudinal_study()</a></code> 
+        </dt>
+        <dd>Ensure uniqueness of study subjects and collection dates within longitudinal studies.</dd>
+      </dl><dl><dt>
+          
+          <code><a href="validate_matrix_container.html">validate_matrix_container()</a></code> 
+        </dt>
+        <dd>Validate Matrix Container position</dd>
+      </dl><dl><dt>
+          
+          <code><a href="validate_micronix.html">validate_micronix()</a></code> 
+        </dt>
+        <dd>Validate Micronix Specimen Data</dd>
+      </dl><dl><dt>
+          
+          <code><a href="validate_micronix_barcode_length.html">validate_micronix_barcode_length()</a></code> 
+        </dt>
+        <dd>Validate Micronix-specific barcode length rules</dd>
+      </dl><dl><dt>
+          
+          <code><a href="validate_micronix_moves.html">validate_micronix_moves()</a></code> 
+        </dt>
+        <dd>Validate Micronix Moves</dd>
+      </dl><dl><dt>
+          
+          <code><a href="validate_micronix_position.html">validate_micronix_position()</a></code> 
+        </dt>
+        <dd>Validate Micronix-specific position rules</dd>
+      </dl><dl><dt>
+          
+          <code><a href="validate_micronix_uploads.html">validate_micronix_uploads()</a></code> 
+        </dt>
+        <dd>Validate Micronix Uploads</dd>
+      </dl><dl><dt>
+          
+          <code><a href="validate_non_longitudinal_study_subjects.html">validate_non_longitudinal_study_subjects()</a></code> 
+        </dt>
+        <dd>Check uniqueness of StudySubject within non-longitudinal studies.</dd>
+      </dl><dl><dt>
+          
+          <code><a href="validate_references.html">validate_references()</a></code> 
+        </dt>
+        <dd>Validate References</dd>
+      </dl><dl><dt>
+          
+          <code><a href="validate_specimen_type_db.html">validate_specimen_type_db()</a></code> 
+        </dt>
+        <dd>Validate specimen type references (Database Version)</dd>
+      </dl><dl><dt>
+          
+          <code><a href="validate_specimens.html">validate_specimens()</a></code> 
+        </dt>
+        <dd>Validate Specimens Main Function</dd>
+      </dl><dl><dt>
+          
+          <code><a href="validate_strain.html">validate_strain()</a></code> 
+        </dt>
+        <dd>Validate Strains Data</dd>
+      </dl><dl><dt>
+          
+          <code><a href="validate_strains_in_database.html">validate_strains_in_database()</a></code> 
+        </dt>
+        <dd>Validate strains recorded in the database</dd>
+      </dl><dl><dt>
+          
+          <code><a href="validate_study_reference_db.html">validate_study_reference_db()</a></code> 
+        </dt>
+        <dd>Validate study references (Database Version)</dd>
+      </dl><dl><dt>
+          
+          <code><a href="validate_study_short_code.html">validate_study_short_code()</a></code> 
+        </dt>
+        <dd>Validate that study does not have a date for it's short code</dd>
+      </dl><dl><dt>
+          
+          <code><a href="validate_whole_blood.html">validate_whole_blood()</a></code> 
+        </dt>
+        <dd>Validate Whole Blood Control Data</dd>
+      </dl><dl><dt>
+          
+          <code><a href="validate_whole_blood_create.html">validate_whole_blood_create()</a></code> 
+        </dt>
+        <dd>Validate Whole Blood Create</dd>
+      </dl><dl><dt>
+          
+          <code><a href="validate_whole_blood_extraction.html">validate_whole_blood_extraction()</a></code> 
+        </dt>
+        <dd>Validate Whole Blood Extraction</dd>
+      </dl><dl><dt>
+          
+          <code><a href="validate_whole_blood_tube_exists.html">validate_whole_blood_tube_exists()</a></code> 
+        </dt>
+        <dd>Validate Cryovial Tube Exists</dd>
       </dl></div>
   </main></div>
 

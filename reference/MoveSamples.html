@@ -14,7 +14,7 @@ From one (or more) existing container into one (or more) existing container
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
     
 
-    <nav class="navbar fixed-top navbar-light navbar-expand-lg bg-light" data-bs-theme="light"><div class="container">
+    <nav class="navbar fixed-top navbar-dark navbar-expand-lg bg-primary" data-bs-theme="dark"><div class="container">
     
     <a class="navbar-brand me-2" href="../index.html">sampleDB</a>
 
@@ -30,10 +30,10 @@ From one (or more) existing container into one (or more) existing container
   <a class="nav-link" href="../reference/index.html">Reference</a>
 </li>
 <li class="nav-item dropdown">
-  <a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown" role="button" aria-expanded="false" aria-haspopup="true" id="dropdown-articles">Articles</a>
-  <div class="dropdown-menu" aria-labelledby="dropdown-articles">
-    <a class="dropdown-item" href="../articles/Delete--Archive-Samples.html">Delete and Archive Samples and Controls</a>
-    <a class="dropdown-item" href="../articles/How-to-Move-Micronix-Samples.html">How to Move Samples and Controls</a>
+  <a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown" role="button" aria-expanded="false" aria-haspopup="true" id="dropdown-how-to">How To</a>
+  <div class="dropdown-menu" aria-labelledby="dropdown-how-to">
+    <a class="dropdown-item" href="../articles/Delete--Archive-Samples.html">Delete Archive Samples</a>
+    <a class="dropdown-item" href="../articles/How-to-Move-Micronix-Samples.html">How to Move Micronix Samples</a>
     <a class="dropdown-item" href="../articles/How-to-Upload-Controls.html">How to Upload Controls</a>
     <a class="dropdown-item" href="../articles/How-to-Upload-Extracted-Controls.html">How to Upload Extracted Controls</a>
     <a class="dropdown-item" href="../articles/Preferences.html">Preferences</a>
@@ -84,7 +84,7 @@ From one (or more) existing container into one (or more) existing container
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span></span></span>
 <span class="r-in"><span><span class="va">move_data</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="st">"move_csv1_container_name"</span> <span class="op">=</span> <span class="fu">dataframe</span><span class="op">(</span><span class="op">)</span>, <span class="st">"move_csv2_container_name"</span> <span class="op">=</span> <span class="fu">dataframe</span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="fu">MoveSamples</span><span class="op">(</span>sample_type <span class="op">=</span> <span class="fl">1</span>, move_data <span class="op">=</span> <span class="va">move_data</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu">MoveSamples</span><span class="op">(</span>sample_type <span class="op">=</span> <span class="st">"micronix"</span>, move_data <span class="op">=</span> <span class="va">move_data</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">}</span></span></span>
 </code></pre></div>
     </div>

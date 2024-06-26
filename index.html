@@ -29,7 +29,7 @@
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
     
 
-    <nav class="navbar fixed-top navbar-light navbar-expand-lg bg-light" data-bs-theme="light"><div class="container">
+    <nav class="navbar fixed-top navbar-dark navbar-expand-lg bg-primary" data-bs-theme="dark"><div class="container">
     
     <a class="navbar-brand me-2" href="index.html">sampleDB</a>
 
@@ -46,10 +46,10 @@
   <a class="nav-link" href="reference/index.html">Reference</a>
 </li>
 <li class="nav-item dropdown">
-  <a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown" role="button" aria-expanded="false" aria-haspopup="true" id="dropdown-articles">Articles</a>
-  <div class="dropdown-menu" aria-labelledby="dropdown-articles">
-    <a class="dropdown-item" href="articles/Delete--Archive-Samples.html">Delete and Archive Samples and Controls</a>
-    <a class="dropdown-item" href="articles/How-to-Move-Micronix-Samples.html">How to Move Samples and Controls</a>
+  <a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown" role="button" aria-expanded="false" aria-haspopup="true" id="dropdown-how-to">How To</a>
+  <div class="dropdown-menu" aria-labelledby="dropdown-how-to">
+    <a class="dropdown-item" href="articles/Delete--Archive-Samples.html">Delete Archive Samples</a>
+    <a class="dropdown-item" href="articles/How-to-Move-Micronix-Samples.html">How to Move Micronix Samples</a>
     <a class="dropdown-item" href="articles/How-to-Upload-Controls.html">How to Upload Controls</a>
     <a class="dropdown-item" href="articles/How-to-Upload-Extracted-Controls.html">How to Upload Extracted Controls</a>
     <a class="dropdown-item" href="articles/Preferences.html">Preferences</a>
@@ -94,7 +94,8 @@
 <h4 id="id_1-create-a-volume">1. Create a volume<a class="anchor" aria-label="anchor" href="#id_1-create-a-volume"></a>
 </h4>
 <p>You should first create a volume to contain the sampleDB database. Start by running the command below:</p>
-<div class="sourceCode" id="cb1"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="ex">docker</span> volume create sampledb_database</span></code></pre></div>
+<div class="sourceCode" id="cb1"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="ex">docker</span> volume create sampledb_database</span>
+<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a><span class="ex">docker</span> volume create shinylogs</span></code></pre></div>
 </div>
 <div class="section level4">
 <h4 id="id_2-create-the-image">2. Create the image<a class="anchor" aria-label="anchor" href="#id_2-create-the-image"></a>
@@ -190,7 +191,7 @@
 <h2 id="database-backups">Database Backups<a class="anchor" aria-label="anchor" href="#database-backups"></a>
 </h2>
 <p>The database will backup each time a session begins, <em>unless</em> the database has not changed since the last backup. Only the most recent 10 backups will be kept. The location of the backup folder can be found running <code><a href="reference/SampleDB_Setup.html">SampleDB_Setup()</a></code> again (this function does not overwrite), and it is recommended that you keep additional copies of your backups.</p>
-<p>One of the easiest ways to create a backup is through the <code>Backup_SampleDB()</code> function provided in the package. This function by default creates a backup in the default backup folder, although you may pass a filepath to <code>backup_dest</code> (e.g. /path/to/file.backup) to overwrite this default behavior.</p>
+<p>One of the easiest ways to create a backup is through the <code><a href="reference/Backup_SampleDB.html">Backup_SampleDB()</a></code> function provided in the package. This function by default creates a backup in the default backup folder, although you may pass a filepath to <code>backup_dest</code> (e.g. /path/to/file.backup) to overwrite this default behavior.</p>
 </div>
 <div class="section level2">
 <h2 id="faq">FAQ<a class="anchor" aria-label="anchor" href="#faq"></a>
