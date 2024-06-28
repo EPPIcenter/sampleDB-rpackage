@@ -42,7 +42,7 @@ EditWetlabContainers <- function(session, input, database, output, dbUpdateEvent
     database <- Sys.getenv("SDB_PATH")
     con <-  RSQLite::dbConnect(RSQLite::SQLite(), database)
 
-    updateSelectInput(
+    updateSelectizeInput(
       session,
       "ContainerManifestID",
       label = switch(
@@ -51,7 +51,8 @@ EditWetlabContainers <- function(session, input, database, output, dbUpdateEvent
         "cryovial" = "Box Name"
       ),
       choices = c("", DBI::dbReadTable(con, manifest) %>% pull(name)),
-      selected = input$ContainerManifestID
+      selected = input$ContainerManifestID,
+      server = TRUE
     )
 
     updateSelectInput(
@@ -105,7 +106,7 @@ EditWetlabContainers <- function(session, input, database, output, dbUpdateEvent
     database <- Sys.getenv("SDB_PATH")
     con <-  RSQLite::dbConnect(RSQLite::SQLite(), database)
 
-    updateSelectInput(
+    updateSelectizeInput(
       session,
       "ContainerManifestID",
       label = switch(
@@ -114,7 +115,8 @@ EditWetlabContainers <- function(session, input, database, output, dbUpdateEvent
         "cryovial" = "Box Name"
       ),
       choices = c("", DBI::dbReadTable(con, manifest) %>% pull(name)),
-      selected = ""
+      selected = "",
+      server = TRUE
     )
 
     updateSelectInput(
