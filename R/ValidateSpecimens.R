@@ -719,7 +719,7 @@ check_unique_positions <- function(user_data, position_col, container_name_col, 
   if (nrow(duplicates) > 0) {
     return(ErrorData$new(description = sprintf("Found duplicate positions for given %s and %s", container_name_col, container_barcode_col),
                          columns = names(duplicates),
-                         rows = duplicates[[row_number_column]]))
+                         rows = duplicates[["RowNumber"]]))
   }
 }
 
