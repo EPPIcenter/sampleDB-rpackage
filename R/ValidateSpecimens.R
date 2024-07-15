@@ -396,7 +396,8 @@ validate_box_uniqueness <- function(con, user_data, row_number_col, cryovial_col
     left_join(matches, by = c("user_box_name", "existing_box_name")) %>%
     select(!!sym(row_number_col), !!sym(cryovial_col), user_box_name, existing_box_name) %>%
     collect() %>%
-    rename(!!sym(cryovial_box_col) := user_box_name)
+    rename(!!sym(cryovial_box_col) := user_box_name) %>%
+    filter(!is.na(Barcode))
 
   # Return results or NULL if no issues are found
   if (nrow(comparison) > 0) {
