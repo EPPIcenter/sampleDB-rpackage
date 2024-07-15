@@ -36,7 +36,7 @@ UIMoveSamples <- function(){
         tags$h4("2. Create a Sample Move File to Upload"),
         tags$p("Create a file that follows the template below and", tags$strong("name the file the name of the container."), "For example, if you are creating a move file for a container named", tags$em("LN2_XXXX"), ", your file should be named", tags$em("LN2_XXXX.csv")),
         tags$p("If you would like to download a template file, press the button below."),
-        downloadButton("MoveFileTemplate"),
+        uiOutput("MoveFileTemplatePlaceholder"),
         tags$h5("Required Fields"),
         tags$p("Below are", tags$strong("required"), "columns that", tags$strong("must"), "be included in your file."),
         reactableOutput("MoveFileExampleRequired"),

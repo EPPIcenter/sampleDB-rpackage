@@ -27,13 +27,6 @@ AppMoveSamples <- function(session, input, output, database) {
     message = ""
   )
 
-  example_data <- reactiveValues(
-    required = NULL,
-    user_input = NULL,
-    conditional = NULL,
-    optional = NULL
-  )
-
   observeEvent(input$CreateNewManifest, ignoreInit = TRUE, {
     con <- dbConnect(SQLite(), Sys.getenv("SDB_PATH"))
 
@@ -441,5 +434,85 @@ AppMoveSamples <- function(session, input, output, database) {
     shinyjs::reset("MoveOutputConsole")
 
     rv$user_file <- NULL
+  })
+
+  move_example_data <- reactiveValues(
+    required = NULL,
+    optional = NULL
+  )
+
+  # Download a complete upload template
+  observe({
+    output$MoveFileTemplatePlaceholder <- renderUI({
+
+      get_specific_move_type <- function() {
+        sample_types <- get_sample_types()
+        sample_file_types <- get_file_types_for_sample(input$MoveSampleType)
+
+        match_index <- match(input$MoveSampleType, sample_types)
+        sample_display_name <- names(sample_types[match_index])
+
+        match_index <- match(input$MoveSampleType, sample_file_types)
+        file_type_display_name <- names(sample_file_types[match_index])
+
+        sprintf("%s (FileType: '%s')", sample_display_name, file_type_display_name)
+      }
+
+      downloadButton("MoveFileTemplate", label = paste("Download", get_specific_move_type(), "Move Template"))
+    })
+
+    # NOTE: Should add a case for controls when they are added.
+    output$MoveFileTemplate <- downloadHandler(
+      filename = function() {
+        filename_base <- paste(c(input$MoveSampleType, input$MoveFileType, "move", "template"), collapse = "_")
+        paste(filename_base, ".csv", sep = "")
+      },
+      content = function(con) {
+        # Retrieve column data for samples based on selected sample type
+        column_data <- get_sample_file_columns(input$MoveSampleType, "move", input$MoveFileType)
+        
+        # Generate an empty data frame with the correct column names for downloading
+        if (!is.null(column_data)) {
+          all_columns <- c(column_data$required)
+          move_template <- data.frame(matrix(ncol = length(all_columns), nrow = 0))
+          colnames(move_template) <- all_columns
+        } else {
+          stop("Column data is null!!!")
+        }
+        write.csv(move_template, con, row.names = FALSE, quote = FALSE)
+      }
+    )
+  })
+
+  observe({
+    ## Read File Specification File
+    file_specs_json <- get_sample_file_columns(input$MoveSampleType, "move", input$MoveFileType)
+
+    ## Required Column Names
+    move_example_data$required <- file_specs_json$required
+  })
+
+  observe({
+    output$MoveFileExampleRequired <- renderReactable({
+      rt <- NULL
+      if (input$MoveFileType == "na") {
+        example <- paste(c(input$MoveSampleType, input$MoveFileType), collapse="_")
+        rt <- reactable(eval(as.symbol(example))[, move_example_data$required], defaultColDef = colDef(minWidth = 130, html = TRUE, sortable = FALSE, resizable = FALSE))
+      } else {
+        mat <- matrix(nrow = 0, ncol = length(move_example_data$required))
+        colnames(mat) <- move_example_data$required
+        rt <- reactable(mat, defaultColDef = colDef(minWidth = 130, html = TRUE, sortable = FALSE, resizable = FALSE))
+      }
+
+      return(rt)
+    })
+
+    cols <- c(
+      move_example_data$required
+    )
+
+    template <- matrix(ncol = length(cols), nrow = 0)
+    colnames(template) <- cols
+    rv$move_template <- template
   })
 }

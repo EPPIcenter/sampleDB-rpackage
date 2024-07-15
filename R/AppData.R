@@ -380,9 +380,9 @@ get_values <- function(keys, sample_values, shared_values) {
   for (key in keys) {
     
     # Prioritize sample_value if it exists, otherwise use shared_value
-    if (key %in% names(sample_values) && sample_values[[key]] != "") {
+    if (key %in% names(sample_values) && all(sample_values[[key]] != "")) {
       final_values <- c(final_values, sample_values[[key]])
-    } else if (key %in% names(shared_values) && shared_values[[key]] != "") {
+    } else if (key %in% names(shared_values) && all(shared_values[[key]] != "")) {
       final_values <- c(final_values, shared_values[[key]])
     }
   }
