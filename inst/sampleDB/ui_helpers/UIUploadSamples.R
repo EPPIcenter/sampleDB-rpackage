@@ -52,7 +52,7 @@ UIUploadSamples <- function() {
       fluidRow(
         column(
           width = 6,
-          downloadButton("UploadFileTemplate")
+          uiOutput("UploadFileTemplatePlaceholder")
         )
       ),
       tags$h5("Required Fields"),

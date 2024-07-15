@@ -23,6 +23,37 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
 
   # Download a complete upload template
   observe({
+    output$UploadFileTemplatePlaceholder <- renderUI({
+
+      get_specific_upload_type <- switch(input$UploadType, 
+        "samples" = function() { 
+          sample_types <- get_sample_types()
+          sample_file_types <- get_file_types_for_sample(input$UploadSampleType)
+
+          match_index <- match(input$UploadSampleType, sample_types)
+          sample_display_name <- names(sample_types[match_index])
+
+          match_index <- match(input$UploadFileType, sample_file_types)
+          file_type_display_name <- names(sample_file_types[match_index])
+
+          sprintf("%s (FileType: '%s')", sample_display_name, file_type_display_name)
+        },
+        "controls" = function() { 
+          control_types <- get_control_types()
+          control_action_types <- get_control_action_types(input$UploadControlType)
+
+          match_index <- match(input$UploadControlType, control_types)
+          control_display_name <- names(control_types[match_index])
+
+          match_index <- match(input$UploadControlAction, control_action_types)
+          control_action_display_name <- names(control_action_types[match_index])
+
+          sprintf("%s (Action: '%s')", control_display_name, control_action_display_name)
+        }
+      )
+      downloadButton("UploadFileTemplate", label = paste("Download", get_specific_upload_type(), "Template"))
+    })
+
     output$UploadFileTemplate <- downloadHandler(
       filename = function() {
         if (input$UploadType == "samples") {
@@ -440,6 +471,73 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
     shinyjs::reset("UploadLocationLevelII")
 
     rv$user_file <- NULL
+  })
+
+  example_data <- reactiveValues(
+    required = NULL,
+    conditional = NULL,
+    optional = NULL
+  )
+
+  observe({
+    ## Read File Specification File
+    file_specs_json <- get_sample_file_columns(input$UploadSampleType, "upload", input$UploadFileType)
+
+    ## Required Column Names
+    example_data$required <- file_specs_json$required
+    example_data$conditional <- file_specs_json$conditional
+    example_data$optional <- file_specs_json$optional
+  })
+
+  observe({
+    output$UploadFileExampleRequired <- renderReactable({
+      rt <- NULL
+      if (input$UploadFileType == "na") {
+        example <- paste(c(input$UploadSampleType, input$UploadFileType), collapse="_")
+        rt <- reactable(eval(as.symbol(example))[, example_data$required], defaultColDef = colDef(minWidth = 130, html = TRUE, sortable = FALSE, resizable = FALSE))
+      } else {
+        mat <- matrix(nrow = 0, ncol = length(example_data$required))
+        colnames(mat) <- example_data$required
+        rt <- reactable(mat, defaultColDef = colDef(minWidth = 130, html = TRUE, sortable = FALSE, resizable = FALSE))
+      }
+
+      return(rt)
+    })
+
+    output$UploadFileExampleConditional <- renderReactable({
+      rt <- NULL
+      if (input$UploadFileType == "na") {
+        example <- paste(c(input$UploadSampleType, input$UploadFileType), collapse="_")
+        rt <- reactable(eval(as.symbol(example)) %>% select(example_data$conditional), defaultColDef = colDef(minWidth = 130, html = TRUE, sortable = FALSE, resizable = FALSE))
+      } else {
+        mat <- matrix(nrow = 0, ncol = length(example_data$conditional))
+        colnames(mat) <- example_data$conditional
+        rt <- reactable(mat, defaultColDef = colDef(minWidth = 130, html = TRUE, sortable = FALSE, resizable = FALSE))
+      }
+      return(rt)
+    })
+
+    output$UploadFileExampleOptional <- renderReactable({
+      rt <- NULL
+      if (input$UploadFileType == "na") {
+        example <- paste(c(input$UploadSampleType, input$UploadFileType), collapse="_")
+        rt <- reactable(eval(as.symbol(example)) %>% select(example_data$optional), defaultColDef = colDef(minWidth = 130, html = TRUE, sortable = FALSE, resizable = FALSE))
+      } else {
+        mat <- matrix(nrow = 0, ncol = length(example_data$optional))
+        colnames(mat) <- example_data$optional
+        rt <- reactable(mat, defaultColDef = colDef(minWidth = 130, html = TRUE, sortable = FALSE, resizable = FALSE))
+      }
+      return(rt)
+    })
+
+    cols <- c(
+      example_data$required, 
+      example_data$conditional,
+      example_data$optional
+    )
+    template <- matrix(ncol = length(cols), nrow = 0)
+    colnames(template) <- cols
+    rv$upload_template <- template
   })
 }
 
