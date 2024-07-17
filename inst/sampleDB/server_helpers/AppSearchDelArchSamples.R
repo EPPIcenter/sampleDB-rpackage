@@ -17,18 +17,20 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
     )
   )
 
-  # Initialize Dropdowns
-  observeEvent(TRUE, {
-    UpdateSelections(session, input, FALSE)
-  }, ignoreNULL = TRUE, once = TRUE)
+  filter_set <- createFilterSetReactive()
 
   #' Initialize dropdowns that are not control or sample specific
   con <- init_db_conn(database)
 
-  updateSelectInput(session, "DelArchSearchByState", selected = "Active", choices = tbl(con, "state") %>% pull(name))
-  updateSelectInput(session, "DelArchSearchByStatus", selected = "In Use", choices = c("In Use"))
+  updateSelectizeInput(session, "DelArchSearchByState", selected = "Active", choices = tbl(con, "state") %>% pull(name))
+  updateSelectizeInput(session, "DelArchSearchByStatus", selected = "In Use", choices = c("In Use"))
   
   DBI::dbDisconnect(con)
+
+  # Initialize Dropdowns
+  observeEvent(TRUE, {
+    UpdateSelections(session, input, FALSE, TRUE)
+  }, ignoreNULL = TRUE, once = TRUE)
 
   # Declare filters for searching and establish any filter dependencies
   filter_observer <- observe(suspended = TRUE, {
@@ -57,6 +59,21 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
       density = input$DelArchSearchByDensity,
       container_type = input$SearchDBSSampleManifest
     )
+
+    # NOTE: below is some manual filtering to remove values
+    # that are causing the search functionality to fire more
+    # often then needed.
+    if (input$DelArchSearchBySampleType != "dbs_sample") {
+      new_filters$container_type <- ""
+    }
+
+    if (!is.null(new_filters$collection_date) && sum(is.na(new_filters$collection_date)) == 2) {
+      new_filters$collection_date <- NULL
+    }
+
+    if (input$DelArchSearchType == "samples") {
+      new_filters$control_type <- ""
+    }
 
     # Remove empty or NULL values from new_filters
     new_filters <- purrr::map(new_filters, ~purrr::discard(.x, function(x) is.null(x) || "" %in% x || length(x) == 0))
@@ -124,7 +141,7 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
 
     # Toggle force update back to FALSE
     force_update(FALSE)
-    
+
     # Prepare data for reactable
     if (!is.null(results)) {
       results
@@ -326,6 +343,8 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
 
     filter_observer_state(FALSE)
 
+    skipFirstUpdate(FALSE)
+
     updateRadioButtons(session, selected = "individual", "SubjectUIDDelArchSearchType", label = NULL, choices = list("Single Study Subject" = "individual", "Multiple Study Subjects" = "multiple"))
     
     updateDateRangeInput(session, "DelArchdateRange", start = NA, end = NA) %>% suppressWarnings()
@@ -339,7 +358,12 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
 
   ### Smart Dropdowns
 
+  skipFirstUpdate <- reactiveVal(FALSE)
   observeEvent(input$DelArchSearchByState, ignoreInit = TRUE, {
+    if (!skipFirstUpdate()) {
+      skipFirstUpdate(TRUE)
+      return(NULL)
+    }
     choices <- NULL
     if (input$DelArchSearchByState %in% "Archived") {
       con <- RSQLite::dbConnect(RSQLite::SQLite(), database)
@@ -1366,7 +1390,7 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
   filter_observer_state(TRUE)
 }
 
-UpdateSelections <- function(session, input, keepCurrentSelection = FALSE) {
+UpdateSelections <- function(session, input, keepCurrentSelection = FALSE, ignoreStateAndStatus = FALSE) {
 
   if (input$DelArchSearchType == "samples") {
     UpdateSampleSelections(session, input, keepCurrentSelection)
@@ -1374,9 +1398,11 @@ UpdateSelections <- function(session, input, keepCurrentSelection = FALSE) {
     UpdateControlSelections(session, input, keepCurrentSelection)
   }
 
-  updateSelectInput(session, "DelArchSearchByState", selected = ifelse(keepCurrentSelection, input$DelArchSearchByState, "Active"))
-  updateSelectInput(session, "DelArchSearchByStatus", selected = ifelse(keepCurrentSelection, input$DelArchSearchByStatus, "In Use"))
-  
+  if (!ignoreStateAndStatus) {
+    updateSelectizeInput(session, "DelArchSearchByState", selected = ifelse(keepCurrentSelection, input$DelArchSearchByState, "Active"))
+    updateSelectizeInput(session, "DelArchSearchByStatus", selected = ifelse(keepCurrentSelection, input$DelArchSearchByStatus, "In Use"))
+  }
+
   shinyjs::reset("DelArchSearchByBarcode")
   shinyjs::reset("DelArchSearchBySubjectUIDFile")
 }

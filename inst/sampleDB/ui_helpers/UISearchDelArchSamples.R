@@ -86,8 +86,8 @@ UISearchDelArchSamples <- function() {
           selectizeInput("DelArchSearchByLevelII", "Storage Location: Level II", choices = c(""))
         ),
         bslib::accordion_panel("State & Status",
-          selectizeInput("DelArchSearchByState", "State", choices = c()),
-          selectizeInput("DelArchSearchByStatus", "Status", choices = c())
+          selectizeInput("DelArchSearchByState", "State", choices = c("")),
+          selectizeInput("DelArchSearchByStatus", "Status", choices = c(""))
         )
       ),      
       verbatimTextOutput("DelArchMessage")
