@@ -343,6 +343,9 @@ SearchSamples <- function(sample_storage_type, filters = NULL, format = "na", da
     stop("No search implemenation available for this sample_storage_type")
   }
 
+  con <- DBI::dbConnect(RSQLite::SQLite(), database)
+  dbBegin(con)
+
   tryCatch({
     container_tables <- list(
       "manifest" = switch(sample_storage_type,
@@ -361,9 +364,6 @@ SearchSamples <- function(sample_storage_type, filters = NULL, format = "na", da
         "dbs_sample" = "paper"
       )
     )
-
-    con <- DBI::dbConnect(RSQLite::SQLite(), database)
-    dbBegin(con)
 
     sql <- tbl(con, "study") %>% dplyr::rename(study_id = id) %>% select(study_id, short_code)
     if (!is.null(filters$short_code)) {

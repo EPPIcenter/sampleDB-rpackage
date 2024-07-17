@@ -31,7 +31,7 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
   DBI::dbDisconnect(con)
 
   # Declare filters for searching and establish any filter dependencies
-  filter_observer <- observe({
+  filter_observer <- observe(suspended = TRUE, {
 
     # Build the new filters
     new_filters <- list(
@@ -90,6 +90,17 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
     }
   })
 
+  # Reactive value to control searching
+  filter_observer_state <- reactiveVal(FALSE)
+
+  observe({
+    if (filter_observer_state()) {
+      filter_observer$resume()
+    } else {
+      filter_observer$suspend()
+    }
+  })
+
   # get DelArchSearch ui elements
   rv <- reactiveValues(user_file = NULL, error = NULL, operation = NULL, filtered_sample_container_ids = NULL)
   force_update <- reactiveVal(FALSE)
@@ -102,7 +113,7 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
 
     # Ensure that state and status are set before performing any searches
     # Check for non-NULL and non-empty strings
-    req(nzchar(input$DelArchSearchByState))
+    # req(nzchar(input$DelArchSearchByState))
 
     # Check for non-NULL and non-empty strings    
     if (input$DelArchSearchType == "samples") {
@@ -313,13 +324,17 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
   
   observeEvent(c(input$DelArchSearchReset, dbUpdateEvent()), ignoreInit = TRUE, {
 
-    filter_set$reset()  # restore defaults
+    filter_observer_state(FALSE)
 
     updateRadioButtons(session, selected = "individual", "SubjectUIDDelArchSearchType", label = NULL, choices = list("Single Study Subject" = "individual", "Multiple Study Subjects" = "multiple"))
     
     updateDateRangeInput(session, "DelArchdateRange", start = NA, end = NA) %>% suppressWarnings()
 
     UpdateSelections(session, input, FALSE)
+
+    filter_observer_state(TRUE)
+
+    filter_set$reset()  # restore defaults
   })
 
   ### Smart Dropdowns
@@ -1345,6 +1360,10 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
       }
     )
   })
+
+
+  ## Reactivate the filter observer when at the end of initialization
+  filter_observer_state(TRUE)
 }
 
 UpdateSelections <- function(session, input, keepCurrentSelection = FALSE) {
