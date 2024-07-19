@@ -1,6 +1,6 @@
-ALTER TABLE "location" RENAME COLUMN "name" TO "location_root";
+ALTER TABLE "location" RENAME COLUMN "name" TO "location_root"; --! COMMAND_END !--
 
-ALTER TABLE "sample_type" ADD COLUMN "parent_id" INTEGER DEFAULT NULL REFERENCES "sample_type"("id");
+ALTER TABLE "sample_type" ADD COLUMN "parent_id" INTEGER DEFAULT NULL REFERENCES "sample_type"("id"); --! COMMAND_END !--
 
 --- Control Collection ---
 CREATE TABLE IF NOT EXISTS "control_collection" (
@@ -10,17 +10,17 @@ CREATE TABLE IF NOT EXISTS "control_collection" (
 	"metadata"		TEXT,
 
 	PRIMARY KEY("id")
-);
+); --! COMMAND_END !--
 
 --- just remove dbs ---
-DROP TABLE "dbs_spot";
+DROP TABLE "dbs_spot"; --! COMMAND_END !--
 
 --- insert new derived sample types
 
 INSERT OR ROLLBACK INTO "sample_type" (name, parent_id)
 VALUES
 	("Tube", 3),
-	("Paper", 3);
+	("Paper", 3); --! COMMAND_END !--
 
 
 --- create the dbs bag that holds dbs paper ---
@@ -35,7 +35,7 @@ CREATE TABLE IF NOT EXISTS "dbs_bag" (
 
 	PRIMARY KEY("id"),
 	FOREIGN KEY("location_id") REFERENCES "location"("id")
-);
+); --! COMMAND_END !--
 
 --- DBS Tube ---
 CREATE TABLE IF NOT EXISTS "dbs_tube" (
@@ -49,7 +49,7 @@ CREATE TABLE IF NOT EXISTS "dbs_tube" (
 	FOREIGN KEY("box_id") REFERENCES "dbs_bag"("id"),
 
 	CONSTRAINT "dbs_tube_position_box_id_uc" UNIQUE("position", "box_id")
-);
+); --! COMMAND_END !--
 
 --- DBS Paper - different than a DBS control sheet ---
 CREATE TABLE IF NOT EXISTS "dbs_paper" (
@@ -64,7 +64,7 @@ CREATE TABLE IF NOT EXISTS "dbs_paper" (
 	FOREIGN KEY("bag_id") REFERENCES "dbs_bag"("id"),
 
 	CONSTRAINT "dbs_paper_position_bag_id_uc" UNIQUE("position", "bag_id")
-);
+); --! COMMAND_END !--
 
 --- Identifier for the control combination ---
 CREATE TABLE IF NOT EXISTS "malaria_blood_control" (
@@ -75,7 +75,7 @@ CREATE TABLE IF NOT EXISTS "malaria_blood_control" (
 
 	PRIMARY KEY("id"),
 	FOREIGN KEY("study_subject_id") REFERENCES "study_subject"("id")
-);
+); --! COMMAND_END !--
 
 --- Blood Spot Collection ---
 CREATE TABLE IF NOT EXISTS "blood_spot_collection" (
@@ -86,7 +86,7 @@ CREATE TABLE IF NOT EXISTS "blood_spot_collection" (
 
 	PRIMARY KEY("id"),
 	FOREIGN KEY("malaria_blood_control_id") REFERENCES "malaria_blood_control"("id")
-);
+); --! COMMAND_END !--
 
 --- DBS Control Sheet ---
 CREATE TABLE IF NOT EXISTS "dbs_control_sheet" (
@@ -98,7 +98,7 @@ CREATE TABLE IF NOT EXISTS "dbs_control_sheet" (
 	PRIMARY KEY("id"),
 	FOREIGN KEY("dbs_bag_id") REFERENCES "dbs_bag"("id"),
 	CONSTRAINT "dbs_control_sheet_bag_id_uc" UNIQUE("label", "dbs_bag_id")
-);
+); --! COMMAND_END !--
 
 --- Junction Table ---
 CREATE TABLE IF NOT EXISTS "blood_spot_collection_dbs_control_sheet" (
@@ -109,7 +109,7 @@ CREATE TABLE IF NOT EXISTS "blood_spot_collection_dbs_control_sheet" (
 	PRIMARY KEY("id"),
 	FOREIGN KEY("blood_spot_collection_id") REFERENCES "blood_spot_collection"("id"),
 	FOREIGN KEY("dbs_control_sheet_id") REFERENCES "dbs_control_sheet"("id")
-);
+); --! COMMAND_END !--
 
 --- Table of strains that can be used with controls ---
 CREATE TABLE IF NOT EXISTS "strain" (
@@ -118,7 +118,7 @@ CREATE TABLE IF NOT EXISTS "strain" (
 	"description"	VARCHAR,
 
 	PRIMARY KEY("id")
-);
+); --! COMMAND_END !--
 
 --- Control composition definition table --- 
 CREATE TABLE IF NOT EXISTS "composition_strain" (
@@ -129,7 +129,7 @@ CREATE TABLE IF NOT EXISTS "composition_strain" (
 
 	PRIMARY KEY ("id"),
 	FOREIGN KEY ("strain_id") REFERENCES "strain"("id")
-);
+); --! COMMAND_END !--
 
 --- Holds records of different composition of recorded controls ---
 CREATE TABLE IF NOT EXISTS "composition" (
@@ -140,7 +140,7 @@ CREATE TABLE IF NOT EXISTS "composition" (
 
 	PRIMARY KEY("id"),
 	CONSTRAINT "label_index_legacy_uc" UNIQUE("index","label","legacy")
-);
+); --! COMMAND_END !--
 
 CREATE TABLE IF NOT EXISTS "whole_blood_tube" (
 	"id"			INTEGER NOT NULL,
@@ -152,7 +152,7 @@ CREATE TABLE IF NOT EXISTS "whole_blood_tube" (
 	PRIMARY KEY ("id"),
 	FOREIGN KEY ("cryovial_box_id") REFERENCES "cryovial_box"("id"),
 	FOREIGN KEY ("malaria_blood_control_id") REFERENCES "malaria_blood_control"("id")
-);
+); --! COMMAND_END !--
 
 --- update database version ---
-INSERT OR ROLLBACK INTO version (name) VALUES ('2.0.0');
+INSERT OR ROLLBACK INTO version (name) VALUES ('2.0.0'); --! COMMAND_END !--

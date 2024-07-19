@@ -8,7 +8,7 @@ CREATE TABLE "bag" (
 
 	FOREIGN KEY("location_id") REFERENCES "location"("id"),
 	PRIMARY KEY("id")
-);
+); --! COMMAND_END !--
 CREATE TABLE "box" (
 	"created"	DATETIME NOT NULL,
 	"last_updated"	DATETIME NOT NULL,
@@ -19,7 +19,7 @@ CREATE TABLE "box" (
 
 	FOREIGN KEY("location_id") REFERENCES "location"("id"),
 	PRIMARY KEY("id")
-);
+); --! COMMAND_END !--
 CREATE TABLE "NEW_location" (
 	"created"	DATETIME NOT NULL,
 	"last_updated"	DATETIME NOT NULL,
@@ -33,14 +33,14 @@ CREATE TABLE "NEW_location" (
 
 	CONSTRAINT "location_uc" UNIQUE("location_name","level_I","level_II"),
 	PRIMARY KEY("id")
-);
+); --! COMMAND_END !--
 
 INSERT OR ROLLBACK INTO "NEW_location" (created, last_updated, id, location_name, location_type, level_I, level_II)
 SELECT created, last_updated, id, description, "Micronix", description, description
-FROM "location";
+FROM "location"; --! COMMAND_END !--
 
-DROP TABLE location; 
-ALTER TABLE "NEW_location" RENAME TO "location";
+DROP TABLE location; --! COMMAND_END !-- 
+ALTER TABLE "NEW_location" RENAME TO "location"; --! COMMAND_END !--
 
 CREATE TABLE "NEW_matrix_plate" (
 	"created"	DATETIME NOT NULL,
@@ -52,18 +52,18 @@ CREATE TABLE "NEW_matrix_plate" (
 
 	FOREIGN KEY("location_id") REFERENCES "location"("id"),
 	PRIMARY KEY("id")
-);
+); --! COMMAND_END !--
 
 INSERT OR ROLLBACK INTO "NEW_matrix_plate" (created, last_updated, id, location_id, plate_name)
 SELECT created, last_updated, id, location_id, uid
-FROM "matrix_plate";
+FROM "matrix_plate"; --! COMMAND_END !--
 
-DROP TABLE matrix_plate;
-ALTER TABLE "NEW_matrix_plate" RENAME TO "matrix_plate";
+DROP TABLE matrix_plate; --! COMMAND_END !--
+ALTER TABLE "NEW_matrix_plate" RENAME TO "matrix_plate"; --! COMMAND_END !--
 
 
-DROP INDEX ix_matrix_tube_plate_id;
-DROP INDEX ix_matrix_tube_barcode;
+DROP INDEX ix_matrix_tube_plate_id; --! COMMAND_END !--
+DROP INDEX ix_matrix_tube_barcode; --! COMMAND_END !--
 CREATE TABLE "paper" (
 	"id"	INTEGER NOT NULL,
 	"bag_id"	INTEGER NOT NULL,
@@ -72,7 +72,7 @@ CREATE TABLE "paper" (
 	FOREIGN KEY("id") REFERENCES "storage_container"("id"),
 	FOREIGN KEY("bag_id") REFERENCES "bag"("id"),
 	PRIMARY KEY("id")
-);
+); --! COMMAND_END !--
 CREATE TABLE "rdt" (
 	"id"	INTEGER NOT NULL,
 	"bag_id"	INTEGER NOT NULL,
@@ -81,7 +81,7 @@ CREATE TABLE "rdt" (
 	FOREIGN KEY("id") REFERENCES "storage_container"("id"),
 	FOREIGN KEY("bag_id") REFERENCES "bag"("id"),
 	PRIMARY KEY("id")
-);
+); --! COMMAND_END !--
 CREATE TABLE "sequencing_files" (
 	"created"	DATETIME NOT NULL,
 	"last_updated"	DATETIME NOT NULL,
@@ -93,14 +93,14 @@ CREATE TABLE "sequencing_files" (
 	FOREIGN KEY("sequencing_metadata_id") REFERENCES "sequencing_metadata"("id"),
 	FOREIGN KEY("id") REFERENCES "storage_container"("id"),
 	PRIMARY KEY("id")
-);
-DROP INDEX ix_specimen_study_subject_id;
-DROP INDEX ix_specimen_type_label;
+); --! COMMAND_END !--
+DROP INDEX ix_specimen_study_subject_id; --! COMMAND_END !--
+DROP INDEX ix_specimen_type_label; --! COMMAND_END !--
 
 CREATE TABLE "state" (
 	"id"	INTEGER PRIMARY KEY AUTOINCREMENT,
 	"name"	VARCHAR NOT NULL UNIQUE
-);
+); --! COMMAND_END !--
 CREATE TABLE "state_status_relationship" (
 	"id"	INTEGER PRIMARY KEY AUTOINCREMENT,
 	"status_id"	INTEGER NOT NULL,
@@ -109,20 +109,20 @@ CREATE TABLE "state_status_relationship" (
 
 	FOREIGN KEY("status_id") REFERENCES "status"("id"),
 	FOREIGN KEY("state_id") REFERENCES "state"("id")
-);
+); --! COMMAND_END !--
 CREATE TABLE "status" (
 	"id"	INTEGER PRIMARY KEY AUTOINCREMENT,
 	"name"	VARCHAR NOT NULL UNIQUE
-);
+); --! COMMAND_END !--
 
-INSERT OR IGNORE INTO "status" ("name") VALUES ("In Use"), ("Exhausted"), ("Bad"), ("Missing");
-INSERT OR IGNORE INTO "state" ("name") VALUES ("Active"), ("Archived");
+INSERT OR IGNORE INTO "status" ("name") VALUES ("In Use"), ("Exhausted"), ("Bad"), ("Missing"); --! COMMAND_END !--
+INSERT OR IGNORE INTO "state" ("name") VALUES ("Active"), ("Archived"); --! COMMAND_END !--
 INSERT OR IGNORE INTO "state_status_relationship" ("status_id", "state_id", "default") 
 VALUES 
 	(1, 1, TRUE), 
 	(2, 2, FALSE),
 	(3, 2, FALSE), 
-	(4, 2, FALSE); 	
+	(4, 2, FALSE); --! COMMAND_END !-- 	
 
 CREATE TABLE "NEW_storage_container" (
 	"created"	DATETIME NOT NULL,
@@ -139,14 +139,14 @@ CREATE TABLE "NEW_storage_container" (
 	FOREIGN KEY("status_id") REFERENCES "status"("id"),
 	FOREIGN KEY("specimen_id") REFERENCES "specimen"("id"),
 	PRIMARY KEY("id")
-);
+); --! COMMAND_END !--
 
 INSERT OR ROLLBACK INTO "NEW_storage_container" (created, last_updated, id, specimen_id, type, comment, state_id, status_id)
 SELECT created, last_updated, id, specimen_id, "Micronix", comments, 1, 1
-FROM "storage_container";
+FROM "storage_container"; --! COMMAND_END !--
 
-DROP TABLE storage_container; -- due to schema mismatch
-ALTER TABLE "NEW_storage_container" RENAME TO "storage_container";
+DROP TABLE storage_container; --! COMMAND_END !-- -- due to schema mismatch
+ALTER TABLE "NEW_storage_container" RENAME TO "storage_container"; --! COMMAND_END !--
 
 
 --- specimen ---
@@ -164,14 +164,14 @@ CREATE TABLE IF NOT EXISTS "NEW_specimen" (
 	FOREIGN KEY("specimen_type_id") REFERENCES "specimen_type"("id"),
 	CONSTRAINT "specimen_collection_date_uc" UNIQUE("study_subject_id","specimen_type_id","collection_date"),
 	PRIMARY KEY("id")
-);
+); --! COMMAND_END !--
 
 INSERT OR ROLLBACK INTO "NEW_specimen" (created, last_updated, id, study_subject_id, specimen_type_id, collection_date)
 SELECT created, last_updated, id, study_subject_id, specimen_type_id, collection_date
-FROM "specimen";
+FROM "specimen"; --! COMMAND_END !--
 
-DROP TABLE specimen; -- due to schema mismatch
-ALTER TABLE "NEW_specimen" RENAME TO "specimen";
+DROP TABLE specimen; --! COMMAND_END !-- -- due to schema mismatch
+ALTER TABLE "NEW_specimen" RENAME TO "specimen"; --! COMMAND_END !--
 
 
 --- study ---
@@ -189,14 +189,14 @@ CREATE TABLE "NEW_study" (
 	CHECK("is_longitudinal" IN (0, 1)),
 
 	PRIMARY KEY("id")
-);
+); --! COMMAND_END !--
 
 INSERT OR ROLLBACK INTO "NEW_study" (created, last_updated, id, title, description, short_code, is_longitudinal, lead_person)
 SELECT created, last_updated, id, title, description, short_code, is_longitudinal, lead_person
-FROM "study";
+FROM "study"; --! COMMAND_END !--
 
-DROP TABLE study; -- due to schema mismatch
-ALTER TABLE "NEW_study" RENAME TO "study";
+DROP TABLE study; --! COMMAND_END !-- -- due to schema mismatch
+ALTER TABLE "NEW_study" RENAME TO "study"; --! COMMAND_END !--
 
 
 --- study subject ---
@@ -212,14 +212,14 @@ CREATE TABLE "NEW_study_subject" (
 	FOREIGN KEY("study_id") REFERENCES "study"("id"),
 	CONSTRAINT "study_subject_study_uc" UNIQUE("subject","study_id"),
 	PRIMARY KEY("id")
-);
+); --! COMMAND_END !--
 
 INSERT OR ROLLBACK INTO "NEW_study_subject" (id, created, last_updated, study_id, subject)
 SELECT id, created, last_updated, study_id, uid
-FROM "study_subject";
+FROM "study_subject"; --! COMMAND_END !--
 
-DROP TABLE study_subject; -- due to schema mismatch
-ALTER TABLE "NEW_study_subject" RENAME TO "study_subject";
+DROP TABLE study_subject; --! COMMAND_END !-- -- due to schema mismatch
+ALTER TABLE "NEW_study_subject" RENAME TO "study_subject"; --! COMMAND_END !--
 
 
 
@@ -233,17 +233,17 @@ CREATE TABLE "tube" (
 	FOREIGN KEY("box_id") REFERENCES "box"("id"),
 	PRIMARY KEY("id"),
 	CONSTRAINT "box_position_plate_uc" UNIQUE("box_position","box_id")
-);
+); --! COMMAND_END !--
 
 CREATE VIEW IF NOT EXISTS view_archive_statuses
 AS 
 SELECT status.id, status.name FROM state_status_relationship AS ssr
 INNER JOIN state ON state.id = ssr.state_id
 INNER JOIN status ON status.id = ssr.status_id
-WHERE state.name = "Archived";
+WHERE state.name = "Archived"; --! COMMAND_END !--
 
 CREATE TABLE "version" (
 	"name"	VARCHAR NOT NULL
-);
-INSERT OR IGNORE INTO "version" ("name") VALUES ("1.0.0");
+); --! COMMAND_END !--
+INSERT OR IGNORE INTO "version" ("name") VALUES ("1.0.0"); --! COMMAND_END !--
 

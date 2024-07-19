@@ -5,13 +5,79 @@ library(lubridate)
 library(DT)
 # library(purrr)
 
-#load helper files
-for(server_helper in list.files(path = "server_helpers", full.names = T, recursive = T)){
+# Load helper files
+for(server_helper in list.files(path = "server_helpers", full.names = TRUE, recursive = TRUE)){
   source(server_helper, local = TRUE)
+}
+
+# Function to show error modal and terminate the app on acknowledgment
+show_error_modal <- function(error, input, output, session) {
+  # Convert the call to a single character string, checking for NULL
+  errcall <- if (is.null(error$call)) {
+    "No function call information available"
+  } else {
+    paste(as.character(error$call), collapse="\n")
+  }
+
+  errmsg <- ifelse(is.null(error$message), "No message available", error$message)
+  
+  # Initialize error details string
+  errdetails <- ""
+  
+  # Iterate over each element in the error object
+  error_names <- names(error)
+  for (name in error_names) {
+    value <- error[[name]]
+    # Convert each element to a character string
+    value_str <- toString(if(is.list(value)) {
+      sapply(value, function(x) toString(x))
+    } else {
+      value
+    })
+    errdetails <- paste(errdetails, sprintf("%s: %s\n", name, value_str), sep="\n")
+  }
+
+  # Download handler for the error report
+  output$downloadError <- downloadHandler(
+    filename = function() {
+      paste("error-details-", Sys.Date(), ".txt", sep="")
+    },
+    content = function(file) {
+      writeLines(errdetails, file)
+    }
+  )
+  
+  showModal(
+    modalDialog(
+      size = "l",
+      title = "An Error During Database Setup",
+      tags$p(HTML("Something went wrong. Please download the error details below and contact Brian Palmer at <a href='mailto:brian.palmer@ucsf.edu'>brian.palmer@ucsf.edu</a>.")),
+      tags$hr(),
+      tags$div(
+        id = "errdetails",
+        style = "max-height: 400px; overflow-y: auto;",
+        tags$pre(style = "white-space: pre-wrap;", errdetails)
+      ),
+      downloadButton('downloadError', 'Download Error Details'),
+      footer = tagList(
+        tags$strong("The application will terminate when you close this dialog."),
+        actionButton("error_modal_ok", "Close the application")
+      )
+    )
+  )
+  
+  observeEvent(input$error_modal_ok, {
+    shiny::stopApp()
+  })
 }
 
 function(input, output, session) {
 
+  # Function to terminate the user session
+  terminate_user_session <- function(error) {
+    message("Terminating user session due to database update failure.")
+    show_error_modal(error, input, output, session)
+  }
 
   # Unified function for database operations
   handle_database_operation <- function(operation) {
@@ -30,19 +96,16 @@ function(input, output, session) {
       # Close the modal
       removeModal()
 
-    showNotification(
-      "Database upgrade/setup completed successfully!",
-      type = "message",  
-      duration = 5,      
-      closeButton = TRUE 
-    )
+      showNotification(
+        "Database upgrade/setup completed successfully!",
+        type = "message",  
+        duration = 5,      
+        closeButton = TRUE 
+      )
 
     }, error = function(e) {
-      # Display any errors in a modal for feedback
-      showModal(modalDialog(
-        title = "Error",
-        paste("Failed to", operation, "the database:", e$message)
-      ))
+      # Terminate the user session on error
+      terminate_user_session(e)
     })
   }
 

@@ -88,6 +88,27 @@ generate_upgrade_script_path <- function(current_version_idx, db_versions, pkgna
              package = pkgname)
 }
 
+#' Execute sql
+#'
+#' @param con Database connection
+#' @param upgrade_script_path Upgrade script path.
+execute_upgrade_sql_script <- function(con, upgrade_script_path) {
+  upgrade_script <- readr::read_lines(upgrade_script_path, skip_empty_rows = FALSE)
+
+  # Split the script into commands based on the delimiter
+  script_text <- paste(upgrade_script, collapse = "\n")
+  commands <- strsplit(script_text, "--! COMMAND_END !--")[[1]]
+
+  # Execute each command block
+  for (cmd in commands) {
+    sql_command <- trimws(cmd) # Remove any leading or trailing whitespace
+    if (nchar(sql_command) > 0) { # Ensure the command is not empty
+      message(paste("INFO: SQL commands to be executed:\n", sql_command))
+      execute_sql(con, sql_command)
+    }
+  }
+}
+
 #' Upgrade Database
 #'
 #' @param database Path to database toupgrade
@@ -113,8 +134,6 @@ upgrade_database <- function(database, current_version, expected_version, db_ver
   message("INFO: Starting the transaction")
   DBI::dbBegin(con)
 
-  successful <- FALSE
-
   tryCatch({
     message("INFO: Inside tryCatch block")
     
@@ -133,52 +152,34 @@ upgrade_database <- function(database, current_version, expected_version, db_ver
       }
 
       # Read the entire upgrade script
+      execute_upgrade_sql_script(con, upgrade_script_path)
       upgrade_script <- readr::read_lines(upgrade_script_path, skip_empty_rows = FALSE)
-      
-      # Split the script into commands based on empty lines
-      commands <- split(upgrade_script, cumsum(upgrade_script == ""))
-      
-      # Execute each command block
-      for (cmd in commands) {
-        sql_command <- paste(cmd, collapse = "\n")
-        if (nchar(sql_command) > 0) { # Ensure the command is not just an empty line
-          message(paste("INFO: SQL commands to be executed:\n", sql_command))
-          execute_sql(con, sql_command)
-        }
-      }
-      
+
       current_version_idx <- current_version_idx + 1
       current_version <- db_versions[current_version_idx]
       message(paste("INFO: Upgraded to version:", current_version))
     }
 
     message("INFO: Upgrade successful")
-    successful <- TRUE
 
   }, error = function(e) {
+    DBI::dbRollback(con)
     message(paste("WARN: An error occurred during the database upgrade:", e$message))
+    stop(e$message)
   })
 
   message("INFO: Ending the transaction")
-  if (successful) {
-    DBI::dbCommit(con)
-    DBI::dbExecute(con, "VACUUM")
-    message("INFO: Transaction committed and database vacuumed")
-  } else {
-    DBI::dbRollback(con)
-    message("WARN: Transaction rolled back due to unsuccessful upgrade")
-  }
-  
+  DBI::dbCommit(con)
+  DBI::dbExecute(con, "VACUUM")
+  message("INFO: Transaction committed and database vacuumed")
   message("INFO: upgrade_database() completed")
 }
-
-
 
 #' Initialize Database with Base Version
 #'
 #' This function initializes the SQLite database using the base version.
 #'
-#' @param new_database Path to the new temporary SQLite database.
+#' @param con Connection to the new temporary SQLite database.
 #' @param pkgname Name of the package containing the database upgrade scripts.
 #' @param db_versions Vector of available database versions.
 #'
@@ -187,13 +188,20 @@ upgrade_database <- function(database, current_version, expected_version, db_ver
 #' \dontrun{
 #'   initialize_database_with_base_version(tempfile(), "my_package", c("1.0.0", "2.0.0"))
 #' }
-initialize_database_with_base_version <- function(new_database, pkgname, base_version = "1.0.0") {
+initialize_database_with_base_version <- function(con, pkgname, base_version = "1.0.0") {
   base_db_sql <- system.file("extdata",
                              paste0(file.path("db", base_version, paste(c("sampledb", "database", base_version), collapse = "_")), ".sql"),
                              package = pkgname)
-
-  system2("sqlite3", paste(new_database, "<", base_db_sql))
-  Sys.chmod(new_database, mode = "0777", use_umask = FALSE)
+  
+  if (!file.exists(base_db_sql)) {
+    stop(paste("Base version SQL script not found:", base_db_sql))
+  }
+  
+  tryCatch({
+    execute_upgrade_sql_script(con, base_db_sql)
+  }, error = function(e) {
+    stop(paste("Failed to initialize the database with base version:", e$message))
+  })
 }
 
 
@@ -368,18 +376,18 @@ setup_database <- function(expected_database_version, pkgname, database) {
     if (is.na(current_db_version) || !file.exists(database)) {
       message("INFO: No existing database. Initializing...")
 
-      initialize_database_with_base_version(database, pkgname, db_versions[1])
+      con <- DBI::dbConnect(RSQLite::SQLite(), new_database)
+      on.exit(DBI::dbDisconnect(con), add = TRUE)
 
-      current_db_version <- get_db_version(database)
+      initialize_database_with_base_version(con, pkgname, db_versions[1])
+      # Sys.chmod(new_database, mode = "0777", use_umask = FALSE)
+
+      current_db_version <- get_db_version(new_database)
       message(paste("INFO: New database version is:", current_db_version))
 
       if (expected_database_version != current_db_version) {
         message("INFO: Upgrading database to expected version")
-
-        con <- init_db_conn(database)
-        on.exit(DBI::dbDisconnect(con), add = TRUE)
-
-        upgrade_database(database, current_db_version, expected_database_version, db_versions, pkgname)
+        upgrade_database(new_database, current_db_version, expected_database_version, db_versions, pkgname)
       }
 
     } else {
@@ -409,11 +417,10 @@ setup_database <- function(expected_database_version, pkgname, database) {
         
         upgrade_database(new_database, current_db_version, expected_database_version, db_versions, pkgname)
       }
-
-      finalize_upgrade(database, new_database, con)
-      message(paste("INFO: Database successfully upgraded to:", expected_database_version))
-
     }
+
+    finalize_upgrade(database, new_database, con)
+    message(paste("INFO: Database successfully upgraded to:", expected_database_version))
 
   }, error = function(e) {
     message(paste("ERROR: An error occurred:", e$message))

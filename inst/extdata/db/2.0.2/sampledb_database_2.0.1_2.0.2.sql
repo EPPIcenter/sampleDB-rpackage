@@ -7,14 +7,14 @@ CREATE TABLE IF NOT EXISTS "NEW_composition_strain" (
 
 	PRIMARY KEY ("id"),
 	FOREIGN KEY ("strain_id") REFERENCES "strain"("id")
-);
+); --! COMMAND_END !--
 
 INSERT OR ROLLBACK INTO "NEW_composition_strain" (id, composition_id, strain_id, percentage)
 SELECT id, composition_id, strain_id, percentage * 100
-FROM "composition_strain";
+FROM "composition_strain"; --! COMMAND_END !--
 
-DROP TABLE IF EXISTS "composition_strain";
-ALTER TABLE "NEW_composition_strain" RENAME TO "composition_strain";
+DROP TABLE IF EXISTS "composition_strain"; --! COMMAND_END !--
+ALTER TABLE "NEW_composition_strain" RENAME TO "composition_strain"; --! COMMAND_END !--
 
 --- update database version ---
-INSERT OR ROLLBACK INTO version (name) VALUES ('2.0.2');
+INSERT OR ROLLBACK INTO version (name) VALUES ('2.0.2'); --! COMMAND_END !--

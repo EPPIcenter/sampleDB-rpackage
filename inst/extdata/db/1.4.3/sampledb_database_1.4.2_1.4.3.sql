@@ -9,14 +9,14 @@ CREATE TABLE IF NOT EXISTS "NEW_cryovial_tube" (
 	FOREIGN KEY("manifest_id") REFERENCES "cryovial_box"("id"),
 
 	CONSTRAINT "cryovial_tube_position_manifest_id_uc" UNIQUE("position", "manifest_id")
-);
+); --! COMMAND_END !--
 
 INSERT OR ROLLBACK INTO "NEW_cryovial_tube" (id, manifest_id, barcode, position)
 SELECT id, manifest_id, barcode, position
-FROM "cryovial_tube";
+FROM "cryovial_tube"; --! COMMAND_END !--
 
-DROP TABLE IF EXISTS "cryovial_tube";
-ALTER TABLE "NEW_cryovial_tube" RENAME TO "cryovial_tube";
+DROP TABLE IF EXISTS "cryovial_tube"; --! COMMAND_END !--
+ALTER TABLE "NEW_cryovial_tube" RENAME TO "cryovial_tube"; --! COMMAND_END !--
 
 --- update database version ---
-INSERT OR ROLLBACK INTO version (name) VALUES ('1.4.3');
+INSERT OR ROLLBACK INTO version (name) VALUES ('1.4.3'); --! COMMAND_END !--
