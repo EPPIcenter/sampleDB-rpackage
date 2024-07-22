@@ -3,6 +3,11 @@ UpdateSpecimenTypes <- function(session, input, output, database){
   # get ui freezer elements
   ui_elements <- GetUISpecimenTypeElements()
   
+  # Initialize Dropdowns
+  observeEvent(TRUE, {
+    UpdateSpecimenTypeDropdowns(database, session) 
+  }, ignoreNULL = TRUE, once = TRUE)
+
   #check freezer update
   SpecimenTypeChangesChecks(input, database, output, ui_elements = ui_elements)
   

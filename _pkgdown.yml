@@ -1,4 +1,37 @@
 url: https://eppicenter.github.io/sampleDB/
 template:
   bootstrap: 5
+  bootswatch: united
+
+navbar:
+  structure:
+    left: [reference, articles]
+
+  components:
+    articles:
+      text: "How To"
+      menu:
+        - text: "Delete Archive Samples"
+          href: "articles/Delete--Archive-Samples.html"
+        - text: "How to Move Micronix Samples"
+          href: "articles/How-to-Move-Micronix-Samples.html"
+        - text: "How to Upload Controls"
+          href: "articles/How-to-Upload-Controls.html"
+        - text: "How to Upload Extracted Controls"
+          href: "articles/How-to-Upload-Extracted-Controls.html"
+        - text: "Preferences"
+          href: "articles/Preferences.html"
+        - text: "Searching SampleDB"
+          href: "articles/Searching-SampleDB.html"
+        - text: "Updating References"
+          href: "articles/Updating-References.html"
+        - text: "Uploading Cryovial Specimens"
+          href: "articles/Uploading-Cryovial-Specimens.html"
+        - text: "Uploading Micronix Specimens"
+          href: "articles/Uploading-Micronix-Specimens.html"
+        - text: "Validation"
+          href: "articles/Validation.html"
+
+
+
 

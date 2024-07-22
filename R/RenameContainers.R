@@ -8,9 +8,9 @@
 
 RenameContainers <- function(sample_type, new_container_name, current_container_name, conn){
 
-  stopifnot("ERROR: Sample Type is not valid" = sample_type %in% c(1,2,3))
+  stopifnot("ERROR: Sample Type is not valid" = sample_type %in% c("micronix", "cryovial"))
 
-  if (sample_type == 1) {
+  if (sample_type == "micronix") {
     if (new_container_name == "") {
       warning("Container name cannot be empty!")
     }
@@ -31,7 +31,7 @@ RenameContainers <- function(sample_type, new_container_name, current_container_
                           info_list = list(name = new_container_name),
                           id = container_id)
     return_message <- paste0("Successfully Renamed Container\nWas: ", current_container_name, "\nNow: ", new_container_name)
-  } else if (sample_type == 2) {
+  } else if (sample_type == "cryovial") {
     if (new_container_name == "") {
       warning("Container name cannot be empty!")
     }
@@ -52,8 +52,6 @@ RenameContainers <- function(sample_type, new_container_name, current_container_
                           info_list = list(name = new_container_name),
                           id = container_id)
     return_message <- paste0("Successfully Renamed Container\nWas: ", current_container_name, "\nNow: ", new_container_name)
-  } else if (sample_type == 3) {
-    # need to implement
   } else {
     return_message <- "ERROR: sample type is invalid"
   }

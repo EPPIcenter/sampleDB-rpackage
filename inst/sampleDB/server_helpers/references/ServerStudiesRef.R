@@ -7,7 +7,13 @@ UpdateLabStudies <- function(session, input, output, database){
   
   #check freezer update
   StudyChangesChecks(input, database, output, ui_elements = ui_elements)
-  
+
+  # Initialize Dropdowns
+  observeEvent(TRUE, {
+    UpdateStudyDropdowns(database, session)
+  }, ignoreNULL = TRUE, once = TRUE)
+
+
   #option1: add study to the database
   observeEvent(
     input[[ui_elements$ui.input$AddStudyAction]],
@@ -89,8 +95,10 @@ UpdateLabStudies <- function(session, input, output, database){
 }
 
 ShowStudies <- function(output, database){
+
+  con = dbConnect(SQLite(), database)
   output$TableStudy <- DT::renderDataTable({
-    CheckTable(database = database, "study") %>%
+    dbReadTable(con, "study") %>%
       dplyr::select(-c(id, last_updated)) %>%
       mutate(is_longitudinal = as.logical(is_longitudinal)) %>%
       rename(Title = title,

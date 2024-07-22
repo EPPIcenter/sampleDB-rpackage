@@ -1,0 +1,56 @@
+{
+  "controls": {
+    "dbs_sheet": {
+      "id": 1, 
+      "name": "DBS Sheet",
+      "actions": ["create", "extraction"],
+      "extraction_target_location": "micronix_locations",
+      "extraction_target_container": "micronix_plate",
+      "storage_location": "minus20_dbs_storage",
+      "container_key": "dbs_sheet",
+      "container_barcode_key": "dbs_sheet" 
+    },
+    "whole_blood": {
+      "id": 2,
+      "name": "Whole Blood",
+      "actions": ["create", "extraction"],
+      "extraction_target_location": "micronix_locations",
+      "extraction_target_container": "micronix_plate", 
+      "storage_location": "minus80_wb_storage",
+      "container_key": "cryovial_box",
+      "container_barcode_key": "cryovial_box"
+    }
+  },
+  "action_requirements": {
+    "create": {
+      "shared": {
+        "required_keys": ["density", "composition", "study_short_code", "storage_location", "container_key"],
+        "optional_keys": ["comment", "container_barcode_key"]
+      },
+      "dbs_sheet": {
+        "required_keys": ["count"]
+      },
+      "whole_blood": {
+        "optional_keys": ["barcode"]
+      }
+    },
+    "extraction": {
+      "shared": {
+        "required_keys": ["barcode", "study_short_code", "study_subject", "extracted_on", "extraction_target_location", "extraction_target_container", "storage_location", "container_key"],
+        "optional_keys": ["comment", "container_barcode_key"]
+      }
+    }
+  },
+  "control_key_associations": {
+    "shared": {
+      "density": "Density",
+      "composition": "CompositionID",
+      "study_short_code": "Batch",
+      "barcode": "Barcode",
+      "study_subject": "ControlUID",
+      "extracted_on": "ExtractedOn",
+      "comment": "Comment",
+      "count": "Count"
+    }
+  }
+}

@@ -1,6 +1,6 @@
 INSERT OR ROLLBACK INTO "sample_type" (name)
 VALUES
-	("DBS");
+	("DBS"); --! COMMAND_END !--
 
 CREATE TABLE IF NOT EXISTS  "dbs_paper"  (
 	"created"		DATETIME NOT NULL DEFAULT current_timestamp,
@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS  "dbs_paper"  (
 
 	PRIMARY KEY("id"),
 	FOREIGN KEY("location_id") REFERENCES "location"("id")
-);
+); --! COMMAND_END !--
 
 
 CREATE TABLE IF NOT EXISTS "dbs_spot" (
@@ -34,8 +34,8 @@ CREATE TABLE IF NOT EXISTS "dbs_spot" (
 	FOREIGN KEY("manifest_id") REFERENCES "dbs_paper"("id"),
 
 	CONSTRAINT "cryovial_tube_position_manifest_id_uc" UNIQUE("position", "manifest_id")
-);
+); --! COMMAND_END !--
 
 
 --- update database version ---
-INSERT OR ROLLBACK INTO version (name) VALUES ('1.4.1');
+INSERT OR ROLLBACK INTO version (name) VALUES ('1.4.1'); --! COMMAND_END !--

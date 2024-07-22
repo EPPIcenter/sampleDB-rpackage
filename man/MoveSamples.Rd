@@ -21,6 +21,6 @@ MoveSamples(sample_type, move_data)
 \examples{
 \dontrun{
 move_data <- list("move_csv1_container_name" = dataframe(), "move_csv2_container_name" = dataframe())
-MoveSamples(sample_type = 1, move_data = move_data)
+MoveSamples(sample_type = "micronix", move_data = move_data)
 }
 }

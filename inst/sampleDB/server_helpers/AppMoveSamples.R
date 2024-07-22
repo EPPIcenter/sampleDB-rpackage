@@ -1,6 +1,6 @@
 library(shiny)
 library(shinyjs)
-library(purrr)
+# library(purrr)
 library(RSQLite)
 library(reactable)
 library(shinybusy)
@@ -24,15 +24,7 @@ AppMoveSamples <- function(session, input, output, database) {
   )
   error <- reactiveValues(
     title = "",
-    message = "",
-    table = NULL
-  )
-
-  example_data <- reactiveValues(
-    required = NULL,
-    user_input = NULL,
-    conditional = NULL,
-    optional = NULL
+    message = ""
   )
 
   observeEvent(input$CreateNewManifest, ignoreInit = TRUE, {
@@ -45,7 +37,7 @@ AppMoveSamples <- function(session, input, output, database) {
       label = "Upload Location",
       choices = c("", tbl(con, "location") %>%
         collect() %>%
-        pull(name) %>%
+        pull(location_root) %>%
         unique(.)
       )
     )
@@ -55,9 +47,8 @@ AppMoveSamples <- function(session, input, output, database) {
       "ManifestLocationRootLevelI",
       label = switch(
         input$MoveSampleType,
-        "1" = "Shelf Name",
-        "2" = "Rack Number",
-        "3" = "To Be Implemented"
+        "micronix" = "Shelf Name",
+        "cryovial" = "Rack Number"
       )
     )
 
@@ -66,9 +57,8 @@ AppMoveSamples <- function(session, input, output, database) {
       "ManifestLocationRootLevelII",
       label = switch(
         input$MoveSampleType,
-        "1" = "Basket Name",
-        "2" = "Rack Position",
-        "3" = "To Be Implemented"
+        "micronix" = "Basket Name",
+        "cryovial" = "Rack Position"
       )
     )
 
@@ -119,9 +109,8 @@ AppMoveSamples <- function(session, input, output, database) {
 
       manifest <- switch(
         input$MoveSampleType,
-        "1" = "micronix_plate",
-        "2" = "cryovial_box",
-        "3" = "dbs_paper"
+        "micronix" = "micronix_plate",
+        "cryovial" = "cryovial_box"
       )
 
       result <- tbl(con, manifest) %>%
@@ -158,7 +147,7 @@ AppMoveSamples <- function(session, input, output, database) {
       }
 
       location_id <- tbl(con, "location") %>%
-        filter(name %in% local(input$ManifestLocationRoot) & level_I %in% local(input$ManifestLocationRootLevelI) & level_II %in% local(input$ManifestLocationRootLevelII)) %>%
+        filter(location_root %in% local(input$ManifestLocationRoot) & level_I %in% local(input$ManifestLocationRootLevelI) & level_II %in% local(input$ManifestLocationRootLevelII)) %>%
         pull(id)
 
       df.payload <- data.frame(
@@ -197,9 +186,8 @@ AppMoveSamples <- function(session, input, output, database) {
         if (input$ManifestID != "") {
           manifest <- switch(
             input$MoveSampleType,
-            "1" = "micronix_plate",
-            "2" = "cryovial_box",
-            "3" = "dbs_paper"
+            "micronix" = "micronix_plate",
+            "cryovial" = "cryovial_box"
           )
 
           result <- tbl(con, manifest) %>%
@@ -209,6 +197,9 @@ AppMoveSamples <- function(session, input, output, database) {
 
           if (result > 0) {
             html <- paste0("<span style=color:#0000ff>", "Name is in use!", "</span>")
+            shinyjs::disable("ManifestCreateAction")
+          } else {
+            shinyjs::enable("ManifestCreateAction")
           }
         }
 
@@ -230,9 +221,8 @@ AppMoveSamples <- function(session, input, output, database) {
         if (input$ManifestBarcode != "") {
           manifest <- switch(
             input$MoveSampleType,
-            "1" = "micronix_plate",
-            "2" = "cryovial_box",
-            "3" = "dbs_paper"
+            "micronix" = "micronix_plate",
+            "cryovial" = "cryovial_box"
           )
 
           result <- tbl(con, manifest) %>%
@@ -259,7 +249,7 @@ AppMoveSamples <- function(session, input, output, database) {
       "ManifestLocationRootLevelI",
       selected = "",
       choices = c("", tbl(con, "location") %>%
-        filter(name == local(input$ManifestLocationRoot)) %>%
+        filter(location_root == local(input$ManifestLocationRoot)) %>%
         collect() %>%
         pull(level_I)
       )
@@ -277,7 +267,7 @@ AppMoveSamples <- function(session, input, output, database) {
       "ManifestLocationRootLevelII",
       selected = "",
       choices = c("", tbl(con, "location") %>%
-        filter(name == local(input$ManifestLocationRoot) && level_I == local(input$ManifestLocationRootLevelI)) %>%
+        filter(location_root == local(input$ManifestLocationRoot) && level_I == local(input$ManifestLocationRootLevelI)) %>%
         collect() %>%
         pull(level_II)
       )
@@ -297,83 +287,22 @@ AppMoveSamples <- function(session, input, output, database) {
   })
 
   observeEvent(rv$error, ignoreInit = TRUE, {
-    message("Running error workflow")
-    df <- error$table
+    message("Running move specific error workflow")
     modal_size <- "m"
-    message(error$type)
-    if (!is.null(error$type) && error$type == "formatting") {
-      df <- error$table %>%
-        dplyr::rename(
-          Column = column, 
-          Reason = reason,
-          `Triggered By` = trigger
-        ) %>%
-        reactable(.)
 
-      showModal(
-        modalDialog(
-          size = "m",
-          title = error$title,
-          error$message,
-          tags$hr(),
-          renderReactable({ df }),
-          footer = modalButton("Exit")
-        )
+    showModal(
+      modalDialog(
+        size = "m",
+        title = error$title,
+        error$message,
+        tags$hr(),
+        footer = modalButton("Exit")
       )
-    } else if (!is.null(error$type) && error$type == "validation") {
-      errors <- unique(names(error$table))
-      errors <- data.frame(errors)
-      colnames(errors) <- "Error"
-      df <- reactable(errors, details = function(index) {
-        data <- error$table[[index]]$Columns
-        htmltools::div(style = "padding: 1rem",
-          reactable(
-            data, 
-            outlined = TRUE, 
-            striped = TRUE,
-            # rownames = TRUE,
-            theme = reactableTheme(
-            headerStyle = list(
-              "&:hover[aria-sort]" = list(background = "hsl(0, 0%, 96%)"),
-              "&[aria-sort='ascending'], &[aria-sort='descending']" = list(background = "hsl(0, 0%, 96%)"),
-              borderColor = "#555"
-            )),
-            defaultColDef = colDef(na = "-", align = "center")
-          )
-        )
-      })
-
-      showModal(
-        modalDialog(
-          size = "l",
-          title = error$title,
-          tags$p("One or more rows had invalid or missing data. See the errors below and expand them to see which rows caused this error."),
-          tags$p("Press the button below to download your file with annotations"),
-          downloadButton("ErrorMoveFileDownload"),
-          tags$hr(),
-          renderReactable({ df }),
-          footer = modalButton("Exit")
-        )
-      )
-    } else {
-      errmsg = ifelse(is.null(error$message), "No message available", error$message)
-      showModal(
-        modalDialog(
-          size = "l",
-          title = error$title,
-          tags$p("Something went wrong - contact the app author, and report the error message below."),
-          tags$hr(),
-          tags$p(errmsg),
-          footer = modalButton("Exit")
-        )
-      )
-    }
+    )
 
     rv$error <- NULL
     error$title <- ""
     error$message <- ""
-    error$type <- ""
-    error$table <- NULL
   })
 
   observeEvent(input$MoveAction, ignoreInit = TRUE, {
@@ -393,7 +322,7 @@ AppMoveSamples <- function(session, input, output, database) {
 
     # message(paste("Loaded", dataset$name))
 
-    tryCatch({
+    early_stop <- tryCatch({
       withCallingHandlers({
         move_data_list <- list()
         for (i in 1:length(dataset[,1])) {
@@ -406,13 +335,15 @@ AppMoveSamples <- function(session, input, output, database) {
             }
           }
 
+          container <- get_container_by_sample(sample_type = input$MoveSampleType)
+
           ## format the file
-          result <- ProcessCSV(
+          result <- process_specimen_csv(
             user_csv = dataset[i,]$datapath,
             user_action = "move",
             file_type = input$MoveFileType,
-            sample_storage_type = input$MoveSampleType,
-            container_name = manifest_name
+            sample_type = input$MoveSampleType,
+            bind_data = setNames(manifest_name, container$container_name_key)
           )
 
           move_data_list <- c(move_data_list, list(result))
@@ -420,6 +351,7 @@ AppMoveSamples <- function(session, input, output, database) {
         }
 
         rv$user_file <- move_data_list
+        FALSE
       },
       message = function(m) {
         # shinyjs::html(id = "MoveOutputConsole", html = paste0(dataset$name, ": ", m$message), add = rv$console_verbatim)
@@ -428,53 +360,21 @@ AppMoveSamples <- function(session, input, output, database) {
     },
     validation_error = function(e) {
         message("Caught validation error")
-        early_stop <<- TRUE
-        html<-paste0("<font color='red'>", paste0(dataset$name, ": ", e$message), "</font>")
-        shinyjs::html(id = "MoveOutputConsole", html = html, add = rv$console_verbatim)
-        rv$console_verbatim <- FALSE
-
-        error$type <- "validation"
-        error$title <- e$message
-        error$table <- e$data
-
-        # TODO: breakup process csv into three stages(but keep calls in global process csv).
-        # Just download the error data frame for now.
-        errors <- names(e$data)
-        df <- lapply(1:length(errors), function(idx) {
-          e$data[[idx]]$CSV %>%
-            mutate(Error = errors[idx]) %>%
-            mutate(ErrCol = paste(e$data[[idx]]$Columns, collapse = ",")) %>%
-            select(Error, colnames(e$data[[idx]]$CSV)) 
-        })
-
-        rv$user_file_error_annotated <- do.call("rbind", df) %>%
-          select(-c(RowNumber))
-
-        print(e$data)
-
+        show_validation_error_modal(output, e, dataset[i,]$name)
+        TRUE
       },
       formatting_error = function(e) {
         message("Caught formatting error")
-        early_stop <<- TRUE
-        error$title = "Invalid File Detected"
-        error$type = "formatting"
-        error$message = e$message
-        error$table = e$df
+        show_formatting_error_modal(e, dataset[i,]$name)
+        TRUE
       },
       error = function(e) {
-        early_stop <<- TRUE
-        html<-paste0("<font color='red'>", paste0(dataset$name, ": ", e$message), "</font>")
-        shinyjs::html(id = "MoveOutputConsole", html = html, add = rv$console_verbatim)
-        rv$console_verbatim <- FALSE
-        error$title = "Unknown Error"
-        error$type = "unknown"
-        error$message = e$message
-        error$table = NULL
+        show_general_error_modal(e, input, output)
+        TRUE
       }
     )
 
     if (isTRUE(early_stop)) { 
-      rv$error <- TRUE
       return()
     }
 
@@ -498,7 +398,7 @@ AppMoveSamples <- function(session, input, output, database) {
         shinyjs::reset("MoveAction")
 
         # note: this is to make things work retroactively
-        MoveSamples(sample_type = as.integer(input$MoveSampleType), move_data = rv$user_file)
+        MoveSamples(sample_type = input$MoveSampleType, move_data = rv$user_file)
       },
       message = function(m) {
         shinyjs::html(id = "MoveOutputConsole", html = paste0(dataset$name, ": ", m$message), add = rv$console_verbatim)
@@ -519,28 +419,12 @@ AppMoveSamples <- function(session, input, output, database) {
   })
 
   observeEvent(input$MoveSampleType, {
-
-    con <- dbConnect(SQLite(), Sys.getenv("SDB_PATH"))
-    sample_type_id <- as(local(input$MoveSampleType), "integer")
-
-    ## Read File Specification File
-    file_specs_json <- rjson::fromJSON(file = system.file(
-      "extdata", "file_specifications.json", package = .sampleDB$pkgname))
-
-    sample_type_index <- which(lapply(file_specs_json$sample_type, function(x) x$id) == input$MoveSampleType)
-    sample_file_types <- file_specs_json$sample_type[[sample_type_index]]$file_types
-    file_type_indexes <- which(lapply(file_specs_json$file_types, function(x) x$id) %in% sample_file_types)
-    file_type_names <- lapply(file_type_indexes, function(x) file_specs_json$file_types[[x]]$name)
-    names(sample_file_types) <- file_type_names
-
     updateRadioButtons(
       session,
       "MoveFileType",
-      choices = sample_file_types,
+      choices = get_file_types_for_sample(input$MoveSampleType),
       inline = TRUE
     )
-
-    DBI::dbDisconnect(con)
   })
 
   observeEvent(input$ClearMoveForm, ignoreInit = TRUE, {
@@ -552,80 +436,83 @@ AppMoveSamples <- function(session, input, output, database) {
     rv$user_file <- NULL
   })
 
+  move_example_data <- reactiveValues(
+    required = NULL,
+    optional = NULL
+  )
 
-  ## create the example data to display and to download
+  # Download a complete upload template
+  observe({
+    output$MoveFileTemplatePlaceholder <- renderUI({
+
+      get_specific_move_type <- function() {
+        sample_types <- get_sample_types()
+        sample_file_types <- get_file_types_for_sample(input$MoveSampleType)
+
+        match_index <- match(input$MoveSampleType, sample_types)
+        sample_display_name <- names(sample_types[match_index])
+
+        match_index <- match(input$MoveSampleType, sample_file_types)
+        file_type_display_name <- names(sample_file_types[match_index])
+
+        sprintf("%s (FileType: '%s')", sample_display_name, file_type_display_name)
+      }
+
+      downloadButton("MoveFileTemplate", label = paste("Download", get_specific_move_type(), "Move Template"))
+    })
+
+    # NOTE: Should add a case for controls when they are added.
+    output$MoveFileTemplate <- downloadHandler(
+      filename = function() {
+        filename_base <- paste(c(input$MoveSampleType, input$MoveFileType, "move", "template"), collapse = "_")
+        paste(filename_base, ".csv", sep = "")
+      },
+      content = function(con) {
+        # Retrieve column data for samples based on selected sample type
+        column_data <- get_sample_file_columns(input$MoveSampleType, "move", input$MoveFileType)
+        
+        # Generate an empty data frame with the correct column names for downloading
+        if (!is.null(column_data)) {
+          all_columns <- c(column_data$required)
+          move_template <- data.frame(matrix(ncol = length(all_columns), nrow = 0))
+          colnames(move_template) <- all_columns
+        } else {
+          stop("Column data is null!!!")
+        }
+        write.csv(move_template, con, row.names = FALSE, quote = FALSE)
+      }
+    )
+  })
+
   observe({
     ## Read File Specification File
-    file_specs_json <- rjson::fromJSON(file = system.file(
-      "extdata", "file_specifications.json", package = .sampleDB$pkgname))
+    file_specs_json <- get_sample_file_columns(input$MoveSampleType, "move", input$MoveFileType)
 
     ## Required Column Names
-
-    file_index <- which(lapply(file_specs_json$file_types, function(x) x$id) == input$MoveFileType)
-    sample_storage_type_index <- which(lapply(file_specs_json$file_types[[file_index]]$sample_type, function(x) x$id) == input$MoveSampleType)
-
-    if (length(sample_storage_type_index) == 0) {
-      message("Unimplemented file specifications for this sample storage type.")
-    } else {
-      actions <- file_specs_json$file_types[[file_index]]$sample_type[[sample_storage_type_index]]$actions[['move']]
-      required_user_column_names <- actions[['required']]
-      if (input$MoveFileType == "traxcer") {
-        ## Read Configuration File and replace with user override from user preferences
-        config <- yaml::read_yaml(Sys.getenv("SDB_CONFIG"))
-        if (!is.na(config$traxcer_position$override)) {
-          required_user_column_names <- stringr::str_replace(
-            required_user_column_names,
-            config$traxcer_position$default,
-            config$traxcer_position$override
-          )
-        }
-      }
-      example_data$required <- required_user_column_names
-    }
+    move_example_data$required <- file_specs_json$required
   })
 
   observe({
     output$MoveFileExampleRequired <- renderReactable({
       rt <- NULL
-
       if (input$MoveFileType == "na") {
-
-        sample_type_name <- switch(
-          input$MoveSampleType,
-          "1" = "micronix",
-          "2" = "cryovial",
-          "3" = "dbs"
-        )
-        example <- paste(c(sample_type_name, input$MoveFileType), collapse="_")
-        rt <- reactable(eval(as.symbol(example)) %>% select(example_data$required), defaultColDef = colDef(minWidth = 120, html = TRUE, sortable = FALSE, resizable = FALSE))
+        example <- paste(c(input$MoveSampleType, input$MoveFileType), collapse="_")
+        rt <- reactable(eval(as.symbol(example))[, move_example_data$required], defaultColDef = colDef(minWidth = 130, html = TRUE, sortable = FALSE, resizable = FALSE))
       } else {
-        mat <- matrix(nrow = 0, ncol = length(example_data$required))
-        colnames(mat) <- example_data$required
-        rt <- reactable(mat, defaultColDef = colDef(minWidth = 120, html = TRUE, sortable = FALSE, resizable = FALSE))
+        mat <- matrix(nrow = 0, ncol = length(move_example_data$required))
+        colnames(mat) <- move_example_data$required
+        rt <- reactable(mat, defaultColDef = colDef(minWidth = 130, html = TRUE, sortable = FALSE, resizable = FALSE))
       }
 
-      return (rt)
+      return(rt)
     })
 
-    template <- matrix(ncol = length(example_data$required), nrow = 0)
-    colnames(template) <- example_data$required
-    rv$template <- template
-  })
-
-  # Download a complete move template
-  observe({
-    output$MoveFileTemplate <- downloadHandler(
-      filename = function() {
-        storage_type <- switch(
-          input$MoveSampleType,
-          "1" = "micronix",
-          "2" = "cryovial"
-        )
-        paste(paste(c(storage_type, input$MoveFileType, "move", "template"), collapse="_"), '.csv', sep='')
-      },
-      content = function(con) {
-        write.csv(rv$template, con, row.names = FALSE, quote=FALSE)
-      }
+    cols <- c(
+      move_example_data$required
     )
+
+    template <- matrix(ncol = length(cols), nrow = 0)
+    colnames(template) <- cols
+    rv$move_template <- template
   })
 }

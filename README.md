@@ -18,6 +18,7 @@ You should first create a volume to contain the sampleDB database. Start by runn
 
 ```bash
 docker volume create sampledb_database
+docker volume create shinylogs
 ```
 
 #### 2. Create the image

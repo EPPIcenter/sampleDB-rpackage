@@ -136,7 +136,7 @@ AppPreferencesPanel <- function(session, input, output, database) {
 	  # Construct the cron schedule based on user input
 	  frequency <- switch(input$scheduleType,
 	      "Daily" = "daily",
-	      "Weekly" = "weekly",
+	      "Weekly" = "daily", # This must be 'daily'!
 	      "Monthly" = "monthly"
 	  )
 

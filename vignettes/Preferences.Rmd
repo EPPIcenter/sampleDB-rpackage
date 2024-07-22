@@ -1,0 +1,23 @@
+---
+title: 'Preferences'
+output: rmarkdown::html_document
+vignette: >
+  %\VignetteIndexEntry{Preferences}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+## Preferences
+
+1.  **Traxcer Position Override -** The default column name for
+    "Position" on the Traxcer scanner CSV may be different from what
+    sampleDB expects. To ensure column names align, go to
+    "Preferences\'\' and type in, e.g. "Tube Position", and push "Save
+    Preferences." This will replace 'Position' with 'Tube Position' as
+    the expected column, preventing the need to manually change the
+    column name within the CSV file. This only has to be done once,
+    and SampleDB will save that preference for the future.
+
+2.  **Software Component Version Table -** This table displays the
+    versions of the external components sampleDB depends on. This is
+    purely for informational purposes.

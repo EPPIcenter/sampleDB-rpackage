@@ -1,0 +1,64 @@
+{
+  "file_type_identifiers": {
+    "na": "NA",
+    "visionmate": "VisionMate",
+    "traxcer": "Traxcer"
+  },
+  "action_identifiers": {
+    "upload": "Upload",
+    "move": "Move",
+    "create": "Create",
+    "extraction": "Extract"
+  },
+  "initialization": {
+    "samples": ["micronix", "cryovial", "paper"],
+    "controls": ["dbs_sheet", "whole_blood"]
+  },
+  "locations": {
+    "micronix_locations": {
+      "location_root": "FreezerName",
+      "level_i": "ShelfName",
+      "level_ii": "BasketName"
+    },
+    "cryovial_locations": {
+      "location_root": "FreezerName",
+      "level_i": "RackName",
+      "level_ii": "RackPosition"
+    },
+    "minus20_dbs_storage": {
+      "location_root": "DBS_FreezerName",
+      "level_i": "DBS_ShelfName",
+      "level_ii": "DBS_BasketName"      
+    },
+    "minus80_wb_storage": {
+      "location_root": "WB_FreezerName",
+      "level_i": "WB_RackName",
+      "level_ii": "WB_RackPosition"
+    }
+  },
+  "containers": {
+    "micronix_plate": {
+      "position_keys": ["Row", "Column"],
+      "container_name_key": "PlateName"
+    },
+    "cryovial_box": {
+      "position_keys": ["BoxRow", "BoxColumn"],
+      "container_name_key": "BoxName"
+    },
+    "dbs_sheet": {
+      "container_name_key": "SheetName",
+      "container_barcode_key": "SheetBarcode"
+    }
+  },
+  "container_barcodes": {
+    "micronix_plate": {
+      "container_barcode_key": "PlateBarcode"
+    },
+    "cryovial_box": {
+      "container_barcode_key": "BoxBarcode"
+    },
+    "dbs_sheet": {
+      "container_barcode_key": "SheetBarcode"
+    }
+  }
+}

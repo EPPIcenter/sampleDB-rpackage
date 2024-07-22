@@ -1,0 +1,79 @@
+{
+  "samples": {
+    "micronix": {
+      "id": 1, 
+      "name": "Micronix",
+      "file_types": ["na", "visionmate", "traxcer"],
+      "actions": ["upload", "move"],
+      "location_key": "micronix_locations",
+      "container_key": "micronix_plate",
+      "container_barcode_key": "micronix_plate"
+    },
+    "cryovial": {
+      "id": 2,
+      "name": "Cryovial",
+      "file_types": ["na"],
+      "actions": ["upload", "move"],
+      "location_key": "cryovial_locations",
+      "container_key": "cryovial_box",
+      "container_barcode_key": "cryovial_box"
+    },
+    "dbs_sample": {
+      "id": 3,
+      "name": "DBS",
+      "file_types": ["na"],
+      "actions": ["upload"],
+      "location_key": "micronix_locations"
+    }
+  },
+  "action_requirements": {
+    "upload": {
+      "shared": {
+        "required_keys": ["study_short_code", "study_subject", "specimen_type", "location_key", "container_key"],
+        "conditional_keys": ["collection_date"],
+        "optional_keys": ["comment", "container_barcode_key"]
+      },
+      "micronix": {
+        "required_keys": ["barcode"]
+      },
+      "cryovial": {
+        "conditional_keys": ["barcode"]
+      },
+      "dbs_sample": {
+        "conditional_keys": ["position_keys"]
+      }
+    },
+    "move": {
+      "shared": {
+        "required_keys": ["position_keys"],
+        "optional_keys": ["container_barcode_key"]
+      },
+      "micronix": {
+        "required_keys": ["barcode"]
+      },
+      "cryovial": {
+        "conditional_keys": ["barcode"]
+      }
+    }
+  },
+  "sample_key_associations": {
+    "shared": {
+      "barcode": "Barcode",
+      "study_short_code": "StudyCode",
+      "study_subject": "StudySubject",
+      "specimen_type": "SpecimenType",
+      "collection_date": "CollectionDate",
+      "comment": "Comment"
+    },
+    "micronix": {
+      "visionmate": {
+        "barcode": "TubeCode",
+        "position_keys": ["LocationRow", "LocationColumn"]
+      },
+      "traxcer": {
+        "barcode": "Tube ID",
+        "position_keys": "Position"
+      }
+    }
+  }
+}

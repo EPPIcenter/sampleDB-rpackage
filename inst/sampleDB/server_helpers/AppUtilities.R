@@ -106,6 +106,7 @@ GetUIStudiesElements <- function(msg = NULL){
                     AddStudyIsLongitudinal = "AddStudyIsLongitudinal",
                     AddStudyAction = "AddStudyAction",
                     ChangeStudyShortCode = "ChangeStudyShortCode",
+                    AddStudyIsControl = "AddStudyIsControl",
                     RenameStudyTitle = "RenameStudyTitle",
                     RenameStudyDescription = "RenameStudyDescription",
                     RenameStudyLeadPerson = "RenameStudyLeadPerson",
@@ -248,7 +249,7 @@ SmartFreezerDropdownFilter <- function(database, session, input = input, locatio
 
   observe({
     if(!is.null(input[[location_ui]]) && input[[location_ui]] != ""){
-      tmp_table.location <- filter(CheckTable(database = database, "location"), name == input[[location_ui]])
+      tmp_table.location <- filter(CheckTable(database = database, "location"), location_root == input[[location_ui]])
       updateSelectInput(session, levelI_ui, label = NULL, choices = c("", tmp_table.location$level_I) %>% sort())
       levelII_choices <- list(`working baskets` = grep("working", tmp_table.location$level_II, value = T) %>% sort(),
                               `non-working baskets` = grep("working", tmp_table.location$level_II, value = T, invert = T) %>% sort())
@@ -354,8 +355,8 @@ UpdateFreezerDropdowns <- function(database, session){
   shinyjs::reset("AddFreezerLevel_I")
   shinyjs::reset("AddFreezerLevel_II")
   shinyjs::reset("RenameFreezerName2")
-  updateSelectInput(session = session, inputId = "RenameFreezerName1", choices = c("", CheckTable(database = database, "location")$name))
-  updateSelectInput(session = session, inputId = "DeleteFreezerName", choices = c("", CheckTable(database = database, "location")$name))
+  updateSelectInput(session = session, inputId = "RenameFreezerName1", choices = c("", CheckTable(database = database, "location")$location_root))
+  updateSelectInput(session = session, inputId = "DeleteFreezerName", choices = c("", CheckTable(database = database, "location")$location_root))
 }
 
 UpdateSpecimenTypeDropdowns <- function(database, session){
@@ -396,7 +397,7 @@ heckUploadContainerBarcodeDuplication <- function(plate_barcode, database){
 CheckFreezerNameIsUnique <- function(input, database, freezer_address){
 
   freezer_address_dup_test <- filter(CheckTable("location"),
-                                     name == freezer_address$freezer_name,
+                                     location_root == freezer_address$freezer_name,
                                      level_I == freezer_address$freezer_levelI,
                                      level_II == freezer_address$freezer_levelII) %>% nrow()
 
@@ -412,7 +413,7 @@ CheckFreezerDeletion <- function(input, database, freezer_address){
   num_items_at_address <- 0
 
   freezer_address <- filter(CheckTable(database = database, "location"),
-                            name == freezer_address$freezer_name,
+                            location_root == freezer_address$freezer_name,
                             level_I == freezer_address$freezer_levelI,
                             level_II == freezer_address$freezer_levelII)
   if(length(freezer_address$id) > 0){
@@ -495,4 +496,327 @@ ViewArchiveStatuses <- function(database) {
   out_table <- RSQLite::dbGetQuery(conn, "SELECT * FROM view_archive_statuses") %>% tibble()
   RSQLite::dbDisconnect(conn)
   return(out_table)
+}
+
+
+
+# You can now call handle_formatting_error whenever you encounter a formatting error.
+show_formatting_error_modal <- function(error, filename = NULL) {
+  message("Preparing format error modal.")
+  
+  # Conditional title based on whether a filename is provided
+  title_text <- ifelse(is.null(filename), 
+                       "Formatting Error Detected", 
+                       paste("Formatting Error Detected in", filename))
+  
+  df <- error$data %>%
+    dplyr::rename(
+      Column = column, 
+      Reason = reason,
+      `Triggered By` = trigger
+    ) %>%
+    reactable(.)
+  
+  showModal(
+    modalDialog(
+      size = "m",
+      title = title_text,
+      error$message,
+      if (!is.null(filename)) tags$p(paste("File:", filename)), # Conditional filename display
+      tags$hr(),
+      renderReactable({ df }),
+      footer = modalButton("Exit")
+    )
+  )
+}
+
+# Create a function to generate reactable for displaying errors
+generate_error_reactable <- function(error_collection, index = 1) {
+
+  specific_error <- error_collection$error_data_list[[index]]
+  selected_cols <- c("RowNumber", specific_error$columns)
+  
+  error_details <- error_collection$get_error_details_by_index(index)
+  
+  reactable(
+    error_details,
+    outlined = TRUE,
+    striped = TRUE,
+    theme = reactableTheme(
+      headerStyle = list(
+        "&:hover[aria-sort]" = list(background = "hsl(0, 0%, 96%)"),
+        "&[aria-sort='ascending'], &[aria-sort='descending']" = list(background = "hsl(0, 0%, 96%)"),
+        borderColor = "#555"
+      )
+    ),
+    defaultColDef = colDef(na = "-", align = "center")
+  )
+}
+
+show_validation_error_modal <- function(output, error, filename = NULL) {
+
+  message("Preparing validation error modal.")
+  
+  # Conditional title based on whether a filename is provided
+  title_text <- ifelse(is.null(filename), 
+                       "Validation Error Detected", 
+                       paste("Validation Error Detected in", filename))
+  
+  error_collection <- error$data
+  
+  if (inherits(error_collection, "ErrorData")) {
+    errors_df <- data.frame(
+      Description = error_collection$description,
+      Columns = toString(error_collection$columns),
+      Rows = toString(error_collection$rows)
+    )
+    main_table <- reactable(errors_df)
+  } else if (inherits(error_collection, "ValidationErrorCollection")) {
+    errors <- unique(sapply(error_collection$error_data_list, function(x) x$description))
+    errors_df <- data.frame(Error = errors)
+    main_table <- reactable(
+      errors_df,
+      details = function(index) {
+        htmltools::div(
+          style = "padding: 1rem",
+          generate_error_reactable(error_collection, index)
+        )
+      }
+    )
+  } else {
+    stop("Unknown error collection type.")
+  }
+  
+  showModal(
+    modalDialog(
+      size = "l",
+      title = title_text,
+      tags$p("One or more rows had invalid or missing data. See the errors below and expand them to see which rows caused this error."),
+      if (!is.null(filename)) tags$p(paste("File:", filename)), # Conditional filename display
+      tags$p("Press the button below to download your file with annotations"),
+      downloadButton("ErrorFileDownload"),
+      tags$hr(),
+      renderReactable({ main_table }),
+      footer = modalButton("Exit")
+    )
+  )
+
+  # Add server logic for the download button
+  output$ErrorFileDownload <- downloadHandler(
+    filename = function() {
+      paste0("validation_errors_", Sys.Date(), ".csv")
+    },
+    content = function(file) {
+      df = error_collection$get_combined_error_data()
+      write.csv(df, file, row.names = FALSE, quote = FALSE)
+    }
+  )
+}
+
+show_general_error_modal <- function(error, input, output) {
+  # Convert the call to a single character string, checking for NULL
+  errcall <- if (is.null(error$call)) {
+    "No function call information available"
+  } else {
+    paste(as.character(error$call), collapse="\n")
+  }
+
+  errmsg <- ifelse(is.null(error$message), "No message available", error$message)
+  
+  # Initialize error details string
+  errdetails <- ""
+  
+  # Iterate over each element in the error object
+  error_names <- names(error)
+  for (name in error_names) {
+    value <- error[[name]]
+    # Convert each element to a character string
+    value_str <- toString(if(is.list(value)) {
+      sapply(value, function(x) toString(x))
+    } else {
+      value
+    })
+    errdetails <- paste(errdetails, sprintf("%s: %s\n", name, value_str), sep="\n")
+  }
+
+  # Download handler for the error report
+  output$downloadError <- downloadHandler(
+    filename = function() {
+      paste("error-details-", Sys.Date(), ".txt", sep="")
+    },
+    content = function(file) {
+      writeLines(errdetails, file)
+    }
+  )
+  
+  showModal(
+    modalDialog(
+      size = "l",
+      title = "An Error Occurred",
+      tags$p(HTML("Something went wrong. Please see the error details below and contact Brian Palmer at <a href='mailto:brian.palmer@ucsf.edu'>brian.palmer@ucsf.edu</a>.")),
+      tags$hr(),
+      tags$div(
+        id = "errdetails",
+        style = "max-height: 400px; overflow-y: auto;",
+        tags$pre(style = "white-space: pre-wrap;", errdetails)
+      ),
+      tags$hr(),
+      downloadButton('downloadError', 'Download Error Details'),
+      footer = modalButton("Exit")
+    )
+  )
+}
+
+
+#' Collate User Input for Sample Data
+#'
+#' This function combines the outputs of both `get_location_by_sample` and 
+#' `get_container_by_sample`, and then updates the resultant named list with 
+#' input values.
+#' 
+#' @param sample_type The type of sample to get data for.
+#' @param input A list of user inputs that includes location and container information.
+#' @param sample_file The JSON file that contains sample information.
+#' @param app_file The JSON file that contains app-related data.
+#' 
+#' @return A list that combines location and container data, and updates with user input.
+#' @examples
+#' # With mock input data
+#' input <- list(UploadManifestName = "MyPlate", 
+#'               UploadLocationRoot = "FreezerName", 
+#'               UploadLocationLevelI = "Shelf1", 
+#'               UploadLocationLevelII = "Basket2")
+#' collate_user_input_sample_data("micronix", input)
+#' 
+#' @export
+collate_user_input_sample_data <- function(sample_type, 
+                                           input, 
+                                           sample_file = "samples.json", 
+                                           app_file = "app.json") {
+
+  if (sample_type == "dbs_sample") {
+    message("NOTE: Special columns do not apply for DBS Samples and will need added to the CSV.")
+    return(NULL)
+  }
+
+  # Get data from both functions
+  location_data <- get_location_by_sample(sample_type, sample_file, app_file)
+  container_data <- get_container_by_sample(sample_type, sample_file, app_file)
+  
+  collated_user_data <- NULL
+  
+  # Update container name
+  if (is.character(input$UploadManifestName) && input$UploadManifestName != "") {
+    collated_user_data <- setNames(list(input$UploadManifestName), container_data[["container_name_key"]])
+  }
+
+  # Update location data
+  if (is.character(input$UploadLocationRoot) && input$UploadLocationRoot != "") {
+    collated_user_data <- c(collated_user_data,  setNames(list(input$UploadLocationRoot), location_data[["location_root"]]))
+  }
+  if (is.character(input$UploadLocationLevelI) && input$UploadLocationLevelI != "") {
+    collated_user_data <- c(collated_user_data, setNames(list(input$UploadLocationLevelI), location_data[["level_i"]]))
+  }
+  if (is.character(input$UploadLocationLevelII) && input$UploadLocationLevelII != "") {
+    collated_user_data <- c(collated_user_data, setNames(list(input$UploadLocationLevelII), location_data[["level_ii"]]))
+  }
+
+  return(collated_user_data)
+}
+
+#' Create a container to store filters
+#' 
+#' This function creates a reactive value that stores filters for the app.
+#' 
+#' @param defaults A list of default filters to use.
+createFilterSetReactive <- function(defaults = list()) {
+  rv <- reactiveVal(defaults)
+  
+  list(
+    get = function() { rv() },
+    set = function(new_filters) {
+      rv(new_filters)
+    },
+    insert = function(new_filters) {
+      existing_filters <- rv()
+      updated_filters <- modifyList(existing_filters, new_filters)
+      rv(updated_filters)
+    },
+    remove = function(filters_to_remove) {
+      existing_filters <- rv()
+      updated_filters <- existing_filters[!names(existing_filters) %in% filters_to_remove]
+      rv(updated_filters)
+    },
+    clear = function() { rv(list()) },
+    reset = function() { rv(defaults) },
+    filter = function(df) {
+      filters <- rv()
+      if (length(filters) > 0) {
+          exprs <- map2(names(filters), filters, ~ rlang::expr(!!rlang::sym(.x) == !!.y))
+          df <- df %>% filter(!!!exprs)
+      }
+      return(df)
+    }
+  )
+}
+
+#' Process Filters for Shiny App
+#'
+#' This function processes filter inputs for a Shiny app. It removes empty or NULL values,
+#' inserts new filters into a given filter set, and removes any outdated filters.
+#'
+#' @param input_filters A list of filter inputs to be processed.
+#' @param filter_set A reactive object that contains the current state of filters.
+#'
+#' @return This function is called for its side effects and does not return a value.
+#' @examples
+#' \dontrun{
+#' observe({
+#'   input_filters <- list(
+#'     strain = input$InputControlSearchStrain,
+#'     percentage = input$InputControlSearchPercentage,
+#'     composition_types = input$InputControlSearchCompositionTypes
+#'   )
+#'   process_filters(input_filters, composition_filter_set)
+#' })
+#' }
+#' @export
+process_filters <- function(input_filters, filter_set) {
+
+  # Modified the inner function to handle NAs explicitly
+  new_filters <- purrr::map(input_filters, function(x) {
+    purrr::discard(x, ~ is.null(.x) | is.na(.x) | .x == "" | length(.x) == 0)
+  })  
+  new_filters <- purrr::discard(new_filters, ~ is.null(.x) | length(.x) == 0)
+
+  # Insert new filters
+  if (length(new_filters) > 0) {
+    filter_set$insert(new_filters)
+  }
+
+  # Get existing filters
+  existing_filters <- filter_set$get()
+
+  # Identify filters to remove
+  filters_to_remove <- setdiff(names(existing_filters), names(new_filters))
+  
+  # Remove selected filters
+  if (length(filters_to_remove) > 0) {
+    filter_set$remove(filters_to_remove)
+  }
+}
+
+#' Show a an upload success notification
+show_success_notification <- function(session, category, res) {
+  # Customize your success message
+  category <- ifelse(res > 1, paste0(category, "s"), category)
+
+  msg <- sprintf("Success! %d %s added.", res, category)
+  showNotification(
+    msg, 
+    duration = 3,
+    id = "GenericUploadSuccess", 
+    type = "default",
+    session = session
+  )
 }

@@ -1,102 +1,124 @@
-library(RSQLite)
-UISearchDelArchSamples <- function(){
-  con <- DBI::dbConnect(RSQLite::SQLite(), Sys.getenv("SDB_PATH"))
+library(shiny)
+library(bslib)
 
-  ui <- sidebarLayout(
-    sidebarPanel(
-      width = 2,
-      # actionButton("verify_delarch", label = NULL),
-      HTML("<h4>Search, Delete and Archive Samples</h4>"),
-      hr(),
-      # fileInput("SearchByLabel", label = HTML("Barcode <h6>Single column named \"barcode\"</h6>")), actionButton("ClearSearchBarcodes", label = "Clear Barcodes"), textOutput("WarnSubjectBarcodeFileColnames"), textOutput("WarnSubjectBarcodeFileColnames2"),
-
-      radioButtons("DelArchSearchBySampleType","Sample Type", choices = c("All" = "all", DBI::dbReadTable(con, "sample_type") %>% pull(id, name = "name")), selected = "all", inline = T),
-      hr(),
-      actionButton("DelArchSearchReset", width = '100%', label = "Reset Search Criteria", style="color: #fff; background-color: #337ab7; border-color: #2e6da4"),
-      hr(),
-      fileInput("DelArchSearchByBarcode", label = "Sample Barcodes"),
-      selectizeInput("DelArchSearchByManifest", label = NULL, choices = c()),
-      hr(),
-      selectizeInput("DelArchSearchByStudy", "Study", choices = c("", CheckTable(database = database, "study")$short_code)),
-      conditionalPanel(condition = "input.DelArchSubjectUIDSearchType == \"individual\"",
-                       selectizeInput("DelArchSearchBySubjectUID", label = "Study Subject", choices = c())),
-      conditionalPanel(condition = "input.DelArchSubjectUIDSearchType == \"multiple\"",
-                       fileInput("DelArchSearchBySubjectUIDFile", label = NULL)),
-      radioButtons("DelArchSubjectUIDSearchType", label = NULL, choices = list("Single Study Subject" = "individual", "Multiple Study Subjects" = "multiple"), selected = "individual"),
-      selectizeInput("DelArchSearchBySpecimenType", "Specimen Type", choices = c("", CheckTable(database = database, "specimen_type")$name)),
-      dateRangeInput("DelArchdateRange", label = "Collection Dates", start = NA, end = NA) %>% suppressWarnings(),
-      selectizeInput("DelArchSearchByLocation", "Storage Location", choices = c("", CheckTable("location")$name)),
-      selectizeInput("DelArchSearchByLevelI", "Storage Location: Level I", choices = c("")),
-      selectizeInput("DelArchSearchByLevelII", "Storage Location: Level II", choices = c("")),
-      selectizeInput("DelArchSearchByState", "State", choices = DBI::dbReadTable(con, "state")$name, selected = "Active"),
-      selectizeInput("DelArchSearchByStatus", "Status", choices = c("In Use"), selected = "In Use")
+UISearchDelArchSamples <- function() {
+  ui <- layout_sidebar(
+    tags$script(HTML("
+      var firstSelectedRow = null;
+      var shiftKeyEnabled = false;
+      $(document).on('click', '.rt-tbody .rt-tr-group', function(evt) {
+        evt.preventDefault()
+        var row = $(this).closest('.rt-tr-group').index();
+        if (evt.shiftKey && firstSelectedRow !== null) {
+          var start = Math.min(firstSelectedRow, row);
+          var end = Math.max(firstSelectedRow, row);
+          $('body').addClass('no-select');
+          Shiny.setInputValue('selectedRange', [start, end], {priority: 'event'});
+        } else {
+          $('body').removeClass('no-select');
+          firstSelectedRow = row;
+        }
+        shiftKeyEnabled = evt.shiftKey;
+        Shiny.setInputValue('shiftKeyEnabled', shiftKeyEnabled);
+      });
+      ")
     ),
-    mainPanel(
-      tags$script(HTML("
-        var firstSelectedRow = null;
-        var shiftKeyEnabled = false;
-        $(document).on('click', '.rt-tbody .rt-tr-group', function(evt) {
-          evt.preventDefault()
-          var row = $(this).closest('.rt-tr-group').index();
-          if (evt.shiftKey && firstSelectedRow !== null) {
-            var start = Math.min(firstSelectedRow, row);
-            var end = Math.max(firstSelectedRow, row);
-            $('body').addClass('no-select');
-            Shiny.setInputValue('selectedRange', [start, end], {priority: 'event'});
-          } else {
-            $('body').removeClass('no-select');
-            firstSelectedRow = row;
-          }
-          shiftKeyEnabled = evt.shiftKey;
-          Shiny.setInputValue('shiftKeyEnabled', shiftKeyEnabled);
-        });
-        ")
+    sidebar = sidebar(
+      title = "Search Criteria",
+      actionButton("DelArchSearchReset", label = "Reset Search Criteria", width = '100%'),
+      radioButtons("DelArchSearchType", "Search Type", choices = c("Samples" = "samples", "Controls" = "controls"), selected = "samples"),
+      conditionalPanel(
+        condition = "input.DelArchSearchType == 'samples'",
+        radioButtons("DelArchSearchBySampleType", "Sample Type", choices = get_sample_types()),
+        conditionalPanel(
+          condition = "input.DelArchSearchType == 'samples' && input.DelArchSearchBySampleType == 'dbs_sample'",
+          radioButtons("SearchDBSSampleManifest", "Select a DBS Container", inline = TRUE, choices = c("All" = "all", "Box" = "box", "Bag" = "bag"), selected = "all")
+        ),
+        conditionalPanel(
+          condition = "input.DelArchSearchBySampleType == 'micronix' || input.DelArchSearchBySampleType == 'cryovial'",
+          fileInput("DelArchSearchByBarcode", label = "Sample Barcodes")
+        ),
+        selectizeInput("DelArchSearchByManifest", label = "Container", choices = c())
       ),
-      width = 10,
-      reactableOutput("DelArchSearchResultsTable"),
-      hr(),
-      tags$em("Use the filters in the panel to the left to find samples that you wish to download. You may optionally select samples from the table to narrow down the samples that should be included. When you are finished, press the button below.", style = "color: grey;font-size: 18px;"),
-      fluidRow(
-        width = 3,
-        column(
-          width = 6, 
-          downloadButton("DelArchDownloadSearchData", "Download")
-        )
+      conditionalPanel(
+        condition = "input.DelArchSearchType == 'samples' && input.DelArchSearchBySampleType == 'micronix'",
+        actionLink("DelArchAdvancedSearchLink", "Advanced...")
       ),
-      tags$h3("Sample Archival & Deletion Workflows"),
-      tags$hr(),
-      tags$em("Select samples above to get started. In all workflows, users will be asked to confirm that they have selected the correct samples.", style = "color: grey;font-size: 18px;"),
-      fluidRow(
-        width = 3,
-        column(
-          width = 6, 
-          tagList(
-            tags$h4("Sample Archival"), 
-            tags$hr(),
-            tags$p("Select sample above that you wish to archive. This will remove samples from plates in the database so that they may be replaced with", tags$em("In Use"), "samples."),
-            actionButton("ArchiveAction", width = '25%', label = "Archive Samples", style="color: #fff; background-color: #337ab7; border-color: #2e6da4")
+      conditionalPanel(
+        condition = "input.DelArchSearchType == 'controls'",
+        radioButtons("DelArchSearchByControlType", "Control Type", choices = get_control_types())
+      ),
+      bslib::accordion(
+        open = FALSE,
+        bslib::accordion_panel(
+          id = "DelArchSubjectsPanel",
+          title = "Study & Subjects",
+          selectizeInput("DelArchSearchByStudy", "Study", choices = c()),
+          radioButtons("DelArchSubjectUIDSearchType", label = NULL, choices = list("Single Study Subject" = "individual", "Multiple Study Subjects" = "multiple"), selected = "individual"),
+          conditionalPanel(
+            condition = "input.DelArchSubjectUIDSearchType == 'individual'",
+            selectizeInput("DelArchSearchBySubjectUID", label = "Study Subject", choices = c())
+          ),
+          conditionalPanel(
+            condition = "input.DelArchSubjectUIDSearchType == 'multiple'",
+            fileInput("DelArchSearchBySubjectUIDFile", label = NULL)
+          ),
+          conditionalPanel(
+            condition = "input.DelArchSearchType == 'controls'",
+            selectizeInput("DelArchCompositionTypes", label = "Composition Types", choices = c()),
+            selectizeInput("DelArchSearchByStrains", label = "Strains", choices = c()),
+            selectizeInput("DelArchSearchByPercentages", label = "Percentages", choices = c()),
+            selectizeInput("DelArchSearchByDensity", label = "Density", choices = c())
           )
         ),
-        column(
-          width = 6, 
-          tagList(
-            tags$h4("Sample Deletion"), 
-            tags$hr(),
-            tags$p("Select sample above that you wish to delete. Samples that are", tags$em("deleted"), "are removed", tags$strong("permanently", style = "color:red"),". Use caution when deleting samples - in most cases, archival should be used to retain sample history. An example of when to delete a sample is if a sample has been uploaded by mistake."),
-            actionButton("DeleteAction", width = '25%', label = "Delete Samples", style="color:#c4244c; background-color: #fff4f4; border-color: #c4244c")
+        conditionalPanel(
+          condition = "input.DelArchSearchType == 'samples'",
+          bslib::accordion_panel(
+            id = "DelArchSpecimensPanel",
+            title = "Specimens",
+            selectizeInput("DelArchSearchBySpecimenType", "Specimen Type", choices = c("")),
+            dateRangeInput("DelArchdateRange", label = "Collection Dates", start = NA, end = NA)
+          )
+        ),
+        bslib::accordion_panel("Locations",
+          selectizeInput("DelArchSearchByLocation", "Storage Location", choices = c("")),
+          selectizeInput("DelArchSearchByLevelI", "Storage Location: Level I", choices = c("")),
+          selectizeInput("DelArchSearchByLevelII", "Storage Location: Level II", choices = c(""))
+        ),
+        bslib::accordion_panel("State & Status",
+          selectizeInput("DelArchSearchByState", "State", choices = c("")),
+          selectizeInput("DelArchSearchByStatus", "Status", choices = c(""))
+        )
+      ),      
+      verbatimTextOutput("DelArchMessage")
+    ),
+    layout_sidebar(
+      sidebar = sidebar(
+        title = "Sample Archival & Deletion Workflows", 
+        position = "right",
+        open = FALSE,
+        border = FALSE,
+        tags$p("Select samples to get started. In all workflows, users will be asked to confirm that they have selected the correct samples."),
+        tags$h4("Sample Archival"),
+        tags$p("Select samples above that you wish to archive. This will remove samples from plates in the database so that they may be replaced with", tags$em("In Use"), "samples."),
+        actionButton("ArchiveAction", label = "Archive Samples", width = '100%'),
+        tags$h4("Sample Deletion"),
+        tags$p("Select samples above that you wish to delete. Samples that are", tags$em("deleted"), "are removed", tags$strong("permanently", style = "color: red"), ". Use caution when deleting samples - in most cases, archival should be used to retain sample history."),
+        actionButton("DeleteAction", label = "Delete Samples", width = '100%')
+      ),
+      card(
+        card_header("Search Results"),
+        border = FALSE,
+        full_screen = TRUE,
+        reactableOutput("DelArchSearchResultsTable"),
+        fluidRow(
+          column(
+            width = 6,
+            downloadButton("DelArchDownloadSearchData", "Download")
           )
         )
-      ),
-      verbatimTextOutput("DelArchMessage"),
-      # conditionalPanel(condition = "input.RenameStudyDescription == \"xxx\"",
-      #                  br(),
-      #                  HTML("Type \"Yes\" if you would like to archive these samples."),
-      #                  textInput("zzz", label = NULL),
-      #                  actionButton("yes1", label = "Enter"),
-      #                  verbatimTextOutput("yesout")),
-    ))
-
-  DBI::dbDisconnect(con)
-
-  return (ui)
+      )
+    )
+  )
+  return(ui)
 }
