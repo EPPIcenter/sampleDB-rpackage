@@ -1,753 +1,253 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/404.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/LICENSE-text.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/LICENSE.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/articles/Delete--Archive-Samples.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/articles/How-to-Move-Micronix-Samples.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/articles/How-to-Upload-Controls.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/articles/How-to-Upload-Extracted-Controls.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/articles/Preferences.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/articles/Searching-SampleDB.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/articles/Updating-References.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/articles/Uploading-Cryovial-Specimens.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/articles/Uploading-Micronix-Specimens.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/articles/Validation.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/articles/index.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/authors.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/index.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/ArchiveAndDeleteControls.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/ArchiveAndDeleteSamples.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/Backup_SampleDB.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/ColumnData.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/DeleteEmptyContainer.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/DeleteWholeBloodSamples.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/ErrorData.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/MoveContainers.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/MoveSamples.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/RenameContainers.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/Run_SampleDB.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/SampleDB_Setup.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/SearchByType.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/SearchControls.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/UpdateReferences.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/UploadSpecimens.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/ValidationErrorCollection.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/add_bags_if_not_exist.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/add_malaria_blood_controls_if_not_exist.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/add_new_blood_spot_collections.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/add_new_dbs_control_sheets.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/add_position_column.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/add_row_numbers.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/add_to_errors.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/append_boxes_if_not_exist.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/append_strains_to_db.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/append_study_to_db.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/append_whole_blood_tubes.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/bind_new_data.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/check_control_exists.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/check_cryovial_barcodes_exist.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/check_cryovial_box_exists.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/check_duplicated_rows.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/check_for_duplicates_in_a_row.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/check_longitudinal_study_dates.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/check_micronix_barcodes_exist.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/check_micronix_plate_exists.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/check_missing_data.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/check_strain_percentage_match.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/check_unique_positions.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/collapse_and_nest_columns.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/concat_position.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/convert_density_representations.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/convert_density_to_numeric.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/copy_database.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/copy_if_not_exists.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/create_control_label.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/create_controls_for_batch.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/create_flat_view_by_sample_type.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/create_flat_view_of_extractions.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/create_unique_id.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/create_unique_id_from_sorted.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/cryovial_na.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/denormalize_composition_ids.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/deploy_or_notify_existing_app.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/deploy_shiny_app.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/detect_missing_control_columns.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/detect_missing_reference_columns.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/detect_missing_specimen_columns.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/display_app_url.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/dot-Backup.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/dot-Compress.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/dot-Uncompress.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/dot-UpdateActiveControlCount.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/dot-UploadSpecimens.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/execute_sql.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/extract_search_criteria.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/finalize_upgrade.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/find_column_name.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/find_header.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/format_composition_types.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/format_error.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/format_labels.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/fuzzy_merge_unique_compositions.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/generate_upgrade_script_path.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/get_all_control_types.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/get_all_sample_types.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/get_batches.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/get_composition_types.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/get_container_by_sample.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/get_container_table_name.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/get_control_action_types.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/get_control_file_columns.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/get_control_types.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/get_db_version.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/get_densities.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/get_dereferenced_values.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/get_destination_container_by_control.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/get_destination_location_by_control.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/get_duplicated_rows.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/get_environ_file_path.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/get_expected_versions.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/get_file_types_for_control.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/get_file_types_for_sample.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/get_location_by_sample.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/get_matched_studies.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/get_normalized_path.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/get_package_path.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/get_percentages.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/get_position_column_by_sample.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/get_reference_file_columns.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/get_sample_action_types.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/get_sample_file_columns.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/get_sample_types.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/get_sample_types_by_action.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/get_storage_container_by_control.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/get_storage_location_by_control.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/get_strains.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/get_studies.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/get_unique_compositions_from_database.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/get_unique_compositions_from_user_data.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/get_values.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/handle_unknown_date_tokens.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/handle_upgrade_error.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/index.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/init_and_copy_to_db.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/init_db_conn.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/initialize_database_with_base_version.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/is_linux_platform.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/is_shiny_server_installed.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/is_system_installed.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/join_blood_spot_collections.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/join_composition_ids.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/join_dbs_control_sheets.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/join_locations_and_bags.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/join_locations_and_boxes.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/join_malaria_controls.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/lock_database.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/merge_configs.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/message_not_site_install.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/message_not_supported_platform.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/message_shiny_not_installed.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/micronix_na.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/normalize_composition_ids.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/perform_batch_db_validations.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/perform_composition_db_validations.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/perform_cryovial_db_validations.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/perform_dbs_sample_db_validations.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/perform_dbs_sheet_db_validations.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/perform_micronix_db_validations.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/perform_strain_db_validations.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/perform_whole_blood_db_validations.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/prepare_control_data_for_validation.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/prepare_control_for_upload.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/prepare_matrix_position_column.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/prepare_new_compositions.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/prepare_reference_data_for_validation.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/prepare_specimen_data_for_validation.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/print.ColumnData.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/process_and_append_compositions.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/process_bag_data.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/process_blood_spot_collection_data.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/process_control_csv.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/process_dbs_control_sheet_data.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/process_malaria_blood_control_data.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/process_reference_csv.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/process_specimen_csv.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/process_whole_blood_location_container.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/read_and_preprocess_csv.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/rejoin_box_ids.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/rejoin_dbs_control_sheet_ids.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/rejoin_malaria_controls.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/rejoin_to_get_bag_ids.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/remove_na_columns_in_row.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/reshape_identifier_to_long_form.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/retrieve_compositions_by_identifier.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/retrieve_compositions_by_label.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/safe_extract.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/search_by_study_subject_file_upload.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/search_compositions.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/search_micronix_tube.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/select_relevant_columns.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/set_header_row.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/set_user_file_header.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/setup_database.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/setup_directory.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/split_and_sort.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/split_and_unnest_columns.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/stop_app_error.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/stop_formatting_error.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/stop_validation_error.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/update_configuration_file.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/update_env_variable.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/upgrade_database.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/upload_compositions.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/upload_controls.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/upload_extracted_dna.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/validate_and_format_control_file.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/validate_and_format_reference_file.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/validate_and_format_specimen_file.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/validate_batch.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/validate_box_uniqueness.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/validate_composition.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/validate_composition_sum.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/validate_controls.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/validate_cryovial.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/validate_cryovial_collection_dates.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/validate_cryovial_moves.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/validate_cryovial_position.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/validate_cryovial_uploads.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/validate_date_format.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/validate_dates_with_tokens.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/validate_dbs_bag_label_is_unique.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/validate_dbs_sample.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/validate_dbs_sample_label_uniqueness.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/validate_dbs_sample_moves.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/validate_dbs_sample_uploads.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/validate_dbs_sheet.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/validate_dbs_sheet_create.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/validate_dbs_sheet_extraction.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/validate_empty_cryovial_well_upload.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/validate_empty_micronix_well_upload.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/validate_existing_barcodes_by_study.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/validate_extraction_counts_with_totals.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/validate_location_reference_db.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/validate_longitudinal_study.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/validate_matrix_container.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/validate_micronix.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/validate_micronix_barcode_length.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/validate_micronix_moves.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/validate_micronix_position.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/validate_micronix_uploads.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/validate_non_longitudinal_study_subjects.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/validate_references.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/validate_specimen_type_db.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/validate_specimens.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/validate_strain.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/validate_strains_in_database.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/validate_study_reference_db.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/validate_study_short_code.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/validate_whole_blood.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/validate_whole_blood_create.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/validate_whole_blood_extraction.html</loc>
-  </url>
-  <url>
-    <loc>https://eppicenter.github.io/sampleDB/reference/validate_whole_blood_tube_exists.html</loc>
-  </url>
+<urlset xmlns = 'http://www.sitemaps.org/schemas/sitemap/0.9'>
+<url><loc>https://eppicenter.github.io/sampleDB/404.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/LICENSE-text.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/LICENSE.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/articles/Delete--Archive-Samples.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/articles/How-to-Move-Micronix-Samples.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/articles/How-to-Upload-Controls.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/articles/How-to-Upload-Extracted-Controls.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/articles/Preferences.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/articles/Searching-SampleDB.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/articles/Updating-References.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/articles/Uploading-Cryovial-Specimens.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/articles/Uploading-Micronix-Specimens.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/articles/Validation.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/articles/index.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/authors.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/index.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/ArchiveAndDeleteControls.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/ArchiveAndDeleteSamples.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/Backup_SampleDB.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/ColumnData.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/DeleteEmptyContainer.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/DeleteWholeBloodSamples.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/ErrorData.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/MoveContainers.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/MoveSamples.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/RenameContainers.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/Run_SampleDB.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/SampleDB_Setup.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/SearchByType.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/SearchControls.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/UpdateReferences.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/UploadSpecimens.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/ValidationErrorCollection.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/add_bags_if_not_exist.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/add_malaria_blood_controls_if_not_exist.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/add_new_blood_spot_collections.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/add_new_dbs_control_sheets.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/add_position_column.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/add_row_numbers.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/add_to_errors.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/append_boxes_if_not_exist.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/append_strains_to_db.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/append_study_to_db.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/append_whole_blood_tubes.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/bind_new_data.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/check_control_exists.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/check_cryovial_barcodes_exist.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/check_cryovial_box_exists.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/check_duplicated_rows.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/check_for_duplicates_in_a_row.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/check_longitudinal_study_dates.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/check_micronix_barcodes_exist.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/check_micronix_plate_exists.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/check_missing_data.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/check_strain_percentage_match.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/check_unique_positions.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/collapse_and_nest_columns.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/concat_position.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/convert_density_representations.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/convert_density_to_numeric.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/copy_database.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/copy_if_not_exists.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/create_control_label.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/create_controls_for_batch.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/create_flat_view_by_sample_type.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/create_flat_view_of_extractions.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/create_unique_id.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/create_unique_id_from_sorted.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/cryovial_na.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/denormalize_composition_ids.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/deploy_or_notify_existing_app.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/deploy_shiny_app.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/detect_missing_control_columns.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/detect_missing_reference_columns.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/detect_missing_specimen_columns.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/display_app_url.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/dot-Backup.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/dot-Compress.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/dot-Uncompress.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/dot-UpdateActiveControlCount.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/dot-UploadSpecimens.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/execute_sql.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/extract_search_criteria.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/finalize_upgrade.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/find_column_name.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/find_header.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/format_composition_types.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/format_error.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/format_labels.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/fuzzy_merge_unique_compositions.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/generate_upgrade_script_path.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/get_all_control_types.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/get_all_sample_types.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/get_batches.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/get_composition_types.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/get_container_by_sample.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/get_container_table_name.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/get_control_action_types.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/get_control_file_columns.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/get_control_types.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/get_db_version.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/get_densities.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/get_dereferenced_values.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/get_destination_container_by_control.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/get_destination_location_by_control.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/get_duplicated_rows.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/get_environ_file_path.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/get_expected_versions.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/get_file_types_for_control.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/get_file_types_for_sample.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/get_location_by_sample.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/get_matched_studies.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/get_normalized_path.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/get_package_path.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/get_percentages.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/get_position_column_by_sample.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/get_reference_file_columns.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/get_sample_action_types.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/get_sample_file_columns.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/get_sample_types.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/get_sample_types_by_action.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/get_storage_container_by_control.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/get_storage_location_by_control.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/get_strains.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/get_studies.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/get_unique_compositions_from_database.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/get_unique_compositions_from_user_data.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/get_values.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/handle_unknown_date_tokens.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/handle_upgrade_error.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/index.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/init_and_copy_to_db.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/init_db_conn.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/initialize_database_with_base_version.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/is_linux_platform.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/is_shiny_server_installed.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/is_system_installed.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/join_blood_spot_collections.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/join_composition_ids.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/join_dbs_control_sheets.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/join_locations_and_bags.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/join_locations_and_boxes.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/join_malaria_controls.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/lock_database.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/merge_configs.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/message_not_site_install.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/message_not_supported_platform.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/message_shiny_not_installed.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/micronix_na.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/normalize_composition_ids.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/perform_batch_db_validations.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/perform_composition_db_validations.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/perform_cryovial_db_validations.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/perform_dbs_sample_db_validations.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/perform_dbs_sheet_db_validations.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/perform_micronix_db_validations.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/perform_strain_db_validations.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/perform_whole_blood_db_validations.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/prepare_control_data_for_validation.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/prepare_control_for_upload.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/prepare_matrix_position_column.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/prepare_new_compositions.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/prepare_reference_data_for_validation.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/prepare_specimen_data_for_validation.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/print.ColumnData.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/process_and_append_compositions.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/process_bag_data.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/process_blood_spot_collection_data.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/process_control_csv.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/process_dbs_control_sheet_data.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/process_malaria_blood_control_data.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/process_reference_csv.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/process_specimen_csv.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/process_whole_blood_location_container.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/read_and_preprocess_csv.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/rejoin_box_ids.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/rejoin_dbs_control_sheet_ids.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/rejoin_malaria_controls.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/rejoin_to_get_bag_ids.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/remove_na_columns_in_row.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/reshape_identifier_to_long_form.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/retrieve_compositions_by_identifier.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/retrieve_compositions_by_label.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/safe_extract.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/search_by_study_subject_file_upload.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/search_compositions.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/search_micronix_tube.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/select_relevant_columns.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/set_header_row.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/set_user_file_header.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/setup_database.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/setup_directory.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/split_and_sort.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/split_and_unnest_columns.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/stop_app_error.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/stop_formatting_error.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/stop_validation_error.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/update_configuration_file.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/update_env_variable.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/upgrade_database.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/upload_compositions.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/upload_controls.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/upload_extracted_dna.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/validate_and_format_control_file.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/validate_and_format_reference_file.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/validate_and_format_specimen_file.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/validate_batch.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/validate_box_uniqueness.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/validate_composition.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/validate_composition_sum.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/validate_controls.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/validate_cryovial.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/validate_cryovial_collection_dates.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/validate_cryovial_moves.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/validate_cryovial_position.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/validate_cryovial_uploads.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/validate_date_format.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/validate_dates_with_tokens.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/validate_dbs_bag_label_is_unique.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/validate_dbs_sample.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/validate_dbs_sample_label_uniqueness.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/validate_dbs_sample_moves.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/validate_dbs_sample_uploads.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/validate_dbs_sheet.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/validate_dbs_sheet_create.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/validate_dbs_sheet_extraction.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/validate_empty_cryovial_well_upload.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/validate_empty_micronix_well_upload.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/validate_existing_barcodes_by_study.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/validate_extraction_counts_with_totals.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/validate_location_reference_db.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/validate_longitudinal_study.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/validate_matrix_container.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/validate_micronix.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/validate_micronix_barcode_length.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/validate_micronix_moves.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/validate_micronix_position.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/validate_micronix_uploads.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/validate_non_longitudinal_study_subjects.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/validate_references.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/validate_specimen_type_db.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/validate_specimens.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/validate_strain.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/validate_strains_in_database.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/validate_study_reference_db.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/validate_study_short_code.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/validate_whole_blood.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/validate_whole_blood_create.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/validate_whole_blood_extraction.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/validate_whole_blood_tube_exists.html</loc></url>
 </urlset>
+
