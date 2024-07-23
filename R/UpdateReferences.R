@@ -109,12 +109,10 @@ UpdateReferences <- function(reference, operation, identifier = NULL, update = N
 
       return_message <- paste0("Modified Freezer:\n",
                                "\tPrevious Name: \"", tmp_table.location$location_root, "\"\n",
-                               "\tPrevious Type: \"", tmp_table.location$storage_type, "\"\n",
                                "\tPrevious Level I: \"", tmp_table.location$level_I, "\"\n",
                                "\tPrevious Level II: \"", tmp_table.location$level_II, "\"\n",
                                "New Freezer:\n",
                                "\tCurrent Name: \"", tmp_table2.location$location_root, "\"\n",
-                               "\tCurrent Type: \"", tmp_table2.location$storage_type, "\"\n",
                                "\tCurrent Level I: \"", tmp_table2.location$level_I, "\"\n",
                                "\tCurrent Level II: \"", tmp_table2.location$level_II, "\"")
     }
@@ -132,7 +130,6 @@ UpdateReferences <- function(reference, operation, identifier = NULL, update = N
       
       return_message <- paste0("Deleted Freezer:\n",
                                "\tName: \"",identifier$freezer_name, "\"\n",
-                               "\tType: \"", tmp_table.location$storage_type, "\"\n",
                                "\tLevel I: \"", tmp_table.location$level_I, "\"\n",
                                "\tLevel II: \"", tmp_table.location$level_II, "\"")
     }

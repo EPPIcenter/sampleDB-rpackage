@@ -251,9 +251,7 @@ SmartFreezerDropdownFilter <- function(database, session, input = input, locatio
     if(!is.null(input[[location_ui]]) && input[[location_ui]] != ""){
       tmp_table.location <- filter(CheckTable(database = database, "location"), location_root == input[[location_ui]])
       updateSelectInput(session, levelI_ui, label = NULL, choices = c("", tmp_table.location$level_I) %>% sort())
-      levelII_choices <- list(`working baskets` = grep("working", tmp_table.location$level_II, value = T) %>% sort(),
-                              `non-working baskets` = grep("working", tmp_table.location$level_II, value = T, invert = T) %>% sort())
-      updateSelectInput(session, levelII_ui, label = NULL, choices = c("", levelII_choices))
+      updateSelectInput(session, levelII_ui, label = NULL, choices = c("", tmp_table.location$level_II))
     }else{
       updateSelectInput(session, levelI_ui, label = NULL, choices = c(""))
       updateSelectInput(session, levelII_ui, label = NULL, choices = c(""))
@@ -410,7 +408,7 @@ CheckFreezerNameIsUnique <- function(input, database, freezer_address){
 }
 
 CheckFreezerDeletion <- function(input, database, freezer_address){
-  num_items_at_address <- 0
+  total <- 0
 
   freezer_address <- filter(CheckTable(database = database, "location"),
                             location_root == freezer_address$freezer_name,
@@ -418,9 +416,20 @@ CheckFreezerDeletion <- function(input, database, freezer_address){
                             level_II == freezer_address$freezer_levelII)
   if(length(freezer_address$id) > 0){
     items_at_address <- filter(CheckTable(database = database, "micronix_plate"), location_id == freezer_address$id)
+    cryovial_items <- filter(CheckTable(database = database, "cryovial_box"), location_id == freezer_address$id)
+    dbs_box_items <- filter(CheckTable(database = database, "box"), location_id == freezer_address$id)
+    dbs_bag_items <- filter(CheckTable(database = database, "bag"), location_id == freezer_address$id)
+    dbs_controls <- filter(CheckTable(database = database, "dbs_bag"), location_id == freezer_address$id)
     num_items_at_address <- items_at_address %>% nrow()
+    num_cryovial_items <- cryovial_items %>% nrow()
+    num_dbs_box_items <- dbs_box_items %>% nrow()
+    num_dbs_bag_items <- dbs_bag_items %>% nrow()
+    num_dbs_controls <- dbs_controls %>% nrow()
+
+    total <- sum(c(num_items_at_address, num_cryovial_items, num_dbs_box_items, num_dbs_bag_items, num_dbs_controls))
+    message(sprintf("Found %d containers in the specified location", total))
   }
-  if(num_items_at_address > 0){
+  if(total > 0){
     out <- FALSE
   }else{
     out <- TRUE

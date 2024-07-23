@@ -6,6 +6,9 @@ UpdateLabFreezers <- function(session, input, output, database){
   con <- init_db_conn(database)
   on.exit(dbDisconnect(con), add = TRUE)
   updateSelectInput(session, ui_elements$ui.input$AddFreezerType, choices = tbl(con, "storage_type") %>% pull(id, name = name))
+  updateSelectInput(session, "RenameFreezerType", choices = tbl(con, "storage_type") %>% pull(id, name = name))
+  updateSelectInput(session, ui_elements$ui.input$RenameFreezerName1, choices = c("", tbl(con, "location") %>% pull(location_root) %>% unique(.)))
+  updateSelectInput(session, ui_elements$ui.input$DeleteFreezerName, choices = c("", tbl(con, "location") %>% pull(location_root) %>% unique(.)))
 
   #check freezer update
   FreezerChangesChecks(input, database, output, ui_elements = ui_elements)
@@ -64,7 +67,7 @@ UpdateLabFreezers <- function(session, input, output, database){
       new.freezer_name <- input[[ui_elements$ui.input$RenameFreezerName2]]
       new.freezer_type <- input[[ui_elements$ui.input$RenameFreezerType]]
       new.freezer_levelI <- input[[ui_elements$ui.input$RenameFreezerLevelI2]]
-      new.freezer_levelII <- input[[ui_elements$ui.input$RenameFreezerLevelI2]]
+      new.freezer_levelII <- input[[ui_elements$ui.input$RenameFreezerLevelII2]]
 
       #set requirements
       SetFreezerChangeRequirements(input = input, database = database, ui_elements = ui_elements)
