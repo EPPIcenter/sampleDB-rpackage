@@ -88,8 +88,7 @@
 <h4 id="id_1-create-a-volume">1. Create a volume<a class="anchor" aria-label="anchor" href="#id_1-create-a-volume"></a>
 </h4>
 <p>You should first create a volume to contain the sampleDB database. Start by running the command below:</p>
-<div class="sourceCode" id="cb1"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="ex">docker</span> volume create sampledb_database</span>
-<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a><span class="ex">docker</span> volume create shinylogs</span></code></pre></div>
+<div class="sourceCode" id="cb1"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="ex">docker</span> volume create sampledb_database</span></code></pre></div>
 </div>
 <div class="section level4">
 <h4 id="id_2-create-the-image">2. Create the image<a class="anchor" aria-label="anchor" href="#id_2-create-the-image"></a>
@@ -100,20 +99,20 @@
 </h5>
 <p>A docker image for sampleDB can be pulled from <a href="https://hub.docker.com/repository/docker/eppicenter/sampledb/general" class="external-link">DockerHub</a>.</p>
 <p>To pull from DockerHub, run the command below:</p>
-<div class="sourceCode" id="cb2"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a><span class="ex">docker</span> pull eppicenter/sampledb:v2.2.0</span></code></pre></div>
+<div class="sourceCode" id="cb2"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a><span class="ex">docker</span> pull eppicenter/sampledb:v2.5.0</span></code></pre></div>
 </div>
 <div class="section level5">
 <h5 id="option-2-build-the-image">Option 2: Build the image<a class="anchor" aria-label="anchor" href="#option-2-build-the-image"></a>
 </h5>
 <p>You can build the image instead of pulling from DockerHub. To do so, run the following command:</p>
-<div class="sourceCode" id="cb3"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="ex">docker</span> build <span class="at">-t</span> eppicenter/sampledb:v2.2.0 .</span></code></pre></div>
+<div class="sourceCode" id="cb3"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="ex">docker</span> build <span class="at">-t</span> eppicenter/sampledb:v2.5.0 .</span></code></pre></div>
 </div>
 </div>
 <div class="section level4">
 <h4 id="id_3-create-your-container">3. Create your container<a class="anchor" aria-label="anchor" href="#id_3-create-your-container"></a>
 </h4>
 <p>This is the final step. The host <code>localhost</code> and port <code>8080</code> will be used to access the application within the container, and all volumes needed to run the container are passed in on the command line. Notice that the sampleDB database volume is also include in the list of volumes.</p>
-<div class="sourceCode" id="cb4"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a><span class="ex">docker</span> run <span class="at">-d</span> <span class="at">-p</span> 8080:3838 <span class="at">-v</span> /srv/shinyapps/:/srv/shiny-server <span class="at">-v</span> /srv/shinylog/:/var/log/shiny-server <span class="at">-v</span> sampledb_database:/usr/local/share/sampleDB <span class="at">--restart</span> unless-stopped <span class="at">--name</span> sampleDB eppicenter/sampledb:v2.2.0</span></code></pre></div>
+<div class="sourceCode" id="cb4"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a><span class="ex">docker</span> run <span class="at">-d</span> <span class="at">-p</span> 8080:3838 <span class="at">-v</span> sampledb_database:/usr/local/share/sampleDB <span class="at">--restart</span> unless-stopped <span class="at">--name</span> sampleDB eppicenter/sampledb:v2.5.0</span></code></pre></div>
 </div>
 <div class="section level4">
 <h4 id="id_4-access-sampledb">4. Access sampleDB<a class="anchor" aria-label="anchor" href="#id_4-access-sampledb"></a>
@@ -145,7 +144,7 @@
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">remotes</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span></span>
 <span>    <span class="st">"https://github.com/EPPIcenter/sampleDB-rpackage"</span>, </span>
-<span>    ref <span class="op">=</span> <span class="st">"v2.2.0"</span>,</span>
+<span>    ref <span class="op">=</span> <span class="st">"v2.5.0"</span>,</span>
 <span>    lib <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/libPaths.html" class="external-link">.libPaths</a></span><span class="op">(</span><span class="op">)</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 <p>To run an elevated R process, you can run <code>sudo R</code> in your terminal. You can also launch an elevated rstudio instance by opening a terminal and running <code>sudo rstudio</code>.</p>
@@ -157,7 +156,7 @@
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">remotes</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span></span>
 <span>    <span class="st">"https://github.com/EPPIcenter/sampleDB-rpackage"</span>, </span>
-<span>    ref <span class="op">=</span> <span class="st">"v2.2.0"</span></span>
+<span>    ref <span class="op">=</span> <span class="st">"v2.5.0"</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 </div>
 </div>
