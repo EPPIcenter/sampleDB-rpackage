@@ -6,13 +6,15 @@ SampleDB is a Management System for Wet Lab Samples.
 
 ## Installation
 
-SampleDB can be installed using Docker or from GitHub.
+SampleDB can be installed and upgraded using Docker or from GitHub. Please see the `Docker` and `GitHub` sections below to see how to install and upgrade from each source.
 
 ### Docker
 
+#### First Time Installation
+
 This is the preferred way to setup sampleDB because the docker image will come with all of the dependencies needed to run the application. Please follow the steps below to ensure setup is done correctly.
 
-#### 1. Create a volume
+##### 1. Create a volume
 
 You should first create a volume to contain the sampleDB database. Start by running the command below:
 
@@ -20,11 +22,11 @@ You should first create a volume to contain the sampleDB database. Start by runn
 docker volume create sampledb_database
 ```
 
-#### 2. Create the image
+##### 2. Create the image
 
 There are two ways to obtain a sampleDB image. You can either pull the image from DockerHub or you may build it locally. Instructions for both can be found below.
 
-##### Option 1: Pull from DockerHub
+###### Option 1: Pull from DockerHub
 
 A docker image for sampleDB can be pulled from [DockerHub](https://hub.docker.com/repository/docker/eppicenter/sampledb/general).
 
@@ -34,7 +36,7 @@ To pull from DockerHub, run the command below:
 docker pull eppicenter/sampledb:v2.5.0
 ```
 
-##### Option 2: Build the image
+###### Option 2: Build the image
 
 You can build the image instead of pulling from DockerHub. To do so, run the following command:
 
@@ -42,7 +44,7 @@ You can build the image instead of pulling from DockerHub. To do so, run the fol
 docker build -t eppicenter/sampledb:v2.5.0 .
 ```
 
-#### 3. Create your container
+##### 3. Create your container
 
 This is the final step. The host `localhost` and port `8080` will be used to access the application within the container, and all volumes needed to run the container are passed in on the command line. Notice that the sampleDB database volume is also include in the list of volumes.
 
@@ -50,11 +52,42 @@ This is the final step. The host `localhost` and port `8080` will be used to acc
 docker run -d -p 8080:3838 -v sampledb_database:/usr/local/share/sampleDB --restart unless-stopped --name sampleDB eppicenter/sampledb:v2.5.0
 ```
 
-#### 4. Access sampleDB 
+##### 4. Access sampleDB 
 
 You may now access sampleDB from your browser by navigating to `http://localhost:8080/sampleDB/`.
 
-### From GitHub
+#### Upgrading SampleDB
+
+Before performing the upgrade, it's important to create a backup of the database. If you do not have a backup plan already (you should!), you can easily copy the database from the container to your current directory using:
+
+```bash
+docker cp sampleDB:/usr/local/share/sampleDB/sampledb_database.sqlite .
+```
+
+Once done, you can type `ls` and you should see the database (`sampledb_database.sqlite`) in your directory. Store this file in a safe place. 
+
+To upgrade sampleDB, you should pull or build the image using either of the commands form `Option 2: Build the image`. Once done, you should stop the current container and optionally remove it like so.
+
+```bash
+docker stop sampleDB
+docker rm sampleDB # Optional, this will let you reuse the container name
+```
+
+This assumes that the container is called `sampleDB`. By removing the container, that will allow you to reuse the container name. The database is stored in the volume and is separate from the container, so it will not be impacted by removing the container.
+
+Once done, run the following command to create the container using the new sampleDB image.
+
+```bash
+docker run -d -p 8080:3838 -v sampledb_database:/usr/local/share/sampleDB --restart unless-stopped --name sampleDB eppicenter/sampledb:v2.5.0
+```
+
+> [!NOTE]
+>
+> You will possibly be prompted to upgrade your database. The upgrade is necessary in order to work with the application, and you will not be allowed to use the application without first upgrading the database.
+
+
+
+### GitHub
 
 Please take a second to review the below sections before installing the application.
 
@@ -97,7 +130,7 @@ remotes::install_github(
 )
 ```
 
-### Set Up and Upgrades
+#### Set Up and Upgrades
 
 To set up or upgrade sampleDB, run the command below. 
 
