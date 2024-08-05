@@ -79,49 +79,70 @@
 <div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
 </h2>
-<p>SampleDB can be installed using Docker or from GitHub.</p>
+<p>SampleDB can be installed and upgraded using Docker or from GitHub. Please see the <code>Docker</code> and <code>GitHub</code> sections below to see how to install and upgrade from each source.</p>
 <div class="section level3">
 <h3 id="docker">Docker<a class="anchor" aria-label="anchor" href="#docker"></a>
 </h3>
-<p>This is the preferred way to setup sampleDB because the docker image will come with all of the dependencies needed to run the application. Please follow the steps below to ensure setup is done correctly.</p>
 <div class="section level4">
-<h4 id="id_1-create-a-volume">1. Create a volume<a class="anchor" aria-label="anchor" href="#id_1-create-a-volume"></a>
+<h4 id="first-time-installation">First Time Installation<a class="anchor" aria-label="anchor" href="#first-time-installation"></a>
 </h4>
+<p>This is the preferred way to setup sampleDB because the docker image will come with all of the dependencies needed to run the application. Please follow the steps below to ensure setup is done correctly.</p>
+<div class="section level5">
+<h5 id="id_1-create-a-volume">1. Create a volume<a class="anchor" aria-label="anchor" href="#id_1-create-a-volume"></a>
+</h5>
 <p>You should first create a volume to contain the sampleDB database. Start by running the command below:</p>
 <div class="sourceCode" id="cb1"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="ex">docker</span> volume create sampledb_database</span></code></pre></div>
 </div>
-<div class="section level4">
-<h4 id="id_2-create-the-image">2. Create the image<a class="anchor" aria-label="anchor" href="#id_2-create-the-image"></a>
-</h4>
-<p>There are two ways to obtain a sampleDB image. You can either pull the image from DockerHub or you may build it locally. Instructions for both can be found below.</p>
 <div class="section level5">
-<h5 id="option-1-pull-from-dockerhub">Option 1: Pull from DockerHub<a class="anchor" aria-label="anchor" href="#option-1-pull-from-dockerhub"></a>
+<h5 id="id_2-create-the-image">2. Create the image<a class="anchor" aria-label="anchor" href="#id_2-create-the-image"></a>
 </h5>
+<p>There are two ways to obtain a sampleDB image. You can either pull the image from DockerHub or you may build it locally. Instructions for both can be found below.</p>
+<div class="section level6">
+<h6 id="option-1-pull-from-dockerhub">Option 1: Pull from DockerHub<a class="anchor" aria-label="anchor" href="#option-1-pull-from-dockerhub"></a>
+</h6>
 <p>A docker image for sampleDB can be pulled from <a href="https://hub.docker.com/repository/docker/eppicenter/sampledb/general" class="external-link">DockerHub</a>.</p>
 <p>To pull from DockerHub, run the command below:</p>
 <div class="sourceCode" id="cb2"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a><span class="ex">docker</span> pull eppicenter/sampledb:v2.5.0</span></code></pre></div>
 </div>
-<div class="section level5">
-<h5 id="option-2-build-the-image">Option 2: Build the image<a class="anchor" aria-label="anchor" href="#option-2-build-the-image"></a>
-</h5>
+<div class="section level6">
+<h6 id="option-2-build-the-image">Option 2: Build the image<a class="anchor" aria-label="anchor" href="#option-2-build-the-image"></a>
+</h6>
 <p>You can build the image instead of pulling from DockerHub. To do so, run the following command:</p>
 <div class="sourceCode" id="cb3"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="ex">docker</span> build <span class="at">-t</span> eppicenter/sampledb:v2.5.0 .</span></code></pre></div>
 </div>
 </div>
-<div class="section level4">
-<h4 id="id_3-create-your-container">3. Create your container<a class="anchor" aria-label="anchor" href="#id_3-create-your-container"></a>
-</h4>
+<div class="section level5">
+<h5 id="id_3-create-your-container">3. Create your container<a class="anchor" aria-label="anchor" href="#id_3-create-your-container"></a>
+</h5>
 <p>This is the final step. The host <code>localhost</code> and port <code>8080</code> will be used to access the application within the container, and all volumes needed to run the container are passed in on the command line. Notice that the sampleDB database volume is also include in the list of volumes.</p>
 <div class="sourceCode" id="cb4"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a><span class="ex">docker</span> run <span class="at">-d</span> <span class="at">-p</span> 8080:3838 <span class="at">-v</span> sampledb_database:/usr/local/share/sampleDB <span class="at">--restart</span> unless-stopped <span class="at">--name</span> sampleDB eppicenter/sampledb:v2.5.0</span></code></pre></div>
 </div>
-<div class="section level4">
-<h4 id="id_4-access-sampledb">4. Access sampleDB<a class="anchor" aria-label="anchor" href="#id_4-access-sampledb"></a>
-</h4>
+<div class="section level5">
+<h5 id="id_4-access-sampledb">4. Access sampleDB<a class="anchor" aria-label="anchor" href="#id_4-access-sampledb"></a>
+</h5>
 <p>You may now access sampleDB from your browser by navigating to <code>http://localhost:8080/sampleDB/</code>.</p>
 </div>
 </div>
+<div class="section level4">
+<h4 id="upgrading-sampledb">Upgrading SampleDB<a class="anchor" aria-label="anchor" href="#upgrading-sampledb"></a>
+</h4>
+<p>Before performing the upgrade, it’s important to create a backup of the database. If you do not have a backup plan already (you should!), you can easily copy the database from the container to your current directory using:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a><span class="ex">docker</span> cp sampleDB:/usr/local/share/sampleDB/sampledb_database.sqlite .</span></code></pre></div>
+<p>Once done, you can type <code>ls</code> and you should see the database (<code>sampledb_database.sqlite</code>) in your directory. Store this file in a safe place.</p>
+<p>To upgrade sampleDB, you should pull or build the image using either of the commands form <code>Option 2: Build the image</code>. Once done, you should stop the current container and optionally remove it like so.</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a><span class="ex">docker</span> stop sampleDB</span>
+<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a><span class="ex">docker</span> rm sampleDB <span class="co"># Optional, this will let you reuse the container name</span></span></code></pre></div>
+<p>This assumes that the container is called <code>sampleDB</code>. By removing the container, that will allow you to reuse the container name. The database is stored in the volume and is separate from the container, so it will not be impacted by removing the container.</p>
+<p>Once done, run the following command to create the container using the new sampleDB image.</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a><span class="ex">docker</span> run <span class="at">-d</span> <span class="at">-p</span> 8080:3838 <span class="at">-v</span> sampledb_database:/usr/local/share/sampleDB <span class="at">--restart</span> unless-stopped <span class="at">--name</span> sampleDB eppicenter/sampledb:v2.5.0</span></code></pre></div>
+<blockquote>
+<p>[!NOTE]</p>
+<p>You will possibly be prompted to upgrade your database. The upgrade is necessary in order to work with the application, and you will not be allowed to use the application without first upgrading the database.</p>
+</blockquote>
+</div>
+</div>
 <div class="section level3">
-<h3 id="from-github">From GitHub<a class="anchor" aria-label="anchor" href="#from-github"></a>
+<h3 id="github">GitHub<a class="anchor" aria-label="anchor" href="#github"></a>
 </h3>
 <p>Please take a second to review the below sections before installing the application.</p>
 <div class="section level4">
@@ -141,7 +162,7 @@
 <h5 id="site-install">Site Install<a class="anchor" aria-label="anchor" href="#site-install"></a>
 </h5>
 <p>To install sampleDB at the site level, you can run the command below using an R process with elevated privileges:</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">remotes</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span></span>
 <span>    <span class="st">"https://github.com/EPPIcenter/sampleDB-rpackage"</span>, </span>
 <span>    ref <span class="op">=</span> <span class="st">"v2.5.0"</span>,</span>
@@ -153,31 +174,31 @@
 <h5 id="local-install">Local Install<a class="anchor" aria-label="anchor" href="#local-install"></a>
 </h5>
 <p>For a local install, the below command is sufficient within a regular RStudio or terminal launch:</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">remotes</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span></span>
 <span>    <span class="st">"https://github.com/EPPIcenter/sampleDB-rpackage"</span>, </span>
 <span>    ref <span class="op">=</span> <span class="st">"v2.5.0"</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 </div>
 </div>
-</div>
-<div class="section level3">
-<h3 id="set-up-and-upgrades">Set Up and Upgrades<a class="anchor" aria-label="anchor" href="#set-up-and-upgrades"></a>
-</h3>
+<div class="section level4">
+<h4 id="set-up-and-upgrades">Set Up and Upgrades<a class="anchor" aria-label="anchor" href="#set-up-and-upgrades"></a>
+</h4>
 <p>To set up or upgrade sampleDB, run the command below.</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/SampleDB_Setup.html">SampleDB_Setup</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <p>As previously mentioned, there are a variety of ways to install the application. Below is example output from <code><a href="reference/SampleDB_Setup.html">SampleDB_Setup()</a></code> from a site install that does <strong>NOT</strong> have shiny server installed:</p>
-<div class="sourceCode" id="cb8"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a><span class="ex">──</span> Deploying sampleDB Environment ──────────────────────────────────────────────</span>
-<span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a><span class="ex">✔</span> Database location set <span class="pp">[</span><span class="ss">/usr/local/share/sampleDB/sampledb_database.sqlite</span><span class="pp">]</span></span>
-<span id="cb8-3"><a href="#cb8-3" tabindex="-1"></a><span class="ex">✔</span> Database installed <span class="pp">[</span><span class="ss">/usr/local/share/sampleDB/sampledb_database.sqlite</span><span class="pp">]</span></span>
-<span id="cb8-4"><a href="#cb8-4" tabindex="-1"></a><span class="ex">✔</span> Subdirectory installed <span class="pp">[</span><span class="ss">/usr/local/share/sampleDB/backups</span><span class="pp">]</span></span>
-<span id="cb8-5"><a href="#cb8-5" tabindex="-1"></a><span class="ex">✔</span> Subdirectory installed <span class="pp">[</span><span class="ss">/usr/local/share/sampleDB/upload_files</span><span class="pp">]</span></span>
-<span id="cb8-6"><a href="#cb8-6" tabindex="-1"></a><span class="ex">✔</span> Subdirectory installed <span class="pp">[</span><span class="ss">/usr/local/share/sampleDB/move_files</span><span class="pp">]</span></span>
-<span id="cb8-7"><a href="#cb8-7" tabindex="-1"></a><span class="ex">──</span> Deploying sampleDB Shiny Application ────────────────────────────────────────</span>
-<span id="cb8-8"><a href="#cb8-8" tabindex="-1"></a><span class="ex">✖</span> Shiny server is not installed.</span></code></pre></div>
+<div class="sourceCode" id="cb11"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb11-1"><a href="#cb11-1" tabindex="-1"></a><span class="ex">──</span> Deploying sampleDB Environment ──────────────────────────────────────────────</span>
+<span id="cb11-2"><a href="#cb11-2" tabindex="-1"></a><span class="ex">✔</span> Database location set <span class="pp">[</span><span class="ss">/usr/local/share/sampleDB/sampledb_database.sqlite</span><span class="pp">]</span></span>
+<span id="cb11-3"><a href="#cb11-3" tabindex="-1"></a><span class="ex">✔</span> Database installed <span class="pp">[</span><span class="ss">/usr/local/share/sampleDB/sampledb_database.sqlite</span><span class="pp">]</span></span>
+<span id="cb11-4"><a href="#cb11-4" tabindex="-1"></a><span class="ex">✔</span> Subdirectory installed <span class="pp">[</span><span class="ss">/usr/local/share/sampleDB/backups</span><span class="pp">]</span></span>
+<span id="cb11-5"><a href="#cb11-5" tabindex="-1"></a><span class="ex">✔</span> Subdirectory installed <span class="pp">[</span><span class="ss">/usr/local/share/sampleDB/upload_files</span><span class="pp">]</span></span>
+<span id="cb11-6"><a href="#cb11-6" tabindex="-1"></a><span class="ex">✔</span> Subdirectory installed <span class="pp">[</span><span class="ss">/usr/local/share/sampleDB/move_files</span><span class="pp">]</span></span>
+<span id="cb11-7"><a href="#cb11-7" tabindex="-1"></a><span class="ex">──</span> Deploying sampleDB Shiny Application ────────────────────────────────────────</span>
+<span id="cb11-8"><a href="#cb11-8" tabindex="-1"></a><span class="ex">✖</span> Shiny server is not installed.</span></code></pre></div>
 <p>The <code>✔</code> indicates successful installation of a directory or file, whereas <code>✖</code> indicates a process did not run sucessfully. You will only see <code>✖</code> if there is an issue linking the application to shiny server.</p>
 <p>Both setup processes will always run: <code>Deploying sampleDB Environment</code> runs first, followed by <code>Deploying sampleDB Shiny Application</code>. You will always see both processes during setup - there is currently no way to turn off the second process.</p>
+</div>
 </div>
 </div>
 <div class="section level2">
