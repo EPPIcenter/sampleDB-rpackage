@@ -17,14 +17,6 @@ RUN mkdir -p /usr/local/lib/R/etc/ \
 	/etc/xdg/sampleDB \
 	/tmp/sass-cache 
 
-# Change ownership to shiny user for necessary directories
-RUN chown -R shiny:shiny /srv/shiny-server \
-	&& chown -R shiny:shiny /usr/local/share/sampleDB \
-	&& chmod -R 777 /usr/local/share/sampleDB \
-	&& chown -R shiny:shiny /etc/xdg/sampleDB \
-	&& chown -R shiny:shiny /var/log/shiny-server \
-	&& chown -R shiny:shiny /tmp/sass-cache
-
 # Update R configurations
 RUN echo "options(repos = c(CRAN = 'https://cran.rstudio.com/'), download.file.method = 'libcurl', Ncpus = 4, sass.cache = '/tmp/sass-cache', shiny.port = 3838, shiny.host = '0.0.0.0')" \
     | tee /usr/local/lib/R/etc/Rprofile.site \
@@ -68,7 +60,7 @@ WORKDIR /build_zone
 RUN R -e 'remotes::install_local(upgrade="never")'
 RUN R -e 'library(sampleDB); SampleDB_Setup(env=TRUE, db=FALSE, server=FALSE)'
 WORKDIR /srv/shiny-server
-COPY --chown=shiny:shiny ./inst/sampleDB sampleDB
+COPY ./inst/sampleDB sampleDB
 
 # Remove the work directory now
 RUN rm -rf /build_zone
@@ -77,6 +69,5 @@ RUN rm -rf /build_zone
 ENV SHINY_LOG_STDERR=1
 
 # Run the Shiny app
-USER shiny
 EXPOSE 3838
 CMD ["/usr/bin/shiny-server"]
