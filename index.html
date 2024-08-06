@@ -102,20 +102,20 @@
 </h6>
 <p>A docker image for sampleDB can be pulled from <a href="https://hub.docker.com/repository/docker/eppicenter/sampledb/general" class="external-link">DockerHub</a>.</p>
 <p>To pull from DockerHub, run the command below:</p>
-<div class="sourceCode" id="cb2"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a><span class="ex">docker</span> pull eppicenter/sampledb:v2.5.0</span></code></pre></div>
+<div class="sourceCode" id="cb2"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a><span class="ex">docker</span> pull eppicenter/sampledb:v2.6.0</span></code></pre></div>
 </div>
 <div class="section level6">
 <h6 id="option-2-build-the-image">Option 2: Build the image<a class="anchor" aria-label="anchor" href="#option-2-build-the-image"></a>
 </h6>
 <p>You can build the image instead of pulling from DockerHub. To do so, run the following command:</p>
-<div class="sourceCode" id="cb3"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="ex">docker</span> build <span class="at">-t</span> eppicenter/sampledb:v2.5.0 .</span></code></pre></div>
+<div class="sourceCode" id="cb3"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="ex">docker</span> build <span class="at">-t</span> eppicenter/sampledb:v2.6.0 .</span></code></pre></div>
 </div>
 </div>
 <div class="section level5">
 <h5 id="id_3-create-your-container">3. Create your container<a class="anchor" aria-label="anchor" href="#id_3-create-your-container"></a>
 </h5>
 <p>This is the final step. The host <code>localhost</code> and port <code>8080</code> will be used to access the application within the container, and all volumes needed to run the container are passed in on the command line. Notice that the sampleDB database volume is also include in the list of volumes.</p>
-<div class="sourceCode" id="cb4"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a><span class="ex">docker</span> run <span class="at">-d</span> <span class="at">-p</span> 8080:3838 <span class="at">-v</span> sampledb_database:/usr/local/share/sampleDB <span class="at">--restart</span> unless-stopped <span class="at">--name</span> sampleDB eppicenter/sampledb:v2.5.0</span></code></pre></div>
+<div class="sourceCode" id="cb4"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a><span class="ex">docker</span> run <span class="at">-d</span> <span class="at">-p</span> 8080:3838 <span class="at">-v</span> sampledb_database:/usr/local/share/sampleDB <span class="at">--restart</span> unless-stopped <span class="at">--name</span> sampleDB eppicenter/sampledb:v2.6.0</span></code></pre></div>
 </div>
 <div class="section level5">
 <h5 id="id_4-access-sampledb">4. Access sampleDB<a class="anchor" aria-label="anchor" href="#id_4-access-sampledb"></a>
@@ -134,7 +134,7 @@
 <span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a><span class="ex">docker</span> rm sampleDB <span class="co"># Optional, this will let you reuse the container name</span></span></code></pre></div>
 <p>This assumes that the container is called <code>sampleDB</code>. By removing the container, that will allow you to reuse the container name. The database is stored in the volume and is separate from the container, so it will not be impacted by removing the container.</p>
 <p>Once done, run the following command to create the container using the new sampleDB image.</p>
-<div class="sourceCode" id="cb7"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a><span class="ex">docker</span> run <span class="at">-d</span> <span class="at">-p</span> 8080:3838 <span class="at">-v</span> sampledb_database:/usr/local/share/sampleDB <span class="at">--restart</span> unless-stopped <span class="at">--name</span> sampleDB eppicenter/sampledb:v2.5.0</span></code></pre></div>
+<div class="sourceCode" id="cb7"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a><span class="ex">docker</span> run <span class="at">-d</span> <span class="at">-p</span> 8080:3838 <span class="at">-v</span> sampledb_database:/usr/local/share/sampleDB <span class="at">--restart</span> unless-stopped <span class="at">--name</span> sampleDB eppicenter/sampledb:v2.6.0</span></code></pre></div>
 <blockquote>
 <p>[!NOTE]</p>
 <p>You will possibly be prompted to upgrade your database. The upgrade is necessary in order to work with the application, and you will not be allowed to use the application without first upgrading the database.</p>
@@ -165,7 +165,7 @@
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">remotes</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span></span>
 <span>    <span class="st">"https://github.com/EPPIcenter/sampleDB-rpackage"</span>, </span>
-<span>    ref <span class="op">=</span> <span class="st">"v2.5.0"</span>,</span>
+<span>    ref <span class="op">=</span> <span class="st">"v2.6.0"</span>,</span>
 <span>    lib <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/libPaths.html" class="external-link">.libPaths</a></span><span class="op">(</span><span class="op">)</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 <p>To run an elevated R process, you can run <code>sudo R</code> in your terminal. You can also launch an elevated rstudio instance by opening a terminal and running <code>sudo rstudio</code>.</p>
@@ -177,7 +177,7 @@
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">remotes</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span></span>
 <span>    <span class="st">"https://github.com/EPPIcenter/sampleDB-rpackage"</span>, </span>
-<span>    ref <span class="op">=</span> <span class="st">"v2.5.0"</span></span>
+<span>    ref <span class="op">=</span> <span class="st">"v2.6.0"</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 </div>
 </div>
