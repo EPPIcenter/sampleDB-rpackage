@@ -33,7 +33,7 @@ A docker image for sampleDB can be pulled from [DockerHub](https://hub.docker.co
 To pull from DockerHub, run the command below:
 
 ```bash
-docker pull eppicenter/sampledb:v2.5.0
+docker pull eppicenter/sampledb:v2.6.0
 ```
 
 ###### Option 2: Build the image
@@ -41,7 +41,7 @@ docker pull eppicenter/sampledb:v2.5.0
 You can build the image instead of pulling from DockerHub. To do so, run the following command:
 
 ```bash
-docker build -t eppicenter/sampledb:v2.5.0 .
+docker build -t eppicenter/sampledb:v2.6.0 .
 ```
 
 ##### 3. Create your container
@@ -49,7 +49,7 @@ docker build -t eppicenter/sampledb:v2.5.0 .
 This is the final step. The host `localhost` and port `8080` will be used to access the application within the container, and all volumes needed to run the container are passed in on the command line. Notice that the sampleDB database volume is also include in the list of volumes.
 
 ```bash
-docker run -d -p 8080:3838 -v sampledb_database:/usr/local/share/sampleDB --restart unless-stopped --name sampleDB eppicenter/sampledb:v2.5.0
+docker run -d -p 8080:3838 -v sampledb_database:/usr/local/share/sampleDB --restart unless-stopped --name sampleDB eppicenter/sampledb:v2.6.0
 ```
 
 ##### 4. Access sampleDB 
@@ -78,7 +78,7 @@ This assumes that the container is called `sampleDB`. By removing the container,
 Once done, run the following command to create the container using the new sampleDB image.
 
 ```bash
-docker run -d -p 8080:3838 -v sampledb_database:/usr/local/share/sampleDB --restart unless-stopped --name sampleDB eppicenter/sampledb:v2.5.0
+docker run -d -p 8080:3838 -v sampledb_database:/usr/local/share/sampleDB --restart unless-stopped --name sampleDB eppicenter/sampledb:v2.6.0
 ```
 
 > [!NOTE]
@@ -112,7 +112,7 @@ To install sampleDB at the site level, you can run the command below using an R 
 ```R
 remotes::install_github(
     "https://github.com/EPPIcenter/sampleDB-rpackage", 
-    ref = "v2.5.0",
+    ref = "v2.6.0",
     lib = .libPaths()[1]
 )
 ```
@@ -126,7 +126,7 @@ For a local install, the below command is sufficient within a regular RStudio or
 ```R
 remotes::install_github(
     "https://github.com/EPPIcenter/sampleDB-rpackage", 
-    ref = "v2.5.0"
+    ref = "v2.6.0"
 )
 ```
 
