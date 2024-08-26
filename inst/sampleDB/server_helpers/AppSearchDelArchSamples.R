@@ -1174,8 +1174,6 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
 
   observeEvent(input$download_qpcr, ignoreInit = TRUE, {
 
-    browser()
-
     message(sprintf("Starting qPCR template download process..."))
     showNotification("Fetching data for qPCR template...", id = "qPCRNotification", type = "message", duration = 5, closeButton = FALSE)
 
@@ -1207,17 +1205,32 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
       # Show modal with missing wells information
       showModal(modalDialog(
         title = "Missing Wells Detected",
-        paste("The following wells are missing:", paste(missing_wells, collapse = ", ")),
+        paste("The following wells are missing samples:", paste(missing_wells, collapse = ", ")),
+        paste("Is this okay?"),
         easyClose = TRUE,
-        footer = modalButton("OK")
+        footer = tagList(
+          actionButton("qpcr_check_conflicts", "Yes, continue!"),
+          modalButton("qpcr_exit")
+        )
       ))
-      return(NULL)
+    } else {
+      check_conflicts(user.selected.rows, standard_values(), output)
     }
+  })
+
+  observeEvent(input$qpcr_check_conflicts, {
+    # Assuming `filtered_data` is a reactive expression returning the filtered data
+    user.filtered.rows <- filtered_data()
+    user.selected.rows <- if (length(selected() > 0)) user.filtered.rows[selected(), ] else user.filtered.rows
     
+    check_conflicts(user.selected.rows, standard_values(), output)
+  })
+
+  check_conflicts <- function(user_selected_rows, standard_values_data, output) {
     # Check for conflicts between user data and standard wells
-    conflicts <- intersect(user.selected.rows$Position, standard_values()$Position)
+    conflicts <- intersect(user_selected_rows$Position, standard_values_data$Position)
     conflict_wells(conflicts)  # Store conflicts in reactive value
-    
+
     if (length(conflicts) > 0) {
       # Show modal to resolve conflicts
       showModal(modalDialog(
@@ -1233,12 +1246,12 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
       ))
     } else {
       # No conflicts, proceed to combine data
-      combine_data(user.selected.rows, standard_values(), output)
+      final_data <- combine_data(user_selected_rows, standard_values_data, output)
+      store_final_data(user_selected_rows, final_data)
     }
-  })
+  }
 
   observeEvent(input$keep_user_data, {
-    browser()
     # Assuming `filtered_data` is a reactive expression returning the filtered data
     user.filtered.rows <- filtered_data()
     user.selected.rows <- if (length(selected() > 0)) user.filtered.rows[selected(), ] else user.filtered.rows
@@ -1262,7 +1275,6 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
   })
 
   observeEvent(input$keep_standard_data, {
-    browser()
     # Assuming `filtered_data` is a reactive expression returning the filtered data
     user.filtered.rows <- filtered_data()
     user.selected.rows <- if (length(selected() > 0)) user.filtered.rows[selected(), ] else user.filtered.rows
