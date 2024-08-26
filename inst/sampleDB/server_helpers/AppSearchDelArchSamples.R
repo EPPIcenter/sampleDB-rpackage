@@ -1160,11 +1160,9 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
   # Define standard values globally or inside a reactive expression
   standard_values <- reactive({
     data.frame(
-      Position = c("A01", "B01", "C01", "D01", "E01", "F01", "G01", "H01",
-                   "A02", "B02", "C02", "D02", "E02", "F02", "G02", "H02",
-                   "A03", "B03", "C03", "E12"),
-      Barcode = c("10000", "10000", "10000", "1000", "1000", "1000", "100", "100",
-                  "100", "10", "10", "10", "1", "1", "1", "0.1", "0.1", "0.1", "0", "NTC")
+      Position = c(paste0(rep(LETTERS[1:8], each = 2), sprintf("%02d", rep(11:12, times = 8)))), # Last two columns of 96-well plate
+      Barcode = c("10000", "10000", "1000", "1000", "100", "100",
+                  "10", "10", "1", "1", "0.1", "0.1", "0", "0", "NTC", "NTC")
     )
   })
 
@@ -1265,7 +1263,6 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
     filtered_standard_values <- standard_values_data[!standard_values_data$Position %in% conflict_wells(), ]
     removeModal() # Close the conflict resolution modal
     final_data <- combine_data(user.selected.rows.qpcr, filtered_standard_values, output)
-    print(final_data)
     qpcr_final_data(
       list(
         PlateName = unique(user.selected.rows$`Plate Name`),
@@ -1288,8 +1285,6 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
     filtered_user_qpcr_data <- user.selected.rows.qpcr[!user.selected.rows.qpcr$Position %in% conflict_wells(), ]
     removeModal() # Close the conflict resolution modal
     final_data <- combine_data(filtered_user_qpcr_data, standard_values_data, output)
-    print(final_data)
-    print(final_data)
     qpcr_final_data(
       list(
         PlateName = unique(user.selected.rows$`Plate Name`),
@@ -1747,6 +1742,15 @@ CreateNumericInputScrollableTable <- function(data, max_value_column = NULL, def
   return(scrollable_table)
 }
 
+store_final_data <- function(user_selected_rows, final_data) {
+  qpcr_final_data(
+    list(
+      PlateName = unique(user_selected_rows$`Plate Name`),
+      FinalData = final_data
+    )
+  )
+}
+
 combine_data <- function(user_data, standard_values, output) {
   # Remove any existing data at standard positions in user data
   user_data_clean <- user_data %>%
@@ -1755,6 +1759,19 @@ combine_data <- function(user_data, standard_values, output) {
   # Combine standard values and cleaned user data
   final_data <- bind_rows(standard_values, user_data_clean) %>%
     arrange(Position)
+  
+  # Add "Blank" to Barcode for any empty positions
+  all_positions <- paste0(rep(LETTERS[1:8], each = 12), sprintf("%02d", rep(1:12, times = 8)))
+  missing_positions <- setdiff(all_positions, final_data$Position)
+  
+  if (length(missing_positions) > 0) {
+    blanks <- data.frame(
+      Position = missing_positions,
+      Barcode = "Blank"
+    )
+    final_data <- bind_rows(final_data, blanks) %>%
+      arrange(Position)
+  }
   
   # Generate layout for display and show in a modal
   showModal(modalDialog(
@@ -1771,8 +1788,7 @@ combine_data <- function(user_data, standard_values, output) {
   
   # Show success notification
   showNotification("qPCR data prepared successfully.", type = "message")
-
-  return (final_data)
+  return(final_data)
 }
 
 generate_layout <- function(data, output) {
@@ -1785,7 +1801,7 @@ generate_layout <- function(data, output) {
     row <- substr(pos, 1, 1)
     col <- substr(pos, 2, 3)
     layout_matrix[row, col] <- paste(
-      data$Barcode[i],  # Use Barcode instead of LabID
+      data$Barcode[i],  # Use Barcode
       data$`Sample Name`[i],
       data$`Biological Group`[i],
       sep = "\n"
