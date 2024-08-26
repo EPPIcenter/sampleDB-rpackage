@@ -106,6 +106,36 @@ UISearchDelArchSamples <- function() {
         tags$p("Select samples above that you wish to delete. Samples that are", tags$em("deleted"), "are removed", tags$strong("permanently", style = "color: red"), ". Use caution when deleting samples - in most cases, archival should be used to retain sample history."),
         actionButton("DeleteAction", label = "Delete Samples", width = '100%')
       ),
+      tags$style(HTML("
+        .btn-group {
+          display: inline-flex;
+          align-items: center;
+          position: relative;
+        }
+        .btn-group > .btn {
+          margin-right: -4px; /* Overlap the buttons slightly */
+          border-radius: 0; /* Remove border-radius */
+          border: none; /* Remove border */
+          box-shadow: none; /* Remove any box shadow */
+        }
+        .btn-group > .btn:first-child {
+          border-top-left-radius: 4px;
+          border-bottom-left-radius: 4px;
+        }
+        .btn-group > .btn:last-child {
+          border-top-right-radius: 4px;
+          border-bottom-right-radius: 4px;
+          padding-left: 8px;
+          padding-right: 8px;
+        }
+        .dropdown-menu {
+          min-width: 100px;
+          left: 0; /* Align the dropdown with the button */
+          top: 100%; /* Position it below the button */
+          margin-top: 0.25rem; /* Small margin between button and dropdown */
+        }
+      ")),
+      
       card(
         card_header("Search Results"),
         border = FALSE,
@@ -114,7 +144,20 @@ UISearchDelArchSamples <- function() {
         fluidRow(
           column(
             width = 6,
-            downloadButton("DelArchDownloadSearchData", "Download")
+            div(
+              class = "btn-group",
+              downloadButton("DelArchDownloadSearchData", "Download", class = "btn btn-primary"),
+              tags$button(
+                class = "btn btn-primary dropdown-toggle",
+                type = "button",
+                `data-bs-toggle` = "dropdown",
+                `aria-expanded` = "false"
+              ),
+              tags$ul(
+                class = "dropdown-menu",
+                tags$li(actionButton("download_qpcr", "Download qPCR Format", class = "dropdown-item"))
+              )
+            )
           )
         )
       )

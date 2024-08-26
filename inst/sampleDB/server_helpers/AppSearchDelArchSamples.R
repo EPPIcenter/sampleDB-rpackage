@@ -1145,6 +1145,147 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
     )
   })
 
+  observe({
+    output$download_qpcr_csv <- downloadHandler(
+      filename = function() {
+        plate_name <- qpcr_final_data()$PlateName
+        paste0("qPCR_", plate_name, "_", Sys.Date(), ".csv")
+      },
+      content = function(file) {
+        write.csv(qpcr_final_data()$FinalData, file, row.names = FALSE)
+      }
+    )
+  })
+
+  # Define standard values globally or inside a reactive expression
+  standard_values <- reactive({
+    data.frame(
+      Position = c("A01", "B01", "C01", "D01", "E01", "F01", "G01", "H01",
+                   "A02", "B02", "C02", "D02", "E02", "F02", "G02", "H02",
+                   "A03", "B03", "C03", "E12"),
+      Barcode = c("10000", "10000", "10000", "1000", "1000", "1000", "100", "100",
+                  "100", "10", "10", "10", "1", "1", "1", "0.1", "0.1", "0.1", "0", "NTC")
+    )
+  })
+
+  # Reactive expression to calculate conflict wells
+  conflict_wells <- reactiveVal()
+  qpcr_final_data <- reactiveVal()
+
+  observeEvent(input$download_qpcr, ignoreInit = TRUE, {
+
+    browser()
+
+    message(sprintf("Starting qPCR template download process..."))
+    showNotification("Fetching data for qPCR template...", id = "qPCRNotification", type = "message", duration = 5, closeButton = FALSE)
+
+    # Assuming `filtered_data` is a reactive expression returning the filtered data
+    user.filtered.rows <- filtered_data()
+    user.selected.rows <- if (length(selected() > 0)) user.filtered.rows[selected(), ] else user.filtered.rows
+
+    # Group by platename and check for samples in wells A1-E10
+    unique_plates <- unique(user.selected.rows$`Plate Name`)
+    num_unique_plates <- length(unique_plates)
+
+    # If we have more than one plate selected, raise an error
+    if (num_unique_plates > 1) {
+      showModal(modalDialog(
+        title = "Too many plates selected!",
+        sprintf("Only one plate is allowed at a time! There were %d plates found in the search table.", num_unique_plates),
+        easyClose = TRUE,
+        footer = modalButton("OK")
+      ))
+      return(NULL)
+    }
+
+    # Check for missing wells in user data (modify as per your criteria)
+    required_wells <- paste0(rep(LETTERS[1:8], each = 10), sprintf("%02d", rep(1:10, times = 8)))
+    user_wells <- unique(user.selected.rows$Position)
+    missing_wells <- setdiff(required_wells, user_wells)
+    
+    if (length(missing_wells) > 0) {
+      # Show modal with missing wells information
+      showModal(modalDialog(
+        title = "Missing Wells Detected",
+        paste("The following wells are missing:", paste(missing_wells, collapse = ", ")),
+        easyClose = TRUE,
+        footer = modalButton("OK")
+      ))
+      return(NULL)
+    }
+    
+    # Check for conflicts between user data and standard wells
+    conflicts <- intersect(user.selected.rows$Position, standard_values()$Position)
+    conflict_wells(conflicts)  # Store conflicts in reactive value
+    
+    if (length(conflicts) > 0) {
+      # Show modal to resolve conflicts
+      showModal(modalDialog(
+        title = "Conflict Detected",
+        paste("The following wells conflict with standard wells:", paste(conflicts, collapse = ", ")),
+        "Choose how to resolve the conflict:",
+        easyClose = TRUE,
+        footer = tagList(
+          actionButton("keep_user_data", "Keep User Data"),
+          actionButton("keep_standard_data", "Keep Standard Data"),
+          modalButton("Cancel")
+        )
+      ))
+    } else {
+      # No conflicts, proceed to combine data
+      combine_data(user.selected.rows, standard_values(), output)
+    }
+  })
+
+  observeEvent(input$keep_user_data, {
+    browser()
+    # Assuming `filtered_data` is a reactive expression returning the filtered data
+    user.filtered.rows <- filtered_data()
+    user.selected.rows <- if (length(selected() > 0)) user.filtered.rows[selected(), ] else user.filtered.rows
+    user.selected.rows.qpcr <- user.selected.rows %>%
+      select(Barcode, Position)
+
+    # Access the standard_values through the reactive expression
+    standard_values_data <- standard_values()
+    
+    # Keep user data where conflicts exist
+    filtered_standard_values <- standard_values_data[!standard_values_data$Position %in% conflict_wells(), ]
+    removeModal() # Close the conflict resolution modal
+    final_data <- combine_data(user.selected.rows.qpcr, filtered_standard_values, output)
+    print(final_data)
+    qpcr_final_data(
+      list(
+        PlateName = unique(user.selected.rows$`Plate Name`),
+        FinalData = final_data
+      )
+    )
+  })
+
+  observeEvent(input$keep_standard_data, {
+    browser()
+    # Assuming `filtered_data` is a reactive expression returning the filtered data
+    user.filtered.rows <- filtered_data()
+    user.selected.rows <- if (length(selected() > 0)) user.filtered.rows[selected(), ] else user.filtered.rows
+    user.selected.rows.qpcr <- user.selected.rows %>%
+      select(Barcode, Position)
+
+    # Access the standard_values through the reactive expression
+    standard_values_data <- standard_values()
+    
+    # Keep standard data where conflicts exist
+    filtered_user_qpcr_data <- user.selected.rows.qpcr[!user.selected.rows.qpcr$Position %in% conflict_wells(), ]
+    removeModal() # Close the conflict resolution modal
+    final_data <- combine_data(filtered_user_qpcr_data, standard_values_data, output)
+    print(final_data)
+    print(final_data)
+    qpcr_final_data(
+      list(
+        PlateName = unique(user.selected.rows$`Plate Name`),
+        FinalData = final_data
+      )
+    )
+  })
+
   observeEvent(input$DelArchAdvancedSearchLink, {
     showModal(modalDialog(
       title = "Advanced Micronix Tube Search",
@@ -1209,8 +1350,6 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
         server = TRUE
       )
     }
-
-    
 
     dbDisconnect(con)
   })
@@ -1596,3 +1735,84 @@ CreateNumericInputScrollableTable <- function(data, max_value_column = NULL, def
   return(scrollable_table)
 }
 
+combine_data <- function(user_data, standard_values, output) {
+  # Remove any existing data at standard positions in user data
+  user_data_clean <- user_data %>%
+    filter(!Position %in% standard_values$Position)
+  
+  # Combine standard values and cleaned user data
+  final_data <- bind_rows(standard_values, user_data_clean) %>%
+    arrange(Position)
+  
+  # Generate layout for display and show in a modal
+  showModal(modalDialog(
+    title = "qPCR Plate Layout",
+    size = "l", # Large modal size
+    reactableOutput("qpcr_layout_table"),
+    footer = tagList(
+      downloadButton("download_qpcr_csv", "Download qPCR CSV"),
+      modalButton("Close")
+    )
+  ))
+  
+  generate_layout(final_data, output)
+  
+  # Show success notification
+  showNotification("qPCR data prepared successfully.", type = "message")
+
+  return (final_data)
+}
+
+generate_layout <- function(data, output) {
+  # Create empty matrix for 8 rows (A-H) and 12 columns (1-12)
+  layout_matrix <- matrix(NA, nrow = 8, ncol = 12, dimnames = list(LETTERS[1:8], sprintf("%02d", 1:12)))
+  
+  # Populate matrix with data
+  for (i in seq_len(nrow(data))) {
+    pos <- data$Position[i]
+    row <- substr(pos, 1, 1)
+    col <- substr(pos, 2, 3)
+    layout_matrix[row, col] <- paste(
+      data$Barcode[i],  # Use Barcode instead of LabID
+      data$`Sample Name`[i],
+      data$`Biological Group`[i],
+      sep = "\n"
+    )
+  }
+  
+  # Convert matrix to data frame for reactable
+  layout_df <- as.data.frame(layout_matrix, stringsAsFactors = FALSE)
+  layout_df <- cbind(Row = rownames(layout_df), layout_df)
+  
+  # Render reactable
+  output$qpcr_layout_table <- renderReactable({
+    reactable(
+      layout_df,
+      columns = list(
+        Row = colDef(name = "Row", align = "center", headerStyle = list(fontWeight = "bold")),
+        `01` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold")),
+        `02` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold")),
+        `03` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold")),
+        `04` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold")),
+        `05` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold")),
+        `06` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold")),
+        `07` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold")),
+        `08` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold")),
+        `09` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold")),
+        `10` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold")),
+        `11` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold")),
+        `12` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold"))
+      ),
+      bordered = TRUE,
+      highlight = TRUE,
+      defaultPageSize = 8,
+      sortable = FALSE,
+      pagination = FALSE,
+      striped = TRUE,
+      theme = reactableTheme(
+        headerStyle = list(backgroundColor = "#f7f7f7"),
+        cellStyle = list(whiteSpace = "pre-wrap")
+      )
+    )
+  })
+}
