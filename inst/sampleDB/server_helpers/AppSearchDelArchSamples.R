@@ -1773,10 +1773,16 @@ combine_data <- function(user_data, standard_values, output) {
       arrange(Position)
   }
   
-  # Generate layout for display and show in a modal
+  # Generate layout for display and show in a modal with a horizontal legend
   showModal(modalDialog(
     title = "qPCR Plate Layout",
     size = "l", # Large modal size
+    div(
+      style = "display: flex; margin-bottom: 10px;",
+      tags$div(tags$span(style = "background-color: #f5f5f5; padding: 5px 15px; margin-right: 10px;", "Blank")),
+      tags$div(tags$span(style = "background-color: #fff9c4; padding: 5px 15px; margin-right: 10px;", "Samples")),
+      tags$div(tags$span(style = "background-color: #c8e6c9; padding: 5px 15px;", "Standards"))
+    ),
     reactableOutput("qpcr_layout_table"),
     footer = tagList(
       downloadButton("download_qpcr_csv", "Download qPCR CSV"),
@@ -1803,33 +1809,41 @@ generate_layout <- function(data, output) {
     layout_matrix[row, col] <- paste(
       data$Barcode[i],  # Use Barcode
       data$`Sample Name`[i],
-      data$`Biological Group`[i],
-      sep = "\n"
+      data$`Biological Group`[i]
     )
   }
   
   # Convert matrix to data frame for reactable
   layout_df <- as.data.frame(layout_matrix, stringsAsFactors = FALSE)
-  layout_df <- cbind(Row = rownames(layout_df), layout_df)
   
-  # Render reactable
+  # Define a function to set cell background color based on content
+  cell_color <- function(value) {
+    if (grepl("Blank", value)) {
+      return("#f5f5f5")  # Grey for Blanks
+    } else if (grepl("[0-9]{10}", value)) {  # Match exactly 10-digit integers
+      return("#fff9c4")  # Light yellow for Samples
+    } else {
+      return("#c8e6c9")  # Light green for Standards
+    }
+  }
+  
+  # Render reactable with cell shading based on content
   output$qpcr_layout_table <- renderReactable({
     reactable(
       layout_df,
       columns = list(
-        Row = colDef(name = "Row", align = "center", headerStyle = list(fontWeight = "bold")),
-        `01` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold")),
-        `02` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold")),
-        `03` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold")),
-        `04` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold")),
-        `05` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold")),
-        `06` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold")),
-        `07` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold")),
-        `08` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold")),
-        `09` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold")),
-        `10` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold")),
-        `11` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold")),
-        `12` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold"))
+        `01` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold"), style = function(value) list(background = cell_color(value))),
+        `02` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold"), style = function(value) list(background = cell_color(value))),
+        `03` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold"), style = function(value) list(background = cell_color(value))),
+        `04` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold"), style = function(value) list(background = cell_color(value))),
+        `05` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold"), style = function(value) list(background = cell_color(value))),
+        `06` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold"), style = function(value) list(background = cell_color(value))),
+        `07` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold"), style = function(value) list(background = cell_color(value))),
+        `08` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold"), style = function(value) list(background = cell_color(value))),
+        `09` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold"), style = function(value) list(background = cell_color(value))),
+        `10` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold"), style = function(value) list(background = cell_color(value))),
+        `11` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold"), style = function(value) list(background = cell_color(value))),
+        `12` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold"), style = function(value) list(background = cell_color(value)))
       ),
       bordered = TRUE,
       highlight = TRUE,
