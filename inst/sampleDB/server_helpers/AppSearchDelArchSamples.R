@@ -1169,9 +1169,9 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
   # Reactive expression to calculate conflict wells
   conflict_wells <- reactiveVal()
   qpcr_final_data <- reactiveVal()
+  linked_samples <- reactiveVal(NULL)
 
   observeEvent(input$download_qpcr, ignoreInit = TRUE, {
-
     message(sprintf("Starting qPCR template download process..."))
     showNotification("Fetching data for qPCR template...", id = "qPCRNotification", type = "message", duration = 5, closeButton = FALSE)
 
@@ -1217,7 +1217,6 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
   })
 
   observeEvent(input$qpcr_check_conflicts, {
-    # Assuming `filtered_data` is a reactive expression returning the filtered data
     user.filtered.rows <- filtered_data()
     user.selected.rows <- if (length(selected() > 0)) user.filtered.rows[selected(), ] else user.filtered.rows
     
@@ -1225,15 +1224,38 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
   })
 
   check_conflicts <- function(user_selected_rows, standard_values_data, output) {
-    # Check for conflicts between user data and standard wells
-    conflicts <- intersect(user_selected_rows$Position, standard_values_data$Position)
-    conflict_wells(conflicts)  # Store conflicts in reactive value
+    con <- init_and_copy_to_db(database, user_selected_rows)
+    on.exit(dbDisconnect(con), add = TRUE)
 
-    if (length(conflicts) > 0) {
+    # Database table setup
+    specimen_tbl <- con %>% tbl("specimen") %>% dplyr::rename(specimen_id = id)
+    study_subject_tbl <- con %>% tbl("study_subject") %>% dplyr::rename(study_subject_id = id)
+    malaria_blood_control_tbl <- con %>% tbl("malaria_blood_control") %>%
+      dplyr::rename(malaria_blood_control_id = id)
+
+    # Join with database to check for malaria blood control
+    linked_samples_data <- tbl(con, "user_data") %>%
+      inner_join(con %>% tbl("storage_container"), by = c("Sample ID" = "id")) %>%
+      inner_join(specimen_tbl,  by = "specimen_id") %>%
+      inner_join(study_subject_tbl, by = "study_subject_id") %>%
+      left_join(malaria_blood_control_tbl, by = "study_subject_id") %>%
+      mutate(control_present = !is.na(malaria_blood_control_id)) %>%
+      select(Position, Barcode, density, control_present) %>%
+      collect()
+
+    # Set the reactive linked_samples with the processed data
+    linked_samples(linked_samples_data)
+
+    # Identify samples that are not controls and are in standard positions
+    non_control_conflicts <- linked_samples_data %>%
+      filter(!control_present & Position %in% standard_values_data$Position)
+
+    if (nrow(non_control_conflicts) > 0) {
       # Show modal to resolve conflicts
       showModal(modalDialog(
         title = "Conflict Detected",
-        paste("The following wells conflict with standard wells:", paste(conflicts, collapse = ", ")),
+        paste("The following wells contain non-control samples in standard positions:", 
+              paste(non_control_conflicts$Position, collapse = ", ")),
         "Choose how to resolve the conflict:",
         easyClose = TRUE,
         footer = tagList(
@@ -1243,26 +1265,26 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
         )
       ))
     } else {
-      # No conflicts, proceed to combine data
-      final_data <- combine_data(user_selected_rows, standard_values_data, output)
+      # No conflicts, proceed to combine data with linkage information
+      final_data <- combine_data(user_selected_rows, standard_values_data, output, linked_samples_data)
       store_final_data(user_selected_rows, final_data)
     }
   }
 
   observeEvent(input$keep_user_data, {
-    # Assuming `filtered_data` is a reactive expression returning the filtered data
     user.filtered.rows <- filtered_data()
     user.selected.rows <- if (length(selected() > 0)) user.filtered.rows[selected(), ] else user.filtered.rows
     user.selected.rows.qpcr <- user.selected.rows %>%
       select(Barcode, Position)
 
-    # Access the standard_values through the reactive expression
     standard_values_data <- standard_values()
-    
+
     # Keep user data where conflicts exist
     filtered_standard_values <- standard_values_data[!standard_values_data$Position %in% conflict_wells(), ]
     removeModal() # Close the conflict resolution modal
-    final_data <- combine_data(user.selected.rows.qpcr, filtered_standard_values, output)
+
+    final_data <- combine_data(user.selected.rows.qpcr, filtered_standard_values, output, linked_samples())
+    
     qpcr_final_data(
       list(
         PlateName = unique(user.selected.rows$`Plate Name`),
@@ -1272,19 +1294,18 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
   })
 
   observeEvent(input$keep_standard_data, {
-    # Assuming `filtered_data` is a reactive expression returning the filtered data
     user.filtered.rows <- filtered_data()
     user.selected.rows <- if (length(selected() > 0)) user.filtered.rows[selected(), ] else user.filtered.rows
     user.selected.rows.qpcr <- user.selected.rows %>%
       select(Barcode, Position)
 
-    # Access the standard_values through the reactive expression
     standard_values_data <- standard_values()
     
     # Keep standard data where conflicts exist
     filtered_user_qpcr_data <- user.selected.rows.qpcr[!user.selected.rows.qpcr$Position %in% conflict_wells(), ]
     removeModal() # Close the conflict resolution modal
-    final_data <- combine_data(filtered_user_qpcr_data, standard_values_data, output)
+    final_data <- combine_data(filtered_user_qpcr_data, standard_values_data, output, linked_samples())
+    
     qpcr_final_data(
       list(
         PlateName = unique(user.selected.rows$`Plate Name`),
@@ -1751,7 +1772,7 @@ store_final_data <- function(user_selected_rows, final_data) {
   )
 }
 
-combine_data <- function(user_data, standard_values, output) {
+combine_data <- function(user_data, standard_values, output, linked_samples) {
   # Remove any existing data at standard positions in user data
   user_data_clean <- user_data %>%
     filter(!Position %in% standard_values$Position)
@@ -1776,7 +1797,7 @@ combine_data <- function(user_data, standard_values, output) {
   # Generate layout for display and show in a modal with a horizontal legend
   showModal(modalDialog(
     title = "qPCR Plate Layout",
-    size = "l", # Large modal size
+    size = "xl", # xLarge modal size
     div(
       style = "display: flex; margin-bottom: 10px;",
       tags$div(tags$span(style = "background-color: #f5f5f5; padding: 5px 15px; margin-right: 10px;", "Blank")),
@@ -1790,14 +1811,14 @@ combine_data <- function(user_data, standard_values, output) {
     )
   ))
   
-  generate_layout(final_data, output)
+  generate_layout(final_data, output, linked_samples)
   
   # Show success notification
   showNotification("qPCR data prepared successfully.", type = "message")
   return(final_data)
 }
 
-generate_layout <- function(data, output) {
+generate_layout <- function(data, output, linked_samples) {
   # Create empty matrix for 8 rows (A-H) and 12 columns (1-12)
   layout_matrix <- matrix(NA, nrow = 8, ncol = 12, dimnames = list(LETTERS[1:8], sprintf("%02d", 1:12)))
   
@@ -1816,34 +1837,35 @@ generate_layout <- function(data, output) {
   # Convert matrix to data frame for reactable
   layout_df <- as.data.frame(layout_matrix, stringsAsFactors = FALSE)
   
-  # Define a function to set cell background color based on content
-  cell_color <- function(value) {
-    if (grepl("Blank", value)) {
-      return("#f5f5f5")  # Grey for Blanks
-    } else if (grepl("[0-9]{10}", value)) {  # Match exactly 10-digit integers
-      return("#fff9c4")  # Light yellow for Samples
+  # Define a function to set cell background color based on content and control linkage
+  cell_color <- function(position) {
+    linked_info <- linked_samples %>% filter(Position == position)
+    if (nrow(linked_info) == 0) {
+      return("#fff9c4")  # Light yellow for Samples (default if not found)
+    } else if (linked_info$control_present) {
+      return("#c8e6c9")  # Light green for Controls
     } else {
-      return("#c8e6c9")  # Light green for Standards
+      return("#fff9c4")  # Light yellow for Samples
     }
   }
   
-  # Render reactable with cell shading based on content
+  # Adjust cell colors based on linkage status
   output$qpcr_layout_table <- renderReactable({
     reactable(
       layout_df,
       columns = list(
-        `01` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold"), style = function(value) list(background = cell_color(value))),
-        `02` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold"), style = function(value) list(background = cell_color(value))),
-        `03` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold"), style = function(value) list(background = cell_color(value))),
-        `04` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold"), style = function(value) list(background = cell_color(value))),
-        `05` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold"), style = function(value) list(background = cell_color(value))),
-        `06` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold"), style = function(value) list(background = cell_color(value))),
-        `07` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold"), style = function(value) list(background = cell_color(value))),
-        `08` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold"), style = function(value) list(background = cell_color(value))),
-        `09` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold"), style = function(value) list(background = cell_color(value))),
-        `10` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold"), style = function(value) list(background = cell_color(value))),
-        `11` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold"), style = function(value) list(background = cell_color(value))),
-        `12` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold"), style = function(value) list(background = cell_color(value)))
+        `01` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold"), style = function(value, index) list(background = cell_color(names(layout_df)[index]), display = "flex", alignItems = "center", justifyContent = "center")),
+        `02` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold"), style = function(value, index) list(background = cell_color(names(layout_df)[index]), display = "flex", alignItems = "center", justifyContent = "center")),
+        `03` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold"), style = function(value, index) list(background = cell_color(names(layout_df)[index]), display = "flex", alignItems = "center", justifyContent = "center")),
+        `04` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold"), style = function(value, index) list(background = cell_color(names(layout_df)[index]), display = "flex", alignItems = "center", justifyContent = "center")),
+        `05` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold"), style = function(value, index) list(background = cell_color(names(layout_df)[index]), display = "flex", alignItems = "center", justifyContent = "center")),
+        `06` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold"), style = function(value, index) list(background = cell_color(names(layout_df)[index]), display = "flex", alignItems = "center", justifyContent = "center")),
+        `07` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold"), style = function(value, index) list(background = cell_color(names(layout_df)[index]), display = "flex", alignItems = "center", justifyContent = "center")),
+        `08` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold"), style = function(value, index) list(background = cell_color(names(layout_df)[index]), display = "flex", alignItems = "center", justifyContent = "center")),
+        `09` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold"), style = function(value, index) list(background = cell_color(names(layout_df)[index]), display = "flex", alignItems = "center", justifyContent = "center")),
+        `10` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold"), style = function(value, index) list(background = cell_color(names(layout_df)[index]), display = "flex", alignItems = "center", justifyContent = "center")),
+        `11` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold"), style = function(value, index) list(background = cell_color(names(layout_df)[index]), display = "flex", alignItems = "center", justifyContent = "center")),
+        `12` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold"), style = function(value, index) list(background = cell_color(names(layout_df)[index]), display = "flex", alignItems = "center", justifyContent = "center"))
       ),
       bordered = TRUE,
       highlight = TRUE,
