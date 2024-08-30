@@ -1267,7 +1267,12 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
     } else {
       # No conflicts, proceed to combine data with linkage information
       final_data <- combine_data(user_selected_rows, standard_values_data, output, linked_samples_data)
-      store_final_data(user_selected_rows, final_data)
+      qpcr_final_data(
+        list(
+          PlateName = unique(user_selected_rows$`Plate Name`),
+          FinalData = final_data
+        )
+      )
     }
   }
 
@@ -1761,15 +1766,6 @@ CreateNumericInputScrollableTable <- function(data, max_value_column = NULL, def
   )
   
   return(scrollable_table)
-}
-
-store_final_data <- function(user_selected_rows, final_data) {
-  qpcr_final_data(
-    list(
-      PlateName = unique(user_selected_rows$`Plate Name`),
-      FinalData = final_data
-    )
-  )
 }
 
 combine_data <- function(user_data, standard_values, output, linked_samples) {

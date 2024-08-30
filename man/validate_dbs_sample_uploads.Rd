@@ -4,7 +4,7 @@
 \alias{validate_dbs_sample_uploads}
 \title{Validate Micronix Uploads}
 \usage{
-validate_dbs_sample_uploads(dbs_sample_test, variable_colnames)
+validate_dbs_sample_uploads(dbs_sample_test)
 }
 \arguments{
 \item{micronix_test}{The utility function for performing validation checks.}

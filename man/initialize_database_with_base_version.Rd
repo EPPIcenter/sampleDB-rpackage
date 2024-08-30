@@ -4,14 +4,10 @@
 \alias{initialize_database_with_base_version}
 \title{Initialize Database with Base Version}
 \usage{
-initialize_database_with_base_version(
-  new_database,
-  pkgname,
-  base_version = "1.0.0"
-)
+initialize_database_with_base_version(con, pkgname, base_version = "1.0.0")
 }
 \arguments{
-\item{new_database}{Path to the new temporary SQLite database.}
+\item{con}{Connection to the new temporary SQLite database.}
 
 \item{pkgname}{Name of the package containing the database upgrade scripts.}
 

@@ -52,6 +52,53 @@ SearchByType <- function(sample_storage_type=NULL, control_type=NULL, filters = 
   return(search.results)
 }
 
+#' Get extractions
+#' 
+#' @param database A database path
+#' @return A tibble with extractions
+#' @export
+#' @examples
+#' database <- Sys.getenv("SDB_PATH")
+#' get_extractions(database)
+get_extractions <- function(database = Sys.getenv("SDB_PATH")) {
+  
+  con <- sampleDB::init_db_conn(database)
+  on.exit(dbDisconnect(con), add = TRUE)
+  tbl_storage_container <- tbl(con, "storage_container")
+  tbl_specimen <- tbl(con, "specimen") %>% dplyr::rename(specimen_id = id)
+  tbl_study_subject <- tbl(con, "study_subject") %>% dplyr::rename(study_subject_id = id)
+  tbl_malaria_blood_control <- tbl(con, "malaria_blood_control") %>% dplyr::rename(malaria_blood_control_id = id)
+  tbl_micronix_tube <- tbl(con, "micronix_tube") %>% dplyr::rename(tube_barcode = barcode)
+  tbl_micronix_plate <- tbl(con, "micronix_plate") %>%
+    dplyr::rename(
+      manifest_id = id,
+      plate_barcode = barcode,
+      plate_name = name
+    )
+  
+  tbl_specimen_type <- tbl(con, "specimen_type") %>%
+    dplyr::rename(
+      specimen_type_id = id,
+      specimen = name
+    )
+  
+  tbl_storage_container %>% 
+    inner_join(tbl_specimen, by = c("specimen_id")) %>% 
+    inner_join(tbl_specimen_type, by = c("specimen_type_id")) %>%
+    inner_join(tbl_study_subject, by = c("study_subject_id")) %>% 
+    inner_join(tbl_malaria_blood_control, by = c("study_subject_id")) %>%
+    select(-specimen_id, -study_subject_id, -malaria_blood_control_id) %>%
+    inner_join(tbl_micronix_tube, by = c("id")) %>%
+    inner_join(tbl_micronix_plate, by = c("manifest_id")) %>%
+    select(
+      Barcode = tube_barcode,
+      Position = position,
+      Plate = plate_name,
+      Specimen = specimen,
+    ) %>%
+    collect()
+}
+
 #' Get all malaria blood controls
 #'
 #' `SearchControls()` can be used to upload controls to the sampleDB database. This function returns lazy-sql.
