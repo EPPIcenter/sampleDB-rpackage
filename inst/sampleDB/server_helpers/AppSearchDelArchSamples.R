@@ -1773,27 +1773,32 @@ store_final_data <- function(user_selected_rows, final_data) {
 }
 
 combine_data <- function(user_data, standard_values, output, linked_samples) {
+  # Start with the linked samples data to ensure we prioritize linked samples over standard values
+  combined_data <- linked_samples
+  
   # Remove any existing data at standard positions in user data
   user_data_clean <- user_data %>%
-    filter(!Position %in% standard_values$Position)
+    filter(!Position %in% combined_data$Position)
   
-  # Combine standard values and cleaned user data
-  final_data <- bind_rows(standard_values, user_data_clean) %>%
+  # Add cleaned user data to the combined data
+  combined_data <- bind_rows(combined_data, user_data_clean) %>%
     arrange(Position)
   
   # Add "Blank" to Barcode for any empty positions
   all_positions <- paste0(rep(LETTERS[1:8], each = 12), sprintf("%02d", rep(1:12, times = 8)))
-  missing_positions <- setdiff(all_positions, final_data$Position)
+  missing_positions <- setdiff(all_positions, combined_data$Position)
   
   if (length(missing_positions) > 0) {
     blanks <- data.frame(
       Position = missing_positions,
-      Barcode = "Blank"
+      Barcode = "Blank",
+      density = NA,  # Ensure density is NA for blank positions
+      control_present = FALSE
     )
-    final_data <- bind_rows(final_data, blanks) %>%
+    combined_data <- bind_rows(combined_data, blanks) %>%
       arrange(Position)
   }
-  
+
   # Generate layout for display and show in a modal with a horizontal legend
   showModal(modalDialog(
     title = "qPCR Plate Layout",
@@ -1811,61 +1816,74 @@ combine_data <- function(user_data, standard_values, output, linked_samples) {
     )
   ))
   
-  generate_layout(final_data, output, linked_samples)
+  generate_layout(combined_data, output)
   
   # Show success notification
   showNotification("qPCR data prepared successfully.", type = "message")
-  return(final_data)
+  return(combined_data)
 }
 
-generate_layout <- function(data, output, linked_samples) {
+generate_layout <- function(data, output) {
   # Create empty matrix for 8 rows (A-H) and 12 columns (1-12)
   layout_matrix <- matrix(NA, nrow = 8, ncol = 12, dimnames = list(LETTERS[1:8], sprintf("%02d", 1:12)))
-  
-  # Populate matrix with data
+
+  # Populate matrix with data from combined_data
   for (i in seq_len(nrow(data))) {
     pos <- data$Position[i]
     row <- substr(pos, 1, 1)
     col <- substr(pos, 2, 3)
-    layout_matrix[row, col] <- paste(
-      data$Barcode[i],  # Use Barcode
-      data$`Sample Name`[i],
-      data$`Biological Group`[i]
-    )
+
+    if (!is.na(data$Barcode[i]) && data$Barcode[i] != "Blank") {
+      layout_matrix[row, col] <- paste(
+        data$Barcode[i],
+        ifelse(!is.na(data$control_present[i]) && data$control_present[i] == 1, paste("\n", data$density[i], sep = ""), ""),
+        sep = ""
+      )
+    } else {
+      layout_matrix[row, col] <- ""  # Leave blank if no Barcode
+    }
   }
-  
+
   # Convert matrix to data frame for reactable
   layout_df <- as.data.frame(layout_matrix, stringsAsFactors = FALSE)
-  
+
   # Define a function to set cell background color based on content and control linkage
   cell_color <- function(position) {
-    linked_info <- linked_samples %>% filter(Position == position)
-    if (nrow(linked_info) == 0) {
-      return("#fff9c4")  # Light yellow for Samples (default if not found)
-    } else if (linked_info$control_present) {
+    info <- data %>% filter(Position == position)
+    
+    # Ensure Barcode and control_present are checked for NA values
+    if (is.na(info$Barcode) || info$Barcode == "Blank" || nrow(info) == 0) {
+      return("#f5f5f5")  # Grey for blank positions
+    } else if (!is.na(info$control_present) && info$control_present == 1) {
       return("#c8e6c9")  # Light green for Controls
     } else {
       return("#fff9c4")  # Light yellow for Samples
     }
   }
-  
-  # Adjust cell colors based on linkage status
+
+  # Adjust cell colors based on linkage status and content
   output$qpcr_layout_table <- renderReactable({
     reactable(
       layout_df,
-      columns = list(
-        `01` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold"), style = function(value, index) list(background = cell_color(names(layout_df)[index]), display = "flex", alignItems = "center", justifyContent = "center")),
-        `02` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold"), style = function(value, index) list(background = cell_color(names(layout_df)[index]), display = "flex", alignItems = "center", justifyContent = "center")),
-        `03` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold"), style = function(value, index) list(background = cell_color(names(layout_df)[index]), display = "flex", alignItems = "center", justifyContent = "center")),
-        `04` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold"), style = function(value, index) list(background = cell_color(names(layout_df)[index]), display = "flex", alignItems = "center", justifyContent = "center")),
-        `05` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold"), style = function(value, index) list(background = cell_color(names(layout_df)[index]), display = "flex", alignItems = "center", justifyContent = "center")),
-        `06` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold"), style = function(value, index) list(background = cell_color(names(layout_df)[index]), display = "flex", alignItems = "center", justifyContent = "center")),
-        `07` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold"), style = function(value, index) list(background = cell_color(names(layout_df)[index]), display = "flex", alignItems = "center", justifyContent = "center")),
-        `08` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold"), style = function(value, index) list(background = cell_color(names(layout_df)[index]), display = "flex", alignItems = "center", justifyContent = "center")),
-        `09` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold"), style = function(value, index) list(background = cell_color(names(layout_df)[index]), display = "flex", alignItems = "center", justifyContent = "center")),
-        `10` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold"), style = function(value, index) list(background = cell_color(names(layout_df)[index]), display = "flex", alignItems = "center", justifyContent = "center")),
-        `11` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold"), style = function(value, index) list(background = cell_color(names(layout_df)[index]), display = "flex", alignItems = "center", justifyContent = "center")),
-        `12` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold"), style = function(value, index) list(background = cell_color(names(layout_df)[index]), display = "flex", alignItems = "center", justifyContent = "center"))
+      columns = setNames(
+        lapply(names(layout_df), function(col_name) {
+          colDef(
+            align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold"),
+            style = function(value, index) {
+              # Determine the full position (e.g., A01, B02) from the row and column names
+              row <- rownames(layout_df)[index]
+              col <- col_name
+              pos <- paste0(row, col)
+              list(
+                background = cell_color(pos),
+                display = "flex",
+                alignItems = "center",
+                justifyContent = "center"
+              )
+            }
+          )
+        }),
+        names(layout_df)  # Ensure the list is named
       ),
       bordered = TRUE,
       highlight = TRUE,
