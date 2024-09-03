@@ -1251,18 +1251,14 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
       filter(!control_present & Position %in% standard_values_data$Position)
 
     if (nrow(non_control_conflicts) > 0) {
-      # Show modal to resolve conflicts
+      # Show modal and exit if conflicts are detected
       showModal(modalDialog(
         title = "Conflict Detected",
         paste("The following wells contain non-control samples in standard positions:", 
               paste(non_control_conflicts$Position, collapse = ", ")),
-        "Choose how to resolve the conflict:",
+        "Process cannot continue due to conflicts.",
         easyClose = TRUE,
-        footer = tagList(
-          actionButton("keep_user_data", "Keep User Data"),
-          actionButton("keep_standard_data", "Keep Standard Data"),
-          modalButton("Cancel")
-        )
+        footer = modalButton("OK")
       ))
     } else {
       # No conflicts, proceed to combine data with linkage information
@@ -1275,49 +1271,6 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
       )
     }
   }
-
-  observeEvent(input$keep_user_data, {
-    user.filtered.rows <- filtered_data()
-    user.selected.rows <- if (length(selected() > 0)) user.filtered.rows[selected(), ] else user.filtered.rows
-    user.selected.rows.qpcr <- user.selected.rows %>%
-      select(Barcode, Position)
-
-    standard_values_data <- standard_values()
-
-    # Keep user data where conflicts exist
-    filtered_standard_values <- standard_values_data[!standard_values_data$Position %in% conflict_wells(), ]
-    removeModal() # Close the conflict resolution modal
-
-    final_data <- combine_data(user.selected.rows.qpcr, filtered_standard_values, output, linked_samples())
-    
-    qpcr_final_data(
-      list(
-        PlateName = unique(user.selected.rows$`Plate Name`),
-        FinalData = final_data
-      )
-    )
-  })
-
-  observeEvent(input$keep_standard_data, {
-    user.filtered.rows <- filtered_data()
-    user.selected.rows <- if (length(selected() > 0)) user.filtered.rows[selected(), ] else user.filtered.rows
-    user.selected.rows.qpcr <- user.selected.rows %>%
-      select(Barcode, Position)
-
-    standard_values_data <- standard_values()
-    
-    # Keep standard data where conflicts exist
-    filtered_user_qpcr_data <- user.selected.rows.qpcr[!user.selected.rows.qpcr$Position %in% conflict_wells(), ]
-    removeModal() # Close the conflict resolution modal
-    final_data <- combine_data(filtered_user_qpcr_data, standard_values_data, output, linked_samples())
-    
-    qpcr_final_data(
-      list(
-        PlateName = unique(user.selected.rows$`Plate Name`),
-        FinalData = final_data
-      )
-    )
-  })
 
   observeEvent(input$DelArchAdvancedSearchLink, {
     showModal(modalDialog(
