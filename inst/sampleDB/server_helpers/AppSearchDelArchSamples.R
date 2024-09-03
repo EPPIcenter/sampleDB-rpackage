@@ -1228,8 +1228,6 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
       con <- init_and_copy_to_db(database, user_selected_rows)
       on.exit(dbDisconnect(con), add = TRUE)
 
-      browser()
-
       # Database table setup
       specimen_tbl <- con %>% tbl("specimen") %>% dplyr::rename(specimen_id = id)
       study_subject_tbl <- con %>% tbl("study_subject") %>% dplyr::rename(study_subject_id = id)
@@ -1276,7 +1274,6 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
 
       # Check density of controls against standard values
       control_conflicts <- linked_samples_data %>%
-        inner_join(standard_values_data, by = c("Density", "Position")) %>%
         filter(IsControl & !is.na(ActualDensity) & ActualDensity != ExpectedDensity) %>%
         select(RowNumber, Position, Barcode, ExpectedDensity, ActualDensity)
 
@@ -1803,6 +1800,8 @@ combine_data <- function(user_data, standard_values, output, linked_samples) {
   
   # Show success notification
   showNotification("qPCR data prepared successfully.", type = "message")
+  combined_data <- combined_data %>%
+    select(Barcode, Position)
   return(combined_data)
 }
 
