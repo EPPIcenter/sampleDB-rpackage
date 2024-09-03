@@ -1161,7 +1161,7 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
   standard_values <- reactive({
     data.frame(
       Position = c(paste0(rep(LETTERS[1:8], each = 2), sprintf("%02d", rep(11:12, times = 8)))), # Last two columns of 96-well plate
-      Barcode = c("10000", "10000", "1000", "1000", "100", "100",
+      Density = c("10000", "10000", "1000", "1000", "100", "100",
                   "10", "10", "1", "1", "0.1", "0.1", "0", "0", "NTC", "NTC")
     )
   })
@@ -1224,43 +1224,75 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
   })
 
   check_conflicts <- function(user_selected_rows, standard_values_data, output) {
-    con <- init_and_copy_to_db(database, user_selected_rows)
-    on.exit(dbDisconnect(con), add = TRUE)
+    tryCatch({
+      con <- init_and_copy_to_db(database, user_selected_rows)
+      on.exit(dbDisconnect(con), add = TRUE)
 
-    # Database table setup
-    specimen_tbl <- con %>% tbl("specimen") %>% dplyr::rename(specimen_id = id)
-    study_subject_tbl <- con %>% tbl("study_subject") %>% dplyr::rename(study_subject_id = id)
-    malaria_blood_control_tbl <- con %>% tbl("malaria_blood_control") %>%
-      dplyr::rename(malaria_blood_control_id = id)
+      browser()
 
-    # Join with database to check for malaria blood control
-    linked_samples_data <- tbl(con, "user_data") %>%
-      inner_join(con %>% tbl("storage_container"), by = c("Sample ID" = "id")) %>%
-      inner_join(specimen_tbl,  by = "specimen_id") %>%
-      inner_join(study_subject_tbl, by = "study_subject_id") %>%
-      left_join(malaria_blood_control_tbl, by = "study_subject_id") %>%
-      mutate(control_present = !is.na(malaria_blood_control_id)) %>%
-      select(Position, Barcode, density, control_present) %>%
-      collect()
+      # Database table setup
+      specimen_tbl <- con %>% tbl("specimen") %>% dplyr::rename(specimen_id = id)
+      study_subject_tbl <- con %>% tbl("study_subject") %>% dplyr::rename(study_subject_id = id)
+      malaria_blood_control_tbl <- con %>% tbl("malaria_blood_control") %>%
+        dplyr::rename(malaria_blood_control_id = id)
 
-    # Set the reactive linked_samples with the processed data
-    linked_samples(linked_samples_data)
+      # Join with database to check for malaria blood control
+      linked_samples_data <- tbl(con, "user_data") %>%
+        inner_join(con %>% tbl("storage_container"), by = c("Sample ID" = "id")) %>%
+        inner_join(specimen_tbl, by = "specimen_id") %>%
+        inner_join(study_subject_tbl, by = "study_subject_id") %>%
+        left_join(malaria_blood_control_tbl, by = "study_subject_id") %>%
+        mutate(control_present = !is.na(malaria_blood_control_id)) %>%
+        select(Position, Barcode, density, control_present) %>%
+        collect()
 
-    # Identify samples that are not controls and are in standard positions
-    non_control_conflicts <- linked_samples_data %>%
-      filter(!control_present & Position %in% standard_values_data$Position)
+      # Set the reactive linked_samples with the processed data
+      linked_samples(linked_samples_data)
 
-    if (nrow(non_control_conflicts) > 0) {
-      # Show modal and exit if conflicts are detected
-      showModal(modalDialog(
-        title = "Conflict Detected",
-        paste("The following wells contain non-control samples in standard positions:", 
-              paste(non_control_conflicts$Position, collapse = ", ")),
-        "Process cannot continue due to conflicts.",
-        easyClose = TRUE,
-        footer = modalButton("OK")
-      ))
-    } else {
+      expected_densities_df <- standard_values() %>%
+        mutate(ExpectedDensity = Density)
+
+      linked_samples_data <- linked_samples_data %>%
+        left_join(expected_densities_df, by = "Position") %>%
+        mutate(RowNumber = row_number()) %>%
+        mutate(ActualDensity = density) %>%
+        select(RowNumber, Position, Barcode, ExpectedDensity, ActualDensity, IsControl = control_present)
+
+      # Initialize the validation error collection
+      validation_errors <- ValidationErrorCollection$new(user_data = linked_samples_data)
+
+      # Identify samples that are not controls and are in standard positions
+      non_control_conflicts <- linked_samples_data %>%
+        filter(!IsControl & Position %in% standard_values_data$Position) %>%
+        select(RowNumber, Barcode, Position)
+
+      if (nrow(non_control_conflicts) > 0) {
+        error_data <- ErrorData$new(
+          description = "Non-control sample in a standard position.",
+          data_frame = non_control_conflicts
+        )
+        validation_errors$add_error(error_data)
+      }
+
+      # Check density of controls against standard values
+      control_conflicts <- linked_samples_data %>%
+        inner_join(standard_values_data, by = c("Density", "Position")) %>%
+        filter(IsControl & !is.na(ActualDensity) & ActualDensity != ExpectedDensity) %>%
+        select(RowNumber, Position, Barcode, ExpectedDensity, ActualDensity)
+
+      if (nrow(control_conflicts) > 0) {
+        error_data <- ErrorData$new(
+          description = "Control density mismatch.",
+          data_frame = control_conflicts
+        )
+        validation_errors$add_error(error_data)
+      }
+
+      # If there are validation errors, stop and trigger the validation error modal
+      if (validation_errors$length() > 0) {
+        stop_validation_error("Validation errors detected.", validation_errors)
+      }
+
       # No conflicts, proceed to combine data with linkage information
       final_data <- combine_data(user_selected_rows, standard_values_data, output, linked_samples_data)
       qpcr_final_data(
@@ -1269,7 +1301,9 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
           FinalData = final_data
         )
       )
-    }
+    }, validation_error = function(e) {
+      show_validation_error_modal(output, e)
+    })
   }
 
   observeEvent(input$DelArchAdvancedSearchLink, {
@@ -1741,8 +1775,8 @@ combine_data <- function(user_data, standard_values, output, linked_samples) {
     blanks <- data.frame(
       Position = missing_positions,
       Barcode = "Blank",
-      density = NA,  # Ensure density is NA for blank positions
-      control_present = FALSE
+      ActualDensity = NA,  # Ensure density is NA for blank positions
+      IsControl = FALSE
     )
     combined_data <- bind_rows(combined_data, blanks) %>%
       arrange(Position)
@@ -1785,7 +1819,7 @@ generate_layout <- function(data, output) {
     if (!is.na(data$Barcode[i]) && data$Barcode[i] != "Blank") {
       layout_matrix[row, col] <- paste(
         data$Barcode[i],
-        ifelse(!is.na(data$control_present[i]) && data$control_present[i] == 1, paste("\n", data$density[i], sep = ""), ""),
+        ifelse(!is.na(data$IsControl[i]) && data$IsControl[i] == 1, paste("\n", data$ActualDensity[i], sep = ""), ""),
         sep = ""
       )
     } else {
@@ -1803,7 +1837,7 @@ generate_layout <- function(data, output) {
     # Ensure Barcode and control_present are checked for NA values
     if (is.na(info$Barcode) || info$Barcode == "Blank" || nrow(info) == 0) {
       return("#f5f5f5")  # Grey for blank positions
-    } else if (!is.na(info$control_present) && info$control_present == 1) {
+    } else if (!is.na(info$IsControl) && info$IsControl == 1) {
       return("#c8e6c9")  # Light green for Controls
     } else {
       return("#fff9c4")  # Light yellow for Samples
