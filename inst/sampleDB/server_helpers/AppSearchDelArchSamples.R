@@ -557,7 +557,8 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
           max_value_column = "Exhausted",
           default_value_column = "Exhausted",
           min_value_column = "ArchivedSpotsCount",
-          enabled = TRUE
+          enabled = TRUE,
+          prefix = "editControl_"
         )
 
       } else {
@@ -823,7 +824,7 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
           })
         } else if (input$DelArchDBSAction == "edit") {
           spots_to_exhaust <- sapply(seq_len(nrow(user.selected.rows)), function(i) {
-              as.numeric(input[[paste0("modifyControl_", i)]])
+              as.numeric(input[[paste0("editControl_", i)]])
           })
 
           user.selected.rows$SpotsToExhaust <- spots_to_exhaust
@@ -833,7 +834,7 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
           # total minus the number of already archived spots. This set of spots
           # are the 'Exhausted' spots, meaning they have been "used up".
           already_archived_spots_df <- dbReadTable(con, "archived_dbs_blood_spots") %>%
-            dplyr::select(CollectionID = id, ArchivedSpotsCount = archived_spots_count)
+            dplyr::select(CollectionID = blood_spot_collection_id, ArchivedSpotsCount = archived_spots_count)
 
           user.selected.rows.selected.archived <- user.selected.rows %>%
             dplyr::left_join(already_archived_spots_df, by = join_by("CollectionID")) %>%
@@ -1750,11 +1751,12 @@ UpdateControlSelections <- function(session, input, keepCurrentSelection = FALSE
 #' If not provided or the column is not found, a default value of 0 is used for all inputs.
 #' @param enabled A logical value indicating whether the numeric inputs should be enabled (`TRUE`) or disabled (`FALSE`).
 #' By default, inputs are enabled.
-#'
+#' @param prefix A prefix to modify control component identifier. This is useful if you have multiple tables and need to distinguish the numeric control identifiers (you should).
+#' Default is "modifyControl_". A numeric index is appended to the identifier for each numeric control.
 #' @return An HTML div element containing a scrollable table. Each row of the table includes a numeric input 
 #' with properties determined by the function parameters and the corresponding row in the input data frame.
 #'
-CreateNumericInputScrollableTable <- function(data, max_value_column = NULL, default_value_column = NULL, enabled = TRUE, min_value_column = NULL) {
+CreateNumericInputScrollableTable <- function(data, max_value_column = NULL, default_value_column = NULL, enabled = TRUE, min_value_column = NULL, prefix = "modifyControl_") {
   # Format the 'Percentage' and 'Strain' columns, if they exist
   if ("Percentage" %in% names(data)) {
     data$Percentage <- sapply(data$Percentage, function(x) paste(x, "%", collapse = ","))
@@ -1772,7 +1774,7 @@ CreateNumericInputScrollableTable <- function(data, max_value_column = NULL, def
     default_value <- if (!is.null(default_value_column) && default_value_column %in% names(row)) row[[default_value_column]] else 0
     
     # Manually creating the numeric input HTML
-    numeric_input_id <- paste0("modifyControl_", i)
+    numeric_input_id <- paste0(prefix, i)
     disabled_attr <- ifelse(enabled, "", "disabled")
     numeric_input_html <- tags$input(type = "number", id = numeric_input_id, class = "form-control", 
                                      style = "width: 80px;", min = min_spots, max = max_spots, 
