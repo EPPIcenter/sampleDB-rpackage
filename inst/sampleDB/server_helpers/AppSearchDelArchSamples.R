@@ -1225,6 +1225,7 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
 
   check_conflicts <- function(user_selected_rows, standard_values_data, output) {
     tryCatch({
+
       con <- init_and_copy_to_db(database, user_selected_rows)
       on.exit(dbDisconnect(con), add = TRUE)
 
@@ -1247,21 +1248,40 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
       # Set the reactive linked_samples with the processed data
       linked_samples(linked_samples_data)
 
-      expected_densities_df <- standard_values() %>%
-        mutate(ExpectedDensity = Density)
+      # Ensure all 96 wells are present
+      all_positions <- paste0(rep(LETTERS[1:8], each = 12), sprintf("%02d", rep(1:12, times = 8)))
+      missing_positions <- setdiff(all_positions, linked_samples_data$Position)
+
+      if (length(missing_positions) > 0) {
+        # Add missing positions as blanks or NTC
+        blanks <- data.frame(
+          Position = missing_positions,
+          Barcode = ifelse(missing_positions %in% standard_values_data$Position[standard_values_data$Density == "NTC"], "NTC", "Blank"),
+          density = NA,  # Ensure density is NA for blank positions
+          control_present = ifelse(missing_positions %in% standard_values_data$Position[standard_values_data$Density == "NTC"], TRUE, FALSE)
+        )
+        linked_samples_data <- bind_rows(linked_samples_data, blanks) %>%
+          arrange(Position)
+      }
+
+      expected_densities_df <- standard_values_data %>%
+        mutate(ExpectedDensity = Density,
+               IsBlank = Density == "NTC")  # Mark NTC positions
 
       linked_samples_data <- linked_samples_data %>%
         left_join(expected_densities_df, by = "Position") %>%
         mutate(RowNumber = row_number()) %>%
         mutate(ActualDensity = density) %>%
-        select(RowNumber, Position, Barcode, ExpectedDensity, ActualDensity, IsControl = control_present)
+        # Ensure NTC wells are marked as IsControl
+        mutate(IsControl = ifelse(ExpectedDensity == "NTC", TRUE, control_present)) %>%
+        select(RowNumber, Position, Barcode, ExpectedDensity, ActualDensity, IsControl, IsBlank)
 
       # Initialize the validation error collection
       validation_errors <- ValidationErrorCollection$new(user_data = linked_samples_data)
 
-      # Identify samples that are not controls and are in standard positions
+      # Exclude "Blank" and NA Barcode entries from non-control conflict detection
       non_control_conflicts <- linked_samples_data %>%
-        filter(!IsControl & Position %in% standard_values_data$Position) %>%
+        filter(!IsControl & Position %in% standard_values_data$Position & !is.na(Barcode) & Barcode != "Blank" & !IsBlank) %>%
         select(RowNumber, Barcode, Position)
 
       if (nrow(non_control_conflicts) > 0) {
@@ -1272,15 +1292,41 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
         validation_errors$add_error(error_data)
       }
 
-      # Check density of controls against standard values
+      # Check density of controls against standard values (excluding expected density 0 condition)
       control_conflicts <- linked_samples_data %>%
-        filter(IsControl & !is.na(ActualDensity) & ActualDensity != ExpectedDensity) %>%
+        filter(IsControl & !is.na(ActualDensity) & ExpectedDensity != "0" & ActualDensity != ExpectedDensity) %>%
         select(RowNumber, Position, Barcode, ExpectedDensity, ActualDensity)
 
       if (nrow(control_conflicts) > 0) {
         error_data <- ErrorData$new(
           description = "Control density mismatch.",
           data_frame = control_conflicts
+        )
+        validation_errors$add_error(error_data)
+      }
+
+      # Empty wells in standard positions (except for NTC)
+      empty_standard_wells <- linked_samples_data %>%
+        filter(Position %in% standard_values_data$Position & (is.na(Barcode) | Barcode == "Blank") & ExpectedDensity != "NTC") %>%
+        select(RowNumber, Position)
+
+      if (nrow(empty_standard_wells) > 0) {
+        error_data <- ErrorData$new(
+          description = "Empty well in a standard position (non-NTC).",
+          data_frame = empty_standard_wells
+        )
+        validation_errors$add_error(error_data)
+      }
+
+      # Check for controls with expected density 0 that have an actual density >= 0.1
+      density_zero_controls <- linked_samples_data %>%
+        filter(ExpectedDensity == "0" & (!IsControl | ActualDensity >= 0.1)) %>%
+        select(RowNumber, Position, Barcode, ExpectedDensity, ActualDensity)
+
+      if (nrow(density_zero_controls) > 0) {
+        error_data <- ErrorData$new(
+          description = "Control with expected density 0 should have an actual density < 0.1.",
+          data_frame = density_zero_controls
         )
         validation_errors$add_error(error_data)
       }
@@ -1302,6 +1348,7 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
       show_validation_error_modal(output, e)
     })
   }
+
 
   observeEvent(input$DelArchAdvancedSearchLink, {
     showModal(modalDialog(
@@ -1755,53 +1802,53 @@ CreateNumericInputScrollableTable <- function(data, max_value_column = NULL, def
 combine_data <- function(user_data, standard_values, output, linked_samples) {
   # Start with the linked samples data to ensure we prioritize linked samples over standard values
   combined_data <- linked_samples
-  
+
   # Remove any existing data at standard positions in user data
   user_data_clean <- user_data %>%
-    filter(!Position %in% combined_data$Position)
-  
+      filter(!Position %in% combined_data$Position)
+
   # Add cleaned user data to the combined data
   combined_data <- bind_rows(combined_data, user_data_clean) %>%
-    arrange(Position)
-  
+      arrange(Position)
+
   # Add "Blank" to Barcode for any empty positions
   all_positions <- paste0(rep(LETTERS[1:8], each = 12), sprintf("%02d", rep(1:12, times = 8)))
   missing_positions <- setdiff(all_positions, combined_data$Position)
-  
+
   if (length(missing_positions) > 0) {
-    blanks <- data.frame(
-      Position = missing_positions,
-      Barcode = "Blank",
-      ActualDensity = NA,  # Ensure density is NA for blank positions
-      IsControl = FALSE
-    )
-    combined_data <- bind_rows(combined_data, blanks) %>%
-      arrange(Position)
+      blanks <- data.frame(
+          Position = missing_positions,
+          Barcode = ifelse(missing_positions %in% standard_values$Position[standard_values$Density == "NTC"], "NTC", "Blank"),
+          ActualDensity = NA,  # Ensure density is NA for blank positions
+          IsControl = FALSE
+      )
+      combined_data <- bind_rows(combined_data, blanks) %>%
+          arrange(Position)
   }
 
   # Generate layout for display and show in a modal with a horizontal legend
   showModal(modalDialog(
-    title = "qPCR Plate Layout",
-    size = "xl", # xLarge modal size
-    div(
-      style = "display: flex; margin-bottom: 10px;",
-      tags$div(tags$span(style = "background-color: #f5f5f5; padding: 5px 15px; margin-right: 10px;", "Blank")),
-      tags$div(tags$span(style = "background-color: #fff9c4; padding: 5px 15px; margin-right: 10px;", "Samples")),
-      tags$div(tags$span(style = "background-color: #c8e6c9; padding: 5px 15px;", "Standards"))
-    ),
-    reactableOutput("qpcr_layout_table"),
-    footer = tagList(
-      downloadButton("download_qpcr_csv", "Download qPCR CSV"),
-      modalButton("Close")
-    )
+      title = "qPCR Plate Layout",
+      size = "xl", # xLarge modal size
+      div(
+          style = "display: flex; margin-bottom: 10px;",
+          tags$div(tags$span(style = "background-color: #f5f5f5; padding: 5px 15px; margin-right: 10px;", "Blank")),
+          tags$div(tags$span(style = "background-color: #fff9c4; padding: 5px 15px; margin-right: 10px;", "Samples")),
+          tags$div(tags$span(style = "background-color: #c8e6c9; padding: 5px 15px;", "Standards"))
+      ),
+      reactableOutput("qpcr_layout_table"),
+      footer = tagList(
+          downloadButton("download_qpcr_csv", "Download qPCR CSV"),
+          modalButton("Close")
+      )
   ))
-  
+
   generate_layout(combined_data, output)
-  
+
   # Show success notification
   showNotification("qPCR data prepared successfully.", type = "message")
   combined_data <- combined_data %>%
-    select(Barcode, Position)
+      select(Barcode, Position)
   return(combined_data)
 }
 
@@ -1831,6 +1878,7 @@ generate_layout <- function(data, output) {
 
   # Define a function to set cell background color based on content and control linkage
   cell_color <- function(position) {
+
     info <- data %>% filter(Position == position)
     
     # Ensure Barcode and control_present are checked for NA values
