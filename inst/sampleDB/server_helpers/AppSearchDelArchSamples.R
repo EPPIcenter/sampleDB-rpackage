@@ -1038,6 +1038,64 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
     }
   })
 
+  observe({
+    if (length(selected()) > 0) {
+      shinyjs::enable("editComment")  # Enable the button when a sample is selected
+    } else {
+      shinyjs::disable("editComment")  # Disable the button when no sample is selected
+    }
+  })
+
+  # Observe when the 'Edit Comment' button is clicked
+  observeEvent(input$editComment, {
+    showModal(
+      modalDialog(
+        title = "Edit Comment",
+        textInput("newComment", "Comment:", value = ""),  # Input field for new comment
+        easyClose = TRUE,
+        footer = tagList(
+          modalButton("Cancel"),
+          actionButton("saveComment", "Submit", class = "btn btn-primary")  # Submit button
+        )
+      )
+    )
+  })
+
+  # Handle the 'Submit' button click
+  observeEvent(input$saveComment, {
+    # Get the selected sample(s)
+    user.selected.rows <- filtered_data()[selected(), ]
+    
+    if (nrow(user.selected.rows) == 0) {
+      showNotification("No sample selected!", type = "error")
+      return()
+    }
+
+    # Extract the new comment from the input field
+    new_comment <- input$newComment
+
+    # Connect to the database
+    con <- dbConnect(SQLite(), Sys.getenv("SDB_PATH"))
+    on.exit(dbDisconnect(con), add = TRUE)
+
+    # Update the comment for the selected sample
+    dbWithTransaction(con, {
+      for (i in seq_len(nrow(user.selected.rows))) {
+        row <- user.selected.rows[i, ]
+        sample_id <- row$`Sample ID`  # Get the Sample ID
+
+        # Update the comment in the storage_container table
+        dbExecute(con, "UPDATE storage_container SET comment = :comment WHERE id = :id",
+                  params = list(comment = new_comment, id = sample_id))
+      }
+    })
+
+    # Notify the user and close the modal
+    showNotification("Comment updated successfully!", type = "message", duration = 3)
+    removeModal()
+    force_update(TRUE)  # Refresh data
+  })
+
   observeEvent(input$Delete, ignoreInit = TRUE, { 
 
     message(sprintf("DelArch action: %s", "delete"))

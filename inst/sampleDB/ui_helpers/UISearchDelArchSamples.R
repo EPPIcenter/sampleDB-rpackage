@@ -157,7 +157,8 @@ UISearchDelArchSamples <- function() {
                 class = "dropdown-menu",
                 tags$li(actionButton("download_qpcr", "Download qPCR Format", class = "dropdown-item"))
               )
-            )
+            ),
+            actionButton("editComment", "Edit Comment", style = "margin-left: 10px;")  
           )
         )
       )
