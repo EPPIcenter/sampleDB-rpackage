@@ -1298,7 +1298,7 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
             `Sample ID` = ifelse(grepl("12$", Position) & grepl("11$", lag(Position)), lag(`Sample ID`), `Sample ID`),
             density = ifelse(grepl("12$", Position) & grepl("11$", lag(Position)), lag(density), density),
             Barcode = ifelse(grepl("12$", Position) & grepl("11$", lag(Position)), lag(Barcode), Barcode),
-            IsControl = ifelse(grepl("12$", Position) & grepl("11$", lag(Position)), TRUE, IsControl),
+            IsControl = ifelse(grepl("12$", Position) & grepl("11$", lag(Position)), lag(IsControl), IsControl)
           )
       }
 
@@ -1325,13 +1325,15 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
       }
 
       # Check for non-control samples in standard positions (excluding blanks and row H)
+      # Samples will be allowed in Row G though.
       non_control_conflicts <- linked_samples_data %>%
         filter(!IsControl & Position %in% standard_values_data$Position & !is.na(`Sample ID`) & !grepl("^H", Position)) %>%
-        select(RowNumber, `Sample ID`, Position)
+        filter(!grepl("^G", Position)) %>% # Samples are allowed in this position
+        select(RowNumber, Barcode, Position)
 
       if (nrow(non_control_conflicts) > 0) {
         error_data <- ErrorData$new(
-          description = "Non-control sample in a standard position.",
+          description = "Non-control in a standard position.",
           data_frame = non_control_conflicts
         )
         validation_errors$add_error(error_data)
@@ -1352,9 +1354,11 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
         }
       }
 
-      # Check for empty wells in standard positions (except NTC and row H)
+      # Check for empty wells in standard positions (except NTC, G and row H)
+      # Only need to check column 11 here as column 12 is just a copy.
       empty_standard_wells <- linked_samples_data %>%
-        filter(Position %in% standard_values_data$Position & is.na(`Sample ID`) & ExpectedDensity != "NTC" & !grepl("^H", Position)) %>%
+        filter(grepl("11$", Position)) %>%
+        filter(Position %in% standard_values_data$Position & is.na(`Sample ID`) & ExpectedDensity != "NTC" & !grepl("^(G|H)", Position)) %>%
         select(RowNumber, Position)
 
       if (nrow(empty_standard_wells) > 0) {
