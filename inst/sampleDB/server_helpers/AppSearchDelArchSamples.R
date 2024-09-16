@@ -1236,15 +1236,16 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
       malaria_blood_control_tbl <- con %>% tbl("malaria_blood_control") %>%
         dplyr::rename(malaria_blood_control_id = id)
 
-      # Join with database to check for malaria blood control
+      # Join with database to get Sample IDs and check for malaria blood control
       linked_samples_data <- tbl(con, "user_data") %>%
         inner_join(con %>% tbl("storage_container"), by = c("Sample ID" = "id")) %>%
         inner_join(specimen_tbl, by = "specimen_id") %>%
         inner_join(study_subject_tbl, by = "study_subject_id") %>%
         left_join(malaria_blood_control_tbl, by = "study_subject_id") %>%
-        mutate(control_present = !is.na(malaria_blood_control_id)) %>%
-        select(Position, Barcode, density, control_present) %>%
-        collect()
+        mutate(IsControl = !is.na(malaria_blood_control_id)) %>%  # Determine control based on malaria_blood_control_id
+        select(Position, `Sample ID`, Barcode, density, IsControl) %>%
+        collect() %>%
+        mutate(`Sample ID` = as.integer(`Sample ID`))  # Ensure Sample ID is treated as character
 
       # Set the reactive linked_samples with the processed data
       linked_samples(linked_samples_data)
@@ -1257,33 +1258,76 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
         # Add missing positions as blanks or NTC
         blanks <- data.frame(
           Position = missing_positions,
-          Barcode = ifelse(missing_positions %in% standard_values_data$Position[standard_values_data$Density == "NTC"], "NTC", "Blank"),
+          Barcode = ifelse(missing_positions %in% standard_values_data$Position[standard_values_data$Density == "NTC"], "NTC", NA),
           density = NA,  # Ensure density is NA for blank positions
-          control_present = ifelse(missing_positions %in% standard_values_data$Position[standard_values_data$Density == "NTC"], TRUE, FALSE)
-        )
+          IsControl = ifelse(missing_positions %in% standard_values_data$Position[standard_values_data$Density == "NTC"], TRUE, FALSE),
+          stringsAsFactors = FALSE  # Ensure all fields are treated as characters
+        ) %>%
+        mutate(`Sample ID` = NA) # Empty wells have NA
+
         linked_samples_data <- bind_rows(linked_samples_data, blanks) %>%
           arrange(Position)
       }
 
-      expected_densities_df <- standard_values_data %>%
-        mutate(ExpectedDensity = Density,
-               IsBlank = Density == "NTC")  # Mark NTC positions
-
+      # Step 0: Add row numbers for validation.
       linked_samples_data <- linked_samples_data %>%
-        left_join(expected_densities_df, by = "Position") %>%
-        mutate(RowNumber = row_number()) %>%
-        mutate(ActualDensity = density) %>%
-        # Ensure NTC wells are marked as IsControl
-        mutate(IsControl = ifelse(ExpectedDensity == "NTC", TRUE, control_present)) %>%
-        select(RowNumber, Position, Barcode, ExpectedDensity, ActualDensity, IsControl, IsBlank)
+        mutate(RowNumber = row_number())
 
-      # Initialize the validation error collection
+      # Step 1: Ensure negative controls in the last row (row H) only for columns 11 and 12
+      linked_samples_data <- linked_samples_data %>%
+        mutate(IsControl = ifelse(grepl("^H(11|12)$", Position), TRUE, IsControl)) %>%
+        filter(!(grepl("^H(11|12)$", Position) & !is.na(`Sample ID`)))  # Remove any samples in H11 and H12
+
+      # Step 2: Allow flexibility in row G (second-to-last row)
+      # where we only validate if there is data in row G.
+      controls_in_row_G <- linked_samples_data %>%
+        filter(grepl("^G", Position) & IsControl == TRUE)
+
+      validate_row_G <- nrow(controls_in_row_G) > 0  # Only validate if controls are in row G
+
+      # Step 3: Copy controls from column 11 to column 12 if column 12 is empty
+      controls_in_col_11 <- linked_samples_data %>%
+        filter(grepl("11$", Position) & IsControl == TRUE)
+
+      empty_in_col_12 <- linked_samples_data %>%
+        filter(grepl("12$", Position) & is.na(`Sample ID`))
+
+      if (nrow(controls_in_col_11) > 0 & nrow(empty_in_col_12) > 0) {
+        linked_samples_data <- linked_samples_data %>%
+          mutate(
+            `Sample ID` = ifelse(grepl("12$", Position) & grepl("11$", lag(Position)), lag(`Sample ID`), `Sample ID`),
+            density = ifelse(grepl("12$", Position) & grepl("11$", lag(Position)), lag(density), density),
+            Barcode = ifelse(grepl("12$", Position) & grepl("11$", lag(Position)), lag(Barcode), Barcode),
+            IsControl = ifelse(grepl("12$", Position) & grepl("11$", lag(Position)), TRUE, IsControl),
+          )
+      }
+
+      # Step 4: Adjust control validation logic for column 11
+      linked_samples_data <- linked_samples_data %>%
+        left_join(standard_values_data %>% mutate(ExpectedDensity = Density), by = "Position") %>%
+        mutate(ActualDensity = density)
+
+      # Validation logic, accounting for flexibility in row G and column 11
       validation_errors <- ValidationErrorCollection$new(user_data = linked_samples_data)
 
-      # Exclude "Blank" and NA Barcode entries from non-control conflict detection
+      # If there were samples/controls in column 12, then we need to flag this.
+      # Check '8' because this is the number of rows.
+      if (nrow(empty_in_col_12) != 8) {
+        problematic_col_12_wells <- linked_samples_data %>%
+          filter(grepl("12$", Position) & is.na(`Sample ID`)) %>%
+          select(RowNumber, Position, Barcode)
+
+        error_data <- ErrorData$new(
+          description = "Column 12 must not contain any samples or controls.",
+          data_frame = problematic_col_12_wells
+        )
+        validation_errors$add_error(error_data)
+      }
+
+      # Check for non-control samples in standard positions (excluding blanks and row H)
       non_control_conflicts <- linked_samples_data %>%
-        filter(!IsControl & Position %in% standard_values_data$Position & !is.na(Barcode) & Barcode != "Blank" & !IsBlank) %>%
-        select(RowNumber, Barcode, Position)
+        filter(!IsControl & Position %in% standard_values_data$Position & !is.na(`Sample ID`) & !grepl("^H", Position)) %>%
+        select(RowNumber, `Sample ID`, Position)
 
       if (nrow(non_control_conflicts) > 0) {
         error_data <- ErrorData$new(
@@ -1293,22 +1337,24 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
         validation_errors$add_error(error_data)
       }
 
-      # Check density of controls against standard values (excluding expected density 0 condition)
-      control_conflicts <- linked_samples_data %>%
-        filter(IsControl & !is.na(ActualDensity) & ExpectedDensity != "0" & ActualDensity != ExpectedDensity) %>%
-        select(RowNumber, Position, Barcode, ExpectedDensity, ActualDensity)
+      # Check controls in column 11 if they exist, otherwise skip
+      if (nrow(controls_in_col_11) > 0) {
+        control_conflicts <- linked_samples_data %>%
+          filter(grepl("11$", Position) & IsControl & !is.na(ActualDensity) & ExpectedDensity != "0" & ActualDensity != ExpectedDensity) %>%
+          select(RowNumber, Position, `Sample ID`, ExpectedDensity, ActualDensity)
 
-      if (nrow(control_conflicts) > 0) {
-        error_data <- ErrorData$new(
-          description = "Control density mismatch.",
-          data_frame = control_conflicts
-        )
-        validation_errors$add_error(error_data)
+        if (nrow(control_conflicts) > 0) {
+          error_data <- ErrorData$new(
+            description = "Control density mismatch in column 11.",
+            data_frame = control_conflicts
+          )
+          validation_errors$add_error(error_data)
+        }
       }
 
-      # Empty wells in standard positions (except for NTC)
+      # Check for empty wells in standard positions (except NTC and row H)
       empty_standard_wells <- linked_samples_data %>%
-        filter(Position %in% standard_values_data$Position & (is.na(Barcode) | Barcode == "Blank") & ExpectedDensity != "NTC") %>%
+        filter(Position %in% standard_values_data$Position & is.na(`Sample ID`) & ExpectedDensity != "NTC" & !grepl("^H", Position)) %>%
         select(RowNumber, Position)
 
       if (nrow(empty_standard_wells) > 0) {
@@ -1319,25 +1365,12 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
         validation_errors$add_error(error_data)
       }
 
-      # Check for controls with expected density 0 that have an actual density >= 0.1
-      density_zero_controls <- linked_samples_data %>%
-        filter(ExpectedDensity == "0" & (!IsControl | ActualDensity >= 0.1)) %>%
-        select(RowNumber, Position, Barcode, ExpectedDensity, ActualDensity)
-
-      if (nrow(density_zero_controls) > 0) {
-        error_data <- ErrorData$new(
-          description = "Control with expected density 0 should have an actual density < 0.1.",
-          data_frame = density_zero_controls
-        )
-        validation_errors$add_error(error_data)
-      }
-
-      # If there are validation errors, stop and trigger the validation error modal
+      # If validation errors are found, stop and display the modal
       if (validation_errors$length() > 0) {
         stop_validation_error("Validation errors detected.", validation_errors)
       }
 
-      # No conflicts, proceed to combine data with linkage information
+      # Proceed to combine the data
       final_data <- combine_data(user_selected_rows, standard_values_data, output, linked_samples_data)
       qpcr_final_data(
         list(
