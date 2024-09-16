@@ -1292,15 +1292,19 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
       empty_in_col_12 <- linked_samples_data %>%
         filter(grepl("12$", Position) & is.na(`Sample ID`))
 
-      browser()
+      controls_in_col_12 <- linked_samples_data %>%
+        filter(grepl("12$", Position) & !is.na(`Sample ID`) & IsControl)
+
       if (nrow(controls_in_col_11) > 0 & nrow(empty_in_col_12) > 0) {
         linked_samples_data <- linked_samples_data %>%
+          # Copy over values from position 11 if the sample is a control and
+          # position 12 is empty so not to overwrite anything
           mutate(
-            `Sample ID` = ifelse(grepl("12$", Position) & lag(IsControl) == TRUE, lag(`Sample ID`), `Sample ID`),
-            density = ifelse(grepl("12$", Position) & lag(IsControl) == TRUE, lag(density), density),
-            Barcode = ifelse(grepl("12$", Position) & lag(IsControl) == TRUE, lag(Barcode), Barcode),
-            IsControl = ifelse(grepl("12$", Position) & lag(IsControl) == TRUE, lag(IsControl), IsControl),
-            `Specimen Type` = ifelse(grepl("12$", Position) & lag(IsControl) == TRUE, lag(`Specimen Type`), `Specimen Type`)
+            `Sample ID` = ifelse(grepl("12$", Position) & lag(IsControl) == TRUE & is.na(`Sample ID`), lag(`Sample ID`), `Sample ID`),
+            density = ifelse(grepl("12$", Position) & lag(IsControl) == TRUE & !is.na(`Sample ID`), lag(density), density), # !is.na because of condition above
+            Barcode = ifelse(grepl("12$", Position) & lag(IsControl) == TRUE & !is.na(`Sample ID`), lag(Barcode), Barcode),
+            IsControl = ifelse(grepl("12$", Position) & lag(IsControl) == TRUE & !is.na(`Sample ID`), lag(IsControl), IsControl),
+            `Specimen Type` = ifelse(grepl("12$", Position) & lag(IsControl) == TRUE & !is.na(`Sample ID`), lag(`Specimen Type`), `Specimen Type`)
           )
       }
 
@@ -1312,25 +1316,22 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
       # Validation logic, accounting for flexibility in row G and column 11
       validation_errors <- ValidationErrorCollection$new(user_data = linked_samples_data)
 
-      # If there were samples/controls in column 12, then we need to flag this.
-      # Check '8' because this is the number of rows.
-      if (nrow(empty_in_col_12) != 8) {
-        problematic_col_12_wells <- linked_samples_data %>%
-          filter(grepl("12$", Position) & is.na(`Sample ID`)) %>%
+      if (nrow(controls_in_col_12) > 0) {
+        problematic_col_12_wells <- controls_in_col_12 %>%
           select(RowNumber, Position, Barcode)
 
         error_data <- ErrorData$new(
-          description = "Column 12 must not contain any samples or controls.",
+          description = "Column 12 must not contain any controls.",
           data_frame = problematic_col_12_wells
         )
         validation_errors$add_error(error_data)
       }
 
-      # Check for non-control samples in standard positions (excluding blanks and row H)
-      # Samples will be allowed in Row G though.
+      # Check for non-control samples in standard positions (excluding blanks and row G, F and H)
+      # Samples will be allowed in Row G and F though.
       non_control_conflicts <- linked_samples_data %>%
-        filter(!IsControl & Position %in% standard_values_data$Position & !is.na(`Sample ID`) & !grepl("^H", Position)) %>%
-        filter(!grepl("^G", Position)) %>% # Samples are allowed in this position
+        filter(!IsControl & Position %in% standard_values_data$Position & !is.na(`Sample ID`) & !grepl("^(G|F)", Position)) %>%
+        # filter(!grepl("^(G|F)", Position)) %>% # Samples are allowed in this position
         select(RowNumber, Barcode, Position)
 
       if (nrow(non_control_conflicts) > 0) {
@@ -1360,7 +1361,7 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
       # Only need to check column 11 here as column 12 is just a copy.
       empty_standard_wells <- linked_samples_data %>%
         filter(grepl("11$", Position)) %>%
-        filter(Position %in% standard_values_data$Position & is.na(`Sample ID`) & ExpectedDensity != "NTC" & !grepl("^(G|H)", Position)) %>%
+        filter(Position %in% standard_values_data$Position & is.na(`Sample ID`) & ExpectedDensity != "NTC" & !grepl("^(G|H|F)", Position)) %>%
         select(RowNumber, Position)
 
       if (nrow(empty_standard_wells) > 0) {
@@ -1893,8 +1894,6 @@ generate_layout <- function(data, output) {
   # Create empty matrix for 8 rows (A-H) and 12 columns (1-12)
   layout_matrix <- matrix(NA, nrow = 8, ncol = 12, dimnames = list(LETTERS[1:8], sprintf("%02d", 1:12)))
 
-  browser()
-
   # Populate matrix with data from combined_data
   for (i in seq_len(nrow(data))) {
     pos <- data$Position[i]
@@ -1906,7 +1905,7 @@ generate_layout <- function(data, output) {
         data$Barcode[i],                           # Barcode on the first line
         data$`Specimen Type`[i],                   # Specimen Type on the second line
         ifelse(!is.na(data$IsControl[i]) && data$IsControl[i] == 1, 
-               sprintf("%f", data$ActualDensity[i]), ""),  # Actual Density on the third line for controls
+               sprintf("%.1f", data$ActualDensity[i]), ""),  # Actual Density on the third line for controls
         sep = "\n"  # Separate each element by a new line
       )
     } else {
