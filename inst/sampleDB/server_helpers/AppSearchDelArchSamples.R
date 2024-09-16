@@ -1243,7 +1243,7 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
         inner_join(study_subject_tbl, by = "study_subject_id") %>%
         left_join(malaria_blood_control_tbl, by = "study_subject_id") %>%
         mutate(IsControl = !is.na(malaria_blood_control_id)) %>%  # Determine control based on malaria_blood_control_id
-        select(Position, `Sample ID`, Barcode, density, IsControl) %>%
+        select(Position, `Sample ID`, Barcode, density, IsControl, `Specimen Type`) %>%
         collect() %>%
         mutate(`Sample ID` = as.integer(`Sample ID`))  # Ensure Sample ID is treated as character
 
@@ -1263,7 +1263,7 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
           IsControl = ifelse(missing_positions %in% standard_values_data$Position[standard_values_data$Density == "NTC"], TRUE, FALSE),
           stringsAsFactors = FALSE  # Ensure all fields are treated as characters
         ) %>%
-        mutate(`Sample ID` = NA) # Empty wells have NA
+        mutate(`Sample ID` = NA, `Specimen Type` = NA) # Empty wells have NA
 
         linked_samples_data <- bind_rows(linked_samples_data, blanks) %>%
           arrange(Position)
@@ -1292,13 +1292,15 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
       empty_in_col_12 <- linked_samples_data %>%
         filter(grepl("12$", Position) & is.na(`Sample ID`))
 
+      browser()
       if (nrow(controls_in_col_11) > 0 & nrow(empty_in_col_12) > 0) {
         linked_samples_data <- linked_samples_data %>%
           mutate(
-            `Sample ID` = ifelse(grepl("12$", Position) & grepl("11$", lag(Position)), lag(`Sample ID`), `Sample ID`),
-            density = ifelse(grepl("12$", Position) & grepl("11$", lag(Position)), lag(density), density),
-            Barcode = ifelse(grepl("12$", Position) & grepl("11$", lag(Position)), lag(Barcode), Barcode),
-            IsControl = ifelse(grepl("12$", Position) & grepl("11$", lag(Position)), lag(IsControl), IsControl)
+            `Sample ID` = ifelse(grepl("12$", Position) & lag(IsControl) == TRUE, lag(`Sample ID`), `Sample ID`),
+            density = ifelse(grepl("12$", Position) & lag(IsControl) == TRUE, lag(density), density),
+            Barcode = ifelse(grepl("12$", Position) & lag(IsControl) == TRUE, lag(Barcode), Barcode),
+            IsControl = ifelse(grepl("12$", Position) & lag(IsControl) == TRUE, lag(IsControl), IsControl),
+            `Specimen Type` = ifelse(grepl("12$", Position) & lag(IsControl) == TRUE, lag(`Specimen Type`), `Specimen Type`)
           )
       }
 
@@ -1839,16 +1841,11 @@ CreateNumericInputScrollableTable <- function(data, max_value_column = NULL, def
 }
 
 combine_data <- function(user_data, standard_values, output, linked_samples) {
+
   # Start with the linked samples data to ensure we prioritize linked samples over standard values
-  combined_data <- linked_samples
-
-  # Remove any existing data at standard positions in user data
-  user_data_clean <- user_data %>%
-      filter(!Position %in% combined_data$Position)
-
-  # Add cleaned user data to the combined data
-  combined_data <- bind_rows(combined_data, user_data_clean) %>%
-      arrange(Position)
+  combined_data <- linked_samples %>%
+    left_join(user_data, by = join_by(Position, `Sample ID`, Barcode, `Specimen Type`)) %>%
+    arrange(Position)
 
   # Add "Blank" to Barcode for any empty positions
   all_positions <- paste0(rep(LETTERS[1:8], each = 12), sprintf("%02d", rep(1:12, times = 8)))
@@ -1892,8 +1889,11 @@ combine_data <- function(user_data, standard_values, output, linked_samples) {
 }
 
 generate_layout <- function(data, output) {
+
   # Create empty matrix for 8 rows (A-H) and 12 columns (1-12)
   layout_matrix <- matrix(NA, nrow = 8, ncol = 12, dimnames = list(LETTERS[1:8], sprintf("%02d", 1:12)))
+
+  browser()
 
   # Populate matrix with data from combined_data
   for (i in seq_len(nrow(data))) {
@@ -1903,9 +1903,11 @@ generate_layout <- function(data, output) {
 
     if (!is.na(data$Barcode[i]) && data$Barcode[i] != "Blank") {
       layout_matrix[row, col] <- paste(
-        data$Barcode[i],
-        ifelse(!is.na(data$IsControl[i]) && data$IsControl[i] == 1, paste("\n", data$ActualDensity[i], sep = ""), ""),
-        sep = ""
+        data$Barcode[i],                           # Barcode on the first line
+        data$`Specimen Type`[i],                   # Specimen Type on the second line
+        ifelse(!is.na(data$IsControl[i]) && data$IsControl[i] == 1, 
+               sprintf("%f", data$ActualDensity[i]), ""),  # Actual Density on the third line for controls
+        sep = "\n"  # Separate each element by a new line
       )
     } else {
       layout_matrix[row, col] <- ""  # Leave blank if no Barcode
