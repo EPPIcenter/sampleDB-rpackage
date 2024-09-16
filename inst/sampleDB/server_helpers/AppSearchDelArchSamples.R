@@ -1215,16 +1215,32 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
     } else {
       check_conflicts(user.selected.rows, standard_values(), output)
     }
-  })
+})
 
-  observeEvent(input$qpcr_check_conflicts, {
+observeEvent(input$qpcr_check_conflicts, {
     user.filtered.rows <- filtered_data()
     user.selected.rows <- if (length(selected() > 0)) user.filtered.rows[selected(), ] else user.filtered.rows
     
     check_conflicts(user.selected.rows, standard_values(), output)
-  })
+})
 
-  check_conflicts <- function(user_selected_rows, standard_values_data, output) {
+observeEvent(input$qpcr_proceed_with_warning, {
+    # Call the combine function after the user chooses to proceed with the warning
+    user.filtered.rows <- filtered_data()
+    user.selected.rows <- if (length(selected() > 0)) user.filtered.rows[selected(), ] else user.filtered.rows
+
+    # Assuming linked_samples contains the updated data
+    final_data <- combine_data(user.selected.rows, standard_values(), output, linked_samples())
+    qpcr_final_data(
+      list(
+        PlateName = unique(user.selected.rows$`Plate Name`),
+        FinalData = final_data
+      )
+    )
+    removeModal()
+})
+
+check_conflicts <- function(user_selected_rows, standard_values_data, output) {
     tryCatch({
 
       con <- init_and_copy_to_db(database, user_selected_rows)
@@ -1242,13 +1258,10 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
         inner_join(specimen_tbl, by = "specimen_id") %>%
         inner_join(study_subject_tbl, by = "study_subject_id") %>%
         left_join(malaria_blood_control_tbl, by = "study_subject_id") %>%
-        mutate(IsControl = !is.na(malaria_blood_control_id)) %>%  # Determine control based on malaria_blood_control_id
+        mutate(IsControl = !is.na(malaria_blood_control_id)) %>%
         select(Position, `Sample ID`, Barcode, density, IsControl, `Specimen Type`) %>%
         collect() %>%
-        mutate(`Sample ID` = as.integer(`Sample ID`))  # Ensure Sample ID is treated as character
-
-      # Set the reactive linked_samples with the processed data
-      linked_samples(linked_samples_data)
+        mutate(`Sample ID` = as.integer(`Sample ID`))
 
       # Ensure all 96 wells are present
       all_positions <- paste0(rep(LETTERS[1:8], each = 12), sprintf("%02d", rep(1:12, times = 8)))
@@ -1259,49 +1272,41 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
         blanks <- data.frame(
           Position = missing_positions,
           Barcode = ifelse(missing_positions %in% standard_values_data$Position[standard_values_data$Density == "NTC"], "NTC", NA),
-          density = NA,  # Ensure density is NA for blank positions
+          density = NA,
           IsControl = ifelse(missing_positions %in% standard_values_data$Position[standard_values_data$Density == "NTC"], TRUE, FALSE),
-          stringsAsFactors = FALSE  # Ensure all fields are treated as characters
+          stringsAsFactors = FALSE
         ) %>%
-        mutate(`Sample ID` = NA, `Specimen Type` = NA) # Empty wells have NA
+        mutate(`Sample ID` = NA, `Specimen Type` = NA)
 
         linked_samples_data <- bind_rows(linked_samples_data, blanks) %>%
           arrange(Position)
       }
 
-      # Step 0: Add row numbers for validation.
+      # Step 0: Add row numbers for validation
       linked_samples_data <- linked_samples_data %>%
         mutate(RowNumber = row_number())
 
-      # Step 1: Ensure negative controls in the last row (row H) only for columns 11 and 12
+      # Step 1: Ensure negative controls in row H, only for columns 11 and 12
       linked_samples_data <- linked_samples_data %>%
         mutate(IsControl = ifelse(grepl("^H(11|12)$", Position), TRUE, IsControl)) %>%
-        filter(!(grepl("^H(11|12)$", Position) & !is.na(`Sample ID`)))  # Remove any samples in H11 and H12
+        filter(!(grepl("^H(11|12)$", Position) & !is.na(`Sample ID`)))
 
-      # Step 2: Allow flexibility in row G (second-to-last row)
-      # where we only validate if there is data in row G.
+      # Step 2: Allow flexibility in row G
       controls_in_row_G <- linked_samples_data %>%
         filter(grepl("^G", Position) & IsControl == TRUE)
-
-      validate_row_G <- nrow(controls_in_row_G) > 0  # Only validate if controls are in row G
+      validate_row_G <- nrow(controls_in_row_G) > 0
 
       # Step 3: Copy controls from column 11 to column 12 if column 12 is empty
       controls_in_col_11 <- linked_samples_data %>%
         filter(grepl("11$", Position) & IsControl == TRUE)
-
       empty_in_col_12 <- linked_samples_data %>%
         filter(grepl("12$", Position) & is.na(`Sample ID`))
 
-      controls_in_col_12 <- linked_samples_data %>%
-        filter(grepl("12$", Position) & !is.na(`Sample ID`) & IsControl)
-
       if (nrow(controls_in_col_11) > 0 & nrow(empty_in_col_12) > 0) {
         linked_samples_data <- linked_samples_data %>%
-          # Copy over values from position 11 if the sample is a control and
-          # position 12 is empty so not to overwrite anything
           mutate(
             `Sample ID` = ifelse(grepl("12$", Position) & lag(IsControl) == TRUE & is.na(`Sample ID`), lag(`Sample ID`), `Sample ID`),
-            density = ifelse(grepl("12$", Position) & lag(IsControl) == TRUE & !is.na(`Sample ID`), lag(density), density), # !is.na because of condition above
+            density = ifelse(grepl("12$", Position) & lag(IsControl) == TRUE & !is.na(`Sample ID`), lag(density), density),
             Barcode = ifelse(grepl("12$", Position) & lag(IsControl) == TRUE & !is.na(`Sample ID`), lag(Barcode), Barcode),
             IsControl = ifelse(grepl("12$", Position) & lag(IsControl) == TRUE & !is.na(`Sample ID`), lag(IsControl), IsControl),
             `Specimen Type` = ifelse(grepl("12$", Position) & lag(IsControl) == TRUE & !is.na(`Sample ID`), lag(`Specimen Type`), `Specimen Type`)
@@ -1313,68 +1318,27 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
         left_join(standard_values_data %>% mutate(ExpectedDensity = Density), by = "Position") %>%
         mutate(ActualDensity = density)
 
-      # Validation logic, accounting for flexibility in row G and column 11
-      validation_errors <- ValidationErrorCollection$new(user_data = linked_samples_data)
+      # Set the reactive linked_samples with the processed data
+      linked_samples(linked_samples_data)
 
-      if (nrow(controls_in_col_12) > 0) {
-        problematic_col_12_wells <- controls_in_col_12 %>%
-          select(RowNumber, Position, Barcode)
+      # Soft warning for density mismatch
+      control_conflicts <- linked_samples_data %>%
+        filter(grepl("11$", Position) & IsControl & !is.na(ActualDensity) & ExpectedDensity != "0" & ActualDensity != ExpectedDensity) %>%
+        select(RowNumber, Position, `Sample ID`, ExpectedDensity, ActualDensity)
 
-        error_data <- ErrorData$new(
-          description = "Column 12 must not contain any controls.",
-          data_frame = problematic_col_12_wells
-        )
-        validation_errors$add_error(error_data)
-      }
-
-      # Check for non-control samples in standard positions (excluding blanks and row G, F and H)
-      # Samples will be allowed in Row G and F though.
-      non_control_conflicts <- linked_samples_data %>%
-        filter(!IsControl & Position %in% standard_values_data$Position & !is.na(`Sample ID`) & !grepl("^(G|F)", Position)) %>%
-        # filter(!grepl("^(G|F)", Position)) %>% # Samples are allowed in this position
-        select(RowNumber, Barcode, Position)
-
-      if (nrow(non_control_conflicts) > 0) {
-        error_data <- ErrorData$new(
-          description = "Non-control in a standard position.",
-          data_frame = non_control_conflicts
-        )
-        validation_errors$add_error(error_data)
-      }
-
-      # Check controls in column 11 if they exist, otherwise skip
-      if (nrow(controls_in_col_11) > 0) {
-        control_conflicts <- linked_samples_data %>%
-          filter(grepl("11$", Position) & IsControl & !is.na(ActualDensity) & ExpectedDensity != "0" & ActualDensity != ExpectedDensity) %>%
-          select(RowNumber, Position, `Sample ID`, ExpectedDensity, ActualDensity)
-
-        if (nrow(control_conflicts) > 0) {
-          error_data <- ErrorData$new(
-            description = "Control density mismatch in column 11.",
-            data_frame = control_conflicts
+      if (nrow(control_conflicts) > 0) {
+        # Show modal with density mismatch information
+        showModal(modalDialog(
+          title = "Density Mismatch Detected",
+          paste("The following wells have a density mismatch:", paste(control_conflicts$Position, collapse = ", ")),
+          paste("Is this okay?"),
+          easyClose = TRUE,
+          footer = tagList(
+            actionButton("qpcr_proceed_with_warning", "Yes, continue!"),
+            modalButton("qpcr_exit")
           )
-          validation_errors$add_error(error_data)
-        }
-      }
-
-      # Check for empty wells in standard positions (except NTC, G and row H)
-      # Only need to check column 11 here as column 12 is just a copy.
-      empty_standard_wells <- linked_samples_data %>%
-        filter(grepl("11$", Position)) %>%
-        filter(Position %in% standard_values_data$Position & is.na(`Sample ID`) & ExpectedDensity != "NTC" & !grepl("^(G|H|F)", Position)) %>%
-        select(RowNumber, Position)
-
-      if (nrow(empty_standard_wells) > 0) {
-        error_data <- ErrorData$new(
-          description = "Empty well in a standard position (non-NTC).",
-          data_frame = empty_standard_wells
-        )
-        validation_errors$add_error(error_data)
-      }
-
-      # If validation errors are found, stop and display the modal
-      if (validation_errors$length() > 0) {
-        stop_validation_error("Validation errors detected.", validation_errors)
+        ))
+        return(NULL)
       }
 
       # Proceed to combine the data
