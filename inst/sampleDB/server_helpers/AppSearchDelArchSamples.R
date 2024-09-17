@@ -1316,7 +1316,10 @@ check_conflicts <- function(user_selected_rows, standard_values_data, output) {
       # Step 4: Adjust control validation logic for column 11
       linked_samples_data <- linked_samples_data %>%
         left_join(standard_values_data %>% mutate(ExpectedDensity = Density), by = "Position") %>%
-        mutate(ActualDensity = density)
+        mutate(
+          ActualDensity = ifelse(Barcode == "NTC", "Negative", as.character(density)),
+          `Specimen Type` = ifelse(Barcode == "NTC", "NTC", `Specimen Type`)
+        )
 
       # Set the reactive linked_samples with the processed data
       linked_samples(linked_samples_data)
@@ -1849,7 +1852,10 @@ combine_data <- function(user_data, standard_values, output, linked_samples) {
   # Show success notification
   showNotification("qPCR data prepared successfully.", type = "message")
   combined_data <- combined_data %>%
-      select(Barcode, Position)
+    mutate(Sample = ifelse(IsControl, ActualDensity, Barcode)) %>%
+    select(Well = Position, Sample) %>%
+    mutate(Sample = replace_na(Sample, "Blank"))
+
   return(combined_data)
 }
 
@@ -1869,7 +1875,7 @@ generate_layout <- function(data, output) {
         data$Barcode[i],                           # Barcode on the first line
         data$`Specimen Type`[i],                   # Specimen Type on the second line
         ifelse(!is.na(data$IsControl[i]) && data$IsControl[i] == 1, 
-               sprintf("%.1f", data$ActualDensity[i]), ""),  # Actual Density on the third line for controls
+               sprintf("%s", data$ActualDensity[i]), ""),  # Actual Density on the third line for controls
         sep = "\n"  # Separate each element by a new line
       )
     } else {
