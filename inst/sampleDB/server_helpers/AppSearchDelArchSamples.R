@@ -1849,14 +1849,41 @@ combine_data <- function(user_data, standard_values, output, linked_samples) {
 
   generate_layout(combined_data, output)
 
+  # Assuming combined_data is already prepared
+  export_data <- combined_data %>%
+    # Extract Row and Column from the Position (well) format (e.g., A01 -> Row = A, Column = 1)
+    mutate(
+      Row = substr(Position, 1, 1),
+      Column = as.numeric(substr(Position, 2, 3)),
+      
+      # *Target Name is fixed as "varATS"
+      `*Target Name` = "varATS",
+      
+      # *Biological Group is assigned based on position or control status
+      `*Biological Group` = ifelse(
+        is.na(Barcode), "Blank", ifelse(
+          Position %in% standard_values$Position, ifelse(
+            Barcode == "NTC", "NTC", "Standard"),    # Mark these positions as "Standard"
+        `Study Subject`)
+      ),
+      # *Sample Name uses the Barcode for sample identification
+      `*Sample Name` = ifelse(is.na(Barcode), "Blank", Barcode),
+    ) %>%
+    
+    # Select and rename columns to match your desired format
+    select(
+      Row,
+      Column,
+      `*Target Name`,
+      `*Sample Name`,
+      `*Biological Group`
+    )
+
   # Show success notification
   showNotification("qPCR data prepared successfully.", type = "message")
-  combined_data <- combined_data %>%
-    mutate(Sample = ifelse(IsControl, ActualDensity, Barcode)) %>%
-    select(Well = Position, Sample) %>%
-    mutate(Sample = replace_na(Sample, "Blank"))
 
-  return(combined_data)
+  # Return or export the final prepared export_data
+  return(export_data)
 }
 
 generate_layout <- function(data, output) {
