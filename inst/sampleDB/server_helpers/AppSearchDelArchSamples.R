@@ -1038,6 +1038,64 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
     }
   })
 
+  observe({
+    if (length(selected()) > 0) {
+      shinyjs::enable("editComment")  # Enable the button when a sample is selected
+    } else {
+      shinyjs::disable("editComment")  # Disable the button when no sample is selected
+    }
+  })
+
+  # Observe when the 'Edit Comment' button is clicked
+  observeEvent(input$editComment, {
+    showModal(
+      modalDialog(
+        title = "Edit Comment",
+        textInput("newComment", "Comment:", value = ""),  # Input field for new comment
+        easyClose = TRUE,
+        footer = tagList(
+          modalButton("Cancel"),
+          actionButton("saveComment", "Submit", class = "btn btn-primary")  # Submit button
+        )
+      )
+    )
+  })
+
+  # Handle the 'Submit' button click
+  observeEvent(input$saveComment, {
+    # Get the selected sample(s)
+    user.selected.rows <- filtered_data()[selected(), ]
+    
+    if (nrow(user.selected.rows) == 0) {
+      showNotification("No sample selected!", type = "error")
+      return()
+    }
+
+    # Extract the new comment from the input field
+    new_comment <- input$newComment
+
+    # Connect to the database
+    con <- dbConnect(SQLite(), Sys.getenv("SDB_PATH"))
+    on.exit(dbDisconnect(con), add = TRUE)
+
+    # Update the comment for the selected sample
+    dbWithTransaction(con, {
+      for (i in seq_len(nrow(user.selected.rows))) {
+        row <- user.selected.rows[i, ]
+        sample_id <- row$`Sample ID`  # Get the Sample ID
+
+        # Update the comment in the storage_container table
+        dbExecute(con, "UPDATE storage_container SET comment = :comment WHERE id = :id",
+                  params = list(comment = new_comment, id = sample_id))
+      }
+    })
+
+    # Notify the user and close the modal
+    showNotification("Comment updated successfully!", type = "message", duration = 3)
+    removeModal()
+    force_update(TRUE)  # Refresh data
+  })
+
   observeEvent(input$Delete, ignoreInit = TRUE, { 
 
     message(sprintf("DelArch action: %s", "delete"))
@@ -1145,6 +1203,154 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
     )
   })
 
+  observe({
+    output$download_qpcr_csv <- downloadHandler(
+      filename = function() {
+        plate_name <- qpcr_final_data()$PlateName
+        paste0("qPCR_", plate_name, "_", Sys.Date(), ".csv")
+      },
+      content = function(file) {
+        write.csv(qpcr_final_data()$FinalData, file, row.names = FALSE)
+      }
+    )
+  })
+
+  # Define standard values globally or inside a reactive expression
+  standard_values <- reactive({
+    data.frame(
+      Position = c(paste0(rep(LETTERS[1:8], each = 2), sprintf("%02d", rep(11:12, times = 8)))), # Last two columns of 96-well plate
+      Barcode = c("10000", "10000", "1000", "1000", "100", "100",
+                  "10", "10", "1", "1", "0.1", "0.1", "0", "0", "NTC", "NTC")
+    )
+  })
+
+  # Reactive expression to calculate conflict wells
+  conflict_wells <- reactiveVal()
+  qpcr_final_data <- reactiveVal()
+
+  observeEvent(input$download_qpcr, ignoreInit = TRUE, {
+
+    message(sprintf("Starting qPCR template download process..."))
+    showNotification("Fetching data for qPCR template...", id = "qPCRNotification", type = "message", duration = 5, closeButton = FALSE)
+
+    # Assuming `filtered_data` is a reactive expression returning the filtered data
+    user.filtered.rows <- filtered_data()
+    user.selected.rows <- if (length(selected() > 0)) user.filtered.rows[selected(), ] else user.filtered.rows
+
+    # Group by platename and check for samples in wells A1-E10
+    unique_plates <- unique(user.selected.rows$`Plate Name`)
+    num_unique_plates <- length(unique_plates)
+
+    # If we have more than one plate selected, raise an error
+    if (num_unique_plates > 1) {
+      showModal(modalDialog(
+        title = "Too many plates selected!",
+        sprintf("Only one plate is allowed at a time! There were %d plates found in the search table.", num_unique_plates),
+        easyClose = TRUE,
+        footer = modalButton("OK")
+      ))
+      return(NULL)
+    }
+
+    # Check for missing wells in user data (modify as per your criteria)
+    required_wells <- paste0(rep(LETTERS[1:8], each = 10), sprintf("%02d", rep(1:10, times = 8)))
+    user_wells <- unique(user.selected.rows$Position)
+    missing_wells <- setdiff(required_wells, user_wells)
+    
+    if (length(missing_wells) > 0) {
+      # Show modal with missing wells information
+      showModal(modalDialog(
+        title = "Missing Wells Detected",
+        paste("The following wells are missing samples:", paste(missing_wells, collapse = ", ")),
+        paste("Is this okay?"),
+        easyClose = TRUE,
+        footer = tagList(
+          actionButton("qpcr_check_conflicts", "Yes, continue!"),
+          modalButton("qpcr_exit")
+        )
+      ))
+    } else {
+      check_conflicts(user.selected.rows, standard_values(), output)
+    }
+  })
+
+  observeEvent(input$qpcr_check_conflicts, {
+    # Assuming `filtered_data` is a reactive expression returning the filtered data
+    user.filtered.rows <- filtered_data()
+    user.selected.rows <- if (length(selected() > 0)) user.filtered.rows[selected(), ] else user.filtered.rows
+    
+    check_conflicts(user.selected.rows, standard_values(), output)
+  })
+
+  check_conflicts <- function(user_selected_rows, standard_values_data, output) {
+    # Check for conflicts between user data and standard wells
+    conflicts <- intersect(user_selected_rows$Position, standard_values_data$Position)
+    conflict_wells(conflicts)  # Store conflicts in reactive value
+
+    if (length(conflicts) > 0) {
+      # Show modal to resolve conflicts
+      showModal(modalDialog(
+        title = "Conflict Detected",
+        paste("The following wells conflict with standard wells:", paste(conflicts, collapse = ", ")),
+        "Choose how to resolve the conflict:",
+        easyClose = TRUE,
+        footer = tagList(
+          actionButton("keep_user_data", "Keep User Data"),
+          actionButton("keep_standard_data", "Keep Standard Data"),
+          modalButton("Cancel")
+        )
+      ))
+    } else {
+      # No conflicts, proceed to combine data
+      final_data <- combine_data(user_selected_rows, standard_values_data, output)
+      store_final_data(user_selected_rows, final_data)
+    }
+  }
+
+  observeEvent(input$keep_user_data, {
+    # Assuming `filtered_data` is a reactive expression returning the filtered data
+    user.filtered.rows <- filtered_data()
+    user.selected.rows <- if (length(selected() > 0)) user.filtered.rows[selected(), ] else user.filtered.rows
+    user.selected.rows.qpcr <- user.selected.rows %>%
+      select(Barcode, Position)
+
+    # Access the standard_values through the reactive expression
+    standard_values_data <- standard_values()
+    
+    # Keep user data where conflicts exist
+    filtered_standard_values <- standard_values_data[!standard_values_data$Position %in% conflict_wells(), ]
+    removeModal() # Close the conflict resolution modal
+    final_data <- combine_data(user.selected.rows.qpcr, filtered_standard_values, output)
+    qpcr_final_data(
+      list(
+        PlateName = unique(user.selected.rows$`Plate Name`),
+        FinalData = final_data
+      )
+    )
+  })
+
+  observeEvent(input$keep_standard_data, {
+    # Assuming `filtered_data` is a reactive expression returning the filtered data
+    user.filtered.rows <- filtered_data()
+    user.selected.rows <- if (length(selected() > 0)) user.filtered.rows[selected(), ] else user.filtered.rows
+    user.selected.rows.qpcr <- user.selected.rows %>%
+      select(Barcode, Position)
+
+    # Access the standard_values through the reactive expression
+    standard_values_data <- standard_values()
+    
+    # Keep standard data where conflicts exist
+    filtered_user_qpcr_data <- user.selected.rows.qpcr[!user.selected.rows.qpcr$Position %in% conflict_wells(), ]
+    removeModal() # Close the conflict resolution modal
+    final_data <- combine_data(filtered_user_qpcr_data, standard_values_data, output)
+    qpcr_final_data(
+      list(
+        PlateName = unique(user.selected.rows$`Plate Name`),
+        FinalData = final_data
+      )
+    )
+  })
+
   observeEvent(input$DelArchAdvancedSearchLink, {
     showModal(modalDialog(
       title = "Advanced Micronix Tube Search",
@@ -1209,8 +1415,6 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
         server = TRUE
       )
     }
-
-    
 
     dbDisconnect(con)
   })
@@ -1596,3 +1800,119 @@ CreateNumericInputScrollableTable <- function(data, max_value_column = NULL, def
   return(scrollable_table)
 }
 
+store_final_data <- function(user_selected_rows, final_data) {
+  qpcr_final_data(
+    list(
+      PlateName = unique(user_selected_rows$`Plate Name`),
+      FinalData = final_data
+    )
+  )
+}
+
+combine_data <- function(user_data, standard_values, output) {
+  # Remove any existing data at standard positions in user data
+  user_data_clean <- user_data %>%
+    filter(!Position %in% standard_values$Position)
+  
+  # Combine standard values and cleaned user data
+  final_data <- bind_rows(standard_values, user_data_clean) %>%
+    arrange(Position)
+  
+  # Add "Blank" to Barcode for any empty positions
+  all_positions <- paste0(rep(LETTERS[1:8], each = 12), sprintf("%02d", rep(1:12, times = 8)))
+  missing_positions <- setdiff(all_positions, final_data$Position)
+  
+  if (length(missing_positions) > 0) {
+    blanks <- data.frame(
+      Position = missing_positions,
+      Barcode = "Blank"
+    )
+    final_data <- bind_rows(final_data, blanks) %>%
+      arrange(Position)
+  }
+  
+  # Generate layout for display and show in a modal with a horizontal legend
+  showModal(modalDialog(
+    title = "qPCR Plate Layout",
+    size = "l", # Large modal size
+    div(
+      style = "display: flex; margin-bottom: 10px;",
+      tags$div(tags$span(style = "background-color: #f5f5f5; padding: 5px 15px; margin-right: 10px;", "Blank")),
+      tags$div(tags$span(style = "background-color: #fff9c4; padding: 5px 15px; margin-right: 10px;", "Samples")),
+      tags$div(tags$span(style = "background-color: #c8e6c9; padding: 5px 15px;", "Standards"))
+    ),
+    reactableOutput("qpcr_layout_table"),
+    footer = tagList(
+      downloadButton("download_qpcr_csv", "Download qPCR CSV"),
+      modalButton("Close")
+    )
+  ))
+  
+  generate_layout(final_data, output)
+  
+  # Show success notification
+  showNotification("qPCR data prepared successfully.", type = "message")
+  return(final_data)
+}
+
+generate_layout <- function(data, output) {
+  # Create empty matrix for 8 rows (A-H) and 12 columns (1-12)
+  layout_matrix <- matrix(NA, nrow = 8, ncol = 12, dimnames = list(LETTERS[1:8], sprintf("%02d", 1:12)))
+  
+  # Populate matrix with data
+  for (i in seq_len(nrow(data))) {
+    pos <- data$Position[i]
+    row <- substr(pos, 1, 1)
+    col <- substr(pos, 2, 3)
+    layout_matrix[row, col] <- paste(
+      data$Barcode[i],  # Use Barcode
+      data$`Sample Name`[i],
+      data$`Biological Group`[i]
+    )
+  }
+  
+  # Convert matrix to data frame for reactable
+  layout_df <- as.data.frame(layout_matrix, stringsAsFactors = FALSE)
+  
+  # Define a function to set cell background color based on content
+  cell_color <- function(value) {
+    if (grepl("Blank", value)) {
+      return("#f5f5f5")  # Grey for Blanks
+    } else if (grepl("[0-9]{10}", value)) {  # Match exactly 10-digit integers
+      return("#fff9c4")  # Light yellow for Samples
+    } else {
+      return("#c8e6c9")  # Light green for Standards
+    }
+  }
+  
+  # Render reactable with cell shading based on content
+  output$qpcr_layout_table <- renderReactable({
+    reactable(
+      layout_df,
+      columns = list(
+        `01` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold"), style = function(value) list(background = cell_color(value))),
+        `02` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold"), style = function(value) list(background = cell_color(value))),
+        `03` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold"), style = function(value) list(background = cell_color(value))),
+        `04` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold"), style = function(value) list(background = cell_color(value))),
+        `05` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold"), style = function(value) list(background = cell_color(value))),
+        `06` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold"), style = function(value) list(background = cell_color(value))),
+        `07` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold"), style = function(value) list(background = cell_color(value))),
+        `08` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold"), style = function(value) list(background = cell_color(value))),
+        `09` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold"), style = function(value) list(background = cell_color(value))),
+        `10` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold"), style = function(value) list(background = cell_color(value))),
+        `11` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold"), style = function(value) list(background = cell_color(value))),
+        `12` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold"), style = function(value) list(background = cell_color(value)))
+      ),
+      bordered = TRUE,
+      highlight = TRUE,
+      defaultPageSize = 8,
+      sortable = FALSE,
+      pagination = FALSE,
+      striped = TRUE,
+      theme = reactableTheme(
+        headerStyle = list(backgroundColor = "#f7f7f7"),
+        cellStyle = list(whiteSpace = "pre-wrap")
+      )
+    )
+  })
+}
