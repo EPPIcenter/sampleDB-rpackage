@@ -1,5 +1,5 @@
 pandoc: 3.1.11
-pkgdown: 2.1.0
+pkgdown: 2.1.1
 pkgdown_sha: ~
 articles:
   Delete--Archive-Samples: Delete--Archive-Samples.html
@@ -12,7 +12,7 @@ articles:
   Uploading-Cryovial-Specimens: Uploading-Cryovial-Specimens.html
   Uploading-Micronix-Specimens: Uploading-Micronix-Specimens.html
   Validation: Validation.html
-last_built: 2024-08-06T01:18Z
+last_built: 2024-09-19T22:35Z
 urls:
   reference: https://eppicenter.github.io/sampleDB/reference
   article: https://eppicenter.github.io/sampleDB/articles
