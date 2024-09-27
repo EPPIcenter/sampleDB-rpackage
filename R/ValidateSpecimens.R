@@ -452,32 +452,36 @@ validate_existing_barcodes_by_study <- function(con, user_data, row_number_col, 
 #' @param row_number_col The column name for row numbers.
 #' @param study_short_code_col The column name for study short codes.
 #' @param study_subject_col The column name for study subjects.
+#' @param specimen_type_col The column name for the speciment type.
 #'
 #' @return ErrorData object or NULL if no errors found.
 #' @keywords validation, cryovial
-validate_non_longitudinal_study_subjects <- function(con, table_name, row_number_col, study_short_code_col, study_subject_col) {
+validate_non_longitudinal_study_subjects <- function(con, table_name, row_number_col, study_short_code_col, study_subject_col, specimen_type_col) {
 
   # Setup joins
+
   study_joins <- setNames(c("short_code"), c(study_short_code_col))
   study_subject_joins <- setNames(c("name", "study_id"), c(study_subject_col, "study_id"))
+  specimen_type_joins <- setNames(c("name", "specimen_type_id"), c(specimen_type_col, "specimen_type_id"))
 
   study_tbl <- tbl(con, "study") %>% dplyr::rename(study_id = id)
-  study_subject_tbl <- tbl(con, "study_subject")
+  study_subject_tbl <- tbl(con, "study_subject") %>% dplyr::rename(study_subject_id = id)
+  specimen_type_tbl <- tbl(con, "specimen_type") %>% dplyr::rename(specimen_type_id = id)
+  specimen_tbl <- tbl(con, "specimen") %>% dplyr::rename(specimen_id = id)
 
   # Check for duplicates in the database as well as duplicates
   # in the file.
   df <- tbl(con, table_name) %>%
-    dplyr::left_join(study_tbl, by = study_joins) %>%
-    dplyr::left_join(study_subject_tbl, by = study_subject_joins) %>%
-    dplyr::group_by(!!rlang::sym(study_subject_col), !!rlang::sym(study_short_code_col)) %>%
-    dplyr::mutate(n = n()) %>%
-    dplyr::ungroup() %>%
-    dplyr::filter(is_longitudinal == 0 & (!is.na(id) & !is.na(study_id) | n > 1)) %>%
-    select(all_of(c(row_number_col, study_subject_col, study_short_code_col))) %>%
+    dplyr::inner_join(study_tbl, by = study_joins) %>%
+    dplyr::inner_join(study_subject_tbl, by = study_subject_joins) %>%
+    dplyr::inner_join(specimen_tbl, by = c("study_subject_id")) %>%
+    dplyr::inner_join(specimen_type_tbl, by = specimen_type_joins) %>%
+    dplyr::filter(is_longitudinal == 0) %>%
+    select(all_of(c(row_number_col, study_subject_col, study_short_code_col, specimen_type_col))) %>%
     collect()
 
   if(nrow(df) > 0) {
-    return(ErrorData$new(data_frame = df, description = "Study subjects must be unique in studies that are not longitudinal"))
+    return(ErrorData$new(data_frame = df, description = "Specimen types must be unique for study subjects in non-longitudinal studies"))
   }
   return(NULL)
 }
@@ -934,7 +938,7 @@ validate_micronix_uploads <- function(micronix_test, variable_colnames) {
   micronix_test(validate_study_reference_db, "StudyCode")
   micronix_test(validate_specimen_type_db, "SpecimenType")
   micronix_test(validate_location_reference_db, "FreezerName", "ShelfName", "BasketName")
-  micronix_test(validate_non_longitudinal_study_subjects, "StudyCode", "StudySubject")
+  micronix_test(validate_non_longitudinal_study_subjects, "StudyCode", "StudySubject", "SpecimenType")
   micronix_test(check_longitudinal_study_dates, "StudyCode", "CollectionDate")
 }
 
@@ -967,7 +971,7 @@ validate_cryovial_uploads <- function(cryovial_test) {
   cryovial_test(validate_matrix_container, "BoxName", "Position", "cryovial_box", "cryovial_tube", error_if_exists = TRUE)
   cryovial_test(validate_box_uniqueness, "Barcode", "BoxName", similarity_tolerance = 10)
   cryovial_test(check_longitudinal_study_dates, "StudyCode", "CollectionDate")
-  cryovial_test(validate_non_longitudinal_study_subjects, "StudyCode", "StudySubject")
+  cryovial_test(validate_non_longitudinal_study_subjects, "StudyCode", "StudySubject", "SpecimenType")
   cryovial_test(validate_longitudinal_study, "StudyCode", "StudySubject", "CollectionDate")
   cryovial_test(validate_cryovial_collection_dates, "StudyCode", "StudySubject", "Barcode", "CollectionDate")
   cryovial_test(validate_study_reference_db, "StudyCode")
@@ -1002,7 +1006,7 @@ validate_dbs_sample_uploads <- function(dbs_sample_test) {
   dbs_sample_test(validate_study_reference_db, "StudyCode")
   dbs_sample_test(validate_specimen_type_db, "SpecimenType")
   dbs_sample_test(validate_location_reference_db, "FreezerName", "ShelfName", "BasketName")
-  dbs_sample_test(validate_non_longitudinal_study_subjects, "StudyCode", "StudySubject")
+  dbs_sample_test(validate_non_longitudinal_study_subjects, "StudyCode", "StudySubject", "SpecimenType")
   dbs_sample_test(check_longitudinal_study_dates, "StudyCode", "CollectionDate")
   dbs_sample_test(validate_dbs_sample_label_uniqueness, "Label", "ContainerName", "ContainerType", error_if_exists = TRUE)
 }
