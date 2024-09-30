@@ -1150,10 +1150,37 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
     output$download_qpcr_csv <- downloadHandler(
       filename = function() {
         plate_name <- qpcr_final_data()$PlateName
-        paste0("qPCR_", plate_name, "_", Sys.Date(), ".csv")
+        paste0("qPCR_", plate_name, "_", Sys.Date(), ".txt")
       },
       content = function(file) {
-        write.csv(qpcr_final_data()$FinalData, file, row.names = FALSE)
+        output_header <- matrix(
+          c(
+            "[Sample Setup]"          
+          ),
+          byrow = TRUE
+        )
+
+        qpcr_names <- matrix(colnames(qpcr_final_data()$FinalData), byrow = FALSE, nrow = 1)
+        final_data <- qpcr_final_data()$FinalData
+        colnames(final_data) <- NULL
+
+        output_header_tbl <- as.matrix(output_header)
+        qpcr_names <- as.matrix(qpcr_names)
+        final_data_tbl <- as.matrix(final_data)
+
+        # Determine the maximum number of columns needed
+        max_cols <- max(ncol(output_header_tbl), ncol(qpcr_names), ncol(final_data_tbl))
+
+        # Create a matrix with enough rows and columns, fill with NA initially
+        final_matrix <- matrix(NA, nrow = nrow(output_header_tbl) + nrow(qpcr_names) + nrow(final_data_tbl), ncol = max_cols)
+
+        # Copy each matrix into the final matrix
+        final_matrix[1:nrow(output_header_tbl), 1:ncol(output_header_tbl)] <- output_header_tbl
+        final_matrix[(nrow(output_header_tbl) + 1):(nrow(output_header_tbl) + nrow(qpcr_names)), 1:ncol(qpcr_names)] <- qpcr_names
+        final_matrix[(nrow(output_header_tbl) + nrow(qpcr_names) + 1):nrow(final_matrix), 1:ncol(final_data_tbl)] <- final_data_tbl
+
+        # Write the matrix to a text file with tab delimitations
+        write.table(final_matrix, file=file, row.names=FALSE, col.names=FALSE, na = "", quote = FALSE, sep = "\t")
       }
     )
   })
@@ -1849,34 +1876,41 @@ combine_data <- function(user_data, standard_values, output, linked_samples) {
 
   generate_layout(combined_data, output)
 
-  # Assuming combined_data is already prepared
+    # Assuming combined_data is already prepared
   export_data <- combined_data %>%
     # Extract Row and Column from the Position (well) format (e.g., A01 -> Row = A, Column = 1)
     mutate(
-      Row = substr(Position, 1, 1),
-      Column = as.numeric(substr(Position, 2, 3)),
-      
       # *Target Name is fixed as "varATS"
-      `*Target Name` = "varATS",
+      `Target Name` = ifelse(is.na(Barcode), NA_character_, "VarATS"),
       
-      # *Biological Group is assigned based on position or control status
-      `*Biological Group` = ifelse(
-        is.na(Barcode), "Blank", ifelse(
+      # Task is assigned NTC, STANDARD or UNKNOWN
+      Task = ifelse(
+        is.na(Barcode), NA_character_, ifelse(
           Position %in% standard_values$Position, ifelse(
-            Barcode == "NTC", "NTC", "Standard"),    # Mark these positions as "Standard"
-        `Study Subject`)
+            Barcode == "NTC", "NTC", "STANDARD"),    # Mark these positions as "Standard"
+        "UNKNOWN")
       ),
       # *Sample Name uses the Barcode for sample identification
-      `*Sample Name` = ifelse(is.na(Barcode), "Blank", Barcode),
+      `Sample Name` = ifelse(is.na(Barcode), NA_character_, Barcode),
+      Reporter = ifelse(!is.na(Barcode),"FAM", NA_character_), # NOTE: These are hardcoded for now
+      Quencher = ifelse(!is.na(Barcode),"NFQ-MGB", NA_character_), # NOTE: These are hardcoded for now
+      `Biogroup Name` = ifelse(!is.na(Barcode) & Position %in% standard_values$Position, 
+        ifelse(Barcode == "NTC", "NTC", Density), `Study Subject`),
+      Row = substr(Position, 1, 1),
+      Column = as.numeric(substr(Position, 2, 3)),
+      `Well Position` = sprintf("%s%d", Row, Column),
+      Well = as.character(row_number())
     ) %>%
     
     # Select and rename columns to match your desired format
     select(
-      Row,
-      Column,
-      `*Target Name`,
-      `*Sample Name`,
-      `*Biological Group`
+      Well,
+      `Well Position`,
+      `Sample Name`,
+      `Task`,
+      `Target Name`,
+      Reporter,
+      Quencher
     )
 
   # Show success notification
