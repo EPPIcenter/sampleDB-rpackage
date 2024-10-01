@@ -1286,7 +1286,7 @@ check_conflicts <- function(user_selected_rows, standard_values_data, output) {
         inner_join(study_subject_tbl, by = "study_subject_id") %>%
         left_join(malaria_blood_control_tbl, by = "study_subject_id") %>%
         mutate(IsControl = !is.na(malaria_blood_control_id)) %>%
-        select(Position, `Sample ID`, Barcode, density, IsControl, `Specimen Type`) %>%
+        select(Position, `Sample ID`, Barcode, density, IsControl, `Specimen Type`, Comment) %>%
         collect() %>%
         mutate(`Sample ID` = as.integer(`Sample ID`))
 
@@ -1336,7 +1336,8 @@ check_conflicts <- function(user_selected_rows, standard_values_data, output) {
             density = ifelse(grepl("12$", Position) & lag(IsControl) == TRUE & !is.na(`Sample ID`), lag(density), density),
             Barcode = ifelse(grepl("12$", Position) & lag(IsControl) == TRUE & !is.na(`Sample ID`), lag(Barcode), Barcode),
             IsControl = ifelse(grepl("12$", Position) & lag(IsControl) == TRUE & !is.na(`Sample ID`), lag(IsControl), IsControl),
-            `Specimen Type` = ifelse(grepl("12$", Position) & lag(IsControl) == TRUE & !is.na(`Sample ID`), lag(`Specimen Type`), `Specimen Type`)
+            `Specimen Type` = ifelse(grepl("12$", Position) & lag(IsControl) == TRUE & !is.na(`Sample ID`), lag(`Specimen Type`), `Specimen Type`),
+            Comment = ifelse(grepl("12$", Position) & lag(IsControl) == TRUE & !is.na(`Sample ID`), lag(Comment), Comment)
           )
       }
 
@@ -1839,7 +1840,7 @@ combine_data <- function(user_data, standard_values, output, linked_samples) {
 
   # Start with the linked samples data to ensure we prioritize linked samples over standard values
   combined_data <- linked_samples %>%
-    left_join(user_data, by = join_by(Position, `Sample ID`, Barcode, `Specimen Type`)) %>%
+    left_join(user_data, by = join_by(Position, `Sample ID`, Barcode, `Specimen Type`, Comment)) %>%
     arrange(Position)
 
   # Add "Blank" to Barcode for any empty positions
@@ -1886,7 +1887,7 @@ combine_data <- function(user_data, standard_values, output, linked_samples) {
       # Task is assigned NTC, STANDARD or UNKNOWN
       Task = ifelse(
         is.na(Barcode), NA_character_, ifelse(
-          Position %in% standard_values$Position, ifelse(
+          Position %in% standard_values$Position & IsControl, ifelse(
             Barcode == "NTC", "NTC", "STANDARD"),    # Mark these positions as "Standard"
         "UNKNOWN")
       ),
@@ -1894,12 +1895,14 @@ combine_data <- function(user_data, standard_values, output, linked_samples) {
       `Sample Name` = ifelse(is.na(Barcode), NA_character_, Barcode),
       Reporter = ifelse(!is.na(Barcode),"FAM", NA_character_), # NOTE: These are hardcoded for now
       Quencher = ifelse(!is.na(Barcode),"NFQ-MGB", NA_character_), # NOTE: These are hardcoded for now
-      `Biogroup Name` = ifelse(!is.na(Barcode) & Position %in% standard_values$Position, 
-        ifelse(Barcode == "NTC", "NTC", Density), `Study Subject`),
+      `Biogroup Name` = ifelse(!is.na(Barcode) & Position %in% standard_values$Position & IsControl,
+        ifelse(Barcode == "NTC", "NTC", as.character(density)), `Study Subject`),
+      `Biogroup Color` = NA_character_,
       Row = substr(Position, 1, 1),
       Column = as.numeric(substr(Position, 2, 3)),
       `Well Position` = sprintf("%s%d", Row, Column),
-      Well = as.character(row_number())
+      Well = as.character(row_number()),
+      Quantity = ifelse(Task == "STANDARD", sprintf("\"%s\"", trimws(format(density, big.mark = ",",  nsmall = 2))), NA_character_)
     ) %>%
     
     # Select and rename columns to match your desired format
@@ -1907,10 +1910,14 @@ combine_data <- function(user_data, standard_values, output, linked_samples) {
       Well,
       `Well Position`,
       `Sample Name`,
-      `Task`,
+      `Biogroup Name`,
+      `Biogroup Color`,
       `Target Name`,
+      `Task`,
       Reporter,
-      Quencher
+      Quencher,
+      Quantity,
+      Comments = Comment
     )
 
   # Show success notification
