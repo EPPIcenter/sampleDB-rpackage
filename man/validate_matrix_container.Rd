@@ -10,6 +10,7 @@ validate_matrix_container(
   row_number_col,
   container_name_col,
   container_position_col,
+  matrix_tablename,
   container_tablename,
   error_if_exists
 )
@@ -21,13 +22,15 @@ validate_matrix_container(
 
 \item{row_number_col}{The column with the row number in the \code{user_data}.}
 
+\item{container_name_col}{The column with container name in \code{user_data}.}
+
+\item{container_position_col}{The column with container positions in the \code{user_data}.}
+
+\item{matrix_tablename}{The tablename in the database that should be checked.}
+
+\item{container_tablename}{The sample container tablename. This is used for position checks.}
+
 \item{error_if_exists}{Logical. If TRUE, an error is returned if the barcode exists in the database.}
-
-\item{cryovial_col}{The column with Cryovial barcodes in the \code{user_data}.}
-
-\item{cryovial_box_col}{The column with Cryovial box IDs in the \code{user_data}.}
-
-\item{cryovial_box_barcode_col}{The column with Cryovial box barcodes in the \code{user_data}.}
 }
 \value{
 An ErrorData object if Micronix position rules are violated, or NULL otherwise.

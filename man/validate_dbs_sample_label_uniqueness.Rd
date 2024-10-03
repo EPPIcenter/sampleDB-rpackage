@@ -10,7 +10,7 @@ validate_dbs_sample_label_uniqueness(
   row_number_col,
   label_col,
   container_name_col,
-  table_name,
+  container_type_col,
   error_if_exists
 )
 }

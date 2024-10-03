@@ -557,7 +557,8 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
           max_value_column = "Exhausted",
           default_value_column = "Exhausted",
           min_value_column = "ArchivedSpotsCount",
-          enabled = TRUE
+          enabled = TRUE,
+          prefix = "editControl_"
         )
 
       } else {
@@ -823,7 +824,7 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
           })
         } else if (input$DelArchDBSAction == "edit") {
           spots_to_exhaust <- sapply(seq_len(nrow(user.selected.rows)), function(i) {
-              as.numeric(input[[paste0("modifyControl_", i)]])
+              as.numeric(input[[paste0("editControl_", i)]])
           })
 
           user.selected.rows$SpotsToExhaust <- spots_to_exhaust
@@ -833,7 +834,7 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
           # total minus the number of already archived spots. This set of spots
           # are the 'Exhausted' spots, meaning they have been "used up".
           already_archived_spots_df <- dbReadTable(con, "archived_dbs_blood_spots") %>%
-            dplyr::select(CollectionID = id, ArchivedSpotsCount = archived_spots_count)
+            dplyr::select(CollectionID = blood_spot_collection_id, ArchivedSpotsCount = archived_spots_count)
 
           user.selected.rows.selected.archived <- user.selected.rows %>%
             dplyr::left_join(already_archived_spots_df, by = join_by("CollectionID")) %>%
@@ -1207,10 +1208,37 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
     output$download_qpcr_csv <- downloadHandler(
       filename = function() {
         plate_name <- qpcr_final_data()$PlateName
-        paste0("qPCR_", plate_name, "_", Sys.Date(), ".csv")
+        paste0("qPCR_", plate_name, "_", Sys.Date(), ".txt")
       },
       content = function(file) {
-        write.csv(qpcr_final_data()$FinalData, file, row.names = FALSE)
+        output_header <- matrix(
+          c(
+            "[Sample Setup]"          
+          ),
+          byrow = TRUE
+        )
+
+        qpcr_names <- matrix(colnames(qpcr_final_data()$FinalData), byrow = FALSE, nrow = 1)
+        final_data <- qpcr_final_data()$FinalData
+        colnames(final_data) <- NULL
+
+        output_header_tbl <- as.matrix(output_header)
+        qpcr_names <- as.matrix(qpcr_names)
+        final_data_tbl <- as.matrix(final_data)
+
+        # Determine the maximum number of columns needed
+        max_cols <- max(ncol(output_header_tbl), ncol(qpcr_names), ncol(final_data_tbl))
+
+        # Create a matrix with enough rows and columns, fill with NA initially
+        final_matrix <- matrix(NA, nrow = nrow(output_header_tbl) + nrow(qpcr_names) + nrow(final_data_tbl), ncol = max_cols)
+
+        # Copy each matrix into the final matrix
+        final_matrix[1:nrow(output_header_tbl), 1:ncol(output_header_tbl)] <- output_header_tbl
+        final_matrix[(nrow(output_header_tbl) + 1):(nrow(output_header_tbl) + nrow(qpcr_names)), 1:ncol(qpcr_names)] <- qpcr_names
+        final_matrix[(nrow(output_header_tbl) + nrow(qpcr_names) + 1):nrow(final_matrix), 1:ncol(final_data_tbl)] <- final_data_tbl
+
+        # Write the matrix to a text file with tab delimitations
+        write.table(final_matrix, file=file, row.names=FALSE, col.names=FALSE, na = "", quote = FALSE, sep = "\t")
       }
     )
   })
@@ -1219,7 +1247,7 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
   standard_values <- reactive({
     data.frame(
       Position = c(paste0(rep(LETTERS[1:8], each = 2), sprintf("%02d", rep(11:12, times = 8)))), # Last two columns of 96-well plate
-      Barcode = c("10000", "10000", "1000", "1000", "100", "100",
+      Density = c("10000", "10000", "1000", "1000", "100", "100",
                   "10", "10", "1", "1", "0.1", "0.1", "0", "0", "NTC", "NTC")
     )
   })
@@ -1227,9 +1255,9 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
   # Reactive expression to calculate conflict wells
   conflict_wells <- reactiveVal()
   qpcr_final_data <- reactiveVal()
+  linked_samples <- reactiveVal(NULL)
 
   observeEvent(input$download_qpcr, ignoreInit = TRUE, {
-
     message(sprintf("Starting qPCR template download process..."))
     showNotification("Fetching data for qPCR template...", id = "qPCRNotification", type = "message", duration = 5, closeButton = FALSE)
 
@@ -1272,84 +1300,202 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
     } else {
       check_conflicts(user.selected.rows, standard_values(), output)
     }
-  })
+})
 
-  observeEvent(input$qpcr_check_conflicts, {
-    # Assuming `filtered_data` is a reactive expression returning the filtered data
+observeEvent(input$qpcr_check_conflicts, {
     user.filtered.rows <- filtered_data()
     user.selected.rows <- if (length(selected() > 0)) user.filtered.rows[selected(), ] else user.filtered.rows
     
     check_conflicts(user.selected.rows, standard_values(), output)
-  })
+})
 
-  check_conflicts <- function(user_selected_rows, standard_values_data, output) {
-    # Check for conflicts between user data and standard wells
-    conflicts <- intersect(user_selected_rows$Position, standard_values_data$Position)
-    conflict_wells(conflicts)  # Store conflicts in reactive value
+observeEvent(input$qpcr_proceed_with_warning, {
+    # Call the combine function after the user chooses to proceed with the warning
+    user.filtered.rows <- filtered_data()
+    user.selected.rows <- if (length(selected() > 0)) user.filtered.rows[selected(), ] else user.filtered.rows
 
-    if (length(conflicts) > 0) {
-      # Show modal to resolve conflicts
-      showModal(modalDialog(
-        title = "Conflict Detected",
-        paste("The following wells conflict with standard wells:", paste(conflicts, collapse = ", ")),
-        "Choose how to resolve the conflict:",
-        easyClose = TRUE,
-        footer = tagList(
-          actionButton("keep_user_data", "Keep User Data"),
-          actionButton("keep_standard_data", "Keep Standard Data"),
-          modalButton("Cancel")
+    # Assuming linked_samples contains the updated data
+    final_data <- combine_data(user.selected.rows, standard_values(), output, linked_samples())
+    qpcr_final_data(
+      list(
+        PlateName = unique(user.selected.rows$`Plate Name`),
+        FinalData = final_data
+      )
+    )
+    removeModal()
+})
+
+check_conflicts <- function(user_selected_rows, standard_values_data, output) {
+    tryCatch({
+
+      con <- init_and_copy_to_db(database, user_selected_rows)
+      on.exit(dbDisconnect(con), add = TRUE)
+
+      # Database table setup
+      specimen_tbl <- con %>% tbl("specimen") %>% dplyr::rename(specimen_id = id)
+      study_subject_tbl <- con %>% tbl("study_subject") %>% dplyr::rename(study_subject_id = id)
+      malaria_blood_control_tbl <- con %>% tbl("malaria_blood_control") %>%
+        dplyr::rename(malaria_blood_control_id = id)
+
+      # Join with database to get Sample IDs and check for malaria blood control
+      linked_samples_data <- tbl(con, "user_data") %>%
+        inner_join(con %>% tbl("storage_container"), by = c("Sample ID" = "id")) %>%
+        inner_join(specimen_tbl, by = "specimen_id") %>%
+        inner_join(study_subject_tbl, by = "study_subject_id") %>%
+        left_join(malaria_blood_control_tbl, by = "study_subject_id") %>%
+        mutate(IsControl = !is.na(malaria_blood_control_id)) %>%
+        select(Position, `Sample ID`, Barcode, density, IsControl, `Specimen Type`, Comment) %>%
+        collect() %>%
+        mutate(`Sample ID` = as.integer(`Sample ID`))
+
+      # Ensure all 96 wells are present
+      all_positions <- paste0(rep(LETTERS[1:8], each = 12), sprintf("%02d", rep(1:12, times = 8)))
+      missing_positions <- setdiff(all_positions, linked_samples_data$Position)
+
+      if (length(missing_positions) > 0) {
+        # Add missing positions as blanks or NTC
+        blanks <- data.frame(
+          Position = missing_positions,
+          Barcode = ifelse(missing_positions %in% standard_values_data$Position[standard_values_data$Density == "NTC"], "NTC", NA),
+          density = NA,
+          IsControl = ifelse(missing_positions %in% standard_values_data$Position[standard_values_data$Density == "NTC"], TRUE, FALSE),
+          stringsAsFactors = FALSE
+        ) %>%
+        mutate(`Sample ID` = NA, `Specimen Type` = NA)
+
+        linked_samples_data <- bind_rows(linked_samples_data, blanks) %>%
+          arrange(Position)
+      }
+
+      # Step 0: Add row numbers for validation
+      linked_samples_data <- linked_samples_data %>%
+        mutate(RowNumber = row_number())
+
+      # Step 1: Ensure negative controls in row H, only for columns 11 and 12
+      linked_samples_data <- linked_samples_data %>%
+        mutate(IsControl = ifelse(grepl("^H(11|12)$", Position), TRUE, IsControl)) %>%
+        filter(!(grepl("^H(11|12)$", Position) & !is.na(`Sample ID`)))
+
+      # Step 2: Allow flexibility in row G
+      controls_in_row_G <- linked_samples_data %>%
+        filter(grepl("^G", Position) & IsControl == TRUE)
+      validate_row_G <- nrow(controls_in_row_G) > 0
+
+      # Step 3: Copy controls from column 11 to column 12 if column 12 is empty
+      controls_in_col_11 <- linked_samples_data %>%
+        filter(grepl("11$", Position) & IsControl == TRUE)
+      
+      empty_in_col_12 <- linked_samples_data %>%
+        filter(grepl("12$", Position) & is.na(`Sample ID`))
+
+      controls_in_col_12 <- linked_samples_data %>%
+        filter(grepl("12$", Position) & !is.na(`Sample ID`) & IsControl)
+
+      if (nrow(controls_in_col_11) > 0 & nrow(empty_in_col_12) > 0) {
+        linked_samples_data <- linked_samples_data %>%
+          mutate(
+            `Sample ID` = ifelse(grepl("12$", Position) & lag(IsControl) == TRUE & is.na(`Sample ID`), lag(`Sample ID`), `Sample ID`),
+            density = ifelse(grepl("12$", Position) & lag(IsControl) == TRUE & !is.na(`Sample ID`), lag(density), density),
+            Barcode = ifelse(grepl("12$", Position) & lag(IsControl) == TRUE & !is.na(`Sample ID`), lag(Barcode), Barcode),
+            IsControl = ifelse(grepl("12$", Position) & lag(IsControl) == TRUE & !is.na(`Sample ID`), lag(IsControl), IsControl),
+            `Specimen Type` = ifelse(grepl("12$", Position) & lag(IsControl) == TRUE & !is.na(`Sample ID`), lag(`Specimen Type`), `Specimen Type`),
+            Comment = ifelse(grepl("12$", Position) & lag(IsControl) == TRUE & !is.na(`Sample ID`), lag(Comment), Comment)
+          )
+      }
+
+      # Step 4: Adjust control validation logic for column 11
+      linked_samples_data <- linked_samples_data %>%
+        left_join(standard_values_data %>% mutate(ExpectedDensity = Density), by = "Position") %>%
+        mutate(
+          ActualDensity = ifelse(Barcode == "NTC", "Negative", as.character(density)),
+          `Specimen Type` = ifelse(Barcode == "NTC", "NTC", `Specimen Type`)
         )
-      ))
-    } else {
-      # No conflicts, proceed to combine data
-      final_data <- combine_data(user_selected_rows, standard_values_data, output)
-      store_final_data(user_selected_rows, final_data)
-    }
+
+      # Set the reactive linked_samples with the processed data
+      linked_samples(linked_samples_data)
+
+      # Validation logic, accounting for flexibility in row G and column 11
+      validation_errors <- ValidationErrorCollection$new(user_data = linked_samples_data)
+
+      if (nrow(controls_in_col_12) > 0) {
+        problematic_col_12_wells <- controls_in_col_12 %>%
+          select(RowNumber, Position, Barcode)
+
+        error_data <- ErrorData$new(
+          description = "Column 12 must not contain any controls.",
+          data_frame = problematic_col_12_wells
+        )
+        validation_errors$add_error(error_data)
+      }
+
+      # Check for non-control samples in standard positions (excluding blanks and row G, F and H)
+      # Samples will be allowed in Row G and F though.
+      non_control_conflicts <- linked_samples_data %>%
+        filter(!IsControl & Position %in% standard_values_data$Position & !is.na(`Sample ID`) & !grepl("^(G|F)", Position)) %>%
+        # filter(!grepl("^(G|F)", Position)) %>% # Samples are allowed in this position
+        select(RowNumber, Barcode, Position)
+
+      if (nrow(non_control_conflicts) > 0) {
+        error_data <- ErrorData$new(
+          description = "Non-control in a standard position.",
+          data_frame = non_control_conflicts
+        )
+        validation_errors$add_error(error_data)
+      }
+
+      # Check for empty wells in standard positions (except NTC, G and row H)
+      # Only need to check column 11 here as column 12 is just a copy.
+      empty_standard_wells <- linked_samples_data %>%
+        filter(grepl("11$", Position)) %>%
+        filter(Position %in% standard_values_data$Position & is.na(`Sample ID`) & ExpectedDensity != "NTC" & !grepl("^(G|H|F)", Position)) %>%
+        select(RowNumber, Position)
+
+      if (nrow(empty_standard_wells) > 0) {
+        error_data <- ErrorData$new(
+          description = "Empty well in a standard position (non-NTC).",
+          data_frame = empty_standard_wells
+        )
+        validation_errors$add_error(error_data)
+      }
+
+      # If validation errors are found, stop and display the modal
+      if (validation_errors$length() > 0) {
+        stop_validation_error("Validation errors detected.", validation_errors)
+      }
+
+      # Soft warning for density mismatch
+      control_conflicts <- linked_samples_data %>%
+        filter(grepl("11$", Position) & IsControl & !is.na(ActualDensity) & ExpectedDensity != "0" & ActualDensity != ExpectedDensity) %>%
+        select(RowNumber, Position, `Sample ID`, ExpectedDensity, ActualDensity)
+
+      if (nrow(control_conflicts) > 0) {
+        # Show modal with density mismatch information
+        showModal(modalDialog(
+          title = "Density Mismatch Detected",
+          paste("The following wells have a density mismatch:", paste(control_conflicts$Position, collapse = ", ")),
+          paste("Is this okay?"),
+          easyClose = TRUE,
+          footer = tagList(
+            actionButton("qpcr_proceed_with_warning", "Yes, continue!"),
+            modalButton("qpcr_exit")
+          )
+        ))
+        return(NULL)
+      }
+
+      # Proceed to combine the data
+      final_data <- combine_data(user_selected_rows, standard_values_data, output, linked_samples_data)
+      qpcr_final_data(
+        list(
+          PlateName = unique(user_selected_rows$`Plate Name`),
+          FinalData = final_data
+        )
+      )
+    }, validation_error = function(e) {
+      show_validation_error_modal(output, e)
+    })
   }
 
-  observeEvent(input$keep_user_data, {
-    # Assuming `filtered_data` is a reactive expression returning the filtered data
-    user.filtered.rows <- filtered_data()
-    user.selected.rows <- if (length(selected() > 0)) user.filtered.rows[selected(), ] else user.filtered.rows
-    user.selected.rows.qpcr <- user.selected.rows %>%
-      select(Barcode, Position)
-
-    # Access the standard_values through the reactive expression
-    standard_values_data <- standard_values()
-    
-    # Keep user data where conflicts exist
-    filtered_standard_values <- standard_values_data[!standard_values_data$Position %in% conflict_wells(), ]
-    removeModal() # Close the conflict resolution modal
-    final_data <- combine_data(user.selected.rows.qpcr, filtered_standard_values, output)
-    qpcr_final_data(
-      list(
-        PlateName = unique(user.selected.rows$`Plate Name`),
-        FinalData = final_data
-      )
-    )
-  })
-
-  observeEvent(input$keep_standard_data, {
-    # Assuming `filtered_data` is a reactive expression returning the filtered data
-    user.filtered.rows <- filtered_data()
-    user.selected.rows <- if (length(selected() > 0)) user.filtered.rows[selected(), ] else user.filtered.rows
-    user.selected.rows.qpcr <- user.selected.rows %>%
-      select(Barcode, Position)
-
-    # Access the standard_values through the reactive expression
-    standard_values_data <- standard_values()
-    
-    # Keep standard data where conflicts exist
-    filtered_user_qpcr_data <- user.selected.rows.qpcr[!user.selected.rows.qpcr$Position %in% conflict_wells(), ]
-    removeModal() # Close the conflict resolution modal
-    final_data <- combine_data(filtered_user_qpcr_data, standard_values_data, output)
-    qpcr_final_data(
-      list(
-        PlateName = unique(user.selected.rows$`Plate Name`),
-        FinalData = final_data
-      )
-    )
-  })
 
   observeEvent(input$DelArchAdvancedSearchLink, {
     showModal(modalDialog(
@@ -1751,11 +1897,12 @@ UpdateControlSelections <- function(session, input, keepCurrentSelection = FALSE
 #' If not provided or the column is not found, a default value of 0 is used for all inputs.
 #' @param enabled A logical value indicating whether the numeric inputs should be enabled (`TRUE`) or disabled (`FALSE`).
 #' By default, inputs are enabled.
-#'
+#' @param prefix A prefix to modify control component identifier. This is useful if you have multiple tables and need to distinguish the numeric control identifiers (you should).
+#' Default is "modifyControl_". A numeric index is appended to the identifier for each numeric control.
 #' @return An HTML div element containing a scrollable table. Each row of the table includes a numeric input 
 #' with properties determined by the function parameters and the corresponding row in the input data frame.
 #'
-CreateNumericInputScrollableTable <- function(data, max_value_column = NULL, default_value_column = NULL, enabled = TRUE, min_value_column = NULL) {
+CreateNumericInputScrollableTable <- function(data, max_value_column = NULL, default_value_column = NULL, enabled = TRUE, min_value_column = NULL, prefix = "modifyControl_") {
   # Format the 'Percentage' and 'Strain' columns, if they exist
   if ("Percentage" %in% names(data)) {
     data$Percentage <- sapply(data$Percentage, function(x) paste(x, "%", collapse = ","))
@@ -1773,7 +1920,7 @@ CreateNumericInputScrollableTable <- function(data, max_value_column = NULL, def
     default_value <- if (!is.null(default_value_column) && default_value_column %in% names(row)) row[[default_value_column]] else 0
     
     # Manually creating the numeric input HTML
-    numeric_input_id <- paste0("modifyControl_", i)
+    numeric_input_id <- paste0(prefix, i)
     disabled_attr <- ifelse(enabled, "", "disabled")
     numeric_input_html <- tags$input(type = "number", id = numeric_input_id, class = "form-control", 
                                      style = "width: 80px;", min = min_spots, max = max_spots, 
@@ -1800,108 +1947,162 @@ CreateNumericInputScrollableTable <- function(data, max_value_column = NULL, def
   return(scrollable_table)
 }
 
-store_final_data <- function(user_selected_rows, final_data) {
-  qpcr_final_data(
-    list(
-      PlateName = unique(user_selected_rows$`Plate Name`),
-      FinalData = final_data
-    )
-  )
-}
+combine_data <- function(user_data, standard_values, output, linked_samples) {
 
-combine_data <- function(user_data, standard_values, output) {
-  # Remove any existing data at standard positions in user data
-  user_data_clean <- user_data %>%
-    filter(!Position %in% standard_values$Position)
-  
-  # Combine standard values and cleaned user data
-  final_data <- bind_rows(standard_values, user_data_clean) %>%
+  # Start with the linked samples data to ensure we prioritize linked samples over standard values
+  combined_data <- linked_samples %>%
+    left_join(user_data, by = join_by(Position, `Sample ID`, Barcode, `Specimen Type`, Comment)) %>%
     arrange(Position)
-  
+
   # Add "Blank" to Barcode for any empty positions
   all_positions <- paste0(rep(LETTERS[1:8], each = 12), sprintf("%02d", rep(1:12, times = 8)))
-  missing_positions <- setdiff(all_positions, final_data$Position)
-  
+  missing_positions <- setdiff(all_positions, combined_data$Position)
+
   if (length(missing_positions) > 0) {
-    blanks <- data.frame(
-      Position = missing_positions,
-      Barcode = "Blank"
-    )
-    final_data <- bind_rows(final_data, blanks) %>%
-      arrange(Position)
+      blanks <- data.frame(
+          Position = missing_positions,
+          Barcode = ifelse(missing_positions %in% standard_values$Position[standard_values$Density == "NTC"], "NTC", "Blank"),
+          ActualDensity = NA,  # Ensure density is NA for blank positions
+          IsControl = FALSE
+      )
+      combined_data <- bind_rows(combined_data, blanks) %>%
+          arrange(Position)
   }
-  
+
   # Generate layout for display and show in a modal with a horizontal legend
   showModal(modalDialog(
-    title = "qPCR Plate Layout",
-    size = "l", # Large modal size
-    div(
-      style = "display: flex; margin-bottom: 10px;",
-      tags$div(tags$span(style = "background-color: #f5f5f5; padding: 5px 15px; margin-right: 10px;", "Blank")),
-      tags$div(tags$span(style = "background-color: #fff9c4; padding: 5px 15px; margin-right: 10px;", "Samples")),
-      tags$div(tags$span(style = "background-color: #c8e6c9; padding: 5px 15px;", "Standards"))
-    ),
-    reactableOutput("qpcr_layout_table"),
-    footer = tagList(
-      downloadButton("download_qpcr_csv", "Download qPCR CSV"),
-      modalButton("Close")
-    )
+      title = "qPCR Plate Layout",
+      size = "xl", # xLarge modal size
+      div(
+          style = "display: flex; margin-bottom: 10px;",
+          tags$div(tags$span(style = "background-color: #f5f5f5; padding: 5px 15px; margin-right: 10px;", "Blank")),
+          tags$div(tags$span(style = "background-color: #fff9c4; padding: 5px 15px; margin-right: 10px;", "Samples")),
+          tags$div(tags$span(style = "background-color: #c8e6c9; padding: 5px 15px;", "Standards"))
+      ),
+      reactableOutput("qpcr_layout_table"),
+      footer = tagList(
+          downloadButton("download_qpcr_csv", "Download qPCR CSV"),
+          modalButton("Close")
+      )
   ))
-  
-  generate_layout(final_data, output)
-  
+
+  generate_layout(combined_data, output)
+
+    # Assuming combined_data is already prepared
+  export_data <- combined_data %>%
+    # Extract Row and Column from the Position (well) format (e.g., A01 -> Row = A, Column = 1)
+    mutate(
+      # *Target Name is fixed as "varATS"
+      `Target Name` = ifelse(is.na(Barcode), NA_character_, "VarATS"),
+      
+      # Task is assigned NTC, STANDARD or UNKNOWN
+      Task = ifelse(
+        is.na(Barcode), NA_character_, ifelse(
+          Position %in% standard_values$Position & IsControl, ifelse(
+            Barcode == "NTC", "NTC", "STANDARD"),    # Mark these positions as "Standard"
+        "UNKNOWN")
+      ),
+      # *Sample Name uses the Barcode for sample identification
+      `Sample Name` = ifelse(is.na(Barcode), NA_character_, Barcode),
+      Reporter = ifelse(!is.na(Barcode),"FAM", NA_character_), # NOTE: These are hardcoded for now
+      Quencher = ifelse(!is.na(Barcode),"NFQ-MGB", NA_character_), # NOTE: These are hardcoded for now
+      `Biogroup Name` = ifelse(!is.na(Barcode) & Position %in% standard_values$Position & IsControl,
+        ifelse(Barcode == "NTC", "NTC", as.character(density)), `Study Subject`),
+      `Biogroup Color` = NA_character_,
+      Row = substr(Position, 1, 1),
+      Column = as.numeric(substr(Position, 2, 3)),
+      `Well Position` = sprintf("%s%d", Row, Column),
+      Well = as.character(row_number()),
+      Quantity = ifelse(Task == "STANDARD", sprintf("\"%s\"", trimws(format(density, big.mark = ",",  nsmall = 2))), NA_character_)
+    ) %>%
+    
+    # Select and rename columns to match your desired format
+    select(
+      Well,
+      `Well Position`,
+      `Sample Name`,
+      `Biogroup Name`,
+      `Biogroup Color`,
+      `Target Name`,
+      `Task`,
+      Reporter,
+      Quencher,
+      Quantity,
+      Comments = Comment
+    )
+
   # Show success notification
   showNotification("qPCR data prepared successfully.", type = "message")
-  return(final_data)
+
+  # Return or export the final prepared export_data
+  return(export_data)
 }
 
 generate_layout <- function(data, output) {
+
   # Create empty matrix for 8 rows (A-H) and 12 columns (1-12)
   layout_matrix <- matrix(NA, nrow = 8, ncol = 12, dimnames = list(LETTERS[1:8], sprintf("%02d", 1:12)))
-  
-  # Populate matrix with data
+
+  # Populate matrix with data from combined_data
   for (i in seq_len(nrow(data))) {
     pos <- data$Position[i]
     row <- substr(pos, 1, 1)
     col <- substr(pos, 2, 3)
-    layout_matrix[row, col] <- paste(
-      data$Barcode[i],  # Use Barcode
-      data$`Sample Name`[i],
-      data$`Biological Group`[i]
-    )
-  }
-  
-  # Convert matrix to data frame for reactable
-  layout_df <- as.data.frame(layout_matrix, stringsAsFactors = FALSE)
-  
-  # Define a function to set cell background color based on content
-  cell_color <- function(value) {
-    if (grepl("Blank", value)) {
-      return("#f5f5f5")  # Grey for Blanks
-    } else if (grepl("[0-9]{10}", value)) {  # Match exactly 10-digit integers
-      return("#fff9c4")  # Light yellow for Samples
+
+    if (!is.na(data$Barcode[i]) && data$Barcode[i] != "Blank") {
+      layout_matrix[row, col] <- paste(
+        data$Barcode[i],                           # Barcode on the first line
+        data$`Specimen Type`[i],                   # Specimen Type on the second line
+        ifelse(!is.na(data$IsControl[i]) && data$IsControl[i] == 1, 
+               sprintf("%s", data$ActualDensity[i]), ""),  # Actual Density on the third line for controls
+        sep = "\n"  # Separate each element by a new line
+      )
     } else {
-      return("#c8e6c9")  # Light green for Standards
+      layout_matrix[row, col] <- ""  # Leave blank if no Barcode
     }
   }
-  
-  # Render reactable with cell shading based on content
+
+  # Convert matrix to data frame for reactable
+  layout_df <- as.data.frame(layout_matrix, stringsAsFactors = FALSE)
+
+  # Define a function to set cell background color based on content and control linkage
+  cell_color <- function(position) {
+
+    info <- data %>% filter(Position == position)
+    
+    # Ensure Barcode and control_present are checked for NA values
+    if (is.na(info$Barcode) || info$Barcode == "Blank" || nrow(info) == 0) {
+      return("#f5f5f5")  # Grey for blank positions
+    } else if (!is.na(info$IsControl) && info$IsControl == 1) {
+      return("#c8e6c9")  # Light green for Controls
+    } else {
+      return("#fff9c4")  # Light yellow for Samples
+    }
+  }
+
+  # Adjust cell colors based on linkage status and content
   output$qpcr_layout_table <- renderReactable({
     reactable(
       layout_df,
-      columns = list(
-        `01` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold"), style = function(value) list(background = cell_color(value))),
-        `02` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold"), style = function(value) list(background = cell_color(value))),
-        `03` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold"), style = function(value) list(background = cell_color(value))),
-        `04` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold"), style = function(value) list(background = cell_color(value))),
-        `05` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold"), style = function(value) list(background = cell_color(value))),
-        `06` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold"), style = function(value) list(background = cell_color(value))),
-        `07` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold"), style = function(value) list(background = cell_color(value))),
-        `08` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold"), style = function(value) list(background = cell_color(value))),
-        `09` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold"), style = function(value) list(background = cell_color(value))),
-        `10` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold"), style = function(value) list(background = cell_color(value))),
-        `11` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold"), style = function(value) list(background = cell_color(value))),
-        `12` = colDef(align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold"), style = function(value) list(background = cell_color(value)))
+      columns = setNames(
+        lapply(names(layout_df), function(col_name) {
+          colDef(
+            align = "center", minWidth = 150, headerStyle = list(fontWeight = "bold"),
+            style = function(value, index) {
+              # Determine the full position (e.g., A01, B02) from the row and column names
+              row <- rownames(layout_df)[index]
+              col <- col_name
+              pos <- paste0(row, col)
+              list(
+                background = cell_color(pos),
+                display = "flex",
+                alignItems = "center",
+                justifyContent = "center"
+              )
+            }
+          )
+        }),
+        names(layout_df)  # Ensure the list is named
       ),
       bordered = TRUE,
       highlight = TRUE,
