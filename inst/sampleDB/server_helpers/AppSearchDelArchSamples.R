@@ -1326,8 +1326,12 @@ check_conflicts <- function(user_selected_rows, standard_values_data, output) {
       # Step 3: Copy controls from column 11 to column 12 if column 12 is empty
       controls_in_col_11 <- linked_samples_data %>%
         filter(grepl("11$", Position) & IsControl == TRUE)
+      
       empty_in_col_12 <- linked_samples_data %>%
         filter(grepl("12$", Position) & is.na(`Sample ID`))
+
+      controls_in_col_12 <- linked_samples_data %>%
+        filter(grepl("12$", Position) & !is.na(`Sample ID`) & IsControl)
 
       if (nrow(controls_in_col_11) > 0 & nrow(empty_in_col_12) > 0) {
         linked_samples_data <- linked_samples_data %>%
@@ -1351,6 +1355,55 @@ check_conflicts <- function(user_selected_rows, standard_values_data, output) {
 
       # Set the reactive linked_samples with the processed data
       linked_samples(linked_samples_data)
+
+      # Validation logic, accounting for flexibility in row G and column 11
+      validation_errors <- ValidationErrorCollection$new(user_data = linked_samples_data)
+
+      if (nrow(controls_in_col_12) > 0) {
+        problematic_col_12_wells <- controls_in_col_12 %>%
+          select(RowNumber, Position, Barcode)
+
+        error_data <- ErrorData$new(
+          description = "Column 12 must not contain any controls.",
+          data_frame = problematic_col_12_wells
+        )
+        validation_errors$add_error(error_data)
+      }
+
+      # Check for non-control samples in standard positions (excluding blanks and row G, F and H)
+      # Samples will be allowed in Row G and F though.
+      non_control_conflicts <- linked_samples_data %>%
+        filter(!IsControl & Position %in% standard_values_data$Position & !is.na(`Sample ID`) & !grepl("^(G|F)", Position)) %>%
+        # filter(!grepl("^(G|F)", Position)) %>% # Samples are allowed in this position
+        select(RowNumber, Barcode, Position)
+
+      if (nrow(non_control_conflicts) > 0) {
+        error_data <- ErrorData$new(
+          description = "Non-control in a standard position.",
+          data_frame = non_control_conflicts
+        )
+        validation_errors$add_error(error_data)
+      }
+
+      # Check for empty wells in standard positions (except NTC, G and row H)
+      # Only need to check column 11 here as column 12 is just a copy.
+      empty_standard_wells <- linked_samples_data %>%
+        filter(grepl("11$", Position)) %>%
+        filter(Position %in% standard_values_data$Position & is.na(`Sample ID`) & ExpectedDensity != "NTC" & !grepl("^(G|H|F)", Position)) %>%
+        select(RowNumber, Position)
+
+      if (nrow(empty_standard_wells) > 0) {
+        error_data <- ErrorData$new(
+          description = "Empty well in a standard position (non-NTC).",
+          data_frame = empty_standard_wells
+        )
+        validation_errors$add_error(error_data)
+      }
+
+      # If validation errors are found, stop and display the modal
+      if (validation_errors$length() > 0) {
+        stop_validation_error("Validation errors detected.", validation_errors)
+      }
 
       # Soft warning for density mismatch
       control_conflicts <- linked_samples_data %>%
