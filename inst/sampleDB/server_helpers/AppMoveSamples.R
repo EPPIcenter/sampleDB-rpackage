@@ -30,6 +30,7 @@ AppMoveSamples <- function(session, input, output, database) {
   observeEvent(input$CreateNewManifest, ignoreInit = TRUE, {
     con <- dbConnect(SQLite(), Sys.getenv("SDB_PATH"))
 
+    # Update location root options
     updateSelectInput(
       session,
       "ManifestLocationRoot",
@@ -42,13 +43,16 @@ AppMoveSamples <- function(session, input, output, database) {
       )
     )
 
+    # Update the labels based on the sample type being moved
     updateSelectInput(
       session,
       "ManifestLocationRootLevelI",
       label = switch(
         input$MoveSampleType,
         "micronix" = "Shelf Name",
-        "cryovial" = "Rack Number"
+        "cryovial" = "Rack Number",
+        "whole_blood" = "Rack Number",
+        "dbs_sheet" = "Bag Rack Number"
       )
     )
 
@@ -58,24 +62,28 @@ AppMoveSamples <- function(session, input, output, database) {
       label = switch(
         input$MoveSampleType,
         "micronix" = "Basket Name",
-        "cryovial" = "Rack Position"
+        "cryovial" = "Rack Position",
+        "whole_blood" = "Rack Position",
+        "dbs_sheet" = "Bag Position"
       )
     )
 
+    # Fetch the sample type name from the database
     sample_type_name <- DBI::dbReadTable(con, "sample_type") %>%
       filter(id == input$MoveSampleType) %>%
       pull(name)
 
+    # Show the modal dialog for creating a new container or bag
     showModal(
       modalDialog(
         title = tags$h3("Create a new place to store", tags$strong(sample_type_name), "samples."),
 
-        tags$h5("1. Document the location where the new container will be stored."),
+        tags$h5("1. Document the location where the new container or bag will be stored."),
         selectInput("ManifestLocationRoot", label = NULL, width = '47%', choices = NULL),
         selectInput("ManifestLocationRootLevelI", label = NULL, width = '47%', choices = NULL),
         selectInput("ManifestLocationRootLevelII", label = NULL, width = '47%', choices = NULL),
 
-        tags$h5("2. Create a new name for the container."),
+        tags$h5("2. Create a new name for the container or bag."),
         textInput("ManifestID", label = "Human Readable Name", placeholder = "PRISM-2022-001"),
         uiOutput("ManifestIDCheck"),
         textInput("ManifestBarcode", label = "Barcode"),
@@ -87,10 +95,12 @@ AppMoveSamples <- function(session, input, output, database) {
         )
       )
     )
+
     shinyjs::disable("ManifestCreateAction")
     dbDisconnect(con)
   })
 
+  # Enable/Disable Create Action button based on inputs
   observe({
     req(input$ManifestID, input$ManifestLocationRoot, input$ManifestLocationRootLevelI, input$ManifestLocationRootLevelII)
     if (input$ManifestID != "" && input$ManifestLocationRoot != "" && input$ManifestLocationRootLevelI != "" && input$ManifestLocationRootLevelII != "") {
@@ -100,75 +110,85 @@ AppMoveSamples <- function(session, input, output, database) {
     }
   })
 
+  # Handle creation of a new cryovial box or DBS bag
   observeEvent(input$ManifestCreateAction, {
     tryCatch({
+
+      browser()
 
       con <- dbConnect(SQLite(), Sys.getenv("SDB_PATH"))
 
       dbBegin(con)
 
+      # Determine the correct table based on the sample type
       manifest <- switch(
-        input$MoveSampleType,
-        "micronix" = "micronix_plate",
-        "cryovial" = "cryovial_box"
+        input$MoveType,
+        "samples" = switch(
+          input$MoveSampleType,
+          "micronix" = "micronix_plate",
+          "cryovial" = "cryovial_box"
+        ),
+        "controls" = switch(
+          input$MoveControlType,
+          "whole_blood" = "cryovial_box",  # whole_blood uses cryovial_box
+          "dbs_sheet" = "dbs_bag"          # dbs_sheet uses dbs_bag
+        )
       )
 
+      # Check if the container or bag already exists by name
       result <- tbl(con, manifest) %>%
         filter(name %in% local(input$ManifestID)) %>%
         count() %>%
         pull(n)
 
       if (result > 0) {
-
-        # note: this should be stale
         error$title = "Error"
         error$message = paste0("Cannot create the container ", input$ManifestID, " because it already exists.")
         error$table = NULL
-
         rv$error <- TRUE
-
         return()
       }
 
+      # Check if the barcode already exists
       result <- tbl(con, manifest) %>%
         filter(barcode %in% local(input$ManifestBarcode)) %>%
         count() %>%
         pull(n)
 
       if (result > 0) {
-        # note: this should be stale
         error$title = "Error"
         error$message = paste0("The barcode ", input$ManifestBarcode, " already exists for this type of container.")
         error$table = NULL
-
         rv$error <- TRUE
-
         return()
       }
 
+      # Get the location ID based on location information
       location_id <- tbl(con, "location") %>%
         filter(location_root %in% local(input$ManifestLocationRoot) & level_I %in% local(input$ManifestLocationRootLevelI) & level_II %in% local(input$ManifestLocationRootLevelII)) %>%
         pull(id)
 
+      # Prepare the data for insertion into the correct manifest table
       df.payload <- data.frame(
         location_id = location_id,
         name = input$ManifestID,
         barcode = ifelse(input$ManifestBarcode == "", NA, input$ManifestBarcode)
       )
 
+      # Insert the new container or bag
       result <- DBI::dbAppendTable(con, manifest, df.payload)
       if (result == 1) {
         dbCommit(con)
-        shinyjs::html(id = "MoveOutputConsole", html = paste0("Empty Container Created: ", df.payload$name), add = FALSE)
+        shinyjs::html(id = "MoveOutputConsole", html = paste0("Empty Container or Bag Created: ", df.payload$name), add = FALSE)
         removeModal()
       } else {
-        stop("Unknown error creating new container in database")
+        stop("Unknown error creating new container or bag in the database")
       }
+
     }, error = function(e) {
       error$title = "Internal Error"
       error$message = e$message
       error$table = NULL
-
       rv$error <- TRUE
     }, finally = {
       dbDisconnect(con)
@@ -184,10 +204,19 @@ AppMoveSamples <- function(session, input, output, database) {
         con <- dbConnect(SQLite(), Sys.getenv("SDB_PATH"))
 
         if (input$ManifestID != "") {
+          # Determine the correct table based on the sample type
           manifest <- switch(
-            input$MoveSampleType,
-            "micronix" = "micronix_plate",
-            "cryovial" = "cryovial_box"
+            input$MoveType,
+            "samples" = switch(
+              input$MoveSampleType,
+              "micronix" = "micronix_plate",
+              "cryovial" = "cryovial_box"
+            ),
+            "controls" = switch(
+              input$MoveControlType,
+              "whole_blood" = "cryovial_box",  # whole_blood uses cryovial_box
+              "dbs_sheet" = "dbs_bag"          # dbs_sheet uses dbs_bag
+            )
           )
 
           result <- tbl(con, manifest) %>%
