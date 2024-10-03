@@ -55,6 +55,7 @@
 <span>  <span class="va">row_number_col</span>,</span>
 <span>  <span class="va">container_name_col</span>,</span>
 <span>  <span class="va">container_position_col</span>,</span>
+<span>  <span class="va">matrix_tablename</span>,</span>
 <span>  <span class="va">container_tablename</span>,</span>
 <span>  <span class="va">error_if_exists</span></span>
 <span><span class="op">)</span></span></code></pre></div>
@@ -76,20 +77,24 @@
 <dd><p>The column with the row number in the <code>user_data</code>.</p></dd>
 
 
+<dt id="arg-container-name-col">container_name_col<a class="anchor" aria-label="anchor" href="#arg-container-name-col"></a></dt>
+<dd><p>The column with container name in <code>user_data</code>.</p></dd>
+
+
+<dt id="arg-container-position-col">container_position_col<a class="anchor" aria-label="anchor" href="#arg-container-position-col"></a></dt>
+<dd><p>The column with container positions in the <code>user_data</code>.</p></dd>
+
+
+<dt id="arg-matrix-tablename">matrix_tablename<a class="anchor" aria-label="anchor" href="#arg-matrix-tablename"></a></dt>
+<dd><p>The tablename in the database that should be checked.</p></dd>
+
+
+<dt id="arg-container-tablename">container_tablename<a class="anchor" aria-label="anchor" href="#arg-container-tablename"></a></dt>
+<dd><p>The sample container tablename. This is used for position checks.</p></dd>
+
+
 <dt id="arg-error-if-exists">error_if_exists<a class="anchor" aria-label="anchor" href="#arg-error-if-exists"></a></dt>
 <dd><p>Logical. If TRUE, an error is returned if the barcode exists in the database.</p></dd>
-
-
-<dt id="arg-cryovial-col">cryovial_col<a class="anchor" aria-label="anchor" href="#arg-cryovial-col"></a></dt>
-<dd><p>The column with Cryovial barcodes in the <code>user_data</code>.</p></dd>
-
-
-<dt id="arg-cryovial-box-col">cryovial_box_col<a class="anchor" aria-label="anchor" href="#arg-cryovial-box-col"></a></dt>
-<dd><p>The column with Cryovial box IDs in the <code>user_data</code>.</p></dd>
-
-
-<dt id="arg-cryovial-box-barcode-col">cryovial_box_barcode_col<a class="anchor" aria-label="anchor" href="#arg-cryovial-box-barcode-col"></a></dt>
-<dd><p>The column with Cryovial box barcodes in the <code>user_data</code>.</p></dd>
 
 </dl></div>
     <div class="section level2">
