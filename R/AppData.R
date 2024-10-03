@@ -544,6 +544,26 @@ get_sample_file_columns <- function(sample_type, action, file_type = "na", confi
 #' @export
 get_control_file_columns <- function(control_type, action, file_type = "na", config_yml = Sys.getenv("SDB_CONFIG"), controls_file = "controls.json") {
 
+  if (control_type == "dbs_sheet" && action == "move") {
+    return(
+      ColumnData(
+        required = c("Label", "ContainerName"),
+        conditional = NULL,
+        optional = NULL
+      )
+    )
+  } else if (control_type == "whole_blood" && action == "move") {
+    return(
+      ColumnData(
+        required = c("BoxRow", "BoxName", "BoxName"),
+        conditional = NULL,
+        optional = NULL
+      )
+    )
+  }
+
+  ## NOTE: update the below to follow the pattern above.
+
   control_data <- read_json_file(controls_file)
   app_data <- read_app_file()
   app_config <- yaml::read_yaml(config_yml)
