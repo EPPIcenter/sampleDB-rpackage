@@ -19,9 +19,12 @@ UIMoveContainerOfSamples <- function(){
       conditionalPanel(
         condition = "input.ContainerType == 'samples'",
         # For samples: Sample storage type (micronix, cryovial, etc.)
-        radioButtons("ContainerSampleType", "2. Sample Storage Type", choices = get_sample_types(), inline = TRUE)
+        radioButtons("ContainerSampleType", "2. Sample Storage Type", choices = get_sample_types(), inline = TRUE),
+        conditionalPanel(
+          condition = "input.ContainerSampleType == 'dbs_sample'",
+          radioButtons("DBSSampleContainer", "Choose the container type", choices = list("Box" = "box", "Bag" = "bag"), inline = TRUE)
+        )
       ),
-      
       conditionalPanel(
         condition = "input.ContainerType == 'controls'",
         # For controls: Control storage type (e.g., whole blood, dbs sheet)

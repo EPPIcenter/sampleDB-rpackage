@@ -32,14 +32,92 @@ EditWetlabContainers <- function(session, input, database, output, dbUpdateEvent
     removeModal()
   })
 
+  observeEvent(input$ContainerSampleType, {
+
+    manifest <- switch(
+      input$ContainerSampleType,
+      "micronix" = "micronix_plate",
+      "cryovial" = "cryovial_box",
+      "dbs_sample" = switch(
+        input$DBSSampleContainer,
+        "box" = "box",
+        "bag" = "bag"
+      )
+    )
+
+    database <- Sys.getenv("SDB_PATH")
+    con <- RSQLite::dbConnect(RSQLite::SQLite(), database)
+
+    updateSelectizeInput(
+      session,
+      "ContainerManifestID",
+      label = switch(
+        input$ContainerSampleType,
+        "micronix" = "Plate Name",
+        "cryovial" = "Box Name",
+        "dbs_sample" = switch(
+          input$DBSSampleContainer,
+          "box" = "DBS Box",
+          "bag" = "DBS Bag"
+        ) 
+      ),
+      choices = c("", DBI::dbReadTable(con, manifest) %>% pull(name)),
+      selected = "",
+      server = TRUE
+    )
+  })
+
+  observeEvent(input$DBSSampleContainer, {
+    database <- Sys.getenv("SDB_PATH")
+    con <- RSQLite::dbConnect(RSQLite::SQLite(), database)
+
+    updateSelectizeInput(
+      session,
+      "ContainerManifestID",
+      label = switch(
+        input$DBSSampleContainer,
+        "box" = "DBS Box",
+        "bag" = "DBS Bag"
+      ),
+      choices = c("", DBI::dbReadTable(con, input$DBSSampleContainer) %>% pull(name)),
+      selected = "",
+      server = TRUE
+    )
+  })
+
+  observeEvent(input$ContainerControlType, {
+
+    manifest <- switch(
+      input$ContainerControlType,
+      "dbs_sheet" = "dbs_bag",
+      "whole_blood" = "cryovial_box"
+    )
+
+    database <- Sys.getenv("SDB_PATH")
+    con <- RSQLite::dbConnect(RSQLite::SQLite(), database)
+
+    updateSelectizeInput(
+      session,
+      "ContainerManifestID",
+      label = switch(
+        input$ContainerControlType,
+        "dbs_sheet" = "Bag Name",
+        "whole_blood" = "Box Name"
+      ),
+      choices = c("", DBI::dbReadTable(con, manifest) %>% pull(name)),
+      selected = input$ContainerManifestID,
+      server = TRUE
+    )
+  })
+
   observeEvent(dbUpdateEvent(), {
+
     manifest <- switch(
       input$ContainerType,
       "samples" = switch(
         input$ContainerSampleType,
         "micronix" = "micronix_plate",
-        "cryovial" = "cryovial_box",
-        "whole_blood" = "whole_blood_tube"
+        "cryovial" = "cryovial_box"
       ),
       "controls" = switch(
         input$ContainerControlType,
@@ -60,7 +138,6 @@ EditWetlabContainers <- function(session, input, database, output, dbUpdateEvent
           input$ContainerSampleType,
           "micronix" = "Plate Name",
           "cryovial" = "Box Name",
-          "whole_blood" = "Box Name"
         ),
         "controls" = switch(
           input$ContainerControlType,
@@ -113,7 +190,6 @@ EditWetlabContainers <- function(session, input, database, output, dbUpdateEvent
         input$ContainerSampleType,
         "micronix" = "micronix_plate",
         "cryovial" = "cryovial_box",
-        "whole_blood" = "whole_blood_tube"
       ),
       "controls" = switch(
         input$ContainerControlType,
@@ -134,7 +210,6 @@ EditWetlabContainers <- function(session, input, database, output, dbUpdateEvent
           input$ContainerSampleType,
           "micronix" = "Plate Name",
           "cryovial" = "Box Name",
-          "whole_blood" = "Box Name"
         ),
         "controls" = switch(
           input$ContainerControlType,
@@ -270,7 +345,6 @@ EditWetlabContainers <- function(session, input, database, output, dbUpdateEvent
               input$ContainerSampleType,
               "micronix" = "micronix_plate",
               "cryovial" = "cryovial_box",
-              "whole_blood" = "whole_blood_tube"
             ),
             "controls" = switch(
               input$ContainerControlType,

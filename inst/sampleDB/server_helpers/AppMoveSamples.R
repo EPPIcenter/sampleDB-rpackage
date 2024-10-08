@@ -114,8 +114,6 @@ AppMoveSamples <- function(session, input, output, database) {
   observeEvent(input$ManifestCreateAction, {
     tryCatch({
 
-      browser()
-
       con <- dbConnect(SQLite(), Sys.getenv("SDB_PATH"))
 
       dbBegin(con)
@@ -451,7 +449,6 @@ AppMoveSamples <- function(session, input, output, database) {
 
     tryCatch({
       withCallingHandlers({
-        browser()
         # Move the data depending on the type
         sample_type <- if (input$MoveType == "controls") input$MoveControlType else input$MoveSampleType
         MoveSpecimens(sample_type = sample_type, move_data = rv$user_file)
