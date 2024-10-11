@@ -122,7 +122,7 @@ EditWetlabContainers <- function(session, input, database, output, dbUpdateEvent
       "controls" = switch(
         input$ContainerControlType,
         "dbs_sheet" = "dbs_bag",
-        "whole_blood" = "whole_blood_tube"
+        "whole_blood" = "cryovial_box"
       )
     )
 
@@ -194,7 +194,7 @@ EditWetlabContainers <- function(session, input, database, output, dbUpdateEvent
       "controls" = switch(
         input$ContainerControlType,
         "dbs_sheet" = "dbs_bag",
-        "whole_blood" = "whole_blood_tube"
+        "whole_blood" = "cryovial_box"
       )
     )
 
@@ -345,11 +345,12 @@ EditWetlabContainers <- function(session, input, database, output, dbUpdateEvent
               input$ContainerSampleType,
               "micronix" = "micronix_plate",
               "cryovial" = "cryovial_box",
+              "dbs_sample" = input$DBSSampleContainer
             ),
             "controls" = switch(
               input$ContainerControlType,
               "dbs_sheet" = "dbs_bag",
-              "whole_blood" = "whole_blood_tube"
+              "whole_blood" = "cryovial_box"
             )
           )
 
@@ -386,9 +387,15 @@ EditWetlabContainers <- function(session, input, database, output, dbUpdateEvent
     conn <- RSQLite::dbConnect(RSQLite::SQLite(), database)
     RSQLite::dbBegin(conn)
 
+    sample_type <- switch(
+      input$ContainerType,
+      "samples" = ifelse(input$ContainerSampleType == "dbs_sample", input$DBSSampleContainer, input$ContainerSampleType),
+      "controls" = input$ContainerControlType
+    )
+
     tryCatch({
       return_message <- MoveContainers(
-        sample_type = input$ContainerType,
+        sample_type = sample_type,
         container_name = input$ContainerManifestID,
         freezer = list(
           freezer.name = input$ContainerLocationRoot,
@@ -425,9 +432,15 @@ EditWetlabContainers <- function(session, input, database, output, dbUpdateEvent
     conn <- RSQLite::dbConnect(RSQLite::SQLite(), database)
     RSQLite::dbBegin(conn)
 
+    sample_type <- switch(
+      input$ContainerType,
+      "samples" = ifelse(input$ContainerSampleType == "dbs_sample", input$DBSSampleContainer, input$ContainerSampleType),
+      "controls" = input$ContainerControlType
+    )
+
     tryCatch({
       return_message <- RenameContainers(
-        sample_type = input$ContainerType,
+        sample_type = sample_type,
         new_container_name = input$ContainerManifestNewID,
         current_container_name = input$ContainerManifestID,
         conn = conn
@@ -460,9 +473,15 @@ EditWetlabContainers <- function(session, input, database, output, dbUpdateEvent
     conn <- RSQLite::dbConnect(RSQLite::SQLite(), database)
     RSQLite::dbBegin(conn)
 
+    sample_type <- switch(
+      input$ContainerType,
+      "samples" = ifelse(input$ContainerSampleType == "dbs_sample", input$DBSSampleContainer, input$ContainerSampleType),
+      "controls" = input$ContainerControlType
+    )
+
     tryCatch({
       return_message <- DeleteEmptyContainer(
-        type = input$ContainerType,
+        type = sample_type,
         container_name = input$ContainerManifestID,
         conn = conn
       )

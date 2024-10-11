@@ -7,8 +7,8 @@
 #' @export
 
 MoveContainers <- function(sample_type, container_name, freezer, conn){
-  
-  stopifnot("Sample Type is not valid" = sample_type %in% c("micronix", "cryovial"))
+
+  stopifnot("Sample Type is not valid" = sample_type %in% c("micronix", "cryovial", "dbs_bag", "bag", "box", "whole_blood"))
 
   eval.location <- filter(CheckTableTx(conn = conn, table = "location"), 
                           location_root == freezer$freezer.name & level_I == freezer$freezer.levelI & level_II == freezer$freezer.levelII)
@@ -16,31 +16,25 @@ MoveContainers <- function(sample_type, container_name, freezer, conn){
     warning("Location does not exist!")
   }
   eval.location_id <- eval.location$id
-  
-  if(sample_type == "micronix"){
-    container_id <- filter(CheckTableTx(conn = conn, "micronix_plate"), name == container_name)$id
-    if (is_empty(container_id)) {
-      warning("Attempt to move plate that does not exist (was it deleted after deleting all of it's samples?)")
-    }
 
-    ModifyTable(conn = conn,
-                          table_name = "micronix_plate",
-                          info_list = list(location_id = eval.location_id),
-                          id = container_id)
-    return_message <- paste0("Successfully Moved Container: \n", container_name)
-  }
-  else if(sample_type == "cryovial"){
-    container_id <- filter(CheckTableTx(conn = conn, "cryovial_box"), name == container_name)$id
-    if (is_empty(container_id)) {
-      warning("Attempt to move cryovial_box that does not exist (was it deleted after deleting all of it's samples?)")
-    }
-    ModifyTable(conn = conn,
-                          table_name = "cryovial_box",
-                          info_list = list(location_id = eval.location_id),
-                          id = container_id)
-    return_message <- paste0("Successfully Moved Container: \n", container_name)
+  manifest <- switch(
+    sample_type,
+    "micronix" = "micronix_plate",
+    "cryovial" = "cryovial_box",
+    "dbs_bag" = "dbs_bag",
+    "whole_blood" = "whole_blood_tube",
+    "bag" = "bag",
+    "box" = "box"
+  )
+
+  container_id <- filter(CheckTableTx(conn = conn, manifest), name == container_name) %>% pull(id)
+  if (is_empty(container_id)) {
+    warning(paste("Attempt to move", sample_type, "container that does not exist."))
   }
 
+  ModifyTable(conn = conn, table_name = manifest, info_list = list(location_id = eval.location_id), id = container_id)
+
+  return_message <- paste0("Successfully Moved Container: \n", container_name)
   message(return_message)
   return(return_message)
 }
