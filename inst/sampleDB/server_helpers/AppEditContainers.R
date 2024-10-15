@@ -190,6 +190,7 @@ EditWetlabContainers <- function(session, input, database, output, dbUpdateEvent
         input$ContainerSampleType,
         "micronix" = "micronix_plate",
         "cryovial" = "cryovial_box",
+        "dbs_sample" = input$DBSSampleContainer
       ),
       "controls" = switch(
         input$ContainerControlType,
