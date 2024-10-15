@@ -9,7 +9,8 @@ validate_non_longitudinal_study_subjects(
   table_name,
   row_number_col,
   study_short_code_col,
-  study_subject_col
+  study_subject_col,
+  specimen_type_col
 )
 }
 \arguments{
@@ -22,6 +23,8 @@ validate_non_longitudinal_study_subjects(
 \item{study_short_code_col}{The column name for study short codes.}
 
 \item{study_subject_col}{The column name for study subjects.}
+
+\item{specimen_type_col}{The column name for the speciment type.}
 }
 \value{
 ErrorData object or NULL if no errors found.

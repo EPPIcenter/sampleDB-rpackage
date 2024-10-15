@@ -16,7 +16,7 @@
 #' @import RSQLite
 #' @import lubridate
 #' @export
-MoveSamples <- function(sample_type, move_data){
+MoveSpecimens <- function(sample_type, move_data){
 
   database <- Sys.getenv("SDB_PATH")
   conn <-  RSQLite::dbConnect(RSQLite::SQLite(), database)
@@ -25,18 +25,50 @@ MoveSamples <- function(sample_type, move_data){
   # Save MoveCSVs
   .SaveMoveCSVs(move_data)
 
+  browser()
+
   if (sample_type == "dbs_sheet") {
     con <- dbConnect(SQLite(), Sys.getenv("SDB_PATH"))
     on.exit(dbDisconnect(con))
 
     # Iterate over each tube and update its location in the database
     for (i in 1:nrow(move_data)) {
-      tube_id <- move_data$id[i]
+      dbs_sheetname <- move_data[i,]$SheetName
+      dbs_bagname <- move_data[i,]$BagName
+      dbs_control_uid <- move_data[i,]$ControlUID
+      dbs_exhausted <- move_data[i,]$Exhausted
+      dbs_total <- move_data[i,]$Total
+
+      df <- tbl(con, "study_subject") %>% dplyr::rename(study_subject_id = id) %>%
+        filter(name == dbs_control_uid) %>%
+        inner_join(tbl(con, "malaria_blood_control") %>% dplyr::rename(malaria_blood_control_id = id), by = c("study_subject_id")) %>%
+        inner_join(tbl(con, "blood_spot_collection") %>% dplyr::rename(blood_spot_collection_id = id), by = c("malaria_blood_control_id")) %>%
+        inner_join(tbl(con, "dbs_control_sheet") %>% dplyr::rename(dbs_control_sheet_id = id), by = c("dbs_control_sheet_id")) %>%
+        inner_join(tbl(con, "dbs_bag") %>% dplyr::rename(dbs_bag_id = id, dbs_label = name), by = c("dbs_bag_id"))
+
+      old_bag <- df %>%
+        filter(label == dbs_sheetname & exhausted == dbs_exhausted & dbs_total == dbs_total) %>%
+        select(dbs_control_sheet_id, dbs_bag_id, replicates) %>%
+        head(1) %>% # If we have all of this criteria met and there are duplicates, just take the first sheet.
+        collect()
+
+      new_bag <- df %>%
+        filter(label == dbs_sheetname & dbs_label == dbs_bagname) %>%
+        select(dbs_control_sheet_id, dbs_bag_id, replicates) %>%
+        collect()
 
       # SQL query to update the cryovial_box_id field for the specific tube
-      query <- paste0("UPDATE whole_blood_tube SET cryovial_box_id = ", target_cryovial_box_id, " WHERE id = ", tube_id)
+      query <- paste0("UPDATE dbs_control_sheet SET replicates = ", (old_bag$replicates - 1), " WHERE id = ", old_bag$dbs_control_sheet_id)
+      dbExecute(con, query)
+
+      # SQL query to update the cryovial_box_id field for the specific tube
+      query <- paste0("UPDATE dbs_control_sheet SET dbs_bag_id = ", new_bag$dbs_bag_id, ", replicates = ", (new_bag$replicates + 1), " WHERE id = ", new_bag$dbs_control_sheet_id)
       dbExecute(con, query)
     }
+
+    message(sprintf("Successfully moved %d dbs control sheets", nrow(move_data)))
+    dbCommit(conn)
+    dbDisconnect(conn)
   } else { # The sample types below need to be checked for orphans
 
     # Check if move creates orphans - returns TRUE if pass, FALSE if fail
@@ -200,6 +232,7 @@ MoveSamples <- function(sample_type, move_data){
   }
 }
 
+
 .MoveSamples <- function(sample_type, move_data_list, database, conn){
 
   container_names <- c()
@@ -280,11 +313,11 @@ MoveSamples <- function(sample_type, move_data){
     label.missing <- stacked_orphaned_sample_data[remaining_well_positions, ] %>% pull(barcode)
 
     # GET PLATE ID/PLATE NAME WHICH CONTAINED BARCODE STILL IN DUMMY
-    container_identifier <- if (sample_type == "whole_blood") "cryovial_box_id" else "manifest_id" 
+    container_identifier <- if (sample_type == "whole_blood") "cryovial_box_id" else "manifest_id"
     container_id_with_missing_label <- if (sample_type == "whole_blood") {
       filter(CheckTable(database = database, "whole_blood_tube"), barcode %in% label.missing) %>% pull(cryovial_tube_id)
     } else {
-      filter(CheckTable(database = database, "cryovial_tube"), barcode %in% label.missing) %>% pull(manifest_id)      
+      filter(CheckTable(database = database, "cryovial_tube"), barcode %in% label.missing) %>% pull(manifest_id)
     }
     container_name_with_missing_label <- filter(CheckTable(database = database, "cryovial_box"), id %in% container_id_with_missing_label)$name
 
@@ -314,7 +347,7 @@ MoveSamples <- function(sample_type, move_data){
     container_type <- "cryovial_box"
     sample_type <- "cryovial_tube"
     colname.container_name <- "name"
-    colname.container_id <- "manifest_id" 
+    colname.container_id <- "manifest_id"
   } else {
     stop("Invalid Sample Type!!!")
   }
@@ -325,7 +358,7 @@ MoveSamples <- function(sample_type, move_data){
     )
 
   if (!all(tbl.plate_names$plate_name_matches)) {
-    stop("Container name not found in database") 
+    stop("Container name not found in database")
   }
 
   sample_data <- list()

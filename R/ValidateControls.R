@@ -189,6 +189,7 @@ validate_dbs_sheet <- function(user_data, action, database) {
 #' @return A list containing validation errors, if any.
 #' @keywords validation, dbs_sheet
 perform_dbs_sheet_db_validations <- function(database, user_data, action) {
+  browser()
   con <- init_and_copy_to_db(database, user_data)
   on.exit(dbDisconnect(con), add = TRUE)
   errors <- list()
@@ -205,6 +206,10 @@ perform_dbs_sheet_db_validations <- function(database, user_data, action) {
     validate_dbs_sheet_create(dbs_sheet_test)
   } else if (action == "extraction") {
     validate_dbs_sheet_extraction(dbs_sheet_test)
+  } else if (action == "move") {
+    validate_dbs_sheet_move(dbs_sheet_test)
+  } else {
+    stop("No validation implemented for this action!!!")
   }
 
   return(errors)
@@ -304,6 +309,20 @@ validate_dbs_sheet_extraction <- function(dbs_sheet_test) {
   dbs_sheet_test(validate_location_reference_db, "FreezerName", "ShelfName", "BasketName")
 }
 
+#' Validate DBS Sheet Move
+#'
+#' Conducts specific validation checks for moving DBS sheet controls.
+#'
+#' @param dbs_sheet_test The utility function for performing validation checks.
+#' @return A list containing validation errors, if any.
+#' @export
+#' @keywords validation
+validate_dbs_sheet_move <- function(dbs_sheet_test) {
+  # References check
+  # dbs_sheet_test(validate_dbs_bag_label_is_unique, "BagName", "DBS_FreezerName", "DBS_ShelfName", "DBS_BasketName", error_if_exists = TRUE)
+}
+
+
 #' Validate Whole Blood Control Data
 #'
 #' This function conducts a series of validation checks on whole blood control data.
@@ -345,6 +364,10 @@ perform_whole_blood_db_validations <- function(database, user_data, action) {
     validate_whole_blood_create(whole_blood_test)
   } else if (action == "extraction") {
     validate_whole_blood_extraction(whole_blood_test)
+  } else if (action == "move") {
+    validate_whole_blood_move(whole_blood_test)
+  } else {
+    stop("No implementation for this action!!!")
   }
 
   return(errors)
@@ -396,6 +419,20 @@ validate_whole_blood_create <- function(whole_blood_test) {
 
   # Whole blood is stored in cryovials so reuse cryovial tests
   whole_blood_test(validate_empty_cryovial_well_upload, "ControlOriginPosition", "BoxName", "BoxBarcode")
+}
+
+#' Validate Whole Blood Move
+#'
+#' Conducts specific validation checks for creating whole blood controls.
+#'
+#' @param whole_blood_test The utility function for performing validation checks.
+#' @return A list containing validation errors, if any.
+#' @export
+#' @keywords validation
+validate_whole_blood_move <- function(whole_blood_test) {
+
+  # Whole blood is stored in cryovials so reuse cryovial tests
+  whole_blood_test(validate_empty_cryovial_well_upload, "Position", "BoxName", "BoxBarcode")
 }
 
 #' Validate Whole Blood Extraction

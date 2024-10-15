@@ -547,7 +547,7 @@ get_control_file_columns <- function(control_type, action, file_type = "na", con
   if (control_type == "dbs_sheet" && action == "move") {
     return(
       ColumnData(
-        required = c("Label", "ContainerName"),
+        required = c("ControlUID", "SheetName", "BagName", "Exhausted", "Total"), # Require the ControlUID as well because these sheets have the same names.
         conditional = NULL,
         optional = NULL
       )

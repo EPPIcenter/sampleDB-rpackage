@@ -406,16 +406,14 @@ AppMoveSamples <- function(session, input, output, database) {
               user_csv = dataset$datapath,
               user_action = "move",
               file_type = input$MoveFileType,
-              sample_type = input$MoveSampleType,
-              bind_data = user_input_data
+              sample_type = input$MoveSampleType
             )
           } else {
             rv$user_file <- process_control_csv(
               user_csv = dataset$datapath,
               user_action = "move",
               file_type = input$MoveFileType,
-              control_type = input$MoveControlType,
-              bind_data = user_input_data
+              control_type = input$MoveControlType
             )
           }
 
