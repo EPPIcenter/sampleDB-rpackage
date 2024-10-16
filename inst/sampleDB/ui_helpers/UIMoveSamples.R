@@ -18,7 +18,11 @@ UIMoveSamples <- function() {
       conditionalPanel(
         condition = "input.MoveType == 'samples'",
         # Sample Storage Type radio button
-        radioButtons("MoveSampleType", "2. Sample Storage Type", get_sample_types_by_action("move"), inline = TRUE),
+        radioButtons("MoveSampleType", "2. Sample Storage Type", get_sample_types(), inline = TRUE),
+        conditionalPanel(
+          condition = "input.MoveSampleType == 'dbs_sample'",
+          radioButtons("MoveDBSSampleType", "Choose the container type", choices = list("Box" = "box", "Bag" = "bag"), inline = TRUE)
+        ),
         hr(),
         
         # Move File Type radio button

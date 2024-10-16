@@ -68,15 +68,26 @@ AppMoveSamples <- function(session, input, output, database) {
       )
     )
 
-    # Fetch the sample type name from the database
-    sample_type_name <- DBI::dbReadTable(con, "sample_type") %>%
-      filter(id == input$MoveSampleType) %>%
-      pull(name)
+    # Determine the correct table based on the sample type
+    sample_type_name <- switch(
+      input$MoveType,
+      "samples" = switch(
+        input$MoveSampleType,
+        "micronix" = "Micronix Samples",
+        "cryovial" = "Cryovial Samples",
+        "dbs_sample" = "DBS Samples"
+      ),
+      "controls" = switch(
+        input$MoveControlType,
+        "whole_blood" = "Whole Blood Controls",  # whole_blood uses cryovial_box
+        "dbs_sheet" = "DBS Controls"          # dbs_sheet uses dbs_bag
+      )
+    )
 
     # Show the modal dialog for creating a new container or bag
     showModal(
       modalDialog(
-        title = tags$h3("Create a new place to store", tags$strong(sample_type_name), "samples."),
+        title = tags$h3("Create a new place to store", tags$strong(sample_type_name)),
 
         tags$h5("1. Document the location where the new container or bag will be stored."),
         selectInput("ManifestLocationRoot", label = NULL, width = '47%', choices = NULL),
@@ -86,8 +97,12 @@ AppMoveSamples <- function(session, input, output, database) {
         tags$h5("2. Create a new name for the container or bag."),
         textInput("ManifestID", label = "Human Readable Name", placeholder = "PRISM-2022-001"),
         uiOutput("ManifestIDCheck"),
-        textInput("ManifestBarcode", label = "Barcode"),
-        uiOutput("ManifestBarcodeCheck"),
+
+        conditionalPanel(
+          condition = "(input.MoveType == 'controls' && input.MoveControlType == 'whole_blood') && (input.MoveType == 'samples' && (input.MoveSampleType == 'micronix' || input.MoveSampleType == 'cryovial'))",
+          textInput("ManifestBarcode", label = "Barcode"),
+          uiOutput("ManifestBarcodeCheck")
+        ),
 
         footer = tagList(
           modalButton("Cancel"),
@@ -124,7 +139,8 @@ AppMoveSamples <- function(session, input, output, database) {
         "samples" = switch(
           input$MoveSampleType,
           "micronix" = "micronix_plate",
-          "cryovial" = "cryovial_box"
+          "cryovial" = "cryovial_box",
+          "dbs_sample" = input$MoveDBSSampleType
         ),
         "controls" = switch(
           input$MoveControlType,
@@ -147,31 +163,45 @@ AppMoveSamples <- function(session, input, output, database) {
         return()
       }
 
-      # Check if the barcode already exists
-      result <- tbl(con, manifest) %>%
-        filter(barcode %in% local(input$ManifestBarcode)) %>%
-        count() %>%
-        pull(n)
-
-      if (result > 0) {
-        error$title = "Error"
-        error$message = paste0("The barcode ", input$ManifestBarcode, " already exists for this type of container.")
-        error$table = NULL
-        rv$error <- TRUE
-        return()
-      }
-
       # Get the location ID based on location information
       location_id <- tbl(con, "location") %>%
         filter(location_root %in% local(input$ManifestLocationRoot) & level_I %in% local(input$ManifestLocationRootLevelI) & level_II %in% local(input$ManifestLocationRootLevelII)) %>%
         pull(id)
 
-      # Prepare the data for insertion into the correct manifest table
-      df.payload <- data.frame(
-        location_id = location_id,
-        name = input$ManifestID,
-        barcode = ifelse(input$ManifestBarcode == "", NA, input$ManifestBarcode)
-      )
+
+      now <- as.character(lubridate::now())
+      # Check if the barcode already exists
+      if (manifest %in% c("cryovial_box", "micronix_plate")) {
+        result <- tbl(con, manifest) %>%
+          filter(barcode %in% local(input$ManifestBarcode)) %>%
+          count() %>%
+          pull(n)
+
+        if (result > 0) {
+          error$title = "Error"
+          error$message = paste0("The barcode ", input$ManifestBarcode, " already exists for this type of container.")
+          error$table = NULL
+          rv$error <- TRUE
+          return()
+        }
+
+        # Prepare the data for insertion into the correct manifest table
+        df.payload <- data.frame(
+          location_id = location_id,
+          name = input$ManifestID,
+          barcode = ifelse(input$ManifestBarcode == "", NA, input$ManifestBarcode),
+          last_updated = now,
+          created = now
+        )
+      } else {
+        # Prepare the data for insertion into the correct manifest table
+        df.payload <- data.frame(
+          location_id = location_id,
+          name = input$ManifestID,
+          last_updated = now,
+          created = now
+        )
+      }
 
       # Insert the new container or bag
       result <- DBI::dbAppendTable(con, manifest, df.payload)
@@ -208,7 +238,8 @@ AppMoveSamples <- function(session, input, output, database) {
             "samples" = switch(
               input$MoveSampleType,
               "micronix" = "micronix_plate",
-              "cryovial" = "cryovial_box"
+              "cryovial" = "cryovial_box",
+              "dbs_sample" = input$MoveDBSSampleType
             ),
             "controls" = switch(
               input$MoveControlType,
@@ -246,19 +277,32 @@ AppMoveSamples <- function(session, input, output, database) {
         con <- dbConnect(SQLite(), Sys.getenv("SDB_PATH"))
 
         if (input$ManifestBarcode != "") {
+          # Determine the correct table based on the sample type
           manifest <- switch(
-            input$MoveSampleType,
-            "micronix" = "micronix_plate",
-            "cryovial" = "cryovial_box"
+            input$MoveType,
+            "samples" = switch(
+              input$MoveSampleType,
+              "micronix" = "micronix_plate",
+              "cryovial" = "cryovial_box",
+              "dbs_sample" = NULL # No barcode
+            ),
+            "controls" = switch(
+              input$MoveControlType,
+              "whole_blood" = "cryovial_box", 
+              "dbs_sheet" = NULL # No barcode
+            )
           )
 
-          result <- tbl(con, manifest) %>%
-            filter(barcode %in% local(input$ManifestBarcode)) %>%
-            count() %>%
-            pull(n)
+          if (!is.null(manifest)) {
 
-          if (result > 0) {
-            html <- paste0("<span style=color:#0000ff>", "Barcode is in use!", "</span>")
+            result <- tbl(con, manifest) %>%
+              filter(barcode %in% local(input$ManifestBarcode)) %>%
+              count() %>%
+              pull(n)
+
+            if (result > 0) {
+              html <- paste0("<span style=color:#0000ff>", "Barcode is in use!", "</span>")
+            }
           }
         }
 
