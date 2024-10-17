@@ -938,7 +938,6 @@ validate_micronix_uploads <- function(micronix_test, variable_colnames) {
   micronix_test(validate_study_reference_db, "StudyCode")
   micronix_test(validate_specimen_type_db, "SpecimenType")
   micronix_test(validate_location_reference_db, "FreezerName", "ShelfName", "BasketName")
-  micronix_test(validate_non_longitudinal_study_subjects, "StudyCode", "StudySubject", "SpecimenType")
   micronix_test(check_longitudinal_study_dates, "StudyCode", "CollectionDate")
 }
 
@@ -971,7 +970,6 @@ validate_cryovial_uploads <- function(cryovial_test) {
   cryovial_test(validate_matrix_container, "BoxName", "Position", "cryovial_box", "cryovial_tube", error_if_exists = TRUE)
   cryovial_test(validate_box_uniqueness, "Barcode", "BoxName", similarity_tolerance = 10)
   cryovial_test(check_longitudinal_study_dates, "StudyCode", "CollectionDate")
-  cryovial_test(validate_non_longitudinal_study_subjects, "StudyCode", "StudySubject", "SpecimenType")
   cryovial_test(validate_longitudinal_study, "StudyCode", "StudySubject", "CollectionDate")
   cryovial_test(validate_cryovial_collection_dates, "StudyCode", "StudySubject", "Barcode", "CollectionDate")
   cryovial_test(validate_study_reference_db, "StudyCode")
@@ -1006,7 +1004,6 @@ validate_dbs_sample_uploads <- function(dbs_sample_test) {
   dbs_sample_test(validate_study_reference_db, "StudyCode")
   dbs_sample_test(validate_specimen_type_db, "SpecimenType")
   dbs_sample_test(validate_location_reference_db, "FreezerName", "ShelfName", "BasketName")
-  dbs_sample_test(validate_non_longitudinal_study_subjects, "StudyCode", "StudySubject", "SpecimenType")
   dbs_sample_test(check_longitudinal_study_dates, "StudyCode", "CollectionDate")
   dbs_sample_test(validate_dbs_sample_label_uniqueness, "Label", "ContainerName", "ContainerType", error_if_exists = TRUE)
 }
