@@ -547,7 +547,7 @@ get_control_file_columns <- function(control_type, action, file_type = "na", con
   if (control_type == "dbs_sheet" && action == "move") {
     return(
       ColumnData(
-        required = c("ControlUID", "SheetName", "BagName", "Exhausted", "Total"), # Require the ControlUID as well because these sheets have the same names.
+        required = c("Batch", "ControlUID", "SheetName", "SourceBagName", "DestBagName"), # Require the ControlUID as well because these sheets have the same names.
         conditional = NULL,
         optional = NULL
       )
@@ -555,7 +555,7 @@ get_control_file_columns <- function(control_type, action, file_type = "na", con
   } else if (control_type == "whole_blood" && action == "move") {
     return(
       ColumnData(
-        required = c("BoxRow", "BoxName", "BoxName"),
+        required = c("Batch", "ControlUID", "BoxRow", "BoxName", "BoxName"),
         conditional = NULL,
         optional = NULL
       )

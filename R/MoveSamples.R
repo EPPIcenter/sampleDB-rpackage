@@ -39,21 +39,20 @@ MoveSpecimens <- function(sample_type, move_data){
       dbs_exhausted <- move_data[i,]$Exhausted
       dbs_total <- move_data[i,]$Total
 
-      df <- tbl(con, "study_subject") %>% dplyr::rename(study_subject_id = id) %>%
-        filter(name == dbs_control_uid) %>%
+      df <- tbl(con, "study_subject") %>% dplyr::rename(study_subject_id = id, control_uid = name) %>%
         inner_join(tbl(con, "malaria_blood_control") %>% dplyr::rename(malaria_blood_control_id = id), by = c("study_subject_id")) %>%
         inner_join(tbl(con, "blood_spot_collection") %>% dplyr::rename(blood_spot_collection_id = id), by = c("malaria_blood_control_id")) %>%
         inner_join(tbl(con, "dbs_control_sheet") %>% dplyr::rename(dbs_control_sheet_id = id), by = c("dbs_control_sheet_id")) %>%
         inner_join(tbl(con, "dbs_bag") %>% dplyr::rename(dbs_bag_id = id, dbs_label = name), by = c("dbs_bag_id"))
 
       old_bag <- df %>%
-        filter(label == dbs_sheetname & exhausted == dbs_exhausted & dbs_total == dbs_total) %>%
+        filter(control_uid == dbs_control_uid & exhausted == dbs_exhausted & dbs_total == dbs_total) %>%
         select(dbs_control_sheet_id, dbs_bag_id, replicates) %>%
         head(1) %>% # If we have all of this criteria met and there are duplicates, just take the first sheet.
         collect()
 
       new_bag <- df %>%
-        filter(label == dbs_sheetname & dbs_label == dbs_bagname) %>%
+        filter(dbs_label == dbs_bagname) %>%
         select(dbs_control_sheet_id, dbs_bag_id, replicates) %>%
         collect()
 

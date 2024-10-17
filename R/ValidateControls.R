@@ -189,7 +189,6 @@ validate_dbs_sheet <- function(user_data, action, database) {
 #' @return A list containing validation errors, if any.
 #' @keywords validation, dbs_sheet
 perform_dbs_sheet_db_validations <- function(database, user_data, action) {
-  browser()
   con <- init_and_copy_to_db(database, user_data)
   on.exit(dbDisconnect(con), add = TRUE)
   errors <- list()
@@ -268,6 +267,61 @@ validate_dbs_bag_label_is_unique <- function(con, table_name, row_number_col, ba
 }
 
 
+validate_dbs_bag_exists <- function(con, table_name, row_number_col, bag_label_col, error_if_exists = FALSE) {
+  dbs_bag_tbl <- tbl(con, "dbs_bag") %>% dplyr::rename(dbs_bag_id=id, bag_label=name)
+
+  bag_joins <- setNames(
+    c("bag_label"),
+    c(bag_label_col)
+  )
+
+  df <- tbl(con, table_name) %>%
+    dplyr::inner_join(dbs_bag_tbl, by = bag_joins) %>%
+    dplyr::select(all_of(c(row_number_col, bag_label_col))) %>%
+    dplyr::collect()
+
+  if (error_if_exists) {
+    if (nrow(df) > 0) {
+      error_message <- sprintf("DBS bag name already exists.")
+      return(ErrorData$new(description = error_message, data_frame = df))
+    }
+  } else {
+    if (nrow(df) == 0) {
+      error_message <- sprintf("DBS bag name could not be found.", basket_col)
+      return(ErrorData$new(description = error_message, data_frame = df))
+    }
+  }
+}
+
+validate_dbs_sheet_exists <- function(con, table_name, row_number_col, dbs_sheet_col, error_if_exists = FALSE) {
+
+  control_sheet_tbl <- tbl(con, "dbs_control_sheet") %>% dplyr::rename(dbs_control_sheet_id=id, control_sheet_label=label)
+
+  sheet_joins <- setNames(
+    c("control_sheet_label"),
+    c(dbs_sheet_col)
+  )
+
+  df <- tbl(con, table_name) %>%
+    dplyr::inner_join(control_sheet_tbl, by = sheet_joins) %>%
+    dplyr::select(all_of(c(row_number_col, dbs_sheet_col))) %>%
+    dplyr::collect()
+
+  if (error_if_exists) {
+    if (nrow(df) > 0) {
+      error_message <- sprintf("DBS Sheet name already exists.")
+      return(ErrorData$new(description = error_message, data_frame = df))
+    }
+  } else {
+    if (nrow(df) == 0) {
+      error_message <- sprintf("DBS Sheet name could not be found.", basket_col)
+      return(ErrorData$new(description = error_message, data_frame = df))
+    }
+  }
+}
+
+
+
 
 #' Validate DBS Sheet Create
 #'
@@ -319,9 +373,9 @@ validate_dbs_sheet_extraction <- function(dbs_sheet_test) {
 #' @keywords validation
 validate_dbs_sheet_move <- function(dbs_sheet_test) {
   # References check
-  # dbs_sheet_test(validate_dbs_bag_label_is_unique, "BagName", "DBS_FreezerName", "DBS_ShelfName", "DBS_BasketName", error_if_exists = TRUE)
+  dbs_sheet_test(validate_dbs_bag_exists, "BagName", error_if_exists = FALSE)
+  dbs_sheet_test(validate_dbs_sheet_exists, "SheetName", error_if_exists = FALSE)
 }
-
 
 #' Validate Whole Blood Control Data
 #'
