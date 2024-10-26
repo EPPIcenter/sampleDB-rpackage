@@ -25,8 +25,6 @@ MoveSpecimens <- function(sample_type, move_data){
   # Save MoveCSVs
   .SaveMoveCSVs(move_data)
 
-  browser()
-
   if (sample_type == "dbs_sheet") {
     con <- dbConnect(SQLite(), Sys.getenv("SDB_PATH"))
     on.exit(dbDisconnect(con))

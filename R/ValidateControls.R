@@ -266,6 +266,70 @@ validate_dbs_bag_label_is_unique <- function(con, table_name, row_number_col, ba
   return(NULL)  
 }
 
+#' Validate that a sheet name for a batch consistently contains
+#' the same densities and compositions. Sheet names (or labels)
+#' should be descriptive of the contents that are on the sheet. This
+#' validation check is in place to enforce sheet name specificity
+#' by only allowing a sheet name to link to composition types and
+#' densities that we're used with the first named sheet on upload.
+#'
+#' New sheets are allowed to reuse the sheet name label but they
+#' must have the same composition type and density combinations.
+#'
+#' @param con A database connection.
+#' @param table_name The name of the table to check.
+#' @param row_number_col The name of the row number column.
+#' @param control_uid_col The name of the bag label column.
+#' @param sheet_name_col The name of the freezer column.
+#' 
+#' @return A list containing validation errors, if any.
+#' @export
+#' @keywords validation
+validate_dbs_sheet_label_maps_to_uids <- function(con, table_name, row_number_col, batch_col, composition_id_col, density_col, sheet_name_col) {
+
+  batch_tbl <- tbl(con, "study") %>% dplyr::rename(study_id = id, batch = short_code)
+  dbs_bag_tbl <- tbl(con, "dbs_bag") %>% dplyr::rename(dbs_bag_id=id, bag_label=name)
+  study_subject_tbl <- tbl(con, "study_subject") %>% dplyr::rename(study_subject_id = id, control_uid = name)
+  malaria_blood_control_tbl <- tbl(con, "malaria_blood_control") %>%
+    dplyr::rename(malaria_blood_control_id = id)
+  dbs_control_sheet_tbl <- tbl(con, "dbs_control_sheet") %>% 
+    dplyr::rename(dbs_control_sheet_id = id, control_sheet_label = label)
+  blood_spot_collection_tbl <- tbl(con, "blood_spot_collection") %>%
+    dplyr::rename(blood_spot_collection_id = id)
+  composition_tbl <- tbl(con, "composition") %>%
+    dplyr::rename(composition_id = id, composition_label = label)
+  composition_strain_tbl <- tbl(con, "composition_strain") %>%
+    dplyr::rename(composition_strain_id = id)
+
+  user_data_tbl <- tbl(con, "user_data")
+
+  joined_tbl <- dbs_control_sheet_tbl %>%
+    inner_join(blood_spot_collection_tbl, by = "dbs_control_sheet_id") %>%
+    inner_join(malaria_blood_control_tbl, by = "malaria_blood_control_id") %>%
+    inner_join(study_subject_tbl, by = "study_subject_id") %>%
+    inner_join(batch_tbl, by = "study_id") %>%
+    inner_join(composition_tbl, by = "composition_id") %>%
+    inner_join(composition_strain_tbl, by = "composition_id") %>%
+    distinct(composition_label, density, control_sheet_label, batch, dbs_control_sheet_id) %>%
+    distinct(batch, control_sheet_label, density, composition_label)
+
+  control_uid_sheet_joins <- setNames(
+    c("control_sheet_label", "batch", "composition_label", "density"),
+    c(sheet_name_col, batch_col, composition_id_col, density_col)
+  )
+
+  label_composition_map_mismatch_df <- user_data_tbl %>%
+    distinct(RowNumber, !!sym(batch_col), !!sym(sheet_name_col), !!sym(composition_id_col), !!sym(density_col)) %>%
+    anti_join(joined_tbl, by = control_uid_sheet_joins) %>%
+    collect()
+
+  if (nrow(label_composition_map_mismatch_df)) {
+    error_message <- sprintf("Sheet names in a batch need to consistently have blood spots of the same composition and density in the database.")
+    return(ErrorData$new(description = error_message, data_frame = label_composition_map_mismatch_df))
+  }
+
+  return(NULL)
+}
 
 validate_dbs_bag_exists <- function(con, table_name, row_number_col, bag_label_col, error_if_exists = FALSE) {
   dbs_bag_tbl <- tbl(con, "dbs_bag") %>% dplyr::rename(dbs_bag_id=id, bag_label=name)
@@ -337,6 +401,7 @@ validate_dbs_sheet_create <- function(dbs_sheet_test) {
   dbs_sheet_test(validate_study_reference_db, "Batch", controls = TRUE)
   dbs_sheet_test(validate_location_reference_db, "DBS_FreezerName", "DBS_ShelfName", "DBS_BasketName")
   dbs_sheet_test(validate_dbs_bag_label_is_unique, "BagName", "DBS_FreezerName", "DBS_ShelfName", "DBS_BasketName", error_if_exists = TRUE)
+  dbs_sheet_test(validate_dbs_sheet_label_maps_to_uids, "Batch", "CompositionID", "Density", "SheetName")
 }
 
 #' Validate DBS Sheet Extraction
