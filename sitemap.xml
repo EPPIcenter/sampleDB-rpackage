@@ -23,7 +23,7 @@
 <url><loc>https://eppicenter.github.io/sampleDB/reference/DeleteWholeBloodSamples.html</loc></url>
 <url><loc>https://eppicenter.github.io/sampleDB/reference/ErrorData.html</loc></url>
 <url><loc>https://eppicenter.github.io/sampleDB/reference/MoveContainers.html</loc></url>
-<url><loc>https://eppicenter.github.io/sampleDB/reference/MoveSamples.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/MoveSpecimens.html</loc></url>
 <url><loc>https://eppicenter.github.io/sampleDB/reference/RenameContainers.html</loc></url>
 <url><loc>https://eppicenter.github.io/sampleDB/reference/Run_SampleDB.html</loc></url>
 <url><loc>https://eppicenter.github.io/sampleDB/reference/SampleDB_Setup.html</loc></url>
@@ -81,6 +81,7 @@
 <url><loc>https://eppicenter.github.io/sampleDB/reference/dot-UpdateActiveControlCount.html</loc></url>
 <url><loc>https://eppicenter.github.io/sampleDB/reference/dot-UploadSpecimens.html</loc></url>
 <url><loc>https://eppicenter.github.io/sampleDB/reference/execute_sql.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/execute_upgrade_sql_script.html</loc></url>
 <url><loc>https://eppicenter.github.io/sampleDB/reference/extract_search_criteria.html</loc></url>
 <url><loc>https://eppicenter.github.io/sampleDB/reference/finalize_upgrade.html</loc></url>
 <url><loc>https://eppicenter.github.io/sampleDB/reference/find_column_name.html</loc></url>
@@ -94,6 +95,7 @@
 <url><loc>https://eppicenter.github.io/sampleDB/reference/get_all_sample_types.html</loc></url>
 <url><loc>https://eppicenter.github.io/sampleDB/reference/get_batches.html</loc></url>
 <url><loc>https://eppicenter.github.io/sampleDB/reference/get_composition_types.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/get_container_by_control.html</loc></url>
 <url><loc>https://eppicenter.github.io/sampleDB/reference/get_container_by_sample.html</loc></url>
 <url><loc>https://eppicenter.github.io/sampleDB/reference/get_container_table_name.html</loc></url>
 <url><loc>https://eppicenter.github.io/sampleDB/reference/get_control_action_types.html</loc></url>
@@ -107,6 +109,7 @@
 <url><loc>https://eppicenter.github.io/sampleDB/reference/get_duplicated_rows.html</loc></url>
 <url><loc>https://eppicenter.github.io/sampleDB/reference/get_environ_file_path.html</loc></url>
 <url><loc>https://eppicenter.github.io/sampleDB/reference/get_expected_versions.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/get_extractions.html</loc></url>
 <url><loc>https://eppicenter.github.io/sampleDB/reference/get_file_types_for_control.html</loc></url>
 <url><loc>https://eppicenter.github.io/sampleDB/reference/get_file_types_for_sample.html</loc></url>
 <url><loc>https://eppicenter.github.io/sampleDB/reference/get_location_by_sample.html</loc></url>
@@ -209,6 +212,7 @@
 <url><loc>https://eppicenter.github.io/sampleDB/reference/validate_box_uniqueness.html</loc></url>
 <url><loc>https://eppicenter.github.io/sampleDB/reference/validate_composition.html</loc></url>
 <url><loc>https://eppicenter.github.io/sampleDB/reference/validate_composition_sum.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/validate_control_uid_in_batch.html</loc></url>
 <url><loc>https://eppicenter.github.io/sampleDB/reference/validate_controls.html</loc></url>
 <url><loc>https://eppicenter.github.io/sampleDB/reference/validate_cryovial.html</loc></url>
 <url><loc>https://eppicenter.github.io/sampleDB/reference/validate_cryovial_collection_dates.html</loc></url>
@@ -218,6 +222,7 @@
 <url><loc>https://eppicenter.github.io/sampleDB/reference/validate_date_format.html</loc></url>
 <url><loc>https://eppicenter.github.io/sampleDB/reference/validate_dates_with_tokens.html</loc></url>
 <url><loc>https://eppicenter.github.io/sampleDB/reference/validate_dbs_bag_label_is_unique.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/validate_dbs_box_bag_exists.html</loc></url>
 <url><loc>https://eppicenter.github.io/sampleDB/reference/validate_dbs_sample.html</loc></url>
 <url><loc>https://eppicenter.github.io/sampleDB/reference/validate_dbs_sample_label_uniqueness.html</loc></url>
 <url><loc>https://eppicenter.github.io/sampleDB/reference/validate_dbs_sample_moves.html</loc></url>
@@ -225,6 +230,8 @@
 <url><loc>https://eppicenter.github.io/sampleDB/reference/validate_dbs_sheet.html</loc></url>
 <url><loc>https://eppicenter.github.io/sampleDB/reference/validate_dbs_sheet_create.html</loc></url>
 <url><loc>https://eppicenter.github.io/sampleDB/reference/validate_dbs_sheet_extraction.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/validate_dbs_sheet_label_maps_to_uids.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/validate_dbs_sheet_move.html</loc></url>
 <url><loc>https://eppicenter.github.io/sampleDB/reference/validate_empty_cryovial_well_upload.html</loc></url>
 <url><loc>https://eppicenter.github.io/sampleDB/reference/validate_empty_micronix_well_upload.html</loc></url>
 <url><loc>https://eppicenter.github.io/sampleDB/reference/validate_existing_barcodes_by_study.html</loc></url>
@@ -248,6 +255,7 @@
 <url><loc>https://eppicenter.github.io/sampleDB/reference/validate_whole_blood.html</loc></url>
 <url><loc>https://eppicenter.github.io/sampleDB/reference/validate_whole_blood_create.html</loc></url>
 <url><loc>https://eppicenter.github.io/sampleDB/reference/validate_whole_blood_extraction.html</loc></url>
+<url><loc>https://eppicenter.github.io/sampleDB/reference/validate_whole_blood_move.html</loc></url>
 <url><loc>https://eppicenter.github.io/sampleDB/reference/validate_whole_blood_tube_exists.html</loc></url>
 </urlset>
 

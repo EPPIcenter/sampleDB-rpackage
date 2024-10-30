@@ -102,7 +102,7 @@
         <dd>Move Wetlab Containers in the EPPIcenter SampleDB database</dd>
       </dl><dl><dt>
 
-          <code><a href="MoveSamples.html">MoveSamples()</a></code>
+          <code><a href="MoveSpecimens.html">MoveSpecimens()</a></code>
 
         </dt>
         <dd>Move Wetlab Samples</dd>
@@ -396,6 +396,12 @@
         <dd>Execute SQL Queries on a Database</dd>
       </dl><dl><dt>
 
+          <code><a href="execute_upgrade_sql_script.html">execute_upgrade_sql_script()</a></code>
+
+        </dt>
+        <dd>Execute sql</dd>
+      </dl><dl><dt>
+
           <code><a href="extract_search_criteria.html">extract_search_criteria()</a></code>
 
         </dt>
@@ -466,6 +472,12 @@
 
         </dt>
         <dd>Get all composition type from the database</dd>
+      </dl><dl><dt>
+
+          <code><a href="get_container_by_control.html">get_container_by_control()</a></code>
+
+        </dt>
+        <dd>Get containers by specified sample type</dd>
       </dl><dl><dt>
 
           <code><a href="get_container_by_sample.html">get_container_by_sample()</a></code>
@@ -544,6 +556,12 @@
 
         </dt>
         <dd>Retrieve Expected Versions from JSON File</dd>
+      </dl><dl><dt>
+
+          <code><a href="get_extractions.html">get_extractions()</a></code>
+
+        </dt>
+        <dd>Get extractions</dd>
       </dl><dl><dt>
 
           <code><a href="get_file_types_for_control.html">get_file_types_for_control()</a></code>
@@ -1110,6 +1128,12 @@
         <dd>Validate if control compositions sum correctly</dd>
       </dl><dl><dt>
 
+          <code><a href="validate_control_uid_in_batch.html">validate_control_uid_in_batch()</a></code>
+
+        </dt>
+        <dd>Validate Control UID exists within a batch</dd>
+      </dl><dl><dt>
+
           <code><a href="validate_controls.html">validate_controls()</a></code>
 
         </dt>
@@ -1164,6 +1188,12 @@
         <dd>Validate DBS Bag Label is unique at a location</dd>
       </dl><dl><dt>
 
+          <code><a href="validate_dbs_box_bag_exists.html">validate_dbs_box_bag_exists()</a></code>
+
+        </dt>
+        <dd>Check DBS Specimen Box and Bag exist</dd>
+      </dl><dl><dt>
+
           <code><a href="validate_dbs_sample.html">validate_dbs_sample()</a></code>
 
         </dt>
@@ -1204,6 +1234,18 @@
 
         </dt>
         <dd>Validate DBS Sheet Extraction</dd>
+      </dl><dl><dt>
+
+          <code><a href="validate_dbs_sheet_label_maps_to_uids.html">validate_dbs_sheet_label_maps_to_uids()</a></code>
+
+        </dt>
+        <dd>Validate that a sheet name for a batch consistently contains the same densities and compositions. Sheet names (or labels) should be descriptive of the contents that are on the sheet. This validation check is in place to enforce sheet name specificity by only allowing a sheet name to link to composition types and densities that we're used with the first named sheet on upload.</dd>
+      </dl><dl><dt>
+
+          <code><a href="validate_dbs_sheet_move.html">validate_dbs_sheet_move()</a></code>
+
+        </dt>
+        <dd>Validate DBS Sheet Move</dd>
       </dl><dl><dt>
 
           <code><a href="validate_empty_cryovial_well_upload.html">validate_empty_cryovial_well_upload()</a></code>
@@ -1342,6 +1384,12 @@
 
         </dt>
         <dd>Validate Whole Blood Extraction</dd>
+      </dl><dl><dt>
+
+          <code><a href="validate_whole_blood_move.html">validate_whole_blood_move()</a></code>
+
+        </dt>
+        <dd>Validate Whole Blood Move</dd>
       </dl><dl><dt>
 
           <code><a href="validate_whole_blood_tube_exists.html">validate_whole_blood_tube_exists()</a></code>
