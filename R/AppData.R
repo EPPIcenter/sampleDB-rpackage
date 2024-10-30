@@ -444,6 +444,16 @@ get_dereferenced_values <- function(dereferenced_keys, sample_values, shared_val
 #' @export
 get_sample_file_columns <- function(sample_type, action, file_type = "na", config_yml = Sys.getenv("SDB_CONFIG"), samples_file = "samples.json") {
 
+  if (sample_type == "dbs_sample" && action == "move") {
+    return(
+      ColumnData(
+        required = c("Label", "OldContainer", "OldContainerType", "NewContainer", "NewContainerType"),
+        conditional = NULL,
+        optional = NULL
+      )
+    )
+  }
+
   sample_data <- read_json_file(samples_file)
   app_data <- read_app_file()
   app_config <- yaml::read_yaml(config_yml)
@@ -555,7 +565,7 @@ get_control_file_columns <- function(control_type, action, file_type = "na", con
   } else if (control_type == "whole_blood" && action == "move") {
     return(
       ColumnData(
-        required = c("Batch", "ControlUID", "BoxRow", "BoxName", "BoxName"),
+        required = c("Batch", "ControlUID", "BoxRow", "BoxColumn", "SourceBox"),
         conditional = NULL,
         optional = NULL
       )
@@ -824,6 +834,23 @@ get_container_by_sample <- function(sample_type, sample_file = "samples.json", a
   })
   
   return(container_data[[1]])
+}
+
+#' Get containers by specified sample type
+#'
+#' @param control_type A character string specifying the type of sample.
+#' @return A named list of containers for the specified sample type.
+#' @examples 
+#' get_container_by_sample(sample_type = "micronix")
+#' @export
+get_container_by_control <- function(control_type) {
+  if (control_type == "dbs_sheet") {
+    return (list(container_name_key = "BagName"))
+  } else if (control_type == "whole_blood") {
+    return (list(container_name_key = "BoxName"))
+  } else {
+    stop("Unrecognized control type")
+  }
 }
 
 

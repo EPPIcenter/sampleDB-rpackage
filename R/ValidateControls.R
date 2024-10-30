@@ -162,6 +162,71 @@ validate_extraction_counts_with_totals <- function(con, user_data, row_number_co
   return(NULL)
 }
 
+#' Validate Control UID exists within a batch
+#'
+#' Validate that a control uid exists in the batch
+#'
+#' @param con A database connection object.
+#' @param user_data A dataframe containing the new extractions to be validated.
+#'   It must contain columns that can be used to derive blood_spot_collection_id indirectly.
+#' @param row_number_col The name of the column in `user_data` that provides a unique row identifier.
+#' @param control_uid_col The name of the column in `user_data` that corresponds to the control UID.
+#' @param batch_col The name of the column in `user_data` related to the batch information.
+#'
+#' @return An `ErrorData` object if any blood spot collection's new total extractions exceed its total counts,
+#'   detailing the violations. Returns `NULL` if all new extraction counts are within the allowed limits.
+#'
+#' @import dplyr
+#' @import DBI
+#' @export
+validate_control_uid_in_batch <- function(con, user_data, row_number_col, control_uid_col, batch_col, error_if_exists) {
+  
+  # Columns to join user table and bag-location table
+  dbs_bag_location_joins <- setNames(
+    c("control_uid", "batch"),
+    c(control_uid_col, batch_col)
+  )
+
+  study_subject_tbl <- tbl(con, "study_subject") %>% dplyr::rename(control_uid = name, control_id = id)
+  batch_tbl <- tbl(con, "study") %>% dplyr::select(batch = short_code, study_id = id)
+
+  batch_control_uid_tbl <- study_subject_tbl %>%
+    inner_join(batch_tbl, by = "study_id")
+
+  joined_df <- tbl(con, "user_data") %>%
+    dplyr::left_join(batch_control_uid_tbl, by = dbs_bag_location_joins)
+
+  if (error_if_exists) {
+    df <- joined_df %>%
+      filter(!is.na(control_id)) %>%
+      select(!!sym(row_number_col), !!sym(control_uid_col), !!sym(batch_col)) %>%
+      collect()
+
+    if (nrow(df) > 0) {
+
+      return(ErrorData$new(
+        description = "ControlUID already exists in batch",
+        data_frame = df
+      ))
+
+    }
+  } else {
+    df <- joined_df %>%
+      filter(is.na(control_id)) %>%
+      select(!!sym(row_number_col), !!sym(control_uid_col), !!sym(batch_col)) %>%
+      collect()
+
+    if (nrow(df) > 0) {
+      return(ErrorData$new(
+        description = "ControlUID does not exist in batch",
+        data_frame = df
+      ))
+    }
+  }
+
+  # If no violations, return NULL to indicate validation passed
+  return(NULL)
+}
 
 
 #' Validate DBS Sheet Control Data
@@ -537,7 +602,7 @@ validate_whole_blood_create <- function(whole_blood_test) {
   whole_blood_test(validate_location_reference_db, "WB_FreezerName", "WB_RackName", "WB_RackPosition")
 
   # Whole blood is stored in cryovials so reuse cryovial tests
-  whole_blood_test(validate_empty_cryovial_well_upload, "ControlOriginPosition", "BoxName", "BoxBarcode")
+  whole_blood_test(validate_empty_cryovial_well_upload, "ControlOriginPosition", "BoxName")
 }
 
 #' Validate Whole Blood Move
@@ -550,8 +615,12 @@ validate_whole_blood_create <- function(whole_blood_test) {
 #' @keywords validation
 validate_whole_blood_move <- function(whole_blood_test) {
 
+  whole_blood_test(validate_study_reference_db, "Batch", controls = TRUE)
+  whole_blood_test(validate_control_uid_in_batch, "ControlUID", "Batch", error_if_exists = FALSE)
+
   # Whole blood is stored in cryovials so reuse cryovial tests
-  whole_blood_test(validate_empty_cryovial_well_upload, "Position", "BoxName", "BoxBarcode")
+  whole_blood_test(validate_empty_wb_well_upload, "ControlOriginPosition", "BoxName")
+  whole_blood_test(check_cryovial_box_exists, "BoxName")
 }
 
 #' Validate Whole Blood Extraction

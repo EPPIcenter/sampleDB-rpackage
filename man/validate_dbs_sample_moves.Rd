@@ -4,7 +4,7 @@
 \alias{validate_dbs_sample_moves}
 \title{Validate DBS Specimen Moves}
 \usage{
-validate_dbs_sample_moves(cryovial_test, variable_colnames)
+validate_dbs_sample_moves(dbs_sample_test)
 }
 \arguments{
 \item{con}{The database connection.}

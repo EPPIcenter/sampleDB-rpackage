@@ -25,48 +25,170 @@ MoveSpecimens <- function(sample_type, move_data){
   # Save MoveCSVs
   .SaveMoveCSVs(move_data)
 
-  if (sample_type == "dbs_sheet") {
+  if (sample_type %in% c("dbs_sheet")) {
     con <- dbConnect(SQLite(), Sys.getenv("SDB_PATH"))
     on.exit(dbDisconnect(con))
 
-    # Iterate over each tube and update its location in the database
-    for (i in 1:nrow(move_data)) {
-      dbs_sheetname <- move_data[i,]$SheetName
-      dbs_bagname <- move_data[i,]$BagName
-      dbs_control_uid <- move_data[i,]$ControlUID
-      dbs_exhausted <- move_data[i,]$Exhausted
-      dbs_total <- move_data[i,]$Total
+    for(container_name in names(move_data)) {
 
-      df <- tbl(con, "study_subject") %>% dplyr::rename(study_subject_id = id, control_uid = name) %>%
-        inner_join(tbl(con, "malaria_blood_control") %>% dplyr::rename(malaria_blood_control_id = id), by = c("study_subject_id")) %>%
-        inner_join(tbl(con, "blood_spot_collection") %>% dplyr::rename(blood_spot_collection_id = id), by = c("malaria_blood_control_id")) %>%
-        inner_join(tbl(con, "dbs_control_sheet") %>% dplyr::rename(dbs_control_sheet_id = id), by = c("dbs_control_sheet_id")) %>%
-        inner_join(tbl(con, "dbs_bag") %>% dplyr::rename(dbs_bag_id = id, dbs_label = name), by = c("dbs_bag_id"))
+      move_container <- move_data[[container_name]]
 
-      old_bag <- df %>%
-        filter(control_uid == dbs_control_uid & exhausted == dbs_exhausted & dbs_total == dbs_total) %>%
-        select(dbs_control_sheet_id, dbs_bag_id, replicates) %>%
-        head(1) %>% # If we have all of this criteria met and there are duplicates, just take the first sheet.
-        collect()
+      # Iterate over each tube and update its location in the database
+      for (i in 1:nrow(move_container)) {
+        dbs_sheetname <- move_container[i,]$SheetName
+        dbs_bagname <- move_container[i,]$BagName
+        dbs_control_uid <- move_container[i,]$ControlUID
+        dbs_exhausted <- move_container[i,]$Exhausted
+        dbs_total <- move_container[i,]$Total
 
-      new_bag <- df %>%
-        filter(dbs_label == dbs_bagname) %>%
-        select(dbs_control_sheet_id, dbs_bag_id, replicates) %>%
-        collect()
+        df <- tbl(con, "study_subject") %>% dplyr::rename(study_subject_id = id, control_uid = name) %>%
+          inner_join(tbl(con, "malaria_blood_control") %>% dplyr::rename(malaria_blood_control_id = id), by = c("study_subject_id")) %>%
+          inner_join(tbl(con, "blood_spot_collection") %>% dplyr::rename(blood_spot_collection_id = id), by = c("malaria_blood_control_id")) %>%
+          inner_join(tbl(con, "dbs_control_sheet") %>% dplyr::rename(dbs_control_sheet_id = id), by = c("dbs_control_sheet_id")) %>%
+          inner_join(tbl(con, "dbs_bag") %>% dplyr::rename(dbs_bag_id = id, dbs_label = name), by = c("dbs_bag_id"))
 
-      # SQL query to update the cryovial_box_id field for the specific tube
-      query <- paste0("UPDATE dbs_control_sheet SET replicates = ", (old_bag$replicates - 1), " WHERE id = ", old_bag$dbs_control_sheet_id)
-      dbExecute(con, query)
+        old_bag <- df %>%
+          filter(control_uid == dbs_control_uid & exhausted == dbs_exhausted & dbs_total == dbs_total) %>%
+          select(dbs_control_sheet_id, dbs_bag_id, replicates) %>%
+          head(1) %>% # If we have all of this criteria met and there are duplicates, just take the first sheet.
+          collect()
 
-      # SQL query to update the cryovial_box_id field for the specific tube
-      query <- paste0("UPDATE dbs_control_sheet SET dbs_bag_id = ", new_bag$dbs_bag_id, ", replicates = ", (new_bag$replicates + 1), " WHERE id = ", new_bag$dbs_control_sheet_id)
-      dbExecute(con, query)
+        new_bag <- df %>%
+          filter(dbs_label == dbs_bagname) %>%
+          select(dbs_control_sheet_id, dbs_bag_id, replicates) %>%
+          collect()
+
+        # SQL query to update the cryovial_box_id field for the specific tube
+        query <- paste0("UPDATE dbs_control_sheet SET replicates = ", (old_bag$replicates - 1), " WHERE id = ", old_bag$dbs_control_sheet_id)
+        dbExecute(con, query)
+
+        # SQL query to update the cryovial_box_id field for the specific tube
+        query <- paste0("UPDATE dbs_control_sheet SET dbs_bag_id = ", new_bag$dbs_bag_id, ", replicates = ", (new_bag$replicates + 1), " WHERE id = ", new_bag$dbs_control_sheet_id)
+        dbExecute(con, query)
+      }
     }
 
-    message(sprintf("Successfully moved %d dbs control sheets", nrow(move_data)))
+    message(sprintf("Successfully moved samples from %d dbs move files", length(move_data)))
     dbCommit(conn)
     dbDisconnect(conn)
-  } else { # The sample types below need to be checked for orphans
+
+  } else if (sample_type == "dbs_sample") {
+
+    con <- dbConnect(SQLite(), Sys.getenv("SDB_PATH"))
+    on.exit(dbDisconnect(con))
+
+    for(container_name in names(move_data)) {
+
+      move_container <- move_data[[container_name]]
+
+      # Iterate over each tube and update its location in the database
+      for (i in 1:nrow(move_container)) {
+
+        paper_label <- move_container[i,]$Label
+        old_container <- move_container[i,]$OldContainer
+        old_container_type <- tolower(move_container[i,]$OldContainerType)
+        new_container <- move_container[i,]$NewContainer
+        new_container_type <- tolower(move_container[i,]$NewContainerType)
+
+        dbs_old_tbl <- tbl(con, old_container_type)
+        dbs_new_tbl <- tbl(con, new_container_type)
+        dbs_paper_tbl <- tbl(con, "paper")
+
+        old_container_tbl <- dbs_old_tbl %>% filter(name == !!old_container)
+        new_container_tbl <- dbs_new_tbl %>% filter(name == !!new_container)
+
+        # Double check that we have found the containers
+        if (nrow(collect(old_container_tbl)) == 0 || nrow(collect(new_container_tbl)) == 0) {
+          stop("Move was halted. A container was not found in the database.")
+        }
+
+        paper <- dbs_paper_tbl %>%
+          filter(label == !!paper_label) %>%
+          inner_join(old_container_tbl, by = c("manifest_id" = "id")) %>%
+          filter(name == !!old_container)
+
+        # SQL query to update the cryovial_box_id field for the specific tube
+
+        new_container_tbl_id <- new_container_tbl %>% pull(id)
+        paper_id <- paper %>% pull(id)
+
+        if (is.null(paper_id) || is.null(new_container_tbl_id)) {
+          stop("Move was halted. Paper or container id was null.")
+        }
+
+        if (length(paper_id) > 1 || length(new_container_tbl_id) > 1 ) {
+          stop("Move was halted. Multiple paper ids or container ids were found.")
+        }
+
+        query <- paste0(
+          "UPDATE paper SET manifest_id = ", 
+          new_container_tbl_id, 
+          ", manifest_type = '", 
+          new_container_type, 
+          "' WHERE id = ", 
+          paper_id
+        )
+        dbExecute(con, query)
+      }
+    }
+
+    message(sprintf("Successfully moved %d dbs control sheets", length(move_data)))
+    dbCommit(conn)
+    dbDisconnect(conn)
+
+  } else if (sample_type %in% c("whole_blood")) {
+
+    con <- dbConnect(SQLite(), Sys.getenv("SDB_PATH"))
+    on.exit(dbDisconnect(con))
+
+    for(container_name in names(move_data)) {
+      move_container <- move_data[[container_name]]
+
+      # Iterate over each tube and update its location in the database
+      for (i in 1:nrow(move_container)) {
+
+        move_batch <- move_container[i,]$Batch
+        move_control_uid <- move_container[i,]$ControlUID
+        wb_position <- move_container[i,]$ControlOriginPosition # Position
+        source_box <- move_container[i,]$SourceBox
+
+        batch_tbl <- tbl(con, "study") %>% dplyr::select(study_id = id, batch = short_code)
+        control_uid_tbl <- tbl(con, "study_subject") %>% dplyr::select(study_subject_id = id, control_uid = name, study_id)
+        mbc_tbl <- tbl(con, "malaria_blood_control") %>% dplyr::select(malaria_blood_control_id = id, study_subject_id)
+        cryovial_box_tbl <- tbl(con, "cryovial_box") %>% dplyr::rename(cryovial_boxname = name, cryovial_box_id = id)
+        whole_blood_tube_tbl <- tbl(con, "whole_blood_tube") %>% dplyr::rename(tube_id = id)
+
+        joined_tbl <- whole_blood_tube_tbl %>%
+          full_join(cryovial_box_tbl, by = c("cryovial_box_id")) %>%
+          full_join(mbc_tbl, by = c("malaria_blood_control_id")) %>%
+          full_join(control_uid_tbl, by = c("study_subject_id")) %>%
+          full_join(batch_tbl, by = c("study_id"))
+
+        control_batch_tbl <- joined_tbl %>%
+          filter(batch == !!move_batch & control_uid == !!move_control_uid)
+
+        # Just take one that exists and move it
+        control_batch_tube <- control_batch_tbl %>% 
+          filter(cryovial_boxname %in% source_box) %>%
+          head(1)
+
+        box_id <- joined_tbl %>%
+          filter(cryovial_boxname == !!container_name) %>%
+          head(1) %>%
+          pull(cryovial_box_id)
+
+        # SQL query to update the cryovial_box_id field for the specific tube
+        query <- paste0("UPDATE whole_blood_tube SET position = '", wb_position, "', cryovial_box_id = ", box_id, " WHERE id = ", control_batch_tube %>% pull(tube_id))
+        dbExecute(con, query)
+
+      }
+    }
+
+    message(sprintf("Successfully uploaded %d moves", length(move_data)))
+    dbCommit(conn)
+    dbDisconnect(conn)
+
+  } else if (sample_type %in% c("micronix", "cryovial")) { # The sample types below need to be checked for orphans
 
     # Check if move creates orphans - returns TRUE if pass, FALSE if fail
     orphan_check_return <- .CheckForOrphans(move_data_list = move_data, database, sample_type = sample_type)
@@ -203,7 +325,7 @@ MoveSpecimens <- function(sample_type, move_data){
         }
       }
 
-    } else if (sample_type == "cryovial" || sample_type == "whole_blood") {
+    } else if (sample_type == "cryovial") {
 
       # Get sample's container id
       existing.container <- filter(CheckTableTx(conn = conn, "cryovial_box"), name == container.name)$id
@@ -223,8 +345,6 @@ MoveSpecimens <- function(sample_type, move_data){
                       id = id) %>% suppressWarnings()
         }
       }
-    } else {
-      stop("Invalid Sample Type!!!")
     }
   }
 }
@@ -334,7 +454,7 @@ MoveSpecimens <- function(sample_type, move_data){
   # Extract sample level data from sampleDB (barcode, container position, container id) for containers involved in the move
   # set sample type variables
 
-  stopifnot("*** ERROR: Sample type move not implemented" = sample_type %in% c("micronix", "cryovial"))
+  stopifnot("*** ERROR: Sample type move not implemented" = sample_type %in% c("micronix", "cryovial", "whole_blood"))
   if(sample_type == "micronix"){
     container_type <- "micronix_plate"
     sample_type <- "micronix_tube"
@@ -345,8 +465,13 @@ MoveSpecimens <- function(sample_type, move_data){
     sample_type <- "cryovial_tube"
     colname.container_name <- "name"
     colname.container_id <- "manifest_id"
+  } else if (sample_type == "whole_blood") {
+    container_type <- "cryovial_box"
+    sample_type <- "whole_blood_tube"
+    colname.container_name <- "name"
+    colname.container_id <- "cryovial_box_id"
   } else {
-    stop("Invalid Sample Type!!!")
+    stop("Invalid Specimen Type!!!")
   }
 
   tbl.plate_names <- CheckTable(database = database, container_type) %>%

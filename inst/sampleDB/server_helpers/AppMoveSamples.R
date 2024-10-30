@@ -376,55 +376,15 @@ AppMoveSamples <- function(session, input, output, database) {
     error$message <- ""
   })
 
-  observeEvent(input$MoveDataSet, ignoreInit = TRUE, {
-    dataset <- input$MoveDataSet
-    rv$user_file <- NULL
-
-    message(paste("Loaded", dataset$name))
-
-    tryCatch({
-      withCallingHandlers({
-
-        ## format the file based on the move type
-        if (input$MoveType == "samples") {
-          rv$user_file <- process_specimen_csv(
-            user_csv = dataset$datapath,
-            user_action = "move",
-            file_type = input$MoveFileType,
-            sample_type = input$MoveSampleType
-          )
-        } else if (input$MoveType == "controls") {
-          rv$user_file <- process_control_csv(
-            user_csv = dataset$datapath,
-            user_action = "move",  # For controls, we are only moving
-            file_type = input$MoveFileType,
-            control_type = input$MoveControlType
-          )
-        }
-      },
-      message = function(m) {
-        shinyjs::html(id = "MoveOutputConsole", html = paste0(dataset$name, ": ", m$message), add = rv$console_verbatim)
-        rv$console_verbatim <- TRUE
-      })
-    },
-    formatting_error = function(e) {
-      if (input$MoveType == "samples" && input$MoveSampleType %in% c("micronix", "cryovial")) {
-        check_if_special_columns_missing(e, rv, input)
-      } else {
-        show_formatting_error_modal(e)
-      }
-    },
-    validation_error = function(e) {
-      show_validation_error_modal(output, e)
-    },
-    error = function(e) {
-      show_general_error_modal(e, input, output)
-    })
-
-    rv$console_verbatim <- FALSE
-  })
-
   observeEvent(input$MoveAction, ignoreInit = TRUE, {
+
+    if (isTRUE(rv$user_action_required)) {
+      message("Upload action halted - user action required")
+      return()
+    }
+
+    early_stop <- FALSE
+
     # Determine the dataset depending on the type of move
     if (input$MoveType == "controls") {
       dataset <- input$MoveControlDataSet
@@ -437,60 +397,131 @@ AppMoveSamples <- function(session, input, output, database) {
       return()
     }
 
-    early_stop <- FALSE
-    if (is.null(rv$user_file)) {
-      message(paste("Loaded", dataset$name))
+    # message(paste("Loaded", dataset$name))
 
-      tryCatch({
-        withCallingHandlers({
+    early_stop <- tryCatch({
+      withCallingHandlers({
 
-          ## format the file based on the move type
-          if (input$MoveType == "samples") {
-            rv$user_file <- process_specimen_csv(
-              user_csv = dataset$datapath,
-              user_action = "move",
-              file_type = input$MoveFileType,
-              sample_type = input$MoveSampleType
-            )
+        move_data_list <- list()
+        for (i in 1:length(dataset[,1])) {
+          extract_name_from_filename <- (input$MoveType == "samples" && input$MoveSampleType %in% c("micronix", "cryovial")) ||
+            (input$MoveType == "controls" && input$MoveControlType == "whole_blood")
+
+          if (extract_name_from_filename) {
+            manifest_name <- sub('\\.csv$', '', dataset[i,]$name)
+
+            if(input$MoveFileType == "traxcer" && input$MoveTraxcerStripFromFilename) {
+              manifest_name <- substr(manifest_name, 1, nchar(manifest_name)-16)
+              if (nchar(manifest_name) == 0) {
+                stop(sprintf("Traxcer name was completely removed - did you mean to remove the datetime string from the filename?"))
+              }
+            }
+
+            ## format the file
+            if (input$MoveType == "samples") {
+              container <- get_container_by_sample(sample_type = input$MoveSampleType)
+
+              result <- process_specimen_csv(
+                user_csv = dataset[i,]$datapath,
+                user_action = "move",
+                file_type = input$MoveFileType,
+                sample_type = input$MoveSampleType,
+                bind_data = setNames(manifest_name, container$container_name_key)
+              )
+
+              move_data_list <- c(move_data_list, list(result))
+              names(move_data_list)[i] <- manifest_name
+            } else { # Controls
+              container <- get_container_by_control(control_type = input$MoveControlType)
+
+              result <- process_control_csv(
+                user_csv = dataset$datapath,
+                user_action = "move",
+                file_type = input$MoveFileType,
+                control_type = input$MoveControlType,
+                bind_data = setNames(manifest_name, container$container_name_key)
+              )
+
+              move_data_list <- c(move_data_list, list(result))
+              names(move_data_list)[i] <- manifest_name
+            }
           } else {
-            rv$user_file <- process_control_csv(
-              user_csv = dataset$datapath,
-              user_action = "move",
-              file_type = input$MoveFileType,
-              control_type = input$MoveControlType
-            )
+            ## format the file
+            if (input$MoveType == "samples") {
+
+              result <- process_specimen_csv(
+                user_csv = dataset[i,]$datapath,
+                user_action = "move",
+                file_type = input$MoveFileType,
+                sample_type = input$MoveSampleType
+              )
+
+              move_data_list <- c(move_data_list, list(result))
+              names(move_data_list)[i] <- as.character(length(move_data_list))
+
+            } else { # Controls
+
+              result <- process_control_csv(
+                user_csv = dataset$datapath,
+                user_action = "move",
+                file_type = input$MoveFileType,
+                control_type = input$MoveControlType
+              )
+
+              move_data_list <- c(move_data_list, list(result))
+              names(move_data_list)[i] <- as.character(length(move_data_list))
+            }            
           }
 
-        },
-        message = function(m) {
-          shinyjs::html(id = "MoveOutputConsole", html = paste0(dataset$name, ": ", m$message), add = rv$console_verbatim)
-          rv$console_verbatim <- TRUE
-        })
+          rv$user_file <- move_data_list
+          FALSE
+        }
       },
-      validation_error = function(e) {
-        show_validation_error_modal(output, e)
-        early_stop <<- TRUE
+      message = function(m) {
+        # shinyjs::html(id = "MoveOutputConsole", html = paste0(dataset$name, ": ", m$message), add = rv$console_verbatim)
+        # rv$console_verbatim <- TRUE
+      })
+    },
+    validation_error = function(e) {
+        message("Caught validation error")
+        show_validation_error_modal(output, e, dataset[i,]$name)
+        TRUE
       },
       formatting_error = function(e) {
-        if (input$MoveType == "samples" && input$MoveSampleType %in% c("micronix", "cryovial")) {
-          check_if_special_columns_missing(e, rv, input)
-        } else {
-          show_formatting_error_modal(e)
-        }
-        early_stop <<- TRUE
+        message("Caught formatting error")
+        show_formatting_error_modal(e, dataset[i,]$name)
+        TRUE
       },
       error = function(e) {
         show_general_error_modal(e, input, output)
-        early_stop <<- TRUE
-      })
-    }
+        TRUE
+      }
+    )
 
-    if (early_stop) return()
+    if (isTRUE(early_stop)) { 
+      return()
+    }
 
     message("Starting Move...")
 
+    b_use_wait_dialog <- FALSE
+
     tryCatch({
       withCallingHandlers({
+        # simple way to add a dialog or not
+        b_use_wait_dialog <- length(rv$user_file) > 5
+
+        if (b_use_wait_dialog) {
+          show_modal_spinner(
+            spin = "double-bounce",
+            color = "#00bfff",
+            text = paste("Working on", length(rv$user_file), "files, please be patient...")
+          )
+        }
+
+        shinyjs::reset("MoveAction")
+
+        # note: this is to make things work retroactively
         # Move the data depending on the type
         sample_type <- if (input$MoveType == "controls") input$MoveControlType else input$MoveSampleType
         MoveSpecimens(sample_type = sample_type, move_data = rv$user_file)
@@ -500,13 +531,19 @@ AppMoveSamples <- function(session, input, output, database) {
       })
     },
     error = function(e) {
-      show_general_error_modal(e, input, output)
+      message(e)
+      html<-paste0("<font color='red'>", paste0(dataset$name, ": ", e$message), "</font>")
+      shinyjs::html(id = "MoveOutputConsole", html = html, add = rv$console_verbatim)
     },
     finally = {
+      if (b_use_wait_dialog)
+        remove_modal_spinner()
+
       rv$user_file <- NULL
       rv$console_verbatim <- FALSE
     })
   })
+
 
   observeEvent(input$MoveSampleType, {
     updateRadioButtons(

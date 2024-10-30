@@ -408,7 +408,7 @@ select_relevant_columns <- function(user_file, file_column_attr, bind_data) {
 #' @return A cleaned and checked user_file ready for further processing.
 #' @export
 validate_and_format_specimen_file <- function(user_file, sample_type, user_action, file_column_attr, bind_data = NULL) {
-
+  
   # 1. Handle header.
   user_file <- set_user_file_header(user_file, file_column_attr)
 
