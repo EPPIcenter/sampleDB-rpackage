@@ -162,6 +162,71 @@ validate_extraction_counts_with_totals <- function(con, user_data, row_number_co
   return(NULL)
 }
 
+#' Validate Control UID exists within a batch
+#'
+#' Validate that a control uid exists in the batch
+#'
+#' @param con A database connection object.
+#' @param user_data A dataframe containing the new extractions to be validated.
+#'   It must contain columns that can be used to derive blood_spot_collection_id indirectly.
+#' @param row_number_col The name of the column in `user_data` that provides a unique row identifier.
+#' @param control_uid_col The name of the column in `user_data` that corresponds to the control UID.
+#' @param batch_col The name of the column in `user_data` related to the batch information.
+#'
+#' @return An `ErrorData` object if any blood spot collection's new total extractions exceed its total counts,
+#'   detailing the violations. Returns `NULL` if all new extraction counts are within the allowed limits.
+#'
+#' @import dplyr
+#' @import DBI
+#' @export
+validate_control_uid_in_batch <- function(con, user_data, row_number_col, control_uid_col, batch_col, error_if_exists) {
+  
+  # Columns to join user table and bag-location table
+  dbs_bag_location_joins <- setNames(
+    c("control_uid", "batch"),
+    c(control_uid_col, batch_col)
+  )
+
+  study_subject_tbl <- tbl(con, "study_subject") %>% dplyr::rename(control_uid = name, control_id = id)
+  batch_tbl <- tbl(con, "study") %>% dplyr::select(batch = short_code, study_id = id)
+
+  batch_control_uid_tbl <- study_subject_tbl %>%
+    inner_join(batch_tbl, by = "study_id")
+
+  joined_df <- tbl(con, "user_data") %>%
+    dplyr::left_join(batch_control_uid_tbl, by = dbs_bag_location_joins)
+
+  if (error_if_exists) {
+    df <- joined_df %>%
+      filter(!is.na(control_id)) %>%
+      select(!!sym(row_number_col), !!sym(control_uid_col), !!sym(batch_col)) %>%
+      collect()
+
+    if (nrow(df) > 0) {
+
+      return(ErrorData$new(
+        description = "ControlUID already exists in batch",
+        data_frame = df
+      ))
+
+    }
+  } else {
+    df <- joined_df %>%
+      filter(is.na(control_id)) %>%
+      select(!!sym(row_number_col), !!sym(control_uid_col), !!sym(batch_col)) %>%
+      collect()
+
+    if (nrow(df) > 0) {
+      return(ErrorData$new(
+        description = "ControlUID does not exist in batch",
+        data_frame = df
+      ))
+    }
+  }
+
+  # If no violations, return NULL to indicate validation passed
+  return(NULL)
+}
 
 
 #' Validate DBS Sheet Control Data
@@ -205,6 +270,10 @@ perform_dbs_sheet_db_validations <- function(database, user_data, action) {
     validate_dbs_sheet_create(dbs_sheet_test)
   } else if (action == "extraction") {
     validate_dbs_sheet_extraction(dbs_sheet_test)
+  } else if (action == "move") {
+    validate_dbs_sheet_move(dbs_sheet_test)
+  } else {
+    stop("No validation implemented for this action!!!")
   }
 
   return(errors)
@@ -262,6 +331,125 @@ validate_dbs_bag_label_is_unique <- function(con, table_name, row_number_col, ba
   return(NULL)  
 }
 
+#' Validate that a sheet name for a batch consistently contains
+#' the same densities and compositions. Sheet names (or labels)
+#' should be descriptive of the contents that are on the sheet. This
+#' validation check is in place to enforce sheet name specificity
+#' by only allowing a sheet name to link to composition types and
+#' densities that we're used with the first named sheet on upload.
+#'
+#' New sheets are allowed to reuse the sheet name label but they
+#' must have the same composition type and density combinations.
+#'
+#' @param con A database connection.
+#' @param table_name The name of the table to check.
+#' @param row_number_col The name of the row number column.
+#' @param control_uid_col The name of the bag label column.
+#' @param sheet_name_col The name of the freezer column.
+#' 
+#' @return A list containing validation errors, if any.
+#' @export
+#' @keywords validation
+validate_dbs_sheet_label_maps_to_uids <- function(con, table_name, row_number_col, batch_col, composition_id_col, density_col, sheet_name_col) {
+
+  batch_tbl <- tbl(con, "study") %>% dplyr::rename(study_id = id, batch = short_code)
+  dbs_bag_tbl <- tbl(con, "dbs_bag") %>% dplyr::rename(dbs_bag_id=id, bag_label=name)
+  study_subject_tbl <- tbl(con, "study_subject") %>% dplyr::rename(study_subject_id = id, control_uid = name)
+  malaria_blood_control_tbl <- tbl(con, "malaria_blood_control") %>%
+    dplyr::rename(malaria_blood_control_id = id)
+  dbs_control_sheet_tbl <- tbl(con, "dbs_control_sheet") %>% 
+    dplyr::rename(dbs_control_sheet_id = id, control_sheet_label = label)
+  blood_spot_collection_tbl <- tbl(con, "blood_spot_collection") %>%
+    dplyr::rename(blood_spot_collection_id = id)
+  composition_tbl <- tbl(con, "composition") %>%
+    dplyr::rename(composition_id = id, composition_label = label)
+  composition_strain_tbl <- tbl(con, "composition_strain") %>%
+    dplyr::rename(composition_strain_id = id)
+
+  user_data_tbl <- tbl(con, "user_data")
+
+  joined_tbl <- dbs_control_sheet_tbl %>%
+    inner_join(blood_spot_collection_tbl, by = "dbs_control_sheet_id") %>%
+    inner_join(malaria_blood_control_tbl, by = "malaria_blood_control_id") %>%
+    inner_join(study_subject_tbl, by = "study_subject_id") %>%
+    inner_join(batch_tbl, by = "study_id") %>%
+    inner_join(composition_tbl, by = "composition_id") %>%
+    inner_join(composition_strain_tbl, by = "composition_id") %>%
+    distinct(composition_label, density, control_sheet_label, batch, dbs_control_sheet_id) %>%
+    distinct(batch, control_sheet_label, density, composition_label)
+
+  control_uid_sheet_joins <- setNames(
+    c("control_sheet_label", "batch", "composition_label", "density"),
+    c(sheet_name_col, batch_col, composition_id_col, density_col)
+  )
+
+  label_composition_map_mismatch_df <- user_data_tbl %>%
+    distinct(RowNumber, !!sym(batch_col), !!sym(sheet_name_col), !!sym(composition_id_col), !!sym(density_col)) %>%
+    anti_join(joined_tbl, by = control_uid_sheet_joins) %>%
+    collect()
+
+  if (nrow(label_composition_map_mismatch_df)) {
+    error_message <- sprintf("Sheet names in a batch need to consistently have blood spots of the same composition and density in the database.")
+    return(ErrorData$new(description = error_message, data_frame = label_composition_map_mismatch_df))
+  }
+
+  return(NULL)
+}
+
+validate_dbs_bag_exists <- function(con, table_name, row_number_col, bag_label_col, error_if_exists = FALSE) {
+  dbs_bag_tbl <- tbl(con, "dbs_bag") %>% dplyr::rename(dbs_bag_id=id, bag_label=name)
+
+  bag_joins <- setNames(
+    c("bag_label"),
+    c(bag_label_col)
+  )
+
+  df <- tbl(con, table_name) %>%
+    dplyr::inner_join(dbs_bag_tbl, by = bag_joins) %>%
+    dplyr::select(all_of(c(row_number_col, bag_label_col))) %>%
+    dplyr::collect()
+
+  if (error_if_exists) {
+    if (nrow(df) > 0) {
+      error_message <- sprintf("DBS bag name already exists.")
+      return(ErrorData$new(description = error_message, data_frame = df))
+    }
+  } else {
+    if (nrow(df) == 0) {
+      error_message <- sprintf("DBS bag name could not be found.", basket_col)
+      return(ErrorData$new(description = error_message, data_frame = df))
+    }
+  }
+}
+
+validate_dbs_sheet_exists <- function(con, table_name, row_number_col, dbs_sheet_col, error_if_exists = FALSE) {
+
+  control_sheet_tbl <- tbl(con, "dbs_control_sheet") %>% dplyr::rename(dbs_control_sheet_id=id, control_sheet_label=label)
+
+  sheet_joins <- setNames(
+    c("control_sheet_label"),
+    c(dbs_sheet_col)
+  )
+
+  df <- tbl(con, table_name) %>%
+    dplyr::inner_join(control_sheet_tbl, by = sheet_joins) %>%
+    dplyr::select(all_of(c(row_number_col, dbs_sheet_col))) %>%
+    dplyr::collect()
+
+  if (error_if_exists) {
+    if (nrow(df) > 0) {
+      error_message <- sprintf("DBS Sheet name already exists.")
+      return(ErrorData$new(description = error_message, data_frame = df))
+    }
+  } else {
+    if (nrow(df) == 0) {
+      error_message <- sprintf("DBS Sheet name could not be found.", basket_col)
+      return(ErrorData$new(description = error_message, data_frame = df))
+    }
+  }
+}
+
+
 
 
 #' Validate DBS Sheet Create
@@ -278,6 +466,7 @@ validate_dbs_sheet_create <- function(dbs_sheet_test) {
   dbs_sheet_test(validate_study_reference_db, "Batch", controls = TRUE)
   dbs_sheet_test(validate_location_reference_db, "DBS_FreezerName", "DBS_ShelfName", "DBS_BasketName")
   dbs_sheet_test(validate_dbs_bag_label_is_unique, "BagName", "DBS_FreezerName", "DBS_ShelfName", "DBS_BasketName", error_if_exists = TRUE)
+  dbs_sheet_test(validate_dbs_sheet_label_maps_to_uids, "Batch", "CompositionID", "Density", "SheetName")
 }
 
 #' Validate DBS Sheet Extraction
@@ -302,6 +491,20 @@ validate_dbs_sheet_extraction <- function(dbs_sheet_test) {
 
   # Validate destination location
   dbs_sheet_test(validate_location_reference_db, "FreezerName", "ShelfName", "BasketName")
+}
+
+#' Validate DBS Sheet Move
+#'
+#' Conducts specific validation checks for moving DBS sheet controls.
+#'
+#' @param dbs_sheet_test The utility function for performing validation checks.
+#' @return A list containing validation errors, if any.
+#' @export
+#' @keywords validation
+validate_dbs_sheet_move <- function(dbs_sheet_test) {
+  # References check
+  dbs_sheet_test(validate_dbs_bag_exists, "BagName", error_if_exists = FALSE)
+  dbs_sheet_test(validate_dbs_sheet_exists, "SheetName", error_if_exists = FALSE)
 }
 
 #' Validate Whole Blood Control Data
@@ -345,6 +548,10 @@ perform_whole_blood_db_validations <- function(database, user_data, action) {
     validate_whole_blood_create(whole_blood_test)
   } else if (action == "extraction") {
     validate_whole_blood_extraction(whole_blood_test)
+  } else if (action == "move") {
+    validate_whole_blood_move(whole_blood_test)
+  } else {
+    stop("No implementation for this action!!!")
   }
 
   return(errors)
@@ -395,7 +602,25 @@ validate_whole_blood_create <- function(whole_blood_test) {
   whole_blood_test(validate_location_reference_db, "WB_FreezerName", "WB_RackName", "WB_RackPosition")
 
   # Whole blood is stored in cryovials so reuse cryovial tests
-  whole_blood_test(validate_empty_cryovial_well_upload, "ControlOriginPosition", "BoxName", "BoxBarcode")
+  whole_blood_test(validate_empty_cryovial_well_upload, "ControlOriginPosition", "BoxName")
+}
+
+#' Validate Whole Blood Move
+#'
+#' Conducts specific validation checks for creating whole blood controls.
+#'
+#' @param whole_blood_test The utility function for performing validation checks.
+#' @return A list containing validation errors, if any.
+#' @export
+#' @keywords validation
+validate_whole_blood_move <- function(whole_blood_test) {
+
+  whole_blood_test(validate_study_reference_db, "Batch", controls = TRUE)
+  whole_blood_test(validate_control_uid_in_batch, "ControlUID", "Batch", error_if_exists = FALSE)
+
+  # Whole blood is stored in cryovials so reuse cryovial tests
+  whole_blood_test(validate_empty_wb_well_upload, "ControlOriginPosition", "BoxName")
+  whole_blood_test(check_cryovial_box_exists, "BoxName")
 }
 
 #' Validate Whole Blood Extraction

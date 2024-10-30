@@ -408,7 +408,7 @@ select_relevant_columns <- function(user_file, file_column_attr, bind_data) {
 #' @return A cleaned and checked user_file ready for further processing.
 #' @export
 validate_and_format_specimen_file <- function(user_file, sample_type, user_action, file_column_attr, bind_data = NULL) {
-
+  
   # 1. Handle header.
   user_file <- set_user_file_header(user_file, file_column_attr)
 
@@ -1032,6 +1032,8 @@ prepare_control_data_for_validation <- function(control_type, user_data, action,
   } else if (action == "create") {
     # Convert Density Representations to Real numbers
     user_data <- convert_density_representations(user_data, "Density")
+  } else if (action == "move") {
+    # Nothing to do here!
   } else {
     stop("Invalid action!")
   }
@@ -1047,10 +1049,12 @@ prepare_control_data_for_validation <- function(control_type, user_data, action,
   # here since the batch in the database is generated programatically,
   # and all we need is for the user to match it.
   #
-  # 'Batch' column is guaranteed to exist at this stage but throw if it does not
-  # exist for whatever reason.
-  stopifnot("Batch could not be found!!!" = ("Batch" %in% colnames(user_data)))
-  user_data$Batch <- as.character(lubridate::as_date(user_data$Batch))
+  # 'Batch' column is guaranteed to exist if this is a create or extraction
+  # action, which is a required field.
+  if (action %in% c("create", "extraction")) {
+    stopifnot("Batch could not be found!!!" = ("Batch" %in% colnames(user_data)))
+    user_data$Batch <- as.character(lubridate::as_date(user_data$Batch))
+  }
 
   # Add conditional and optional columns with NA as default values if they do not exist
   conditional_columns <- file_column_attr$conditional

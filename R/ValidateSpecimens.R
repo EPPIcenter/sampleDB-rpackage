@@ -223,13 +223,21 @@ check_micronix_plate_exists <- function(con, table_name, row_number_col, plate_n
 #' @return An instance of the ErrorData class if errors are found, or NULL if there are no errors.
 #' @keywords validation, cryovial
 #' @export
-check_cryovial_box_exists <- function(con, table_name, row_number_col, box_name_col, box_barcode_col) {
+check_cryovial_box_exists <- function(con, table_name, row_number_col, box_name_col, box_barcode_col = NULL) {
   
   # Directly define the join conditions using named vectors
-  user_table_joins <- setNames(
-    c("barcode", "name"),
-    c(box_barcode_col, box_name_col)
-  )
+
+  if (!is.null(box_barcode_col)) {
+    user_table_joins <- setNames(
+      c("barcode", "name"),
+      c(box_barcode_col, box_name_col)
+    )
+  } else {
+    user_table_joins <- setNames(
+      c("name"),
+      c(box_name_col)
+    )    
+  }
   
   df <- tbl(con, table_name) %>%
     left_join(tbl(con, "cryovial_box"), by = user_table_joins) %>%
@@ -238,11 +246,19 @@ check_cryovial_box_exists <- function(con, table_name, row_number_col, box_name_
     collect()
 
   if (nrow(df) > 0) {
-    return(ErrorData$new(
-      description = "Cryovial container not found",
-      columns = c(row_number_col, box_name_col, box_barcode_col),
-      rows = df[[row_number_col]]
-    ))
+    if (!is.null(box_barcode_col)) {
+      return(ErrorData$new(
+        description = "Cryovial container not found",
+        columns = c(row_number_col, box_name_col, box_barcode_col),
+        rows = df[[row_number_col]]
+      ))
+    } else {
+      return(ErrorData$new(
+        description = "Cryovial container not found",
+        columns = c(row_number_col, box_name_col),
+        rows = df[[row_number_col]]
+      ))
+    }
   }
   return(NULL)
 }
@@ -596,6 +612,81 @@ validate_empty_micronix_well_upload <- function(con, table_name, row_number_col,
   return(NULL)
 }
 
+#' Check DBS Specimen Box and Bag exist
+#'
+#' This function checks if the Box or Bag exists in the database.
+#'
+#' @param con A database connection object.
+#' @param user_data The name of the formatted CSV table in the database.
+#' @param row_number_col The column name representing the row number in `table_name`.
+#' @param label_col The column name representing the position in `table_name`.
+#' @param container_name_col The column name representing the Cryovial container name in `table_name`.
+#'
+#' @return An object of class ErrorData. If there are no errors, NULL is returned.
+#' @keywords validation, dbs-specimen
+#' @export
+validate_dbs_box_bag_exists <- function(con, user_data, row_number_col, container_name_col, container_type_col) {
+  # Directly define the join conditions using named vectors
+
+  user_table_joins <- setNames(
+    c("name", "manifest_type"),
+    c(container_name_col, container_type_col)
+  )
+
+  errors <- NULL
+
+  paper_box_tbl <- tbl(con, "paper") %>%
+    filter(manifest_type == "box")
+
+  paper_bag_tbl <- tbl(con, "paper") %>%
+    filter(manifest_type == "bag")
+
+  box_tbl <- tbl(con, "box") %>%
+    dplyr::rename(box_id = id) %>%
+    dplyr::left_join(paper_box_tbl, by = c("box_id"="manifest_id"))
+
+  bag_tbl <- tbl(con, "bag") %>%
+    dplyr::rename(bag_id = id) %>%
+    dplyr::left_join(paper_bag_tbl, by = c("bag_id"="manifest_id"))
+
+  user_data_box_tbl <- tbl(con, "user_data") %>%
+    filter(!!rlang::sym(container_type_col) == "Box")
+
+  user_data_bag_tbl <- tbl(con, "user_data") %>%
+    filter(!!rlang::sym(container_type_col) == "Bag")
+
+  df_box_user_data_joined <- user_data_box_tbl %>%
+    dplyr::mutate(!!sym(container_type_col) := tolower(!!sym(container_type_col))) %>%
+    dplyr::left_join(box_tbl, by = user_table_joins)
+
+  df_bag_user_data_joined <- user_data_bag_tbl %>%
+    dplyr::mutate(!!sym(container_type_col) := tolower(!!sym(container_type_col))) %>%
+    dplyr::left_join(bag_tbl, by = user_table_joins) 
+
+  # Check that the dbs samples
+  bag_id_na <- df_bag_user_data_joined %>%
+    filter(is.na(bag_id)) %>%
+    select(all_of(c(row_number_col, container_name_col))) %>%
+    collect()
+
+  box_id_na <- df_box_user_data_joined %>%
+    filter(is.na(box_id)) %>%
+    select(all_of(c(row_number_col, container_name_col))) %>%
+    collect()
+
+  if (nrow(bag_id_na) > 0) {
+    error.data <- ErrorData$new(data_frame = bag_id_na, description = "Bag could not be found.")
+    errors <- c(errors, error.data)
+  }
+
+  if (nrow(box_id_na) > 0) {
+    error.data <- ErrorData$new(data_frame = box_id_na, description = "Box could not be found.")
+    errors <- c(errors, error.data)
+  }
+
+  return(errors)
+}
+
 #' DBS Specimen paper identifier uniqueness check
 #'
 #' This function checks if the provided paper in the DBS specimen dataset is unique by position.
@@ -677,12 +768,12 @@ validate_dbs_sample_label_uniqueness <- function(con, user_data, row_number_col,
 #' @return An object of class ErrorData. If there are no errors, NULL is returned.
 #' @export
 #' @keywords validation, cryovial
-validate_empty_cryovial_well_upload <- function(con, table_name, row_number_col, position_col, container_name_col, container_barcode_col) {
+validate_empty_cryovial_well_upload <- function(con, table_name, row_number_col, position_col, container_name_col) {
 
   # Directly define the join conditions using named vectors
   user_table_joins <- setNames(
-    c(container_barcode_col, container_name_col, position_col),
-    c("container_barcode", "container_name", "position") # some of these are from renames!!!
+    c(container_name_col, position_col),
+    c("container_name", "position") # some of these are from renames!!!
   )
 
   # Check empty wells for Cryovial
@@ -702,6 +793,49 @@ validate_empty_cryovial_well_upload <- function(con, table_name, row_number_col,
 
   if (nrow(df) > 0) {
     error_message <- "Uploading sample to Cryovial well location that already has an active sample"
+    return(ErrorData$new(description = error_message, data = df))
+  }
+
+  return(NULL)
+}
+
+#' Empty Whole Blood Well Validation
+#'
+#' This function checks if the provided sample in the Cryovial dataset is being uploaded to an empty well.
+#'
+#' @param con A database connection object.
+#' @param table_name The name of the formatted CSV table in the database.
+#' @param row_number_col The column name representing the row number in `table_name`.
+#' @param position_col The column name representing the position in `table_name`.
+#' @param container_name_col The column name representing the Cryovial container name in `table_name`.
+#'
+#' @return An object of class ErrorData. If there are no errors, NULL is returned.
+#' @export
+#' @keywords validation, cryovial
+validate_empty_wb_well_upload <- function(con, table_name, row_number_col, position_col, container_name_col) {
+
+  # Directly define the join conditions using named vectors
+  user_table_joins <- setNames(
+    c(container_name_col, position_col),
+    c("container_name", "position") # some of these are from renames!!!
+  )
+
+  # Check empty wells for Cryovial
+  df <- tbl(con, "whole_blood_tube") %>%
+    select(status_id, id, cryovial_box_id, position) %>%
+    filter(status_id == 1) %>% 
+    inner_join(tbl(con, "cryovial_box") %>%
+      dplyr::rename(
+        container_barcode = barcode,
+        container_name = name
+      ), by = c("cryovial_box_id" = "id")
+    ) %>%
+    inner_join(tbl(con, table_name), by = user_table_joins) %>% 
+    select(!!sym(row_number_col), setNames(names(user_table_joins), user_table_joins)) %>%
+    collect()
+
+  if (nrow(df) > 0) {
+    error_message <- "Uploading Whole Blood to well location that already has an active sample"
     return(ErrorData$new(description = error_message, data = df))
   }
 
@@ -836,12 +970,48 @@ validate_cryovial <- function(user_data, action, database) {
 #' @keywords validation, cryovial
 validate_dbs_sample <- function(user_data, action, database) {
 
-  if (!"ContainerType" %in% colnames(user_data)) {
-    stop("Implementation error: ContainerType must exist in users dbs sample upload.")
-  }
-
-  user.container.types <- unique(user_data$ContainerType)
+  user.container.types <- NULL
   valid.container.types <- c("Bag", "Box")
+
+  if (action == "upload") {
+    user.container.types <- unique(user_data$ContainerType)
+    if (!"ContainerType" %in% colnames(user_data)) {
+      stop("Implementation error: ContainerType must exist in users dbs sample upload.")
+    }
+
+    if (!all(user.container.types %in% valid.container.types)) {
+      invalids <- !user_data$ContainerType %in% valid.container.types
+      invalid.subset <- user_data[invalids, ]
+      description <- sprintf("Rows must contain valid container types: %s", paste(valid.container.types, collapse = ", "))
+      error.data <- ErrorData$new(description = description, columns = invalid.subset$ContainerType, rows = invalid.subset$RowNumber)
+      stop_validation_error("Invalid Container Types detected in your upload.", error.data)
+    }
+  } else if (action == "move") {
+    user.container.types <- unique(user_data$NewContainerType, user_data$OldContainerType)
+    if (!"NewContainerType" %in% colnames(user_data) && !"OldContainerType" %in% colnames(user_data)) {
+      stop("Implementation error: NewContainerType and OldContainerType must exist in users dbs sample move.")
+    }
+
+    # Check new container types for valid entries
+    if (!all(user_data$NewContainerType %in% valid.container.types)) {
+      invalids <- !user_data$NewContainerType %in% valid.container.types
+      invalid.subset <- user_data[invalids, ]
+      description <- sprintf("Rows must contain valid container types: %s", paste(valid.container.types, collapse = ", "))
+      error.data <- ErrorData$new(description = description, columns = invalid.subset$NewContainerType, rows = invalid.subset$RowNumber)
+      stop_validation_error("Invalid Container Types detected in your upload.", error.data)
+    }
+
+    # Check old container types for valid entries
+    if (!all(user_data$OldContainerType %in% valid.container.types)) {
+      invalids <- !user_data$OldContainerType %in% valid.container.types
+      invalid.subset <- user_data[invalids, ]
+      description <- sprintf("Rows must contain valid container types: %s", paste(valid.container.types, collapse = ", "))
+      error.data <- ErrorData$new(description = description, columns = invalid.subset$OldContainerType, rows = invalid.subset$RowNumber)
+      stop_validation_error("Invalid Container Types detected in your upload.", error.data)
+    }
+  } else {
+    stop("Validation halted. Unrecognized action.")
+  }
 
   if (!all(user.container.types %in% valid.container.types)) {
     invalids <- !user_data$ContainerType %in% valid.container.types
@@ -919,6 +1089,8 @@ perform_dbs_sample_db_validations <- function(database, user_data, action) {
     validate_dbs_sample_uploads(dbs_sample_test)
   } else if (action == "move") {
     validate_dbs_sample_moves(dbs_sample_test)
+  } else {
+    stop("Invalid action!!!")
   }
 
   return(errors)
@@ -1016,10 +1188,9 @@ validate_dbs_sample_uploads <- function(dbs_sample_test) {
 #' @param cryovial_upload_test The utility function for performing tests.
 #' @return A list object containing validation errors, if any.
 #' @keywords validation
-validate_dbs_sample_moves <- function(cryovial_test, variable_colnames) {
-  table_name <- if ("BoxName" == variable_colnames[["container"]]) "box" else "bag"
-  dbs_sample_test(validate_dbs_sample_label_uniqueness, "Label", "ContainerName", "ContainerType", error_if_exists = TRUE)
-
+validate_dbs_sample_moves <- function(dbs_sample_test) {
+  dbs_sample_test(validate_dbs_box_bag_exists, "NewContainer", "NewContainerType")
+  dbs_sample_test(validate_dbs_sample_label_uniqueness, "Label", "NewContainer", "NewContainerType", error_if_exists = TRUE)
 }
 
 #' Validate Specimens Main Function

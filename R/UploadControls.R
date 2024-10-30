@@ -371,18 +371,18 @@ rejoin_to_get_bag_ids <- function(df.payload, con, manifest_name_col) {
 #' @param location_root_col Column name in df.payload for the root location.
 #' @param level_I_col Column name in df.payload for level I location.
 #' @param level_II_col Column name in df.payload for level II location.
-#' @param manifest_name_col Column name in df.payload for manifest name.
+#' @param dbs_bag_name_col Column name in df.payload for the dbs bag name.
 #' @return A dataframe with processed bag details.
-process_bag_data <- function(df.payload, con, location_root_col, level_I_col, level_II_col, manifest_name_col) {
+process_bag_data <- function(df.payload, con, location_root_col, level_I_col, level_II_col, dbs_bag_name_col) {
 
   # Join with locations and bags
-  df.payload <- join_locations_and_bags(df.payload, con, location_root_col, level_I_col, level_II_col, manifest_name_col)
+  df.payload <- join_locations_and_bags(df.payload, con, location_root_col, level_I_col, level_II_col, dbs_bag_name_col)
 
   # Add bags if they don't exist and update the connection result
-  res <- add_bags_if_not_exist(df.payload, con, manifest_name_col)
+  res <- add_bags_if_not_exist(df.payload, con, dbs_bag_name_col)
 
   # Rejoin to get the bag IDs
-  df.payload <- rejoin_to_get_bag_ids(df.payload, con, manifest_name_col)
+  df.payload <- rejoin_to_get_bag_ids(df.payload, con, dbs_bag_name_col)
 
   return(df.payload)
 }
@@ -733,7 +733,7 @@ upload_dbs_sheet <- function(user_data, database) {
     user_data <- prepare_control_for_upload(user_data, now)
 
 		user_data_with_control_ids <- create_controls_for_batch(user_data, con, "Density", "Batch", "Control")
-		user_data_with_bag_ids <- process_bag_data(user_data_with_control_ids, con, "DBS_FreezerName", "DBS_ShelfName", "DBS_BasketName", "SheetName")
+		user_data_with_bag_ids <- process_bag_data(user_data_with_control_ids, con, "DBS_FreezerName", "DBS_ShelfName", "DBS_BasketName", "BagName")
 		user_data_with_blood_control_ids <- process_malaria_blood_control_data(user_data_with_bag_ids, con, "Density", "CompositionID")
 		user_data_with_sheet_ids <- process_dbs_control_sheet_data(user_data_with_blood_control_ids, con, "SheetName")
 		user_data_with_blood_spot_collection_ids <- process_blood_spot_collection_data(user_data_with_sheet_ids, con, "Count")

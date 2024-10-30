@@ -30,6 +30,7 @@ AppMoveSamples <- function(session, input, output, database) {
   observeEvent(input$CreateNewManifest, ignoreInit = TRUE, {
     con <- dbConnect(SQLite(), Sys.getenv("SDB_PATH"))
 
+    # Update location root options
     updateSelectInput(
       session,
       "ManifestLocationRoot",
@@ -42,13 +43,16 @@ AppMoveSamples <- function(session, input, output, database) {
       )
     )
 
+    # Update the labels based on the sample type being moved
     updateSelectInput(
       session,
       "ManifestLocationRootLevelI",
       label = switch(
         input$MoveSampleType,
         "micronix" = "Shelf Name",
-        "cryovial" = "Rack Number"
+        "cryovial" = "Rack Number",
+        "whole_blood" = "Rack Number",
+        "dbs_sheet" = "Bag Rack Number"
       )
     )
 
@@ -58,28 +62,47 @@ AppMoveSamples <- function(session, input, output, database) {
       label = switch(
         input$MoveSampleType,
         "micronix" = "Basket Name",
-        "cryovial" = "Rack Position"
+        "cryovial" = "Rack Position",
+        "whole_blood" = "Rack Position",
+        "dbs_sheet" = "Bag Position"
       )
     )
 
-    sample_type_name <- DBI::dbReadTable(con, "sample_type") %>%
-      filter(id == input$MoveSampleType) %>%
-      pull(name)
+    # Determine the correct table based on the sample type
+    sample_type_name <- switch(
+      input$MoveType,
+      "samples" = switch(
+        input$MoveSampleType,
+        "micronix" = "Micronix Samples",
+        "cryovial" = "Cryovial Samples",
+        "dbs_sample" = "DBS Samples"
+      ),
+      "controls" = switch(
+        input$MoveControlType,
+        "whole_blood" = "Whole Blood Controls",  # whole_blood uses cryovial_box
+        "dbs_sheet" = "DBS Controls"          # dbs_sheet uses dbs_bag
+      )
+    )
 
+    # Show the modal dialog for creating a new container or bag
     showModal(
       modalDialog(
-        title = tags$h3("Create a new place to store", tags$strong(sample_type_name), "samples."),
+        title = tags$h3("Create a new place to store", tags$strong(sample_type_name)),
 
-        tags$h5("1. Document the location where the new container will be stored."),
+        tags$h5("1. Document the location where the new container or bag will be stored."),
         selectInput("ManifestLocationRoot", label = NULL, width = '47%', choices = NULL),
         selectInput("ManifestLocationRootLevelI", label = NULL, width = '47%', choices = NULL),
         selectInput("ManifestLocationRootLevelII", label = NULL, width = '47%', choices = NULL),
 
-        tags$h5("2. Create a new name for the container."),
+        tags$h5("2. Create a new name for the container or bag."),
         textInput("ManifestID", label = "Human Readable Name", placeholder = "PRISM-2022-001"),
         uiOutput("ManifestIDCheck"),
-        textInput("ManifestBarcode", label = "Barcode"),
-        uiOutput("ManifestBarcodeCheck"),
+
+        conditionalPanel(
+          condition = "(input.MoveType == 'controls' && input.MoveControlType == 'whole_blood') && (input.MoveType == 'samples' && (input.MoveSampleType == 'micronix' || input.MoveSampleType == 'cryovial'))",
+          textInput("ManifestBarcode", label = "Barcode"),
+          uiOutput("ManifestBarcodeCheck")
+        ),
 
         footer = tagList(
           modalButton("Cancel"),
@@ -87,10 +110,12 @@ AppMoveSamples <- function(session, input, output, database) {
         )
       )
     )
+
     shinyjs::disable("ManifestCreateAction")
     dbDisconnect(con)
   })
 
+  # Enable/Disable Create Action button based on inputs
   observe({
     req(input$ManifestID, input$ManifestLocationRoot, input$ManifestLocationRootLevelI, input$ManifestLocationRootLevelII)
     if (input$ManifestID != "" && input$ManifestLocationRoot != "" && input$ManifestLocationRootLevelI != "" && input$ManifestLocationRootLevelII != "") {
@@ -100,6 +125,7 @@ AppMoveSamples <- function(session, input, output, database) {
     }
   })
 
+  # Handle creation of a new cryovial box or DBS bag
   observeEvent(input$ManifestCreateAction, {
     tryCatch({
 
@@ -107,68 +133,90 @@ AppMoveSamples <- function(session, input, output, database) {
 
       dbBegin(con)
 
+      # Determine the correct table based on the sample type
       manifest <- switch(
-        input$MoveSampleType,
-        "micronix" = "micronix_plate",
-        "cryovial" = "cryovial_box"
+        input$MoveType,
+        "samples" = switch(
+          input$MoveSampleType,
+          "micronix" = "micronix_plate",
+          "cryovial" = "cryovial_box",
+          "dbs_sample" = input$MoveDBSSampleType
+        ),
+        "controls" = switch(
+          input$MoveControlType,
+          "whole_blood" = "cryovial_box",  # whole_blood uses cryovial_box
+          "dbs_sheet" = "dbs_bag"          # dbs_sheet uses dbs_bag
+        )
       )
 
+      # Check if the container or bag already exists by name
       result <- tbl(con, manifest) %>%
         filter(name %in% local(input$ManifestID)) %>%
         count() %>%
         pull(n)
 
       if (result > 0) {
-
-        # note: this should be stale
         error$title = "Error"
         error$message = paste0("Cannot create the container ", input$ManifestID, " because it already exists.")
         error$table = NULL
-
         rv$error <- TRUE
-
         return()
       }
 
-      result <- tbl(con, manifest) %>%
-        filter(barcode %in% local(input$ManifestBarcode)) %>%
-        count() %>%
-        pull(n)
-
-      if (result > 0) {
-        # note: this should be stale
-        error$title = "Error"
-        error$message = paste0("The barcode ", input$ManifestBarcode, " already exists for this type of container.")
-        error$table = NULL
-
-        rv$error <- TRUE
-
-        return()
-      }
-
+      # Get the location ID based on location information
       location_id <- tbl(con, "location") %>%
         filter(location_root %in% local(input$ManifestLocationRoot) & level_I %in% local(input$ManifestLocationRootLevelI) & level_II %in% local(input$ManifestLocationRootLevelII)) %>%
         pull(id)
 
-      df.payload <- data.frame(
-        location_id = location_id,
-        name = input$ManifestID,
-        barcode = ifelse(input$ManifestBarcode == "", NA, input$ManifestBarcode)
-      )
 
+      now <- as.character(lubridate::now())
+      # Check if the barcode already exists
+      if (manifest %in% c("cryovial_box", "micronix_plate")) {
+        result <- tbl(con, manifest) %>%
+          filter(barcode %in% local(input$ManifestBarcode)) %>%
+          count() %>%
+          pull(n)
+
+        if (result > 0) {
+          error$title = "Error"
+          error$message = paste0("The barcode ", input$ManifestBarcode, " already exists for this type of container.")
+          error$table = NULL
+          rv$error <- TRUE
+          return()
+        }
+
+        # Prepare the data for insertion into the correct manifest table
+        df.payload <- data.frame(
+          location_id = location_id,
+          name = input$ManifestID,
+          barcode = ifelse(input$ManifestBarcode == "", NA, input$ManifestBarcode),
+          last_updated = now,
+          created = now
+        )
+      } else {
+        # Prepare the data for insertion into the correct manifest table
+        df.payload <- data.frame(
+          location_id = location_id,
+          name = input$ManifestID,
+          last_updated = now,
+          created = now
+        )
+      }
+
+      # Insert the new container or bag
       result <- DBI::dbAppendTable(con, manifest, df.payload)
       if (result == 1) {
         dbCommit(con)
-        shinyjs::html(id = "MoveOutputConsole", html = paste0("Empty Container Created: ", df.payload$name), add = FALSE)
+        shinyjs::html(id = "MoveOutputConsole", html = paste0("Empty Container or Bag Created: ", df.payload$name), add = FALSE)
         removeModal()
       } else {
-        stop("Unknown error creating new container in database")
+        stop("Unknown error creating new container or bag in the database")
       }
+
     }, error = function(e) {
       error$title = "Internal Error"
       error$message = e$message
       error$table = NULL
-
       rv$error <- TRUE
     }, finally = {
       dbDisconnect(con)
@@ -184,10 +232,20 @@ AppMoveSamples <- function(session, input, output, database) {
         con <- dbConnect(SQLite(), Sys.getenv("SDB_PATH"))
 
         if (input$ManifestID != "") {
+          # Determine the correct table based on the sample type
           manifest <- switch(
-            input$MoveSampleType,
-            "micronix" = "micronix_plate",
-            "cryovial" = "cryovial_box"
+            input$MoveType,
+            "samples" = switch(
+              input$MoveSampleType,
+              "micronix" = "micronix_plate",
+              "cryovial" = "cryovial_box",
+              "dbs_sample" = input$MoveDBSSampleType
+            ),
+            "controls" = switch(
+              input$MoveControlType,
+              "whole_blood" = "cryovial_box",  # whole_blood uses cryovial_box
+              "dbs_sheet" = "dbs_bag"          # dbs_sheet uses dbs_bag
+            )
           )
 
           result <- tbl(con, manifest) %>%
@@ -219,19 +277,32 @@ AppMoveSamples <- function(session, input, output, database) {
         con <- dbConnect(SQLite(), Sys.getenv("SDB_PATH"))
 
         if (input$ManifestBarcode != "") {
+          # Determine the correct table based on the sample type
           manifest <- switch(
-            input$MoveSampleType,
-            "micronix" = "micronix_plate",
-            "cryovial" = "cryovial_box"
+            input$MoveType,
+            "samples" = switch(
+              input$MoveSampleType,
+              "micronix" = "micronix_plate",
+              "cryovial" = "cryovial_box",
+              "dbs_sample" = NULL # No barcode
+            ),
+            "controls" = switch(
+              input$MoveControlType,
+              "whole_blood" = "cryovial_box", 
+              "dbs_sheet" = NULL # No barcode
+            )
           )
 
-          result <- tbl(con, manifest) %>%
-            filter(barcode %in% local(input$ManifestBarcode)) %>%
-            count() %>%
-            pull(n)
+          if (!is.null(manifest)) {
 
-          if (result > 0) {
-            html <- paste0("<span style=color:#0000ff>", "Barcode is in use!", "</span>")
+            result <- tbl(con, manifest) %>%
+              filter(barcode %in% local(input$ManifestBarcode)) %>%
+              count() %>%
+              pull(n)
+
+            if (result > 0) {
+              html <- paste0("<span style=color:#0000ff>", "Barcode is in use!", "</span>")
+            }
           }
         }
 
@@ -313,9 +384,15 @@ AppMoveSamples <- function(session, input, output, database) {
     }
 
     early_stop <- FALSE
-    dataset <- input$MoveDataSet
 
-    if (is.null(dataset) || nrow(dataset) == 0) {
+    # Determine the dataset depending on the type of move
+    if (input$MoveType == "controls") {
+      dataset <- input$MoveControlDataSet
+    } else {
+      dataset <- input$MoveDataSet
+    }
+
+    if (is.null(dataset) || is.null(dataset$datapath)) {
       message("Aborting move - no file uploaded")
       return()
     }
@@ -324,34 +401,81 @@ AppMoveSamples <- function(session, input, output, database) {
 
     early_stop <- tryCatch({
       withCallingHandlers({
+
         move_data_list <- list()
         for (i in 1:length(dataset[,1])) {
-          manifest_name <- sub('\\.csv$', '', dataset[i,]$name)
+          extract_name_from_filename <- (input$MoveType == "samples" && input$MoveSampleType %in% c("micronix", "cryovial")) ||
+            (input$MoveType == "controls" && input$MoveControlType == "whole_blood")
 
-          if(input$MoveFileType == "traxcer" && input$MoveTraxcerStripFromFilename) {
-            manifest_name <- substr(manifest_name, 1, nchar(manifest_name)-16)
-            if (nchar(manifest_name) == 0) {
-              stop(sprintf("Traxcer name was completely removed - did you mean to remove the datetime string from the filename?"))
+          if (extract_name_from_filename) {
+            manifest_name <- sub('\\.csv$', '', dataset[i,]$name)
+
+            if(input$MoveFileType == "traxcer" && input$MoveTraxcerStripFromFilename) {
+              manifest_name <- substr(manifest_name, 1, nchar(manifest_name)-16)
+              if (nchar(manifest_name) == 0) {
+                stop(sprintf("Traxcer name was completely removed - did you mean to remove the datetime string from the filename?"))
+              }
             }
+
+            ## format the file
+            if (input$MoveType == "samples") {
+              container <- get_container_by_sample(sample_type = input$MoveSampleType)
+
+              result <- process_specimen_csv(
+                user_csv = dataset[i,]$datapath,
+                user_action = "move",
+                file_type = input$MoveFileType,
+                sample_type = input$MoveSampleType,
+                bind_data = setNames(manifest_name, container$container_name_key)
+              )
+
+              move_data_list <- c(move_data_list, list(result))
+              names(move_data_list)[i] <- manifest_name
+            } else { # Controls
+              container <- get_container_by_control(control_type = input$MoveControlType)
+
+              result <- process_control_csv(
+                user_csv = dataset$datapath,
+                user_action = "move",
+                file_type = input$MoveFileType,
+                control_type = input$MoveControlType,
+                bind_data = setNames(manifest_name, container$container_name_key)
+              )
+
+              move_data_list <- c(move_data_list, list(result))
+              names(move_data_list)[i] <- manifest_name
+            }
+          } else {
+            ## format the file
+            if (input$MoveType == "samples") {
+
+              result <- process_specimen_csv(
+                user_csv = dataset[i,]$datapath,
+                user_action = "move",
+                file_type = input$MoveFileType,
+                sample_type = input$MoveSampleType
+              )
+
+              move_data_list <- c(move_data_list, list(result))
+              names(move_data_list)[i] <- as.character(length(move_data_list))
+
+            } else { # Controls
+
+              result <- process_control_csv(
+                user_csv = dataset$datapath,
+                user_action = "move",
+                file_type = input$MoveFileType,
+                control_type = input$MoveControlType
+              )
+
+              move_data_list <- c(move_data_list, list(result))
+              names(move_data_list)[i] <- as.character(length(move_data_list))
+            }            
           }
 
-          container <- get_container_by_sample(sample_type = input$MoveSampleType)
-
-          ## format the file
-          result <- process_specimen_csv(
-            user_csv = dataset[i,]$datapath,
-            user_action = "move",
-            file_type = input$MoveFileType,
-            sample_type = input$MoveSampleType,
-            bind_data = setNames(manifest_name, container$container_name_key)
-          )
-
-          move_data_list <- c(move_data_list, list(result))
-          names(move_data_list)[i] <- manifest_name
+          rv$user_file <- move_data_list
+          FALSE
         }
-
-        rv$user_file <- move_data_list
-        FALSE
       },
       message = function(m) {
         # shinyjs::html(id = "MoveOutputConsole", html = paste0(dataset$name, ": ", m$message), add = rv$console_verbatim)
@@ -398,7 +522,9 @@ AppMoveSamples <- function(session, input, output, database) {
         shinyjs::reset("MoveAction")
 
         # note: this is to make things work retroactively
-        MoveSamples(sample_type = input$MoveSampleType, move_data = rv$user_file)
+        # Move the data depending on the type
+        sample_type <- if (input$MoveType == "controls") input$MoveControlType else input$MoveSampleType
+        MoveSpecimens(sample_type = sample_type, move_data = rv$user_file)
       },
       message = function(m) {
         shinyjs::html(id = "MoveOutputConsole", html = paste0(dataset$name, ": ", m$message), add = rv$console_verbatim)
@@ -417,6 +543,7 @@ AppMoveSamples <- function(session, input, output, database) {
       rv$console_verbatim <- FALSE
     })
   })
+
 
   observeEvent(input$MoveSampleType, {
     updateRadioButtons(

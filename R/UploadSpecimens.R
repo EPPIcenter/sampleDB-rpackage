@@ -340,7 +340,7 @@ upload_extracted_dna <- function(user_data, control_extraction, database = Sys.g
 
     } else if (sample_type_id == "dbs_sample") {
 
-      now <- lubridate::now()
+      now <- as.character(lubridate::now())
 
       # 7. upload micronix sample
       eval.manifest_type <- tolower(eval.container_type)

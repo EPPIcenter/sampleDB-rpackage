@@ -10,7 +10,7 @@ process_bag_data(
   location_root_col,
   level_I_col,
   level_II_col,
-  manifest_name_col
+  dbs_bag_name_col
 )
 }
 \arguments{
@@ -24,7 +24,7 @@ process_bag_data(
 
 \item{level_II_col}{Column name in df.payload for level II location.}
 
-\item{manifest_name_col}{Column name in df.payload for manifest name.}
+\item{dbs_bag_name_col}{Column name in df.payload for the dbs bag name.}
 }
 \value{
 A dataframe with processed bag details.
