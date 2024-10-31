@@ -195,7 +195,7 @@ plate and will return the information detailed below.
 Cryovials can be searched for using the same filters as micronix
 samples.
 
-### Search Controls (DBS & WB)
+### Search for Controls and Extractions (DBS & WB)
 
 Uploaded Dry Blood Spots and Whole Blood tubes can be viewed in the
 "Search, Archive & Delete" Panel after selecting "Controls" under
@@ -216,7 +216,7 @@ samples.
 Extracted controls are tied to controls in the database by the `Control UID`
 and the `Batch`. With these two identifiers, you can find the exact control
 that an extraction was derived from (and vice versa). The following will go
-over how to do both workflows
+over how to do both workflows.
 
 ##### Find the control used in an extraction
 
