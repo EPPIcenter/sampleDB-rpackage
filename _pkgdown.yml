@@ -31,7 +31,6 @@ navbar:
           href: "articles/Uploading-Micronix-Specimens.html"
         - text: "Validation"
           href: "articles/Validation.html"
-
-
-
+        - text: "qPCR Workflow"
+          href: "articles/qPCR-Workflow.html"
 
