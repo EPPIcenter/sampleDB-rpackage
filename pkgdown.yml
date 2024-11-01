@@ -7,13 +7,13 @@ articles:
   How-to-Upload-Controls: How-to-Upload-Controls.html
   How-to-Upload-Extracted-Controls: How-to-Upload-Extracted-Controls.html
   Preferences: Preferences.html
-  qPCR Workflow: qPCR Workflow.html
+  qPCR-Workflow: qPCR-Workflow.html
   Searching-SampleDB: Searching-SampleDB.html
   Updating-References: Updating-References.html
   Uploading-Cryovial-Specimens: Uploading-Cryovial-Specimens.html
   Uploading-Micronix-Specimens: Uploading-Micronix-Specimens.html
   Validation: Validation.html
-last_built: 2024-10-31T23:36Z
+last_built: 2024-11-01T17:51Z
 urls:
   reference: https://eppicenter.github.io/sampleDB/reference
   article: https://eppicenter.github.io/sampleDB/articles
