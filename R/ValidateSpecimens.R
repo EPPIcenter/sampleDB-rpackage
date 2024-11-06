@@ -308,6 +308,9 @@ check_micronix_barcodes_exist <- function(con, user_data, row_number_col, micron
 
 #' Check Cryovial Barcodes in Database
 #'
+#' This function will check for the prescence of active cyrovial barcodes in the database.
+#' In other words, it will ignore any cryovials that are in a state other than 'Active'.
+#'
 #' @param con A database connection object.
 #' @param user_data The name of the table where the user data is temporarily stored in the database.
 #' @param row_number_col The column with the row number in the `user_data`.
@@ -325,10 +328,13 @@ check_cryovial_barcodes_exist <- function(con, user_data, row_number_col, cryovi
     filter(!is.na(!!sym(cryovial_col))) %>%
     select(!!sym(row_number_col), !!sym(cryovial_col), !!sym(cryovial_box_col))
 
+  storage_container_tbl <- tbl(con, "storage_container") %>% dplyr::select(cryovial_id = id, state_id)
   cryovial_tube <- tbl(con, "cryovial_tube") %>% dplyr::select(cryovial_id = id, barcode, manifest_id)
   cryovial_box <- tbl(con, "cryovial_box") %>% dplyr::select(manifest_id = id, box_name = name)
 
   container_df <- cryovial_tube %>%
+    inner_join(storage_container_tbl, by = c("cryovial_id")) %>%
+    filter(state_id == 1) %>%
     left_join(cryovial_box, by = c("manifest_id"))
 
   # Join with cryovial_tube based on cryovial barcode
@@ -382,7 +388,12 @@ validate_box_uniqueness <- function(con, user_data, row_number_col, cryovial_col
     collect()
 
   # Retrieve existing cryovial data from the database
+  storage_container_tbl <- tbl(con, "storage_container") %>%
+    select(id, state_id) %>%
+    filter(state_id == 1)
+
   existing_cryovials <- tbl(con, "cryovial_tube") %>%
+    inner_join(storage_container_tbl, by = "id") %>%
     select(cryovial_id = id, barcode, manifest_id) %>%
     collect()
 
