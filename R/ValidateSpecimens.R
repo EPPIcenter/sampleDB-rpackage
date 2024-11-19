@@ -432,7 +432,8 @@ validate_box_uniqueness <- function(con, user_data, row_number_col, cryovial_col
     return(ErrorData$new(
       description = error_desc,
       columns = c(row_number_col, cryovial_col, cryovial_box_col),
-      rows = unique(comparison[[row_number_col]])
+      rows = unique(comparison[[row_number_col]]),
+      error_level = "Warning"
     ))
   }
 
@@ -623,7 +624,13 @@ validate_cryovial_barcodes <- function(con, table_name, row_number_col, barcode_
     collect()
 
   if (nrow(df) > 0) {
-    return(ErrorData$new(data_frame = df, description = "Barcodes must be unique by Study and SpecimenType."))
+    return(
+      ErrorData$new(
+        data_frame = df,
+        description = "Barcodes must be unique by Study and SpecimenType.",
+        error_level = "Warning"
+      )
+    )
   }
 
   return(NULL)
@@ -1201,7 +1208,6 @@ validate_micronix_moves <- function(micronix_test, variable_colnames) {
 #' @keywords validation
 validate_cryovial_uploads <- function(cryovial_test) {
   cryovial_test(validate_matrix_container, "BoxName", "Position", "cryovial_box", "cryovial_tube", error_if_exists = TRUE)
-  cryovial_test(validate_box_uniqueness, "Barcode", "BoxName", similarity_tolerance = 10)
   cryovial_test(check_longitudinal_study_dates, "StudyCode", "CollectionDate")
   cryovial_test(validate_longitudinal_study, "StudyCode", "StudySubject", "CollectionDate")
   cryovial_test(validate_cryovial_barcodes, "Barcode", "StudyCode", "SpecimenType")
@@ -1309,7 +1315,7 @@ validate_specimens <- function(user_data, sample_type, user_action, file_type, d
   # Initialize the ValidationErrorCollection with the accumulated errors and the user_data
   error_collection <- ValidationErrorCollection$new(errors, user_data)
 
-  if (error_collection$length() > 0) {
+  if (error_collection$count_errors("Error") > 0) {
     stop_validation_error("Validation error", error_collection)
   }
 
@@ -1318,5 +1324,10 @@ validate_specimens <- function(user_data, sample_type, user_action, file_type, d
     user_data <- handle_unknown_date_tokens(user_data, "CollectionDate", validation_result$parsed_dates, validation_result$token_mask)
   }
 
-  return(user_data)
+  # If there are only warnings, return the user data with the warnings
+  if (error_collection$count_errors("Warning") > 0) {
+    return (list(data = user_data, warnings = error_collection))
+  } else {
+    return (user_data)
+  }
 }

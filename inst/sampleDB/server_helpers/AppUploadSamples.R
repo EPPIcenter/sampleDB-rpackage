@@ -111,6 +111,18 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
     })
   })
 
+  observeEvent(input$ContinueUpload, {
+    # User confirmed warnings, allow upload
+    removeModal()  # Close the modal
+    message("User confirmed warnings and wants to proceed with the upload.")
+  })
+
+  observeEvent(input$CancelUpload, {
+    rv$user_file <- NULL
+    removeModal()  # Close the modal
+    message("User reviewed warnings and decided to cancel the upload.")
+  })
+
   observeEvent(input$UploadSampleDataSet, ignoreInit = TRUE, {
     dataset <- input$UploadSampleDataSet
     rv$user_file <- NULL
@@ -120,13 +132,23 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
     tryCatch({
       withCallingHandlers({
 
-        ## format the file
-        rv$user_file <- process_specimen_csv(
+        ## Format the file
+        result <- process_specimen_csv(
           user_csv = dataset$datapath,
           user_action = "upload",
           file_type = input$UploadFileType,
           sample_type = input$UploadSampleType
         )
+
+        # If we have a list, then we have warnings to look at
+        if (is.list(result)) {
+          rv$user_file <- result$data
+          show_validation_warning_modal(input, output, result$warnings)
+        } else {
+          # If no warnings, proceed with file processing
+          rv$user_file <- result
+          message("Your file is ready to be uploaded.")
+        }
       },
       message = function(m) {
         shinyjs::html(id = "UploadOutputConsole", html = paste0(dataset$name, ": ", m$message), add = rv$console_verbatim)
@@ -163,6 +185,11 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
       return()
     }
 
+    # if (is.null(rv$warnings_confirmed) || isTRUE(rv$warnings_confirmed)) {
+    #   message("Aborting upload - user data needs review")
+    #   return()
+    # }
+
     early_stop <- FALSE
     if (is.null(rv$user_file)) {
       # dataset <- input$UploadSampleDataSet
@@ -175,13 +202,24 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
 
           if (input$UploadType == "samples") {
             ## format the file
-            rv$user_file <- process_specimen_csv(
+            result <- process_specimen_csv(
               user_csv = dataset$datapath,
               user_action = "upload",
               file_type = input$UploadFileType,
               sample_type = input$UploadSampleType,
               bind_data = user_input_data
             )
+
+            # If we have a list, then we have warnings to look at
+            if (is.list(result)) {
+              rv$user_file <- result$data
+              show_validation_warning_modal(input, output, result$warnings)
+              return(NULL) # Force the reactive to stop here
+            } else {
+              # If no warnings, proceed with file processing
+              rv$user_file <- result
+              message("Your file is ready to be uploaded.")
+            }
           } else {
             ## format the file
             rv$user_file <- process_control_csv(
