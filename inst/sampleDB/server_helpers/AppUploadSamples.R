@@ -141,7 +141,7 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
         )
 
         # If we have a list, then we have warnings to look at
-        if (is.list(result)) {
+        if (!is.data.frame(result)) {
           rv$user_file <- result$data
           show_validation_warning_modal(input, output, result$warnings)
         } else {
@@ -211,7 +211,7 @@ AppUploadSamples <- function(session, input, output, database, dbUpdateEvent) {
             )
 
             # If we have a list, then we have warnings to look at
-            if (is.list(result)) {
+            if (!is.data.frame(result)) {
               rv$user_file <- result$data
               show_validation_warning_modal(input, output, result$warnings)
               return(NULL) # Force the reactive to stop here
