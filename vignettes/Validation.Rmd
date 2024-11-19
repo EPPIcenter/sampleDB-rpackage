@@ -22,3 +22,25 @@ download your uploaded file from this dialog with the errors included
 under a new 'Errors' column. Rows with multiple errors will have both
 concatenated with a semicolon (';') delimiter.
 
+## Validation types
+
+You may encounter `Errors` or `Warnings` if your file does not pass
+validation. Errors will prevent you from performing the action you
+are attempting. Warnings will appear if there are issues with your file,
+but they will not prevent you from performing the action. You must
+acknowledge the warning before proceeding with your upload. You will
+only be allowed to acknowledge a warning once the errors have been fixed.
+
+Below is an example of an error and a warning. They will be color coded.
+
+![](Validation_ErrorWarning.png)
+
+You will need to address all errors before continuing with your action.
+Warnings will also appear in the dialog as well. If these are not addressed,
+the next time you perform your action, you will see the dialog below.
+
+![](Validation_Warning.png)
+
+You will need to acknowledge the warning or fix the issue before proceeding.
+If you acknowledge the warning, you will need to perform the action again,
+but you will not see the dialog.
