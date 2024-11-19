@@ -79,6 +79,7 @@ ErrorData <- R6::R6Class(
     columns = NULL,
     rows = NULL,
     data_frame = NULL,
+    error_level = NULL,
 
     #' @description Initialize method for the ErrorData class.
     #' @details This method sets up a new ErrorData object. If a data.frame is provided, it will use its column names
@@ -88,18 +89,24 @@ ErrorData <- R6::R6Class(
     #' @param columns A character vector of column names where the error was found. Default is NULL.
     #' @param rows An integer vector of row numbers where the error was found. Default is NULL.
     #' @param data_frame A data.frame with all of the invalid data. Can be used instead of providing rows and columns.
+    #' @param error_level A character string representing the error level. Default is "Error". Options are "Error" and "Warning".
     #' Default is NULL.
     #' @return An initialized ErrorData object.
-    initialize = function(description = NULL, columns = NULL, rows = NULL, data_frame = NULL) {
+    initialize = function(description = NULL, columns = NULL, rows = NULL, data_frame = NULL, error_level = "Error") {
       self$description <- description
+
+      # Enforce error level
+      stopifnot("Error level not recognized." = error_level %in% c("Error", "Warning"))
 
       if (!is.null(data_frame)) {
         self$data_frame <- data_frame
         self$columns <- colnames(data_frame)
         self$rows <- data_frame$RowNumber
+        self$error_level <- error_level
       } else {
         self$columns <- columns
         self$rows <- rows
+        self$error_level <- error_level
       }
     }
   )
@@ -167,9 +174,15 @@ ValidationErrorCollection <- R6::R6Class(
       return(length(self$error_data_list))
     },
 
+    #' @method ErrorDataList count_errors
+    #' @description This method counts the number of errors in the list by level.
+    count_errors = function(error_level) {
+      return(sum(sapply(self$error_data_list, function(error) error$error_level == error_level)))
+    },
+
     #' @method ValidationErrorCollection get_combined_error_data
     #' @description This method combines the error details with the user data and returns it as a data frame.
-    get_combined_error_data = function() {
+    get_combined_error_data = function(error_level = "Error") {
       # Initial creation of an error description dataframe
       error_desc_df <- do.call(rbind, lapply(self$error_data_list, function(error) {
         data.frame(
@@ -208,6 +221,13 @@ ValidationErrorCollection <- R6::R6Class(
 
       # Sort the dataframe so that rows with errors are on top
       combined_data <- combined_data[order(combined_data$Description != "No error", decreasing = TRUE), ]
+
+      # Keep the data by error level
+      error_levels <- c("Warning", "Error")
+      error_index <- match(error_level, error_levels)
+
+      combined_data <- combined_data %>%
+        filter(error_level %in% error_level[1:error_index])
 
       # Ensure 'RowNumber' and 'Description' are the first columns, followed by the original and new columns
       column_order <- c("RowNumber", "Description", existing_columns, new_columns_to_add)

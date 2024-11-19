@@ -432,7 +432,8 @@ validate_box_uniqueness <- function(con, user_data, row_number_col, cryovial_col
     return(ErrorData$new(
       description = error_desc,
       columns = c(row_number_col, cryovial_col, cryovial_box_col),
-      rows = unique(comparison[[row_number_col]])
+      rows = unique(comparison[[row_number_col]]),
+      error_level = "Warning"
     ))
   }
 
@@ -575,6 +576,63 @@ validate_cryovial_collection_dates <- function(con, table_name, row_number_col, 
   if(nrow(df) > 0) {
     return(ErrorData$new(data_frame = df, description = "Sample must have a collection date if there is no barcode provided and there is already a sample from this study subject."))
   }
+  return(NULL)
+}
+
+#' Validate that Cryovial barcodes are unique by Study short_code and SpecimenType.
+#' Barcodes are not required but can be added as additional information. If 
+#' we have a barcode, we need to ensure that it is unique within the study.
+#'
+#' @param con The database connection.
+#' @param table_name The table name in the database that contains the data.
+#' @param row_number_col The column name for row numbers.
+#' @param barcode_col The column name for barcodes.
+#' @param study_short_code_col The column name for study short codes.
+#' @param specimen_type_col The column name for study subjects.
+#'
+#' @return ErrorData object or NULL if no errors found.
+#' @keywords validation, dates
+validate_cryovial_barcodes <- function(con, table_name, row_number_col, barcode_col, study_short_code_col, specimen_type_col) {
+
+  # Setup joins
+  study_joins <- setNames(c("short_code"), c(study_short_code_col))
+  specimen_type_joins <- setNames(c("name", "specimen_type_id"), c(specimen_type_col, "specimen_type_id"))
+
+  # Tbls
+  study_tbl <- tbl(con, "study") %>% dplyr::rename(study_id = id)
+  study_subject_tbl <- tbl(con, "study_subject") %>% dplyr::rename(study_subject_id = id)
+  specimen_type_tbl <- tbl(con, "specimen_type") %>% dplyr::rename(specimen_type_id = id)
+  specimen_tbl <- tbl(con, "specimen") %>% dplyr::rename(specimen_id = id)
+  storage_container_tbl <- tbl(con, "storage_container") %>% dplyr::select(cryovial_id = id, state_id, specimen_id)
+  cryovial_tube_tbl <- tbl(con, "cryovial_tube") %>%
+    dplyr::select(cryovial_id = id, !!sym(barcode_col) := barcode, manifest_id)
+  cryovial_box_tbl <- tbl(con, "cryovial_box") %>% dplyr::select(manifest_id = id, box_name = name)
+
+  # Validate that Cryovial barcodes are unique by Study short_code and SpecimenType if 
+  # we have barcodes in the user data.
+  df <- tbl(con, table_name) %>%
+    filter(!is.na(!!sym(barcode_col))) %>%
+    inner_join(study_tbl, by = study_joins) %>%
+    inner_join(study_subject_tbl, by = "study_id") %>%
+    inner_join(specimen_tbl, by = "study_subject_id") %>%
+    inner_join(specimen_type_tbl, by = specimen_type_joins) %>%
+    inner_join(storage_container_tbl, by = "specimen_id") %>%
+    filter(state_id == 1) %>%
+    inner_join(cryovial_tube_tbl, by = c("cryovial_id", barcode_col)) %>%
+    inner_join(cryovial_box_tbl, by = "manifest_id") %>%
+    select(all_of(c(row_number_col, barcode_col, study_short_code_col, specimen_type_col))) %>%
+    collect()
+
+  if (nrow(df) > 0) {
+    return(
+      ErrorData$new(
+        data_frame = df,
+        description = "Barcodes must be unique by Study and SpecimenType.",
+        error_level = "Warning"
+      )
+    )
+  }
+
   return(NULL)
 }
 
@@ -1149,18 +1207,14 @@ validate_micronix_moves <- function(micronix_test, variable_colnames) {
 #' @return A list object containing validation errors, if any.
 #' @keywords validation
 validate_cryovial_uploads <- function(cryovial_test) {
-  cryovial_test(check_cryovial_barcodes_exist, "Barcode", "BoxName", error_if_exists = TRUE)
   cryovial_test(validate_matrix_container, "BoxName", "Position", "cryovial_box", "cryovial_tube", error_if_exists = TRUE)
-  cryovial_test(validate_box_uniqueness, "Barcode", "BoxName", similarity_tolerance = 10)
   cryovial_test(check_longitudinal_study_dates, "StudyCode", "CollectionDate")
   cryovial_test(validate_longitudinal_study, "StudyCode", "StudySubject", "CollectionDate")
-  cryovial_test(validate_cryovial_collection_dates, "StudyCode", "StudySubject", "Barcode", "CollectionDate")
+  cryovial_test(validate_cryovial_barcodes, "Barcode", "StudyCode", "SpecimenType")
   cryovial_test(validate_study_reference_db, "StudyCode")
   cryovial_test(validate_specimen_type_db, "SpecimenType")
   cryovial_test(validate_location_reference_db, "FreezerName", "RackName", "RackPosition")
 }
-
-
 
 #' Validate Cryovial Moves
 #'
@@ -1261,7 +1315,8 @@ validate_specimens <- function(user_data, sample_type, user_action, file_type, d
   # Initialize the ValidationErrorCollection with the accumulated errors and the user_data
   error_collection <- ValidationErrorCollection$new(errors, user_data)
 
-  if (error_collection$length() > 0) {
+  # If there are any errors, execute the stop route
+  if (error_collection$count_errors("Error") > 0) {
     stop_validation_error("Validation error", error_collection)
   }
 
@@ -1270,5 +1325,10 @@ validate_specimens <- function(user_data, sample_type, user_action, file_type, d
     user_data <- handle_unknown_date_tokens(user_data, "CollectionDate", validation_result$parsed_dates, validation_result$token_mask)
   }
 
-  return(user_data)
+  # If there are only warnings, return the user data with the warnings
+  if (error_collection$count_errors("Warning") > 0) {
+    return (list(data = user_data, warnings = error_collection))
+  } else {
+    return (user_data)
+  }
 }

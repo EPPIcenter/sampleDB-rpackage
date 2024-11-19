@@ -572,29 +572,80 @@ show_validation_error_modal <- function(output, error, filename = NULL) {
                        paste("Validation Error Detected in", filename))
   
   error_collection <- error$data
+  error_levels <- sapply(error_collection$error_data_list, function(x) x$error_level)
   
   if (inherits(error_collection, "ErrorData")) {
     errors_df <- data.frame(
       Description = error_collection$description,
       Columns = toString(error_collection$columns),
-      Rows = toString(error_collection$rows)
+      Rows = toString(error_collection$rows),
+      stringsAsFactors = FALSE
     )
-    main_table <- reactable(errors_df)
-  } else if (inherits(error_collection, "ValidationErrorCollection")) {
-    errors <- unique(sapply(error_collection$error_data_list, function(x) x$description))
-    errors_df <- data.frame(Error = errors)
+    
+    # Render the reactable with a red background for the Description column
     main_table <- reactable(
       errors_df,
+      columns = list(
+        Description = colDef(
+          style = function(value, rowIndex) {
+            # Dynamically apply red or orange based on the error level
+            if (error_levels[rowIndex] == "Error") {
+              list(background = "#FE6100", color = "white", fontWeight = "bold")
+            } else if (error_levels[rowIndex] == "Warning") {
+              list(background = "#FFB000", color = "white", fontWeight = "bold")
+            } else {
+              NULL
+            }
+          },
+          name = "Description"
+        )
+      ),
+      outlined = TRUE,
+      striped = TRUE
+    )
+    
+  } else if (inherits(error_collection, "ValidationErrorCollection")) {
+    # Collect error descriptions and corresponding levels
+    errors <- unique(sapply(error_collection$error_data_list, function(x) x$description))
+    
+    # Create the data frame
+    errors_df <- data.frame(
+      Description = errors,
+      stringsAsFactors = FALSE
+    )
+    
+    # Render the reactable with background color for the Description column
+    main_table <- reactable(
+      errors_df,
+      columns = list(
+        Description = colDef(
+          style = function(value, rowIndex) {
+            # Dynamically apply red or orange based on the error level
+            if (error_levels[rowIndex] == "Error") {
+              list(background = "#FE6100", color = "white", fontWeight = "bold")
+            } else if (error_levels[rowIndex] == "Warning") {
+              list(background = "#FFB000", color = "white", fontWeight = "bold")
+            } else {
+              NULL
+            }
+          },
+          name = "Description"
+        )
+      ),
       details = function(index) {
         htmltools::div(
           style = "padding: 1rem",
           generate_error_reactable(error_collection, index)
         )
-      }
+      },
+      outlined = TRUE,
+      striped = TRUE
     )
+    
   } else {
     stop("Unknown error collection type.")
   }
+
   
   showModal(
     modalDialog(
@@ -605,6 +656,11 @@ show_validation_error_modal <- function(output, error, filename = NULL) {
       tags$p("Press the button below to download your file with annotations"),
       downloadButton("ErrorFileDownload"),
       tags$hr(),
+      div(
+          style = "display: flex; margin-bottom: 10px;",
+          tags$div(tags$span(style = "background-color: #FE6100; padding: 5px 15px; margin-right: 10px;", "Error")),
+          tags$div(tags$span(style = "background-color: #FFB000; padding: 5px 15px; margin-right: 10px;", "Needs Review"))
+      ),
       renderReactable({ main_table }),
       footer = modalButton("Exit")
     )
@@ -617,6 +673,113 @@ show_validation_error_modal <- function(output, error, filename = NULL) {
     },
     content = function(file) {
       df = error_collection$get_combined_error_data()
+      write.csv(df, file, row.names = FALSE, quote = FALSE)
+    }
+  )
+}
+
+show_validation_warning_modal <- function(input, output, warnings, filename = NULL) {
+
+  message("Preparing validation warning modal.")
+  
+  # Warning title
+  title_text <- "Review needed"
+  
+  error_collection <- warnings
+  error_levels <- sapply(error_collection$error_data_list, function(x) x$error_level)
+  
+  # Generate the warnings table
+  if (inherits(error_collection, "ErrorData")) {
+    errors_df <- data.frame(
+      Description = error_collection$description,
+      Columns = toString(error_collection$columns),
+      Rows = toString(error_collection$rows),
+      stringsAsFactors = FALSE
+    )
+    
+    main_table <- reactable(
+      errors_df,
+      columns = list(
+        Description = colDef(
+          style = function(value) {
+            list(background = "#FFB000", color = "white", fontWeight = "bold")  # Orange for warnings
+          }
+        )
+      ),
+      outlined = TRUE,
+      striped = TRUE
+    )
+    
+  } else if (inherits(error_collection, "ValidationErrorCollection")) {
+    # Collect warning descriptions and corresponding levels
+    warnings <- sapply(error_collection$error_data_list, function(x) x$description)
+    
+    # Create the data frame
+    errors_df <- data.frame(
+      Description = warnings,
+      stringsAsFactors = FALSE
+    )
+    
+    # Render the reactable with background color for the Description column
+    main_table <- reactable(
+      errors_df,
+      columns = list(
+        Description = colDef(
+          style = function(value, rowIndex) {
+            # Apply background color based on the error level
+            if (error_levels[rowIndex] == "Error") {
+              list(background = "#FE6100", color = "white", fontWeight = "bold")  # Red for errors
+            } else if (error_levels[rowIndex] == "Warning") {
+              list(background = "#FFB000", color = "white", fontWeight = "bold")  # Orange for warnings
+            } else {
+              NULL
+            }
+          }
+        )
+      ),
+      details = function(index) {
+        htmltools::div(
+          style = "padding: 1rem",
+          generate_error_reactable(error_collection, index)
+        )
+      },
+      outlined = TRUE,
+      striped = TRUE
+    )
+  } else {
+    stop("Unknown error collection type.")
+  }
+
+  # Show the modal with warnings
+  showModal(
+    modalDialog(
+      size = "l",
+      title = title_text,
+      tags$p("Your file contains data that needs to be reviewed. See the warnings below and expand them to see which rows caused them."),
+      tags$strong("If you are okay with the data, you may continue with your upload. You will need to press \"Upload\" on the main screen to continue your upload."),
+      if (!is.null(filename)) tags$p(paste("File:", filename)),
+      tags$p("Press the button below to download your file with annotations."),
+      downloadButton("WarningFileDownload"),
+      tags$hr(),
+      div(
+          style = "display: flex; margin-bottom: 10px;",
+          tags$div(tags$span(style = "background-color: #FFB000; padding: 5px 15px; margin-right: 10px;", "Needs Review"))
+      ),
+      renderReactable({ main_table }),
+      footer = tagList(
+        actionButton("ContinueUpload", "Confirm Review and Press Upload"),
+        actionButton("CancelUpload", "Cancel")
+      )
+    )
+  )
+
+  # Add server logic for the download button
+  output$WarningFileDownload <- downloadHandler(
+    filename = function() {
+      paste0("validation_warnings_", Sys.Date(), ".csv")
+    },
+    content = function(file) {
+      df <- error_collection$get_combined_error_data(error_level = "Warning")
       write.csv(df, file, row.names = FALSE, quote = FALSE)
     }
   )
