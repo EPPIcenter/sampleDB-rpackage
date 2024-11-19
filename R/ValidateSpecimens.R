@@ -1315,6 +1315,7 @@ validate_specimens <- function(user_data, sample_type, user_action, file_type, d
   # Initialize the ValidationErrorCollection with the accumulated errors and the user_data
   error_collection <- ValidationErrorCollection$new(errors, user_data)
 
+  # If there are any errors, execute the stop route
   if (error_collection$count_errors("Error") > 0) {
     stop_validation_error("Validation error", error_collection)
   }

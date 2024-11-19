@@ -755,8 +755,8 @@ show_validation_warning_modal <- function(input, output, warnings, filename = NU
     modalDialog(
       size = "l",
       title = title_text,
-      tags$p("Your file contains data that needs to be reviewed. See the warnings below and expand them to see which rows cause them."),
-      tags$strong("If you are okay with the data, you may continue with your upload."),
+      tags$p("Your file contains data that needs to be reviewed. See the warnings below and expand them to see which rows caused them."),
+      tags$strong("If you are okay with the data, you may continue with your upload. You will need to press \"Upload\" on the main screen to continue your upload."),
       if (!is.null(filename)) tags$p(paste("File:", filename)),
       tags$p("Press the button below to download your file with annotations."),
       downloadButton("WarningFileDownload"),
@@ -767,7 +767,7 @@ show_validation_warning_modal <- function(input, output, warnings, filename = NU
       ),
       renderReactable({ main_table }),
       footer = tagList(
-        actionButton("ContinueUpload", "Confirm Review"),
+        actionButton("ContinueUpload", "Confirm Review and Press Upload"),
         actionButton("CancelUpload", "Cancel")
       )
     )
