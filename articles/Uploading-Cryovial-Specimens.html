@@ -124,23 +124,13 @@ to ensure that each cryovial is identifiable.</p>
 cryovial:</p>
 <ol style="list-style-type: decimal">
 <li>
-<p><strong>Barcode uniqueness within a box.</strong> When two tubes
-within a box have the same barcodes, the samples will be flagged.</p>
+<p><strong>Barcode uniqueness</strong>: Cryovial barcodes should be
+unique by Study and SpecimenType. Failure to meet this requirement will
+result in a warning message - it will <strong>not</strong> block you
+from uploading the data.</p>
 <ol style="list-style-type: lower-alpha">
-<li><em>Message: “Cryovial is duplicated within a box”</em></li>
-</ol>
-</li>
-<li>
-<p><strong>Box uniqueness.</strong> This will check whether another
-box exists in the database that is similar to the box you are uploading.
-By similar, 10% of samples must share the same barcode. If a box is
-found, the samples that have the shared barcodes are flagged in your
-upload.</p>
-<ol style="list-style-type: lower-alpha">
-<li><em>Message: "Similarity threshold (10%) exceeded between uploaded
-and existing
-boxes:<math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>L</mi><mi>i</mi><mi>s</mi><mi>t</mi><mi>o</mi><mi>f</mi><mi>b</mi><mi>o</mi><mi>x</mi><mi>e</mi><mi>s</mi><mi>t</mi><mi>h</mi><mi>a</mi><mi>t</mi><mi>h</mi><mi>a</mi><mi>d</mi><mn>10</mn><mi>b</mi><mi>a</mi><mi>r</mi><mi>c</mi><mi>o</mi><mi>d</mi><mi>e</mi><mi>s</mi><mi>a</mi><mi>s</mi><mi>t</mi><mi>h</mi><mi>e</mi><mi>u</mi><mi>p</mi><mi>l</mi><mi>o</mi><mi>a</mi><mi>d</mi></mrow><annotation encoding="application/x-tex">List of boxes that had 10% of the same
-barcodes as the upload</annotation></semantics></math>"</em></li>
+<li><em>Message: “Barcode must be unique by Study and
+SpecimenType”</em></li>
 </ol>
 </li>
 <li>
@@ -167,17 +157,6 @@ unique for a longitudinal study.</strong></p>
 <ol style="list-style-type: lower-alpha">
 <li><em>Message: "Study subject and collection date must be unique
 within a longitudinal study"</em></li>
-</ol>
-</li>
-<li>
-<p><strong>Confirm that cryovials with no barcode have collection
-dates if there is already a sample from that study subject.</strong>
-This is to ensure that there is some identifying information for the
-sample from the subject.</p>
-<ol style="list-style-type: lower-alpha">
-<li><em>Message: "Sample must have a collection date if there is no
-barcode provided and there is already a sample from this study
-subject."</em></li>
 </ol>
 </li>
 <li>
