@@ -177,6 +177,11 @@ ValidationErrorCollection <- R6::R6Class(
     #' @method ErrorDataList count_errors
     #' @description This method counts the number of errors in the list by level.
     count_errors = function(error_level) {
+      # Return 0 if there are no errors.
+      if (self$length() == 0) {
+        return(0)
+      }
+      # If there are errors, count the number that match the error level.
       return(sum(sapply(self$error_data_list, function(error) error$error_level == error_level)))
     },
 
