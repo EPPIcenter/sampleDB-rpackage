@@ -1225,7 +1225,7 @@ validate_cryovial_uploads <- function(cryovial_test) {
 #' @return A list object containing validation errors, if any.
 #' @keywords validation
 validate_cryovial_moves <- function(cryovial_test) {
-  cryovial_test(check_cryovial_barcodes_exist, "Barcode", error_if_exists = FALSE)
+  cryovial_test(check_cryovial_barcodes_exist, "Barcode", "BoxName", error_if_exists = FALSE)
   cryovial_test(check_cryovial_box_exists, "BoxName", "BoxBarcode")
 }
 
