@@ -385,6 +385,7 @@ MoveSpecimens <- function(sample_type, move_data){
                       id = id) %>% suppressWarnings()
 
         } else if (sample_type == "cryovial" || sample_type == "whole_blood") {
+
           eval.barcode <- safe_extract(move_data[i,], "Barcode")
           eval.well_pos <- safe_extract(move_data[i,], "Position")
 
@@ -395,12 +396,15 @@ MoveSpecimens <- function(sample_type, move_data){
           column_name <- if (sample_type == "whole_blood") "cryovial_box_id" else "manifest_id"
           eval.container_id <- filter(CheckTable(database = database, "cryovial_box"), name == container_name)$id
 
-          # Link sample with container id
-          ModifyTable(conn = conn,
-                      paste0(sample_type, "_tube"),
-                      info_list = list(!!sym(column_name) := eval.container_id,
-                                       position = eval.well_pos),
-                      id = id) %>% suppressWarnings()
+          info_list <- list(eval.container_id, position = eval.well_pos)
+          names(info_list)[1] <- column_name
+
+          ModifyTable(
+            conn = conn,
+            paste0(sample_type, "_tube"),
+            info_list = info_list,
+            id = id
+          ) %>% suppressWarnings()
         } else {
           stop("Invalid Sample Type!!!")
         }

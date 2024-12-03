@@ -218,26 +218,17 @@ check_micronix_plate_exists <- function(con, table_name, row_number_col, plate_n
 #' @param table_name The name of the table containing user-uploaded data.
 #' @param row_number_col The name of the column in the user-uploaded table that contains row numbers.
 #' @param box_name_col The name of the column in the user-uploaded table that contains the cryovial container names.
-#' @param box_barcode_col The name of the column in the user-uploaded table that contains the manifest barcodes linked with the cryovial.
 #'
 #' @return An instance of the ErrorData class if errors are found, or NULL if there are no errors.
 #' @keywords validation, cryovial
 #' @export
-check_cryovial_box_exists <- function(con, table_name, row_number_col, box_name_col, box_barcode_col = NULL) {
+check_cryovial_box_exists <- function(con, table_name, row_number_col, box_name_col) {
   
   # Directly define the join conditions using named vectors
-
-  if (!is.null(box_barcode_col)) {
-    user_table_joins <- setNames(
-      c("barcode", "name"),
-      c(box_barcode_col, box_name_col)
-    )
-  } else {
-    user_table_joins <- setNames(
-      c("name"),
-      c(box_name_col)
-    )    
-  }
+  user_table_joins <- setNames(
+    c("name"),
+    c(box_name_col)
+  )
   
   df <- tbl(con, table_name) %>%
     left_join(tbl(con, "cryovial_box"), by = user_table_joins) %>%
@@ -246,20 +237,14 @@ check_cryovial_box_exists <- function(con, table_name, row_number_col, box_name_
     collect()
 
   if (nrow(df) > 0) {
-    if (!is.null(box_barcode_col)) {
-      return(ErrorData$new(
-        description = "Cryovial container not found",
-        columns = c(row_number_col, box_name_col, box_barcode_col),
-        rows = df[[row_number_col]]
-      ))
-    } else {
-      return(ErrorData$new(
-        description = "Cryovial container not found",
-        columns = c(row_number_col, box_name_col),
-        rows = df[[row_number_col]]
-      ))
-    }
-  }
+    return(
+      ErrorData$new(
+      description = "Cryovial container not found",
+      columns = c(row_number_col, box_name_col),
+      rows = df[[row_number_col]]
+    )
+  )}
+
   return(NULL)
 }
 
@@ -316,7 +301,6 @@ check_micronix_barcodes_exist <- function(con, user_data, row_number_col, micron
 #' @param row_number_col The column with the row number in the `user_data`.
 #' @param cryovial_col The column with Cryovial barcodes in the `user_data`.
 #' @param cryovial_box_col The column with Cryovial box IDs in the `user_data`.
-#' @param cryovial_box_barcode_col The column with Cryovial box barcodes in the `user_data`.
 #' @param error_if_exists Logical. If TRUE, an error is returned if the barcode exists in the database.
 #'
 #' @keywords validation, cryovial
@@ -339,7 +323,7 @@ check_cryovial_barcodes_exist <- function(con, user_data, row_number_col, cryovi
 
   # Join with cryovial_tube based on cryovial barcode
   df <- df %>%
-    left_join(container_df, by = setNames(c("barcode", "box_name"), c(cryovial_col, cryovial_box_col)))
+    left_join(container_df, by = setNames(c("barcode"), c(cryovial_col)))
 
   # Error handling based on existence and duplication criteria
   if (error_if_exists) {
@@ -1226,7 +1210,7 @@ validate_cryovial_uploads <- function(cryovial_test) {
 #' @keywords validation
 validate_cryovial_moves <- function(cryovial_test) {
   cryovial_test(check_cryovial_barcodes_exist, "Barcode", "BoxName", error_if_exists = FALSE)
-  cryovial_test(check_cryovial_box_exists, "BoxName", "BoxBarcode")
+  cryovial_test(check_cryovial_box_exists, "BoxName")
 }
 
 #' Validate Micronix Uploads
