@@ -104,6 +104,34 @@ validate_micronix_barcode_length <- function(data,
   return(NULL)
 }
 
+#' Validate Micronix Barcode is specific in the file
+#'
+#' @param con A database connection object.
+#' @param table_name The name of the table containing user-uploaded data.
+#' @param row_number_col The name of the column in the user-uploaded table that contains row numbers.
+#' @param barcode_col The name of the column in the user-uploaded table that contains the Micronix barcodes.
+#'
+#' @return An instance of the ErrorData class if errors are found, or NULL if there are no errors.
+#' @keywords validation, micronix
+validate_micronix_barcodes_are_unique_in_file <- function(data,
+                                            barcode_column,
+                                            row_number_column,
+                                            plate_name_column) {
+  df <- data %>%
+    dplyr::group_by(!!sym(barcode_column)) %>%
+    dplyr::mutate(n = n()) %>%
+    dplyr::filter(n > 1) %>%
+    dplyr::select(!!sym(row_number_column), !!sym(barcode_column), !!sym(plate_name_column))
+
+  if (nrow(df) > 0) {
+    return(ErrorData$new(description = "Duplicate Micronix Barcodes found in your file",
+                         data = df))
+  }
+
+  return(NULL)
+}
+
+
 #' Validate Cryovial-specific position rules
 #'
 #' @param data A dataframe containing the data to be validated.
@@ -932,6 +960,11 @@ validate_micronix <- function(user_data, action, file_type, database) {
   variable_colnames[['barcode_col']] <- find_column_name(user_data, c("Barcode", "Tube ID", "TubeCode"))
 
   result <- validate_micronix_barcode_length(user_data, variable_colnames[['barcode_col']], "RowNumber")
+  if (!is.null(result)) {
+    errors <- add_to_errors(errors, result)
+  }
+
+  result <- validate_micronix_barcodes_are_unique_in_file(user_data, variable_colnames[['barcode_col']], "RowNumber", "PlateName")
   if (!is.null(result)) {
     errors <- add_to_errors(errors, result)
   }
