@@ -236,6 +236,138 @@ check_micronix_plate_exists <- function(con, table_name, row_number_col, plate_n
   return(NULL)
 }
 
+#' Check Each Cryovial Move is Unique
+#'
+#' Ensures that each cryovial move can be uniquely identified based on one or more
+#' of the valid column names: "Barcode", "StudySubject", and "CollectionDate".
+#'
+#' @param con The database connection.
+#' @param table_name The name of the table containing the cryovial move data.
+#' @param row_number_col The name of the column in the table containing row numbers.
+#' @param valid_columns A character vector of valid column names (default: c("Barcode", "StudySubject", "CollectionDate")).
+#'
+#' @return An instance of the ErrorData class if any rows are not uniquely identifiable, or NULL if all rows are unique.
+#' @keywords validation, cryovial
+check_each_row_cryovial_move_is_unique <- function(con, table_name, row_number_col, valid_columns = c("Barcode", "StudySubject", "CollectionDate", "StudyCode", "SpecimenType")) {
+  
+  # Check if at least one valid column exists in the table
+  column_names <- dbListFields(con, table_name)
+  matching_columns <- intersect(valid_columns, column_names)
+  
+  if (length(matching_columns) == 0) {
+    stop("At least one valid column (Barcode, StudySubject, CollectionDate) must exist in the table.")
+  }
+  
+  # Pull data for matching columns and row numbers
+  df <- tbl(con, table_name) %>%
+    select(all_of(c(row_number_col, matching_columns))) %>%
+    collect()
+  
+  # Check for uniqueness of rows based on the matching columns
+  duplicated_rows <- df %>%
+    group_by(across(all_of(matching_columns))) %>%
+    filter(n() > 1) %>%
+    ungroup() %>%
+    select(!!sym(row_number_col)) %>%
+    distinct()
+  
+  if (nrow(duplicated_rows) > 0) {
+    return(ErrorData$new(
+      description = "Each row must be uniquely identifiable using the provided columns.",
+      columns = matching_columns,
+      rows = duplicated_rows[[row_number_col]]
+    ))
+  }
+  
+  return(NULL)
+}
+
+#' Check Each Cryovial Move is Identifiable
+#'
+#' Ensures that each cryovial move contains enough data to be identified by checking related database tables.
+#'
+#' @param con The database connection.
+#' @param table_name The name of the table containing the cryovial move data.
+#' @param row_number_col The name of the column in the table containing row numbers.
+#' @param valid_columns A character vector of valid column names (default: c("Barcode", "StudySubject", "CollectionDate", "StudyCode", "SpecimenType")).
+#'
+#' @return An instance of the ErrorData class if any rows are not identifiable, or NULL if all rows are identifiable.
+#' @keywords validation, cryovial
+check_each_row_cryovial_move_is_identifiable <- function(con, table_name, row_number_col, valid_columns = c("Barcode", "StudySubject", "CollectionDate", "StudyCode", "SpecimenType")) {
+  
+  # Check if at least one valid column exists in the table
+  column_names <- dbListFields(con, table_name)
+  matching_columns <- intersect(valid_columns, column_names)
+  
+  if (length(matching_columns) == 0) {
+    stop("At least one valid column (Barcode, StudySubject, CollectionDate, StudyCode, SpecimenType) must exist in the table.")
+  }
+  
+  # Pull data for user columns and row numbers
+  user_data <- tbl(con, table_name) %>%
+    select(all_of(c(row_number_col, matching_columns))) %>%
+    collect()
+  
+  # Create resolved_data by joining database tables
+  resolved_data <- tbl(con, "specimen") %>%
+    select(specimen_id = id, study_subject_id, specimen_type_id, CollectionDate = collection_date) %>%
+    left_join(tbl(con, "study_subject") %>% select(study_subject_id = id, study_id, StudySubject = name), by = "study_subject_id") %>%
+    left_join(tbl(con, "study") %>% select(study_id = id, StudyCode = short_code), by = "study_id") %>%
+    left_join(tbl(con, "specimen_type") %>% select(specimen_type_id = id, SpecimenType = name), by = "specimen_type_id") %>%
+    left_join(tbl(con, "storage_container") %>% select(storage_id = id, specimen_id), by = "specimen_id") %>%
+    left_join(tbl(con, "cryovial_tube") %>% select(storage_id = id, Barcode = barcode), by = "storage_id") %>%
+    collect()
+  
+  # Initialize a vector to track rows that cannot be identified
+  non_identifiable_rows <- integer()
+  
+  # Iterate through each row in user_data
+  for (i in seq_len(nrow(user_data))) {
+    row <- user_data[i, ]
+    
+    # Check for "UNK", "unk", "UNKNOWN", or "unknown" in CollectionDate and replace with lubridate::origin
+    if ("CollectionDate" %in% matching_columns) {
+      if (tolower(row$CollectionDate) %in% c("unk", "unknown")) {
+        row$CollectionDate <- as.character(lubridate::origin)
+      }
+    }
+    
+    # Find non-empty columns for the current row
+    non_empty_columns <- matching_columns[!is.na(row[matching_columns]) & row[matching_columns] != ""]
+    
+    # Skip if no columns have data
+    if (length(non_empty_columns) == 0) {
+      non_identifiable_rows <- c(non_identifiable_rows, row[[row_number_col]])
+      next
+    }
+    
+    # Construct filter conditions dynamically for the non-empty columns
+    conditions <- purrr::map2(non_empty_columns, row[non_empty_columns], ~rlang::expr(!!sym(.x) == !!.y))
+    
+    # Check if the row can be matched in resolved_data
+    match_found <- resolved_data %>%
+      filter(!!!conditions) %>%  # Splice the conditions into the filter call
+      summarise(match = n()) %>%
+      pull(match) > 0
+    
+    if (!match_found) {
+      non_identifiable_rows <- c(non_identifiable_rows, row[[row_number_col]])
+    }
+  }
+  
+  # Return errors if any rows are not identifiable
+  if (length(non_identifiable_rows) > 0) {
+    return(ErrorData$new(
+      description = "Cryovial in file that could not be identified. Please check the provided data for errors, or include additional metadata.",
+      columns = matching_columns,
+      rows = non_identifiable_rows
+    ))
+  }
+  
+  return(NULL)
+}
+
+
 
 #' Check If Cryovial Box Exists in the Database
 #'
@@ -267,7 +399,7 @@ check_cryovial_box_exists <- function(con, table_name, row_number_col, box_name_
   if (nrow(df) > 0) {
     return(
       ErrorData$new(
-      description = "Cryovial container not found",
+      description = "Cryovial Box not found",
       columns = c(row_number_col, box_name_col),
       rows = df[[row_number_col]]
     )
@@ -1242,6 +1374,8 @@ validate_cryovial_uploads <- function(cryovial_test) {
 #' @return A list object containing validation errors, if any.
 #' @keywords validation
 validate_cryovial_moves <- function(cryovial_test) {
+  cryovial_test(check_each_row_cryovial_move_is_identifiable) # Checks if the cryovial can be found
+  cryovial_test(check_each_row_cryovial_move_is_unique) # Checks if the cryovial is duplicated
   cryovial_test(check_cryovial_barcodes_exist, "Barcode", "BoxName", error_if_exists = FALSE)
   cryovial_test(check_cryovial_box_exists, "BoxName")
 }

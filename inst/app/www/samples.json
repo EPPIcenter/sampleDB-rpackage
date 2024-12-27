@@ -52,7 +52,7 @@
         "required_keys": ["barcode"]
       },
       "cryovial": {
-        "conditional_keys": ["barcode"]
+        "optional_keys": ["barcode", "study_subject", "specimen_type", "collection_date", "study_short_code"]
       }
     }
   },
