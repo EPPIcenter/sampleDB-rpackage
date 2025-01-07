@@ -273,7 +273,7 @@ check_each_row_cryovial_move_is_unique <- function(con, table_name, row_number_c
   
   if (nrow(duplicated_rows) > 0) {
     return(ErrorData$new(
-      description = "Each row must be uniquely identifiable using the provided columns.",
+      description = "Each Cryovial must be uniquely identifiable using any of the provided columns below. Please check for duplicates or empty rows.",
       columns = matching_columns,
       rows = duplicated_rows[[row_number_col]]
     ))
@@ -358,7 +358,7 @@ check_each_row_cryovial_move_is_identifiable <- function(con, table_name, row_nu
   # Return errors if any rows are not identifiable
   if (length(non_identifiable_rows) > 0) {
     return(ErrorData$new(
-      description = "Cryovial in file that could not be identified. Please check the provided data for errors, or include additional metadata.",
+      description = "Cryovial could not be found in te database. Please check for data entry errors, or include additional metadata to help with the search.",
       columns = matching_columns,
       rows = non_identifiable_rows
     ))
