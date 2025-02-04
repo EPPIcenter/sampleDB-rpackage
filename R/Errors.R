@@ -70,6 +70,7 @@ stop_validation_error <- function(message, data, call = rlang::caller_env()) {
 #' @field columns A character vector of column names where the error was found.
 #' @field rows An integer vector of row numbers where the error was found.
 #' @field data_frame A dataframe of the samples that triggered the error.
+#' @field addtl_data A dataframe of data that is not included in the file and should be appended to the error.
 #' @export
 #' @keywords error-handling
 ErrorData <- R6::R6Class(
@@ -80,6 +81,7 @@ ErrorData <- R6::R6Class(
     rows = NULL,
     data_frame = NULL,
     error_level = NULL,
+    addtl_data = NULL,
 
     #' @description Initialize method for the ErrorData class.
     #' @details This method sets up a new ErrorData object. If a data.frame is provided, it will use its column names
@@ -92,7 +94,7 @@ ErrorData <- R6::R6Class(
     #' @param error_level A character string representing the error level. Default is "Error". Options are "Error" and "Warning".
     #' Default is NULL.
     #' @return An initialized ErrorData object.
-    initialize = function(description = NULL, columns = NULL, rows = NULL, data_frame = NULL, error_level = "Error") {
+    initialize = function(description = NULL, columns = NULL, rows = NULL, data_frame = NULL, error_level = "Error", addtl_data = NULL) {
       self$description <- description
 
       # Enforce error level
@@ -103,10 +105,12 @@ ErrorData <- R6::R6Class(
         self$columns <- colnames(data_frame)
         self$rows <- data_frame$RowNumber
         self$error_level <- error_level
+        self$addtl_data <- addtl_data
       } else {
         self$columns <- columns
         self$rows <- rows
         self$error_level <- error_level
+        self$addtl_data <- addtl_data
       }
     }
   )
@@ -163,7 +167,13 @@ ValidationErrorCollection <- R6::R6Class(
         stringsAsFactors = FALSE,
         check.names = FALSE
       )
+
       error_details <- error_details[, specific_error$columns, drop = FALSE] # reorder columns
+
+      # Add additional details (if present)
+      if (!is.null(specific_error$addtl_data)) {
+        error_details <- cbind(error_details, specific_error$addtl_data)
+      }
 
       return(error_details)
     },
@@ -172,6 +182,21 @@ ValidationErrorCollection <- R6::R6Class(
     #' @description This method returns the number of ErrorData objects in the list.
     length = function() {
       return(length(self$error_data_list))
+    },
+
+    #' @method ErrorDataList concatenate
+    #' @description This concatenates one error collection with another. 
+    concatenate = function(other_error_collection) {
+      if (!inherits(other_error_collection, "ValidationErrorCollection")) {
+        stop("Input must be a ValidationErrorCollection object.")
+      }
+
+      if (!identical(self$user_data, other_error_collection$user_data)) {
+        stop("Attempt to concatenate a ")
+      }
+
+      # Extend current error_data_list with errors from the other collection
+      self$error_data_list <- c(self$error_data_list, other_error_collection$error_data_list)
     },
 
     #' @method ErrorDataList count_errors

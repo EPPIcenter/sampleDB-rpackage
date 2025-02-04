@@ -678,7 +678,7 @@ show_validation_error_modal <- function(output, error, filename = NULL) {
   )
 }
 
-show_validation_warning_modal <- function(input, output, warnings, filename = NULL) {
+show_validation_warning_modal <- function(input, output, warnings, filename = NULL, action = "upload") {
 
   message("Preparing validation warning modal.")
   
@@ -750,14 +750,43 @@ show_validation_warning_modal <- function(input, output, warnings, filename = NU
     stop("Unknown error collection type.")
   }
 
+  # Add action specific identfiers
+  footer <- if (action == "move") {
+    tagList(
+      actionButton("ContinueMove", "Confirm Review"),
+      actionButton("CancelMove", "Cancel")
+    )
+  } else {
+    tagList(
+      actionButton("ContinueUpload", "Confirm Review and Press Upload"),
+      actionButton("CancelUpload", "Cancel")
+    )
+  }
+
+  # Add a message about the move
+  msg <- if (action == "move") {
+    tags$p("Your move files generated warnings. Please review the warnings and press continue if you would like to proceed.")
+  } else {
+    tags$p("Your file contains data that needs to be reviewed. See the warnings below and expand them to see which rows caused them.")
+  }
+
+  # Get the users attention!
+  strong_msg <- if (action == "move") {
+    tags$strong("IMPORTANT: ARCHIVED samples will be made ACTIVE!\nPlease check your move files for ARCHIVED samples below before proceeding!")
+  } else {
+    tags$strong("If you are okay with the data, you may continue with your upload. You will need to press \"Upload\" on the main screen to continue your upload.")
+  }
+
   # Show the modal with warnings
   showModal(
     modalDialog(
       size = "l",
       title = title_text,
-      tags$p("Your file contains data that needs to be reviewed. See the warnings below and expand them to see which rows caused them."),
-      tags$strong("If you are okay with the data, you may continue with your upload. You will need to press \"Upload\" on the main screen to continue your upload."),
-      if (!is.null(filename)) tags$p(paste("File:", filename)),
+      msg,
+      br(),
+      strong_msg,
+      br(),
+      if (!is.null(filename) && action != "move") tags$p(paste("File:", filename)),
       tags$p("Press the button below to download your file with annotations."),
       downloadButton("WarningFileDownload"),
       tags$hr(),
@@ -766,10 +795,7 @@ show_validation_warning_modal <- function(input, output, warnings, filename = NU
           tags$div(tags$span(style = "background-color: #FFB000; padding: 5px 15px; margin-right: 10px;", "Needs Review"))
       ),
       renderReactable({ main_table }),
-      footer = tagList(
-        actionButton("ContinueUpload", "Confirm Review and Press Upload"),
-        actionButton("CancelUpload", "Cancel")
-      )
+      footer = footer
     )
   )
 

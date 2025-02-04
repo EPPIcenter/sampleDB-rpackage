@@ -450,6 +450,44 @@ check_micronix_barcodes_exist <- function(con, user_data, row_number_col, micron
   return(NULL)
 }
 
+#' Check Micronix Barcodes in Database
+#'
+#' This function checks whether Micronix barcodes provided in a user-uploaded table
+#' exist or don't exist (based on `error_if_exists` parameter) in the main database.
+#'
+#' @param con A database connection object.
+#' @param user_data The name of the table containing user-uploaded data.
+#' @param row_number_col The name of the column in the user-uploaded table that contains row numbers.
+#' @param micronix_col The name of the column in the user-uploaded table that contains the Micronix barcodes.
+#' @param error_if_exists A logical value. If TRUE, function returns error if barcode exists in the database, 
+#' if FALSE, function returns error if barcode doesn't exist.
+#'
+#' @return An instance of the ErrorData class if errors are found, or NULL if there are no errors.
+#' @keywords validation, micronix
+#' @export
+check_if_sample_is_archived <- function(con, user_data, row_number_col, micronix_col) {
+  
+  df <- tbl(con, user_data) %>%
+    left_join(tbl(con, "micronix_tube"), by = setNames("barcode", micronix_col)) %>%
+    left_join(tbl(con, "storage_container"), by = "id") %>%
+    left_join(tbl(con, "state") %>% dplyr::rename(State = "name"), by = c("state_id" = "id")) %>%
+    left_join(tbl(con, "status") %>% dplyr::rename(Status = "name"), by = c("status_id" = "id"))
+
+  # add addtional columns
+  addtl_data <- df %>% select(State, Status, Comment = comment) %>% collect()
+  df <- df %>% select(!!sym(row_number_col), !!sym(micronix_col)) %>% collect()
+
+  if (nrow(df) > 0) {
+    return(ErrorData$new(
+      description = "ARCHIVED samples found in scan! Please check your plate and confirm that this is your intention!",
+      data_frame = df,
+      addtl_data = addtl_data,
+      error_level = "Warning"
+    ))
+  }
+
+  return(NULL)
+}
 
 #' Check Cryovial Barcodes in Database
 #'
@@ -1344,6 +1382,7 @@ validate_micronix_moves <- function(micronix_test, variable_colnames) {
   # todo: pass this information in
   micronix_test(check_micronix_barcodes_exist, variable_colnames[['barcode_col']], error_if_exists = FALSE)
   micronix_test(check_micronix_plate_exists, "PlateName")
+  micronix_test(check_if_sample_is_archived, variable_colnames[['barcode_col']])
 
 }
 

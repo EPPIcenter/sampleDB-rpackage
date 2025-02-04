@@ -697,5 +697,10 @@ validate_controls <- function(database, user_data, control_type, user_action) {
     user_data <- handle_unknown_date_tokens(user_data, "Batch", validation_result$parsed_dates, validation_result$token_mask)
   }
 
-  return(user_data)
+  # If there are only warnings, return the user data with the warnings
+  if (error_collection$count_errors("Warning") > 0) {
+    return (list(data = user_data, warnings = error_collection))
+  } else {
+    return (user_data)
+  }
 }
