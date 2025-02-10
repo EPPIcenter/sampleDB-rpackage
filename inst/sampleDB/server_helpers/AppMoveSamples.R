@@ -27,6 +27,133 @@ AppMoveSamples <- function(session, input, output, database) {
     message = ""
   )
 
+
+  observeEvent(input$DeleteEmptyManifest, ignoreInit = TRUE, {
+    con <- dbConnect(SQLite(), Sys.getenv("SDB_PATH"))
+
+    # Determine the correct table based on the sample type
+    sample_type_name <- switch(
+      input$MoveType,
+      "samples" = switch(
+        input$MoveSampleType,
+        "micronix" = "Micronix Samples",
+        "cryovial" = "Cryovial Samples",
+        "dbs_sample" = "DBS Samples"
+      ),
+      "controls" = switch(
+        input$MoveControlType,
+        "whole_blood" = "Whole Blood Controls",  # whole_blood uses cryovial_box
+        "dbs_sheet" = "DBS Controls"          # dbs_sheet uses dbs_bag
+      )
+    )
+
+    # Determine the correct table based on the sample type
+    manifest <- switch(
+      input$MoveType,
+      "samples" = switch(
+        input$MoveSampleType,
+        "micronix" = "micronix_plate",
+        "cryovial" = "cryovial_box"
+      ),
+      "controls" = switch(
+        input$MoveControlType,
+        "whole_blood" = "cryovial_box",  # whole_blood uses cryovial_box
+        "dbs_sheet" = "dbs_bag"          # dbs_sheet uses dbs_bag
+      )
+    )
+
+    sample_type <- switch(
+      input$MoveType,
+      "samples" = switch(
+        input$MoveSampleType,
+        "micronix" = "micronix_tube",
+        "cryovial" = "cryovial_tube",
+        "dbs_sample" = "paper"
+      ),
+      "controls" = switch(
+        input$MoveControlType,
+        "whole_blood" = "whole_blood_tube",  # whole_blood uses cryovial_box
+        "dbs_sheet" = "dbs_control_sheet"    # dbs_sheet uses dbs_bag
+      )
+    )
+
+    sample_type_tbl <- tbl(con, sample_type) %>%
+      dplyr::rename(sample_type_id = id)
+
+    if (input$MoveType == "samples") {
+      if (input$MoveSampleType == "dbs_sample") {
+        dbs_paper_box_tbl <- sample_type_tbl %>%
+          filter(manifest_type == "box") 
+
+        dbs_paper_bag_tbl <- sample_type_tbl %>%
+          filter(manifest_type == "bag")
+
+        empty_containers_box_tbl <- dbs_tbl(con, "box") %>%
+          select(manifest_name = name) %>%
+          left_join(dbs_paper_box_tbl, by = c("manifest_id" = "id")) %>%
+          filter(is.na(sample_type_id))
+
+        empty_containers_bag_tbl <- dbs_tbl(con, "bag") %>%
+          select(manifest_name = name) %>%
+          left_join(dbs_paper_bag_tbl, by = c("manifest_id" = "id")) %>%
+          filter(is.na(sample_type_id))
+
+        empty_containers_tbl <- bind_rows(
+          collect(empty_containers_box_tbl),
+          collect(empty_containers_bag_tbl)
+        )
+      } else {
+        empty_containers_tbl <- tbl(con, manifest) %>%
+          dplyr::left_join(sample_type_tbl, by = c("manifest_id" = "id")) %>%
+          filter(is.na(sample_type_id))
+      }
+    }
+
+    # Render the reactable with background color for the Description column
+    main_table <- reactable(
+      errors_df,
+      columns = list(
+        Description = colDef(
+          style = function(value, rowIndex) {
+            # Apply background color based on the error level
+            if (error_levels[rowIndex] == "Error") {
+              list(background = "#FE6100", color = "white", fontWeight = "bold")  # Red for errors
+            } else if (error_levels[rowIndex] == "Warning") {
+              list(background = "#FFB000", color = "white", fontWeight = "bold")  # Orange for warnings
+            } else {
+              NULL
+            }
+          }
+        )
+      ),
+      details = function(index) {
+        htmltools::div(
+          style = "padding: 1rem",
+          generate_error_reactable(error_collection, index)
+        )
+      },
+      outlined = TRUE,
+      striped = TRUE
+    )
+
+    # Show the modal dialog for creating a new container or bag
+    showModal(
+      modalDialog(
+        title = tags$h3("Delete", tags$strong(sample_type_name), "containers."),
+
+
+
+
+
+        footer = tagList(
+          modalButton("Cancel"),
+          actionButton("DeleteEmptyManifestAction", "OK")
+        )
+      )
+    )
+
+  })
+
   observeEvent(input$CreateNewManifest, ignoreInit = TRUE, {
     con <- dbConnect(SQLite(), Sys.getenv("SDB_PATH"))
 

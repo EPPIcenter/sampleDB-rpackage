@@ -55,7 +55,8 @@ UIMoveSamples <- function() {
       ),
       
       br(),
-      actionButton("CreateNewManifest", label = "Create Container"),
+      actionButton("CreateNewManifest", label = "Create Empty Container"),
+      actionButton("DeleteEmptyManifest", label = "Delete Empty Container"),
       hr(),
       
       # Output messages
