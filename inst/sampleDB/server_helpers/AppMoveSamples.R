@@ -20,49 +20,42 @@ AppMoveSamples <- function(session, input, output, database) {
     new_manifest_trigger = FALSE, # user wants to add a new manifest
     user_action_required = FALSE, # whether the user needs to add additional inputs
     required_elements = NULL, # elements on form that need user attention
-    user_file_error_annotated = NULL
+    user_file_error_annotated = NULL,
+    selected_containers = NULL,
+    empty_containers = NULL,
+    manifest_table = NULL
   )
   error <- reactiveValues(
     title = "",
     message = ""
   )
 
-
   observeEvent(input$DeleteEmptyManifest, ignoreInit = TRUE, {
     con <- dbConnect(SQLite(), Sys.getenv("SDB_PATH"))
 
-    # Determine the correct table based on the sample type
-    sample_type_name <- switch(
-      input$MoveType,
-      "samples" = switch(
-        input$MoveSampleType,
-        "micronix" = "Micronix Samples",
-        "cryovial" = "Cryovial Samples",
-        "dbs_sample" = "DBS Samples"
-      ),
-      "controls" = switch(
-        input$MoveControlType,
-        "whole_blood" = "Whole Blood Controls",  # whole_blood uses cryovial_box
-        "dbs_sheet" = "DBS Controls"          # dbs_sheet uses dbs_bag
-      )
-    )
+    browser()
 
-    # Determine the correct table based on the sample type
+
+    # Determine the correct manifest table based on the sample/control type
     manifest <- switch(
       input$MoveType,
       "samples" = switch(
         input$MoveSampleType,
         "micronix" = "micronix_plate",
-        "cryovial" = "cryovial_box"
+        "cryovial" = "cryovial_box",
+        "dbs_sample" = "bag|box"
       ),
       "controls" = switch(
         input$MoveControlType,
-        "whole_blood" = "cryovial_box",  # whole_blood uses cryovial_box
-        "dbs_sheet" = "dbs_bag"          # dbs_sheet uses dbs_bag
+        "whole_blood" = "cryovial_box",
+        "dbs_sheet" = "dbs_bag"
       )
     )
 
-    sample_type <- switch(
+    # Store manifest table name in rv
+    rv$manifest_table <- manifest
+
+    sample_type_tbl <- tbl(con, switch(
       input$MoveType,
       "samples" = switch(
         input$MoveSampleType,
@@ -72,86 +65,134 @@ AppMoveSamples <- function(session, input, output, database) {
       ),
       "controls" = switch(
         input$MoveControlType,
-        "whole_blood" = "whole_blood_tube",  # whole_blood uses cryovial_box
-        "dbs_sheet" = "dbs_control_sheet"    # dbs_sheet uses dbs_bag
+        "whole_blood" = "whole_blood_tube",
+        "dbs_sheet" = "dbs_control_sheet"
       )
-    )
-
-    sample_type_tbl <- tbl(con, sample_type) %>%
+    )) %>%
       dplyr::rename(sample_type_id = id)
 
-    if (input$MoveType == "samples") {
-      if (input$MoveSampleType == "dbs_sample") {
-        dbs_paper_box_tbl <- sample_type_tbl %>%
-          filter(manifest_type == "box") 
-
-        dbs_paper_bag_tbl <- sample_type_tbl %>%
-          filter(manifest_type == "bag")
-
-        empty_containers_box_tbl <- dbs_tbl(con, "box") %>%
-          select(manifest_name = name) %>%
-          left_join(dbs_paper_box_tbl, by = c("manifest_id" = "id")) %>%
-          filter(is.na(sample_type_id))
-
-        empty_containers_bag_tbl <- dbs_tbl(con, "bag") %>%
-          select(manifest_name = name) %>%
-          left_join(dbs_paper_bag_tbl, by = c("manifest_id" = "id")) %>%
-          filter(is.na(sample_type_id))
-
-        empty_containers_tbl <- bind_rows(
-          collect(empty_containers_box_tbl),
-          collect(empty_containers_bag_tbl)
-        )
-      } else {
-        empty_containers_tbl <- tbl(con, manifest) %>%
-          dplyr::left_join(sample_type_tbl, by = c("manifest_id" = "id")) %>%
-          filter(is.na(sample_type_id))
-      }
-    }
-
-    # Render the reactable with background color for the Description column
-    main_table <- reactable(
-      errors_df,
-      columns = list(
-        Description = colDef(
-          style = function(value, rowIndex) {
-            # Apply background color based on the error level
-            if (error_levels[rowIndex] == "Error") {
-              list(background = "#FE6100", color = "white", fontWeight = "bold")  # Red for errors
-            } else if (error_levels[rowIndex] == "Warning") {
-              list(background = "#FFB000", color = "white", fontWeight = "bold")  # Orange for warnings
-            } else {
-              NULL
-            }
-          }
-        )
+    container_indentifier <- switch(
+      input$MoveType,
+      "samples" = switch(
+        input$MoveSampleType,
+        "micronix" = "manifest_id",
+        "cryovial" = "manifest_id",
+        "dbs_sample" = "manifest_id"
       ),
-      details = function(index) {
-        htmltools::div(
-          style = "padding: 1rem",
-          generate_error_reactable(error_collection, index)
-        )
-      },
-      outlined = TRUE,
-      striped = TRUE
-    )
-
-    # Show the modal dialog for creating a new container or bag
-    showModal(
-      modalDialog(
-        title = tags$h3("Delete", tags$strong(sample_type_name), "containers."),
-
-
-
-
-
-        footer = tagList(
-          modalButton("Cancel"),
-          actionButton("DeleteEmptyManifestAction", "OK")
-        )
+      "controls" = switch(
+        input$MoveControlType,
+        "whole_blood" = "cryovial_box_id",
+        "dbs_sheet" = "dbs_bag_id"
       )
     )
 
+    joins <- setNames(container_indentifier, "id")
+
+    browser()
+
+    # Find empty containers
+    if (manifest == "bag|box") {
+      empty_containers_box_df <- tbl(con, "box") %>%
+        dplyr::left_join(sample_type_tbl %>% filter(manifest_type == "box"), by = joins) %>%
+        filter(is.na(sample_type_id)) %>%
+        dplyr::select(manifest_id = id, manifest_name = name) %>%
+        collect()
+
+      empty_containers_bag_df <- tbl(con, "bag") %>%
+        dplyr::left_join(sample_type_tbl %>% filter(manifest_type == "bag"), by = joins) %>%
+        filter(is.na(sample_type_id)) %>%
+        dplyr::select(manifest_id = id, manifest_name = name) %>%
+        collect()
+
+      empty_containers_df <- bind_rows(empty_containers_box_df, empty_containers_bag_df)
+
+      } else {
+      empty_containers_df <- tbl(con, manifest) %>%
+        dplyr::left_join(sample_type_tbl, by = joins) %>%
+        filter(is.na(sample_type_id)) %>%
+        dplyr::select(manifest_id = id, manifest_name = name) %>%
+        collect()
+    }
+
+    dbDisconnect(con)
+
+    if (nrow(empty_containers_df) == 0) {
+      showNotification("No empty containers found.", type = "warning")
+      return()
+    }
+
+    # Store empty containers in reactive values
+    rv$empty_containers <- empty_containers_df
+
+    # Render the reactable table
+    output$emptyContainersTable <- renderReactable({
+      reactable(
+        empty_containers_df,
+        selection = "multiple",
+        searchable = TRUE,
+        striped = TRUE,
+        highlight = TRUE,
+        defaultSelected = NULL,
+        onClick = "select",
+        columns = list(
+          manifest_id = colDef(name = "Container ID"),
+          manifest_name = colDef(name = "Container Name")
+        )
+      )
+    })
+
+    # Show modal for selecting containers to delete
+    showModal(
+      modalDialog(
+        title = tags$h3("Delete Empty Containers"),
+        tags$p("Select empty containers to delete."),
+        reactableOutput("emptyContainersTable"),
+        footer = tagList(
+          modalButton("Cancel"),
+          actionButton("DeleteSelectedContainers", "Delete Selected")
+        )
+      )
+    )
+  })
+
+  # Update selected containers
+  observe({
+    selected_rows <- getReactableState("emptyContainersTable", "selected")
+
+    if (!is.null(selected_rows) && length(selected_rows) > 0) {
+      rv$selected_containers <- rv$empty_containers[selected_rows, "manifest_id"]
+    } else {
+      rv$selected_containers <- NULL
+    }
+  })
+
+  # Handle delete action
+  observeEvent(input$DeleteSelectedContainers, {
+
+    if (is.null(rv$selected_containers) || length(rv$selected_containers) == 0) {
+      showNotification("No containers selected.", type = "error")
+      return()
+    }
+
+    con <- dbConnect(SQLite(), Sys.getenv("SDB_PATH"))
+
+    if (is.null(rv$manifest_table)) {
+      showNotification("Manifest table not found.", type = "error")
+      dbDisconnect(con)
+      return()
+    }
+
+    dbExecute(con, sprintf("DELETE FROM %s WHERE id IN (%s)", rv$manifest_table, paste(rv$selected_containers, collapse = ",")))
+    dbDisconnect(con)
+
+    showNotification("Selected containers deleted successfully.", type = "message")
+
+    # Remove the deleted containers from rv$empty_containers
+    rv$empty_containers <- NULL
+    rv$manifest_table <- NULL
+    rv$selected_containers <- NULL
+
+    removeModal()
   })
 
   observeEvent(input$CreateNewManifest, ignoreInit = TRUE, {
