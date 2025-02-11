@@ -53,10 +53,11 @@ UIMoveSamples <- function() {
         column(width = 6, actionButton("MoveAction", width = '100%', label = "Move Samples")),
         column(width = 6, actionButton("ClearMoveForm", width = '100%', label = "Clear Form"))
       ),
-      
-      br(),
-      actionButton("CreateNewManifest", label = "Create Empty Container"),
-      actionButton("DeleteEmptyManifest", label = "Delete Empty Container"),
+      tags$hr(style = "border-top: 2px solid #D3D3D3; margin-top: 15px; margin-bottom: 15px;"),
+      fluidRow(
+        column(width = 6, actionButton("CreateNewManifest", width = '100%', label = "Create Empty Container")),
+        column(width = 6, actionButton("DeleteEmptyManifest", width = '100%', label = "Delete Empty Container"))
+      ),
       hr(),
       
       # Output messages
