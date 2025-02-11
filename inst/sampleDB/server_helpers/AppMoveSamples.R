@@ -33,9 +33,6 @@ AppMoveSamples <- function(session, input, output, database) {
   observeEvent(input$DeleteEmptyManifest, ignoreInit = TRUE, {
     con <- dbConnect(SQLite(), Sys.getenv("SDB_PATH"))
 
-    browser()
-
-
     # Determine the correct manifest table based on the sample/control type
     manifest <- switch(
       input$MoveType,
@@ -88,20 +85,21 @@ AppMoveSamples <- function(session, input, output, database) {
 
     joins <- setNames(container_indentifier, "id")
 
-    browser()
-
     # Find empty containers
     if (manifest == "bag|box") {
-      empty_containers_box_df <- tbl(con, "box") %>%
-        dplyr::left_join(sample_type_tbl %>% filter(manifest_type == "box"), by = joins) %>%
+      sample_type_df <- collect(sample_type_tbl)
+      empty_containers_box_df <- dbReadTable(con, "box") %>%
+        dplyr::left_join(sample_type_df %>% filter(manifest_type == "box"), by = joins) %>%
         filter(is.na(sample_type_id)) %>%
-        dplyr::select(manifest_id = id, manifest_name = name) %>%
+        dplyr::mutate(manifest_type = "box") %>%
+        dplyr::select(manifest_id = id, manifest_name = name, manifest_type) %>%
         collect()
 
-      empty_containers_bag_df <- tbl(con, "bag") %>%
-        dplyr::left_join(sample_type_tbl %>% filter(manifest_type == "bag"), by = joins) %>%
+      empty_containers_bag_df <- dbReadTable(con, "bag") %>%
+        dplyr::left_join(sample_type_df %>% filter(manifest_type == "bag"), by = joins) %>%
         filter(is.na(sample_type_id)) %>%
-        dplyr::select(manifest_id = id, manifest_name = name) %>%
+        dplyr::mutate(manifest_type = "bag") %>%
+        dplyr::select(manifest_id = id, manifest_name = name, manifest_type) %>%
         collect()
 
       empty_containers_df <- bind_rows(empty_containers_box_df, empty_containers_bag_df)
@@ -124,20 +122,28 @@ AppMoveSamples <- function(session, input, output, database) {
     # Store empty containers in reactive values
     rv$empty_containers <- empty_containers_df
 
+    table_columns <- if (manifest == "bag|box") {
+      list(
+        manifest_name = colDef(name = "Container Name"),
+        manifest_type = colDef(name = "Box / Bag")
+      )
+    } else {
+      list(
+        manifest_name = colDef(name = "Container Name")
+      )
+    }
+
     # Render the reactable table
     output$emptyContainersTable <- renderReactable({
       reactable(
-        empty_containers_df,
+        empty_containers_df %>% select(-manifest_id),
         selection = "multiple",
         searchable = TRUE,
         striped = TRUE,
         highlight = TRUE,
         defaultSelected = NULL,
         onClick = "select",
-        columns = list(
-          manifest_id = colDef(name = "Container ID"),
-          manifest_name = colDef(name = "Container Name")
-        )
+        columns = table_columns
       )
     })
 
@@ -182,7 +188,15 @@ AppMoveSamples <- function(session, input, output, database) {
       return()
     }
 
-    dbExecute(con, sprintf("DELETE FROM %s WHERE id IN (%s)", rv$manifest_table, paste(rv$selected_containers, collapse = ",")))
+    if (rv$manifest_table == "bag|box") {
+      container_table <- rv$empty_containers[rv$empty_containers$manifest_id %in% rv$selected_containers,]
+      for (ii in seq_along(container_table)) {
+        dbExecute(con, sprintf("DELETE FROM %s WHERE id IN (%s)", container_table$manifest_type[ii], container_table$manifest_id[ii]))
+      }
+    } else {
+      dbExecute(con, sprintf("DELETE FROM %s WHERE id IN (%s)", rv$manifest_table, paste(rv$selected_containers, collapse = ",")))
+    }
+
     dbDisconnect(con)
 
     showNotification("Selected containers deleted successfully.", type = "message")
