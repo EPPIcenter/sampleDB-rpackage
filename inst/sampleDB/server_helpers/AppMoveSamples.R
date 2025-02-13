@@ -52,21 +52,20 @@ AppMoveSamples <- function(session, input, output, database) {
     # Store manifest table name in rv
     rv$manifest_table <- manifest
 
-    sample_type_tbl <- tbl(con, switch(
+    sample_type <- switch(
       input$MoveType,
       "samples" = switch(
         input$MoveSampleType,
         "micronix" = "micronix_tube",
-        "cryovial" = "cryovial_tube",
+        "cryovial" = "cryovial_tube|whole_blood_tube",
         "dbs_sample" = "paper"
       ),
       "controls" = switch(
         input$MoveControlType,
-        "whole_blood" = "whole_blood_tube",
+        "whole_blood" = "cryovial_tube|whole_blood_tube",
         "dbs_sheet" = "dbs_control_sheet"
       )
-    )) %>%
-      dplyr::rename(sample_type_id = id)
+    )
 
     container_indentifier <- switch(
       input$MoveType,
@@ -87,7 +86,9 @@ AppMoveSamples <- function(session, input, output, database) {
 
     # Find empty containers
     if (manifest == "bag|box") {
-      sample_type_df <- collect(sample_type_tbl)
+      sample_type_df <- collect(tbl(con, sample_type)) %>%
+        dplyr::rename(sample_type_id = id)
+
       empty_containers_box_df <- dbReadTable(con, "box") %>%
         dplyr::left_join(sample_type_df %>% filter(manifest_type == "box"), by = joins) %>%
         filter(is.na(sample_type_id)) %>%
@@ -104,12 +105,26 @@ AppMoveSamples <- function(session, input, output, database) {
 
       empty_containers_df <- bind_rows(empty_containers_box_df, empty_containers_bag_df)
 
+    } else {
+      if (sample_type == "cryovial_tube|whole_blood_tube") {
+
+        empty_containers_df <- tbl(con, manifest) %>%
+          dplyr::anti_join(tbl(con, "cryovial_tube") %>% dplyr::rename(cry_id = id), by = c("id" = "manifest_id")) %>%
+          dplyr::anti_join(tbl(con, "whole_blood_tube") %>% dplyr::rename(wb_id = id), by = c("id" = "cryovial_box_id")) %>%
+          dplyr::select(manifest_id = id, manifest_name = name) %>%
+          collect()
+
       } else {
-      empty_containers_df <- tbl(con, manifest) %>%
-        dplyr::left_join(sample_type_tbl, by = joins) %>%
-        filter(is.na(sample_type_id)) %>%
-        dplyr::select(manifest_id = id, manifest_name = name) %>%
-        collect()
+
+        sample_type_tbl <- tbl(con, sample_type) %>%
+          dplyr::rename(sample_type_id = id)
+
+        empty_containers_df <- tbl(con, manifest) %>%
+          dplyr::left_join(sample_type_tbl, by = joins) %>%
+          filter(is.na(sample_type_id)) %>%
+          dplyr::select(manifest_id = id, manifest_name = name) %>%
+          collect()
+        }
     }
 
     dbDisconnect(con)
@@ -166,7 +181,7 @@ AppMoveSamples <- function(session, input, output, database) {
     selected_rows <- getReactableState("emptyContainersTable", "selected")
 
     if (!is.null(selected_rows) && length(selected_rows) > 0) {
-      rv$selected_containers <- rv$empty_containers[selected_rows, "manifest_id"]
+      rv$selected_containers <- rv$empty_containers[selected_rows, ]$manifest_id
     } else {
       rv$selected_containers <- NULL
     }
@@ -181,6 +196,7 @@ AppMoveSamples <- function(session, input, output, database) {
     }
 
     con <- dbConnect(SQLite(), Sys.getenv("SDB_PATH"))
+    dbBegin(con)
 
     if (is.null(rv$manifest_table)) {
       showNotification("Manifest table not found.", type = "error")
@@ -190,13 +206,14 @@ AppMoveSamples <- function(session, input, output, database) {
 
     if (rv$manifest_table == "bag|box") {
       container_table <- rv$empty_containers[rv$empty_containers$manifest_id %in% rv$selected_containers,]
-      for (ii in seq_along(container_table)) {
+      for (ii in 1:nrow(container_table)) {
         dbExecute(con, sprintf("DELETE FROM %s WHERE id IN (%s)", container_table$manifest_type[ii], container_table$manifest_id[ii]))
       }
     } else {
       dbExecute(con, sprintf("DELETE FROM %s WHERE id IN (%s)", rv$manifest_table, paste(rv$selected_containers, collapse = ",")))
     }
 
+    dbCommit(con)
     dbDisconnect(con)
 
     showNotification("Selected containers deleted successfully.", type = "message")
