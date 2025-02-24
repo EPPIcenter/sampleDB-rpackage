@@ -129,6 +129,12 @@ MoveSpecimens <- function(sample_type, move_data){
           paper_id
         )
         dbExecute(con, query)
+
+        # Make the micronix active
+        query <- paste0(
+          "UPDATE storage_container SET state_id = 1, status_id = 1 WHERE id = ", id
+        )
+        dbExecute(con, query)
       }
     }
 
@@ -178,7 +184,7 @@ MoveSpecimens <- function(sample_type, move_data){
           pull(cryovial_box_id)
 
         # SQL query to update the cryovial_box_id field for the specific tube
-        query <- paste0("UPDATE whole_blood_tube SET position = '", wb_position, "', cryovial_box_id = ", box_id, " WHERE id = ", control_batch_tube %>% pull(tube_id))
+        query <- paste0("UPDATE whole_blood_tube SET position = '", wb_position, "', cryovial_box_id = ", box_id, ", state_id = 1, status_id = 1 WHERE id = ", control_batch_tube %>% pull(tube_id))
         dbExecute(con, query)
 
       }
@@ -384,6 +390,12 @@ MoveSpecimens <- function(sample_type, move_data){
                                        position = eval.well_pos),
                       id = id) %>% suppressWarnings()
 
+          # Make the micronix active
+          query <- paste0(
+            "UPDATE storage_container SET state_id = 1, status_id = 1 WHERE id = ", id
+          )
+          dbExecute(con, query)
+
         } else if (sample_type == "cryovial" || sample_type == "whole_blood") {
 
           eval.barcode <- safe_extract(move_data[i,], "Barcode")
@@ -405,6 +417,17 @@ MoveSpecimens <- function(sample_type, move_data){
             info_list = info_list,
             id = id
           ) %>% suppressWarnings()
+
+          # Make the micronix active
+          if (sample_type == "whole_blood") {
+            query <- paste0(
+              "UPDATE whole_blood_tube SET state_id = 1, status_id = 1 WHERE id = ", id
+            )
+          } else {
+            query <- paste0(
+              "UPDATE storage_container SET state_id = 1, status_id = 1 WHERE id = ", id
+            )
+          }
         } else {
           stop("Invalid Sample Type!!!")
         }
