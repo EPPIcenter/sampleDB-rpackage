@@ -314,12 +314,24 @@ check_each_row_cryovial_move_is_identifiable <- function(con, table_name, row_nu
     left_join(tbl(con, "study_subject") %>% select(study_subject_id = id, study_id, StudySubject = name), by = "study_subject_id") %>%
     left_join(tbl(con, "study") %>% select(study_id = id, StudyCode = short_code), by = "study_id") %>%
     left_join(tbl(con, "specimen_type") %>% select(specimen_type_id = id, SpecimenType = name), by = "specimen_type_id") %>%
-    left_join(tbl(con, "storage_container") %>% select(storage_id = id, specimen_id), by = "specimen_id") %>%
+    left_join(tbl(con, "storage_container") %>% select(storage_id = id, specimen_id, state_id, status_id), by = "specimen_id") %>%
     left_join(tbl(con, "cryovial_tube") %>% select(storage_id = id, Barcode = barcode), by = "storage_id") %>%
+    # left_join(tbl(con, "state") %>% select(state_id = id, State = name), by = "state_id") %>%
+    # left_join(tbl(con, "status") %>% select(status_id = id, Status = name), by = "status_id") %>%
     collect()
-  
+
+  state_table <- tbl(con, "state") %>%
+    select(state_id = id, State = name) %>%
+    collect()
+
+  status_table <- tbl(con, "status") %>%
+    select(status_id = id, Status = name) %>%
+    collect()
+
   # Initialize a vector to track rows that cannot be identified
   non_identifiable_rows <- integer()
+  inactive_rows <- integer()
+  inactive_tib <- tibble()
   
   # Iterate through each row in user_data
   for (i in seq_len(nrow(user_data))) {
@@ -352,15 +364,36 @@ check_each_row_cryovial_move_is_identifiable <- function(con, table_name, row_nu
     
     if (!match_found) {
       non_identifiable_rows <- c(non_identifiable_rows, row[[row_number_col]])
+    } else {
+      resolved_with_state <- resolved_data %>%
+        filter(!!!conditions) %>%  # Splice the conditions into the filter call
+        left_join(state_table, by = "state_id") %>%
+        left_join(status_table, by = "status_id") %>%
+        select(State, Status)
+
+      if (resolved_with_state[["State"]] != "Active") {
+        inactive_rows <- c(inactive_rows, row[[row_number_col]])
+        inactive_tib <- bind_rows(inactive_tib, resolved_with_state)
+      }
     }
   }
   
   # Return errors if any rows are not identifiable
   if (length(non_identifiable_rows) > 0) {
     return(ErrorData$new(
-      description = "Cryovial could not be found in te database. Please check for data entry errors, or include additional metadata to help with the search.",
+      description = "Cryovial could not be found in the database. Please check for data entry errors, or include additional metadata to help with the search.",
       columns = matching_columns,
       rows = non_identifiable_rows
+    ))
+  }
+
+  if (length(inactive_rows) > 0) {
+    return(ErrorData$new(
+      description = "Cryovial move file has inactive samples! These should be reviewed. Moving will cause them to activate!",
+      columns = matching_columns,
+      rows = inactive_rows,
+      addtl_data = inactive_tib,
+      error_level = "Warning"
     ))
   }
   
@@ -450,6 +483,45 @@ check_micronix_barcodes_exist <- function(con, user_data, row_number_col, micron
   return(NULL)
 }
 
+#' Check Micronix Barcodes in Database
+#'
+#' This function checks whether Micronix barcodes provided in a user-uploaded table
+#' exist or don't exist (based on `error_if_exists` parameter) in the main database.
+#'
+#' @param con A database connection object.
+#' @param user_data The name of the table containing user-uploaded data.
+#' @param row_number_col The name of the column in the user-uploaded table that contains row numbers.
+#' @param micronix_col The name of the column in the user-uploaded table that contains the Micronix barcodes.
+#' @param error_if_exists A logical value. If TRUE, function returns error if barcode exists in the database, 
+#' if FALSE, function returns error if barcode doesn't exist.
+#'
+#' @return An instance of the ErrorData class if errors are found, or NULL if there are no errors.
+#' @keywords validation, micronix
+#' @export
+check_if_sample_is_archived <- function(con, user_data, row_number_col, micronix_col) {
+  
+  df <- tbl(con, user_data) %>%
+    left_join(tbl(con, "micronix_tube"), by = setNames("barcode", micronix_col)) %>%
+    left_join(tbl(con, "storage_container"), by = "id") %>%
+    left_join(tbl(con, "state") %>% dplyr::rename(State = "name"), by = c("state_id" = "id")) %>%
+    left_join(tbl(con, "status") %>% dplyr::rename(Status = "name"), by = c("status_id" = "id")) %>%
+    filter(State != "Active")
+
+  # add addtional columns
+  addtl_data <- df %>% select(State, Status, Comment = comment) %>% collect()
+  df <- df %>% select(!!sym(row_number_col), !!sym(micronix_col)) %>% collect()
+
+  if (nrow(df) > 0) {
+    return(ErrorData$new(
+      description = "ARCHIVED samples found in scan! Please check your plate and confirm that this is your intention!",
+      data_frame = df,
+      addtl_data = addtl_data,
+      error_level = "Warning"
+    ))
+  }
+
+  return(NULL)
+}
 
 #' Check Cryovial Barcodes in Database
 #'
@@ -1344,6 +1416,7 @@ validate_micronix_moves <- function(micronix_test, variable_colnames) {
   # todo: pass this information in
   micronix_test(check_micronix_barcodes_exist, variable_colnames[['barcode_col']], error_if_exists = FALSE)
   micronix_test(check_micronix_plate_exists, "PlateName")
+  micronix_test(check_if_sample_is_archived, variable_colnames[['barcode_col']])
 
 }
 
@@ -1376,7 +1449,6 @@ validate_cryovial_uploads <- function(cryovial_test) {
 validate_cryovial_moves <- function(cryovial_test) {
   cryovial_test(check_each_row_cryovial_move_is_identifiable) # Checks if the cryovial can be found
   cryovial_test(check_each_row_cryovial_move_is_unique) # Checks if the cryovial is duplicated
-  cryovial_test(check_cryovial_barcodes_exist, "Barcode", "BoxName", error_if_exists = FALSE)
   cryovial_test(check_cryovial_box_exists, "BoxName")
 }
 

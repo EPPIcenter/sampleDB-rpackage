@@ -575,6 +575,20 @@ AppMoveSamples <- function(session, input, output, database) {
     error$message <- ""
   })
 
+  observeEvent(input$ContinueMove, {
+    # User confirmed warnings, allow upload
+    removeModal()  # Close the modal
+    message("User confirmed warnings and wants to proceed with the move.")
+    showNotification("User confirmed warnings and wants to proceed with the move.")
+  })
+
+  observeEvent(input$CancelMove, {
+    rv$user_file <- NULL
+    removeModal()  # Close the modal
+    message("User reviewed warnings and decided to cancel the move.")
+    showNotification("User reviewed warnings and decided to cancel the move.")
+  })
+
   observeEvent(input$MoveAction, ignoreInit = TRUE, {
 
     if (isTRUE(rv$user_action_required)) {
@@ -583,6 +597,7 @@ AppMoveSamples <- function(session, input, output, database) {
     }
 
     early_stop <- FALSE
+    warnings_list <- ValidationErrorCollection$new()
 
     # Determine the dataset depending on the type of move
     if (input$MoveType == "controls") {
@@ -597,108 +612,152 @@ AppMoveSamples <- function(session, input, output, database) {
     }
 
     # message(paste("Loaded", dataset$name))
+    if (is.null(rv$user_file)) {
+      early_stop <- tryCatch({
+        withCallingHandlers({
 
-    early_stop <- tryCatch({
-      withCallingHandlers({
+          move_data_list <- list()
 
-        move_data_list <- list()
-        for (i in 1:length(dataset[,1])) {
-          extract_name_from_filename <- (input$MoveType == "samples" && input$MoveSampleType %in% c("micronix", "cryovial")) ||
-            (input$MoveType == "controls" && input$MoveControlType == "whole_blood")
+          for (i in 1:length(dataset[,1])) {
+            extract_name_from_filename <- (input$MoveType == "samples" && input$MoveSampleType %in% c("micronix", "cryovial")) ||
+              (input$MoveType == "controls" && input$MoveControlType == "whole_blood")
 
-          if (extract_name_from_filename) {
-            manifest_name <- sub('\\.csv$', '', dataset[i,]$name)
+            if (extract_name_from_filename) {
+              manifest_name <- sub('\\.csv$', '', dataset[i,]$name)
 
-            if(input$MoveFileType == "traxcer" && input$MoveTraxcerStripFromFilename) {
-              manifest_name <- substr(manifest_name, 1, nchar(manifest_name)-16)
-              if (nchar(manifest_name) == 0) {
-                stop(sprintf("Traxcer name was completely removed - did you mean to remove the datetime string from the filename?"))
+              if(input$MoveFileType == "traxcer" && input$MoveTraxcerStripFromFilename) {
+                manifest_name <- substr(manifest_name, 1, nchar(manifest_name)-16)
+                if (nchar(manifest_name) == 0) {
+                  stop(sprintf("Traxcer name was completely removed - did you mean to remove the datetime string from the filename?"))
+                }
               }
+
+              ## format the file
+              if (input$MoveType == "samples") {
+                container <- get_container_by_sample(sample_type = input$MoveSampleType)
+
+                result <- process_specimen_csv(
+                  user_csv = dataset[i,]$datapath,
+                  user_action = "move",
+                  file_type = input$MoveFileType,
+                  sample_type = input$MoveSampleType,
+                  bind_data = setNames(manifest_name, container$container_name_key)
+                )
+
+                if (!is.data.frame(result)) {
+                  move_data_list <- c(move_data_list, list(result$data))
+                  names(move_data_list)[i] <- manifest_name
+
+                  if (warnings_list$length() == 0) warnings_list <- result$warnings$clone(deep = TRUE)
+                  else warnings_list$concatenate(result$warnings)
+
+                } else {
+                  move_data_list <- c(move_data_list, list(result))
+                  names(move_data_list)[i] <- manifest_name
+                }
+              } else { # Controls
+                container <- get_container_by_control(control_type = input$MoveControlType)
+
+                result <- process_control_csv(
+                  user_csv = dataset$datapath,
+                  user_action = "move",
+                  file_type = input$MoveFileType,
+                  control_type = input$MoveControlType,
+                  bind_data = setNames(manifest_name, container$container_name_key)
+                )
+
+                if (!is.data.frame(result)) {
+                  move_data_list <- c(move_data_list, list(result$data))
+                  names(move_data_list)[i] <- manifest_name
+
+                  if (warnings_list$length() == 0) warnings_list <- result$warnings$clone(deep = TRUE)
+                  else warnings_list$concatenate(result$warnings)
+
+                } else {
+                  move_data_list <- c(move_data_list, list(result))
+                  names(move_data_list)[i] <- manifest_name
+                }
+              }
+            } else {
+              ## format the file
+              if (input$MoveType == "samples") {
+
+                result <- process_specimen_csv(
+                  user_csv = dataset[i,]$datapath,
+                  user_action = "move",
+                  file_type = input$MoveFileType,
+                  sample_type = input$MoveSampleType
+                )
+
+                if (!is.data.frame(result)) {
+                  move_data_list <- c(move_data_list, list(result$data))
+                  names(move_data_list)[i] <- manifest_name
+
+                  if (warnings_list$length() == 0) warnings_list <- result$warnings$clone(deep = TRUE)
+                  else warnings_list$concatenate(result$warnings)
+
+                } else {
+                  move_data_list <- c(move_data_list, list(result))
+                  names(move_data_list)[i] <- manifest_name
+                }
+
+              } else { # Controls
+
+                result <- process_control_csv(
+                  user_csv = dataset$datapath,
+                  user_action = "move",
+                  file_type = input$MoveFileType,
+                  control_type = input$MoveControlType
+                )
+
+                if (!is.data.frame(result)) {
+                  move_data_list <- c(move_data_list, list(result$data))
+                  names(move_data_list)[i] <- manifest_name
+
+                  if (warnings_list$length() == 0) warnings_list <- result$warnings$clone(deep = TRUE)
+                  else warnings_list$concatenate(result$warnings)
+
+                } else {
+                  move_data_list <- c(move_data_list, list(result))
+                  names(move_data_list)[i] <- manifest_name
+                }
+              }            
             }
 
-            ## format the file
-            if (input$MoveType == "samples") {
-              container <- get_container_by_sample(sample_type = input$MoveSampleType)
-
-              result <- process_specimen_csv(
-                user_csv = dataset[i,]$datapath,
-                user_action = "move",
-                file_type = input$MoveFileType,
-                sample_type = input$MoveSampleType,
-                bind_data = setNames(manifest_name, container$container_name_key)
-              )
-
-              move_data_list <- c(move_data_list, list(result))
-              names(move_data_list)[i] <- manifest_name
-            } else { # Controls
-              container <- get_container_by_control(control_type = input$MoveControlType)
-
-              result <- process_control_csv(
-                user_csv = dataset$datapath,
-                user_action = "move",
-                file_type = input$MoveFileType,
-                control_type = input$MoveControlType,
-                bind_data = setNames(manifest_name, container$container_name_key)
-              )
-
-              move_data_list <- c(move_data_list, list(result))
-              names(move_data_list)[i] <- manifest_name
-            }
-          } else {
-            ## format the file
-            if (input$MoveType == "samples") {
-
-              result <- process_specimen_csv(
-                user_csv = dataset[i,]$datapath,
-                user_action = "move",
-                file_type = input$MoveFileType,
-                sample_type = input$MoveSampleType
-              )
-
-              move_data_list <- c(move_data_list, list(result))
-              names(move_data_list)[i] <- as.character(length(move_data_list))
-
-            } else { # Controls
-
-              result <- process_control_csv(
-                user_csv = dataset$datapath,
-                user_action = "move",
-                file_type = input$MoveFileType,
-                control_type = input$MoveControlType
-              )
-
-              move_data_list <- c(move_data_list, list(result))
-              names(move_data_list)[i] <- as.character(length(move_data_list))
-            }            
+            rv$user_file <- move_data_list
+            FALSE
           }
-
-          rv$user_file <- move_data_list
-          FALSE
+        },
+        message = function(m) {
+          # shinyjs::html(id = "MoveOutputConsole", html = paste0(dataset$name, ": ", m$message), add = rv$console_verbatim)
+          # rv$console_verbatim <- TRUE
+        })
+      },
+      validation_error = function(e) {
+          message("Caught validation error")
+          show_validation_error_modal(output, e, dataset[i,]$name)
+          TRUE
+        },
+        formatting_error = function(e) {
+          message("Caught formatting error")
+          show_formatting_error_modal(e, dataset[i,]$name)
+          TRUE
+        },
+        error = function(e) {
+          show_general_error_modal(e, input, output)
+          TRUE
         }
-      },
-      message = function(m) {
-        # shinyjs::html(id = "MoveOutputConsole", html = paste0(dataset$name, ": ", m$message), add = rv$console_verbatim)
-        # rv$console_verbatim <- TRUE
-      })
-    },
-    validation_error = function(e) {
-        message("Caught validation error")
-        show_validation_error_modal(output, e, dataset[i,]$name)
-        TRUE
-      },
-      formatting_error = function(e) {
-        message("Caught formatting error")
-        show_formatting_error_modal(e, dataset[i,]$name)
-        TRUE
-      },
-      error = function(e) {
-        show_general_error_modal(e, input, output)
-        TRUE
-      }
-    )
+      )
+    }
 
     if (isTRUE(early_stop)) { 
+      rv$user_file <- NULL      
       return()
+    }
+
+    if (warnings_list$length() > 0) {
+      show_validation_warning_modal(input, output, warnings_list, action = "move")
+      return(NULL) # Force the reactive to stop here
     }
 
     message("Starting Move...")
