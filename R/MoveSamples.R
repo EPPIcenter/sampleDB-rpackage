@@ -394,7 +394,7 @@ MoveSpecimens <- function(sample_type, move_data){
           query <- paste0(
             "UPDATE storage_container SET state_id = 1, status_id = 1 WHERE id = ", id
           )
-          dbExecute(con, query)
+          dbExecute(conn, query)
 
         } else if (sample_type == "cryovial" || sample_type == "whole_blood") {
 
@@ -418,7 +418,7 @@ MoveSpecimens <- function(sample_type, move_data){
             id = id
           ) %>% suppressWarnings()
 
-          # Make the micronix active
+          # Make the cryovial active
           if (sample_type == "whole_blood") {
             query <- paste0(
               "UPDATE whole_blood_tube SET state_id = 1, status_id = 1 WHERE id = ", id
@@ -428,6 +428,8 @@ MoveSpecimens <- function(sample_type, move_data){
               "UPDATE storage_container SET state_id = 1, status_id = 1 WHERE id = ", id
             )
           }
+          dbExecute(conn, query)
+
         } else {
           stop("Invalid Sample Type!!!")
         }
