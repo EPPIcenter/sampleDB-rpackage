@@ -1193,6 +1193,69 @@ validate_micronix <- function(user_data, action, file_type, database) {
   return(errors)
 }
 
+#' Validate Static Plate Data
+#'
+#' This function conducts a series of validation checks on Static Plate specimen data.
+#' The function will return any errors encountered during validation.
+#'
+#' @param user_data A data frame containing specimen data to validate.
+#' @param action The action being performed, e.g. "upload" or "move".
+#' @param database The database connection or specification to use for validation.
+#' @return An ErrorDataList object containing validation errors, if any.
+#' @keywords validation, micronix
+validate_static_plate <- function(user_data, action, file_type, database) {
+  errors <- list()
+
+  result <- validate_micronix_position(user_data, "Position", "RowNumber")
+  if (!is.null(result)) {
+    errors <- add_to_errors(errors, result)
+  }
+
+  result <- check_unique_positions(user_data, "Position", "PlateName", "PlateBarcode")
+  if (!is.null(result)) {
+    errors <- add_to_errors(errors, result)
+  }
+
+  errors <- c(
+    errors,
+    perform_static_plate_db_validations(database, user_data, action, variable_colnames)
+  )
+
+  return(errors)
+}
+
+#' Perform Database-Related Validations for Static Plate
+#'
+#' This function conducts database-related validation checks for Static Plate specimen data.
+#' It initiates a database connection, then performs upload or move validations based on the action provided.
+#'
+#' @param database The database connection or specification for validation.
+#' @param user_data The users data.
+#' @param action The action being performed, either "upload" or "move".
+#' @return A list containing validation errors, if any.
+#' @keywords validation, micronix
+perform_static_plate_db_validations <- function(database, user_data, action, variable_colnames) {
+  con <- init_and_copy_to_db(database, user_data)
+  on.exit(dbDisconnect(con), add = TRUE)
+  errors <- list()
+
+  # Utility function to simplify repetitive operations
+  static_plate_test <- function(validation_func, ...) {
+    func_name <- deparse(substitute(validation_func))
+    cat("Executing function:", func_name, "\n")
+    result <- do.call(validation_func, list(con, "user_data", "RowNumber", ...))
+    errors <<- add_to_errors(errors, result)
+  }
+
+  if (action == "upload") {
+    validate_static_plate_uploads(static_plate_test)
+  } else {
+    stop("Invalid action for static plate db validations!!!")
+  }
+
+  return(errors)
+}
+
 #' Perform Database-Related Validations for Micronix
 #'
 #' This function conducts database-related validation checks for Micronix specimen data.
@@ -1454,6 +1517,23 @@ validate_cryovial_moves <- function(cryovial_test) {
   cryovial_test(check_cryovial_box_exists, "BoxName")
 }
 
+#' Validate Static Plate
+#'
+#' Conducts specific validation checks for uploading specimens in static plate wells.
+#'
+#' @param con The database connection.
+#' @param static_plate_test The utility function for performing tests.
+#' @return A list object containing validation errors, if any.
+#' @keywords validation
+validate_static_plate_uploads <- function(static_plate_test) {
+  static_plate_test(validate_matrix_container, "BoxName", "Position", "static_plate", "static_well", error_if_exists = TRUE)
+  static_plate_test(check_longitudinal_study_dates, "StudyCode", "CollectionDate")
+  static_plate_test(validate_longitudinal_study, "StudyCode", "StudySubject", "CollectionDate")
+  static_plate_test(validate_study_reference_db, "StudyCode")
+  static_plate_test(validate_specimen_type_db, "SpecimenType")
+  static_plate_test(validate_location_reference_db, "FreezerName", "RackName", "RackPosition")
+}
+
 #' Validate Micronix Uploads
 #'
 #' Conducts specific validation checks for uploading Micronix specimens.
@@ -1524,6 +1604,8 @@ validate_specimens <- function(user_data, sample_type, user_action, file_type, d
     errors <- validate_cryovial(user_data, user_action, database)
   } else if (sample_type == "dbs_sample") {
     errors <- validate_dbs_sample(user_data, user_action, database)
+  } else if (sample_type == "static_plate") {
+    errors <- validate_static_plate(user_data, user_action, database)
   } else {
     stop("Invalid sample type!!!")
   }

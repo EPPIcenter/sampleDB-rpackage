@@ -24,6 +24,13 @@
       "file_types": ["na"],
       "actions": ["upload"],
       "location_key": "micronix_locations"
+    },
+    "static_plate": {
+      "id": 4,
+      "name": "Static Plate",
+      "file_types": ["na"],
+      "actions": ["upload", "move"],
+      "location_key": "micronix_locations"
     }
   },
   "action_requirements": {
