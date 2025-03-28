@@ -1764,7 +1764,8 @@ UpdateSampleSelections <- function(session, input, keepCurrentSelection = FALSE)
     "micronix" = list(name = "micronix_plate", label = "Plate Name"),
     "cryovial" = list(name = "cryovial_box", label = "Box Name"),
     "dbs_sample" = list(name = input$SearchDBSSampleManifest, label = switch(
-      input$SearchDBSSampleManifest, "all" = "All", "box" = "Box Name", "bag" = "Bag Name"))
+      input$SearchDBSSampleManifest, "all" = "All", "box" = "Box Name", "bag" = "Bag Name")),
+    "static_plate" = list(name = "micronix_plate", label = "Static Plate")
   )
   
   if (is.null(manifest_types)) {
