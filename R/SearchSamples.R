@@ -462,8 +462,6 @@ SearchSamples <- function(sample_storage_type, filters = NULL, format = "na", da
       sql <- filter(sql, barcode %in% local(filters$barcode))
     }
 
-    browser()
-
     # Join manifest table
     if (sample_storage_type %in% c("cryovial", "micronix", "static_plate")) {
       sql <- inner_join(sql, tbl(con, container_tables[["manifest"]]) %>% dplyr::rename(manifest_id = id, manifest = name, manifest_barcode = barcode), by = c("manifest_id")) %>% collapse()

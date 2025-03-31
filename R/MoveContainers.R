@@ -8,7 +8,7 @@
 
 MoveContainers <- function(sample_type, container_name, freezer, conn){
 
-  stopifnot("ERROR: Sample Type is not valid" = sample_type %in% c("micronix", "cryovial", "dbs_sheet", "whole_blood", "bag", "box"))
+  stopifnot("ERROR: Sample Type is not valid" = sample_type %in% c("micronix", "cryovial", "dbs_sheet", "whole_blood", "bag", "box", "static_plate"))
 
   eval.location <- filter(CheckTableTx(conn = conn, table = "location"), 
                           location_root == freezer$freezer.name & level_I == freezer$freezer.levelI & level_II == freezer$freezer.levelII)
@@ -24,7 +24,8 @@ MoveContainers <- function(sample_type, container_name, freezer, conn){
     "dbs_sheet" = "dbs_bag",
     "whole_blood" = "cryovial_box",
     "bag" = "bag",
-    "box" = "box"
+    "box" = "box",
+    "static_plate" = "micronix_plate"
   )
 
   container_id <- filter(CheckTableTx(conn = conn, manifest), name == container_name) %>% pull(id)

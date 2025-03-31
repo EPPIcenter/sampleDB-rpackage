@@ -4,14 +4,17 @@
 
 DeleteEmptyContainer <- function(type, container_name, conn){
 
-  stopifnot("ERROR: Sample Type is not valid" = type %in% c("micronix", "cryovial", "dbs_sheet", "whole_blood", "bag", "box"))
+  stopifnot("ERROR: Sample Type is not valid" = type %in% c("micronix", "cryovial", "dbs_sheet", "whole_blood", "bag", "box", "static_plate"))
 
-  if (type == "micronix") {
+  if (type == "micronix" || type == "static_plate") {
     id.container <- filter(CheckTableTx(conn = conn, "micronix_plate"), name == container_name) %>% pull(id)
     if (is_empty(id.container)) {
       warning("Attempt to delete matrix plate that does not exist.")
     }
-    if (filter(CheckTableTx(conn = conn, "micronix_tube"), manifest_id %in% id.container) %>% nrow() == 0) {
+    if (type == "micronix" && filter(CheckTableTx(conn = conn, "micronix_tube"), manifest_id %in% id.container) %>% nrow() == 0) {
+      DeleteFromTable(conn = conn, table_name = "micronix_plate", id = as.character(id.container))
+      return_message <- paste0("Successfully Deleted Container: \n", container_name)
+    } else if (type == "static_plate" && filter(CheckTableTx(conn = conn, "static_well"), manifest_id %in% id.container) %>% nrow() == 0) {
       DeleteFromTable(conn = conn, table_name = "micronix_plate", id = as.character(id.container))
       return_message <- paste0("Successfully Deleted Container: \n", container_name)
     } else {

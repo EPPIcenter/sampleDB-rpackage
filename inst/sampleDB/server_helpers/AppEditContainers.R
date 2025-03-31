@@ -42,11 +42,18 @@ EditWetlabContainers <- function(session, input, database, output, dbUpdateEvent
         input$DBSSampleContainer,
         "box" = "box",
         "bag" = "bag"
-      )
+      ),
+      "static_plate" = "micronix_plate" 
     )
 
     database <- Sys.getenv("SDB_PATH")
     con <- RSQLite::dbConnect(RSQLite::SQLite(), database)
+
+    manifest_tbl <- DBI::dbReadTable(con, manifest)
+    # if (input$ContainerSampleType == "static_plate") {
+    #   manifest_tbl <- manifest_tbl %>%
+    #     inner_join(DBI::dbReadTable(con, "static_well"), by = c("id" = "manifest_id"))
+    # }
 
     updateSelectizeInput(
       session,
@@ -59,9 +66,10 @@ EditWetlabContainers <- function(session, input, database, output, dbUpdateEvent
           input$DBSSampleContainer,
           "box" = "DBS Box",
           "bag" = "DBS Bag"
-        ) 
+        ),
+        "static_plate" = "Static Plate" 
       ),
-      choices = c("", DBI::dbReadTable(con, manifest) %>% pull(name)),
+      choices = c("", manifest_tbl %>% pull(name)),
       selected = "",
       server = TRUE
     )
@@ -211,6 +219,7 @@ EditWetlabContainers <- function(session, input, database, output, dbUpdateEvent
           input$ContainerSampleType,
           "micronix" = "Plate Name",
           "cryovial" = "Box Name",
+          "static_plate" = "Plate Name"
         ),
         "controls" = switch(
           input$ContainerControlType,
@@ -346,7 +355,8 @@ EditWetlabContainers <- function(session, input, database, output, dbUpdateEvent
               input$ContainerSampleType,
               "micronix" = "micronix_plate",
               "cryovial" = "cryovial_box",
-              "dbs_sample" = input$DBSSampleContainer
+              "dbs_sample" = input$DBSSampleContainer,
+              "static_plate" = "micronix_plate"
             ),
             "controls" = switch(
               input$ContainerControlType,

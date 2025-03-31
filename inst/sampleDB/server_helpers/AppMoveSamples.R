@@ -342,7 +342,8 @@ AppMoveSamples <- function(session, input, output, database) {
           input$MoveSampleType,
           "micronix" = "micronix_plate",
           "cryovial" = "cryovial_box",
-          "dbs_sample" = input$MoveDBSSampleType
+          "dbs_sample" = input$MoveDBSSampleType,
+          "static_plate" = "micronix_plate"
         ),
         "controls" = switch(
           input$MoveControlType,
@@ -441,7 +442,8 @@ AppMoveSamples <- function(session, input, output, database) {
               input$MoveSampleType,
               "micronix" = "micronix_plate",
               "cryovial" = "cryovial_box",
-              "dbs_sample" = input$MoveDBSSampleType
+              "dbs_sample" = input$MoveDBSSampleType,
+              "static_plate" = "micronix_plate"
             ),
             "controls" = switch(
               input$MoveControlType,
