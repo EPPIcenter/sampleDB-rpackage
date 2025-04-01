@@ -711,13 +711,15 @@ AppMoveSamples <- function(session, input, output, database) {
     tryCatch({
       withCallingHandlers({
         # simple way to add a dialog or not
-        b_use_wait_dialog <- length(rv$user_file) > 5
+        b_use_wait_dialog <- if (is.list(rv$user_file) && length(rv$user_file) == 1) { nrow(rv$user_file[[1]]) > 5 } else { length(rv$user_file) > 1 } 
 
         if (b_use_wait_dialog) {
+          total <- if (is.list(rv$user_file) && length(rv$user_file) == 1) { nrow(rv$user_file[[1]]) } else { length(rv$user_file)}
+          unit <- if (is.list(rv$user_file) && length(rv$user_file) == 1) { "rows" } else { "files" }
           show_modal_spinner(
             spin = "double-bounce",
             color = "#00bfff",
-            text = paste("Working on", length(rv$user_file), "files, please be patient...")
+            text = sprintf("Working on %d %s, please be patient...", total, unit)
           )
         }
 

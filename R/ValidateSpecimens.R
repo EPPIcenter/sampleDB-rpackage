@@ -856,11 +856,13 @@ validate_dbs_box_bag_exists <- function(con, user_data, row_number_col, containe
 
   box_tbl <- tbl(con, "box") %>%
     dplyr::rename(box_id = id) %>%
-    dplyr::left_join(paper_box_tbl, by = c("box_id"="manifest_id"))
+    dplyr::left_join(paper_box_tbl, by = c("box_id"="manifest_id")) %>%
+    dplyr::mutate(manifest_type = "box")
 
   bag_tbl <- tbl(con, "bag") %>%
     dplyr::rename(bag_id = id) %>%
-    dplyr::left_join(paper_bag_tbl, by = c("bag_id"="manifest_id"))
+    dplyr::left_join(paper_bag_tbl, by = c("bag_id"="manifest_id")) %>%
+    dplyr::mutate(manifest_type = "bag")
 
   user_data_box_tbl <- tbl(con, "user_data") %>%
     filter(!!rlang::sym(container_type_col) == "Box")

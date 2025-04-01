@@ -129,12 +129,16 @@ MoveSpecimens <- function(sample_type, move_data){
           paper_id
         )
         dbExecute(con, query)
+
+        cat("Processing row: ", i, "\n")
       }
     }
 
-    message(sprintf("Successfully moved %d dbs control sheets", length(move_data)))
+    output_message <- sprintf("Successfully moved %d dbs control sheets", length(move_data))
     dbCommit(conn)
     dbDisconnect(conn)
+    message(output_message)
+    return(output_message)
 
   } else if (sample_type %in% c("whole_blood")) {
 
@@ -184,9 +188,12 @@ MoveSpecimens <- function(sample_type, move_data){
       }
     }
 
-    message(sprintf("Successfully uploaded %d moves", length(move_data)))
+    output_message <- sprintf("Successfully uploaded %d moves", length(move_data))
     dbCommit(conn)
     dbDisconnect(conn)
+
+    message(output_message)
+    return(output_message)
 
   } else if (sample_type %in% c("micronix", "cryovial")) { # The sample types below need to be checked for orphans
 
