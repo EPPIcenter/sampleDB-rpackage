@@ -183,7 +183,8 @@ DeleteWholeBloodSamples <- function(whole_blood_tube_ids) {
                           table.cryovial_tube = CheckTable(database = database, "cryovial_tube"),
                           table.whole_blood_tube = CheckTable(database = database, "whole_blood_tube"),
                           table.micronix_tube = CheckTable(database = database, "micronix_tube"),
-                          table.dbs_sample_sheet = CheckTable(database = database, "paper"))
+                          table.dbs_sample_sheet = CheckTable(database = database, "paper"),
+                          table.static_well = CheckTable(database = database, "static_well"))
   return(database.tables)
 }
 
@@ -224,7 +225,8 @@ DeleteWholeBloodSamples <- function(whole_blood_tube_ids) {
   ids <- c(database.tables$table.micronix_tube$id,
            database.tables$table.cryovial_tube$id,
            database.tables$table.whole_blood_tube$id,
-           database.tables$table.dbs_sample_sheet$id)
+           database.tables$table.dbs_sample_sheet$id,
+           database.tables$table.static_well$id)
 
   if (eval.id %in% database.tables$table.micronix_tube$id) {
 
@@ -295,7 +297,25 @@ DeleteWholeBloodSamples <- function(whole_blood_tube_ids) {
                                              name = NA),
                             id = as.character(manifest_id))
       }
+  } else if(eval.id %in% database.tables$table.static_well$id){
+
+    # get container id before sample deletion
+    manifest_id <- filter(database.tables$table.static_well, id %in% eval.id)$manifest_id
+
+    qry<-paste0("UPDATE `static_well` SET `position` = NULL WHERE `id` = ", as.character(eval.id))
+    dbExecute(conn, qry)
+
+    # delete container if container id is no longer in micronix table
+    if(!manifest_id %in% CheckTableTx(conn = conn, "static_well")$manifest_id){
+      ModifyTable(conn = conn,
+                            table_name = "micronix_plate",
+                            info_list = list(last_updated = as.character(lubridate::now()),
+                                             location_id = NA,
+                                             plate_name = NA,
+                                             plate_barcode = NA),
+                            id = as.character(manifest_id))
     }
+  }
 }
 
 
@@ -381,6 +401,22 @@ DeleteWholeBloodSamples <- function(whole_blood_tube_ids) {
         DeleteFromTable(conn = conn,
                                   table_name = manifest_type,
                                   id = as.character(manifest_id))
+      }
+    } else if(eval.id %in% database.tables$table.static_well$id){
+
+      # get container id before sample deletion
+      matrix_plate_id <- filter(database.tables$table.static_well, id %in% eval.id)$manifest_id
+
+      # delete sample
+      DeleteFromTable(conn = conn,
+                                table_name = "static_well",
+                                id = as.character(eval.id))
+
+      # delete container if container id is no longer in micronix table
+      if(!matrix_plate_id %in% CheckTableTx(conn = conn, "static_well")$manifest_id){
+        DeleteFromTable(conn = conn,
+                                  table_name = "micronix_plate",
+                                  id = as.character(matrix_plate_id))
       }
     }
   }
