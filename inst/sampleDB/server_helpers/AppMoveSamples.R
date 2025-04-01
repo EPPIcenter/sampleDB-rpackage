@@ -292,7 +292,10 @@ AppMoveSamples <- function(session, input, output, database) {
         selectInput("ManifestLocationRoot", label = NULL, width = '47%', choices = NULL),
         selectInput("ManifestLocationRootLevelI", label = NULL, width = '47%', choices = NULL),
         selectInput("ManifestLocationRootLevelII", label = NULL, width = '47%', choices = NULL),
-
+        conditionalPanel(
+          condition = "input.MoveSampleType == 'dbs_sample'",
+          radioButtons("MoveDBSSampleType", label = "Choice:", choices = c("Box" = "box", "Bag" = "bag"))
+        ),
         tags$h5("2. Create a new name for the container or bag."),
         textInput("ManifestID", label = "Human Readable Name", placeholder = "PRISM-2022-001"),
         uiOutput("ManifestIDCheck"),
