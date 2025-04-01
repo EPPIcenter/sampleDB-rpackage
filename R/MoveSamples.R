@@ -132,14 +132,14 @@ MoveSpecimens <- function(sample_type, move_data){
 
         # Make the micronix active
         query <- paste0(
-          "UPDATE storage_container SET state_id = 1, status_id = 1 WHERE id = ", id
+          "UPDATE storage_container SET state_id = 1, status_id = 1 WHERE id = ", paper_id
         )
         dbExecute(con, query)
         cat("Processing row: ", i, "\n")
       }
     }
 
-    output_message <- sprintf("Successfully moved %d dbs control sheets", length(move_data))
+    output_message <- sprintf("Successfully moved %d sheets", nrow(move_container))
     dbCommit(conn)
     dbDisconnect(conn)
     message(output_message)

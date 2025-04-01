@@ -681,7 +681,7 @@ AppMoveSamples <- function(session, input, output, database) {
                   names(move_data_list)[i] <- manifest_name
                 }
               }
-            } else {
+            } else { ## NOTE: we possibly can remove the extract_name_from_filename if-else I think...
               ## format the file
               if (input$MoveType == "samples") {
 
@@ -694,14 +694,14 @@ AppMoveSamples <- function(session, input, output, database) {
 
                 if (!is.data.frame(result)) {
                   move_data_list <- c(move_data_list, list(result$data))
-                  names(move_data_list)[i] <- manifest_name
+                  names(move_data_list)[i] <- length(move_data_list) # this could just be the file name...
 
                   if (warnings_list$length() == 0) warnings_list <- result$warnings$clone(deep = TRUE)
                   else warnings_list$concatenate(result$warnings)
 
                 } else {
                   move_data_list <- c(move_data_list, list(result))
-                  names(move_data_list)[i] <- manifest_name
+                  names(move_data_list)[i] <- length(move_data_list)
                 }
 
               } else { # Controls
@@ -715,14 +715,14 @@ AppMoveSamples <- function(session, input, output, database) {
 
                 if (!is.data.frame(result)) {
                   move_data_list <- c(move_data_list, list(result$data))
-                  names(move_data_list)[i] <- manifest_name
+                  names(move_data_list)[i] <- length(move_data_list)
 
                   if (warnings_list$length() == 0) warnings_list <- result$warnings$clone(deep = TRUE)
                   else warnings_list$concatenate(result$warnings)
 
                 } else {
                   move_data_list <- c(move_data_list, list(result))
-                  names(move_data_list)[i] <- manifest_name
+                  names(move_data_list)[i] <- length(move_data_list)
                 }
               }            
             }
