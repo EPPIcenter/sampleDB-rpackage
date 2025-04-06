@@ -450,6 +450,67 @@ validate_dbs_sheet_exists <- function(con, table_name, row_number_col, dbs_sheet
 }
 
 
+#' Check Each dbs_control_sheet Entry is Unique
+#'
+#' Ensures that each dbs_control_sheet entry can be uniquely identified based on one or more
+#' of the valid column names: "SheetName", "SourceBagName", "ControlUID", "Batch", and "Exhausted".
+#' If the user has not provided all of the required columns or if we can't distinguish between rows, 
+#' an ErrorData instance is returned.
+#'
+#' @param con The database connection.
+#' @param table_name The name of the table containing the dbs_control_sheet data.
+#' @param row_number_col The name of the column in the table containing row numbers.
+#' @param valid_columns A character vector of valid column names (default: c("SheetName", "SourceBagName", "ControlUID", "Batch", "Exhausted")).
+#'
+#' @return An instance of the ErrorData class if any rows are not uniquely identifiable, or NULL if all rows are unique.
+#' @keywords validation, dbs_control_sheet
+check_each_row_dbs_control_sheet_is_unique <- function(con, table_name, row_number_col, valid_columns = c("SheetName", "SourceBagName", "ControlUID", "Batch", "Exhausted")) {
+  
+  # Check if at least one valid column exists in the table
+  column_names <- dbListFields(con, table_name)
+  matching_columns <- intersect(valid_columns, column_names)
+  
+  if (length(matching_columns) == 0) {
+    stop("At least one valid column (SheetName, SourceBagName, ControlUID, Batch, Exhausted) must exist in the table.")
+  }
+  
+  # Pull data for matching columns and row numbers
+  df <- tbl(con, table_name) %>%
+    select(all_of(c(row_number_col, matching_columns))) %>%
+    collect()
+  
+  # Attempt to find unique matches based on SheetName and SourceBagName
+  sheet_name_matches <- df %>%
+    filter(SheetName %in% df$SheetName & SourceBagName %in% df$SourceBagName) %>%
+    distinct(SheetName, SourceBagName) %>%
+    collect()
+  
+  # If there are duplicates for SheetName and SourceBagName, issue a warning and check columns
+  if (nrow(sheet_name_matches) < nrow(df)) {
+    if (length(matching_columns) < length(valid_columns)) {
+      return(ErrorData$new(
+        description = "Cannot uniquely identify the dbs_control_sheet entry. SheetName and SourceBagName are duplicated, and not all required columns (ControlUID, Batch, Exhausted) are provided to distinguish between them.",
+        columns = valid_columns,
+        rows = df
+      ))
+    } else {
+      warning("There are duplicates in dbs_control_sheet for SheetName and SourceBagName. Multiple sheets may have the same name and cannot be distinguished.")
+    }
+  }
+  
+  # If no matches for SheetName and SourceBagName, check ControlUID, Batch, and Exhausted
+  if (nrow(sheet_name_matches) == 0) {
+    if (length(matching_columns) < length(valid_columns)) {
+      return(ErrorData$new(
+        description = "Cannot find a match for dbs_control_sheet entry. SheetName and SourceBagName are not unique, and not all necessary columns (ControlUID, Batch, Exhausted) are provided to distinguish between them.",
+        columns = valid_columns,
+        rows = df
+      ))
+    }
+  }
+  
+  return(NULL)
+}
 
 
 #' Validate DBS Sheet Create
@@ -504,7 +565,7 @@ validate_dbs_sheet_extraction <- function(dbs_sheet_test) {
 validate_dbs_sheet_move <- function(dbs_sheet_test) {
   # References check
   dbs_sheet_test(validate_dbs_bag_exists, "BagName", error_if_exists = FALSE)
-  dbs_sheet_test(validate_dbs_sheet_exists, "SheetName", error_if_exists = FALSE)
+  dbs_sheet_test(check_each_row_dbs_control_sheet_is_unique)
 }
 
 #' Validate Whole Blood Control Data

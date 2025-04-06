@@ -39,38 +39,46 @@ MoveSpecimens <- function(sample_type, move_data){
         dbs_bagname <- move_container[i,]$BagName
         dbs_control_uid <- move_container[i,]$ControlUID
         dbs_exhausted <- move_container[i,]$Exhausted
-        dbs_total <- move_container[i,]$Total
 
-        df <- tbl(con, "study_subject") %>% dplyr::rename(study_subject_id = id, control_uid = name) %>%
+        # Query the database to get the matching dbs_control_sheet and dbs_bag
+        df <- tbl(con, "study_subject") %>%
+          dplyr::rename(study_subject_id = id, control_uid = name) %>%
           inner_join(tbl(con, "malaria_blood_control") %>% dplyr::rename(malaria_blood_control_id = id), by = c("study_subject_id")) %>%
           inner_join(tbl(con, "blood_spot_collection") %>% dplyr::rename(blood_spot_collection_id = id), by = c("malaria_blood_control_id")) %>%
           inner_join(tbl(con, "dbs_control_sheet") %>% dplyr::rename(dbs_control_sheet_id = id), by = c("dbs_control_sheet_id")) %>%
           inner_join(tbl(con, "dbs_bag") %>% dplyr::rename(dbs_bag_id = id, dbs_label = name), by = c("dbs_bag_id"))
 
+        # Find the old dbs_bag that matches the provided criteria
         old_bag <- df %>%
-          filter(control_uid == dbs_control_uid & exhausted == dbs_exhausted & dbs_total == dbs_total) %>%
+          filter(control_uid == dbs_control_uid & exhausted == dbs_exhausted) %>%
           select(dbs_control_sheet_id, dbs_bag_id, replicates) %>%
-          head(1) %>% # If we have all of this criteria met and there are duplicates, just take the first sheet.
+          head(1) %>% # If duplicates, just take the first match
           collect()
 
+        # Find the new dbs_bag that matches the provided BagName
         new_bag <- df %>%
           filter(dbs_label == dbs_bagname) %>%
           select(dbs_control_sheet_id, dbs_bag_id, replicates) %>%
           collect()
 
-        # SQL query to update the cryovial_box_id field for the specific tube
-        query <- paste0("UPDATE dbs_control_sheet SET replicates = ", (old_bag$replicates - 1), " WHERE id = ", old_bag$dbs_control_sheet_id)
-        dbExecute(con, query)
+        # Check if we found a matching old bag and new bag
+        if (nrow(old_bag) > 0 && nrow(new_bag) > 0) {
+          # Update the old dbs_bag: decrease the replicates count
+          query <- paste0("UPDATE dbs_control_sheet SET replicates = ", (old_bag$replicates - 1), " WHERE id = ", old_bag$dbs_control_sheet_id)
+          dbExecute(con, query)
 
-        # SQL query to update the cryovial_box_id field for the specific tube
-        query <- paste0("UPDATE dbs_control_sheet SET dbs_bag_id = ", new_bag$dbs_bag_id, ", replicates = ", (new_bag$replicates + 1), " WHERE id = ", new_bag$dbs_control_sheet_id)
-        dbExecute(con, query)
+          # Update the new dbs_bag: increase the replicates count and assign new dbs_bag_id
+          query <- paste0("UPDATE dbs_control_sheet SET dbs_bag_id = ", new_bag$dbs_bag_id, ", replicates = ", (new_bag$replicates + 1), " WHERE id = ", new_bag$dbs_control_sheet_id)
+          dbExecute(con, query)
+        } else {
+          stop(paste("Unable to find matching dbs_control_sheet for ControlUID", dbs_control_uid, "and BagName", dbs_bagname))
+        }
       }
-    }
 
-    message(sprintf("Successfully moved samples from %d dbs move files", length(move_data)))
-    dbCommit(conn)
-    dbDisconnect(conn)
+      message(sprintf("Successfully moved samples from %d dbs move files", length(move_data)))
+      dbCommit(conn)
+      dbDisconnect(conn)
+    }
 
   } else if (sample_type == "dbs_sample") {
 
