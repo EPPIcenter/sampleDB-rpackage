@@ -466,6 +466,8 @@ validate_dbs_sheet_exists <- function(con, table_name, row_number_col, dbs_sheet
 #' @keywords validation, dbs_control_sheet
 check_each_row_dbs_control_sheet_is_unique <- function(con, table_name, row_number_col, valid_columns = c("SheetName", "SourceBagName", "ControlUID", "Batch", "Exhausted")) {
   
+  browser()
+
   # Check if at least one valid column exists in the table
   column_names <- dbListFields(con, table_name)
   matching_columns <- intersect(valid_columns, column_names)
@@ -482,7 +484,7 @@ check_each_row_dbs_control_sheet_is_unique <- function(con, table_name, row_numb
   # Attempt to find unique matches based on SheetName and SourceBagName
   sheet_name_matches <- df %>%
     filter(SheetName %in% df$SheetName & SourceBagName %in% df$SourceBagName) %>%
-    distinct(SheetName, SourceBagName) %>%
+    distinct(across(all_of(matching_columns)), .keep_all = TRUE) %>%
     collect()
   
   # If there are duplicates for SheetName and SourceBagName, issue a warning and check columns
@@ -564,7 +566,9 @@ validate_dbs_sheet_extraction <- function(dbs_sheet_test) {
 #' @keywords validation
 validate_dbs_sheet_move <- function(dbs_sheet_test) {
   # References check
-  dbs_sheet_test(validate_dbs_bag_exists, "BagName", error_if_exists = FALSE)
+  dbs_sheet_test(validate_dbs_bag_exists, "SourceBagName", error_if_exists = FALSE)
+  dbs_sheet_test(validate_dbs_bag_exists, "DestBagName", error_if_exists = FALSE)
+
   dbs_sheet_test(check_each_row_dbs_control_sheet_is_unique)
 }
 
