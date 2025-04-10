@@ -621,8 +621,6 @@ AppMoveSamples <- function(session, input, output, database) {
 
           move_data_list <- list()
 
-          browser()
-
           for (i in 1:length(dataset[,1])) {
             extract_name_from_filename <- (input$MoveType == "samples" && input$MoveSampleType %in% c("micronix", "cryovial")) ||
               (input$MoveType == "controls" && input$MoveControlType == "whole_blood")

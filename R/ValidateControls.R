@@ -466,8 +466,6 @@ validate_dbs_sheet_exists <- function(con, table_name, row_number_col, dbs_sheet
 #' @keywords validation, dbs_control_sheet
 check_each_row_dbs_control_sheet_is_unique <- function(con, table_name, row_number_col, valid_columns = c("SheetName", "SourceBagName", "ControlUID", "Batch", "Exhausted")) {
   
-  browser()
-
   # Check if at least one valid column exists in the table
   column_names <- dbListFields(con, table_name)
   matching_columns <- intersect(valid_columns, column_names)

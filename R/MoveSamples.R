@@ -34,8 +34,6 @@ MoveSpecimens <- function(sample_type, move_data){
 
       move_container <- move_data[[container_name]]
 
-      browser()
-
       # Iterate over each tube and update its location in the database
       for (i in 1:nrow(move_container)) {
         dbs_sheetname <- move_container[i,]$SheetName
@@ -54,31 +52,51 @@ MoveSpecimens <- function(sample_type, move_data){
 
         # Find the old dbs_bag that matches the provided criteria
         old_bag <- df %>%
-          filter(dbs_label == dbs_src_bagname & control_uid == dbs_control_uid & exhausted == dbs_exhausted) %>%
-          select(dbs_control_sheet_id, dbs_bag_id, replicates) %>%
+          filter(dbs_label == dbs_src_bagname & label == dbs_sheetname & exhausted == dbs_exhausted & control_uid == dbs_control_uid) %>%
+          select(dbs_control_sheet_id, dbs_bag_id, replicates, control_uid, blood_spot_collection_id, label) %>%
           head(1) %>% # If duplicates, just take the first match
           collect()
 
         # Find the new dbs_bag that matches the provided BagName
         new_bag <- df %>%
           filter(dbs_label == dbs_dest_bagname) %>%
-          select(dbs_control_sheet_id, dbs_bag_id, control_uid, label, replicates) %>%
+          select(dbs_control_sheet_id, dbs_bag_id, control_uid, label, replicates, blood_spot_collection_id) %>%
           collect()
 
         # Check if we found a matching old bag and new bag
         if (nrow(old_bag) > 0 && nrow(new_bag) > 0) {
 
           # Update the old dbs_bag: decrease the replicates count
-          query <- paste0("UPDATE dbs_control_sheet SET replicates = ", (old_bag$replicates - 1), " WHERE id = ", old_bag$dbs_control_sheet_id)
+          query <- paste0("UPDATE dbs_control_sheet SET replicates = ", first(old_bag$replicates) - 1, " WHERE id = ", first(old_bag$dbs_control_sheet_id))
           dbExecute(con, query)
 
           # Update the new dbs_bag: increase the replicates count and assign new dbs_bag_id
           if (nrow(filter(new_bag, label == dbs_sheetname)) > 0) {
-            query <- paste0("UPDATE dbs_control_sheet SET dbs_bag_id = ", first(new_bag$dbs_bag_id), ", replicates = ", (dbs_new$replicates + 1), " WHERE id = ", dbs_new$dbs_control_sheet_id)
+
+            sheet_in_db <- new_bag %>% filter(label == dbs_sheetname)
+
+            query <- paste0("UPDATE dbs_control_sheet SET dbs_bag_id = ", first(new_bag$dbs_bag_id), ", replicates = ", first(sheet_in_db$replicates) + 1, " WHERE id = ", first(sheet_in_db$dbs_control_sheet_id))
             dbExecute(con, query)
+
+            bsc_to_update <- old_bag %>% filter(label == dbs_sheetname & control_uid == dbs_control_uid)
+
+            query <- paste0("UPDATE blood_spot_collection SET dbs_control_sheet_id = ", first(sheet_in_db$dbs_control_sheet_id), " WHERE id = ", first(bsc_to_update$blood_spot_collection_id))
+            dbExecute(con, query)
+
           } else {
-            query <- dbExecute(con, "INSERT INTO dbs_control_sheet (dbs_bag_id, label, replicates) VALUES (:id, :label, :replicates)",
-              params = list(id = first(new_bag$dbs_bag_id), label = dbs_sheetname, replicates = 1))    
+
+            db_df <- data.frame(dbs_bag_id = first(new_bag$dbs_bag_id), label = dbs_sheetname, replicates = 0)
+            res <- dbAppendTable(con, "dbs_control_sheet", db_df)
+
+            new_bag_id <- first(new_bag$dbs_bag_id)
+            new_dbs_control_sheet_id <- tbl(con, "dbs_control_sheet") %>%
+              filter(dbs_bag_id == new_bag_id & label == dbs_sheetname & replicates == 0) %>%
+              pull(id)
+
+            bsc_to_update <- old_bag %>% filter(label == dbs_sheetname & control_uid == dbs_control_uid)
+
+            query <- paste0("UPDATE blood_spot_collection SET dbs_control_sheet_id = ", new_dbs_control_sheet_id, " WHERE id = ", first(bsc_to_update$blood_spot_collection_id))
+            dbExecute(con, query)
           }
         } else {
           stop(paste("Unable to find matching dbs_control_sheet for ControlUID", dbs_control_uid, "and BagName", dbs_bagname))
@@ -86,8 +104,8 @@ MoveSpecimens <- function(sample_type, move_data){
       }
 
       message(sprintf("Successfully moved samples from %d dbs move files", length(move_data)))
-      dbCommit(conn)
-      dbDisconnect(conn)
+      dbCommit(con)
+      dbDisconnect(con)
     }
 
   } else if (sample_type == "dbs_sample") {
@@ -140,11 +158,11 @@ MoveSpecimens <- function(sample_type, move_data){
         }
 
         query <- paste0(
-          "UPDATE paper SET manifest_id = ", 
-          new_container_tbl_id, 
-          ", manifest_type = '", 
-          new_container_type, 
-          "' WHERE id = ", 
+          "UPDATE paper SET manifest_id = ",
+          new_container_tbl_id,
+          ", manifest_type = '",
+          new_container_type,
+          "' WHERE id = ",
           paper_id
         )
         dbExecute(con, query)
@@ -197,7 +215,7 @@ MoveSpecimens <- function(sample_type, move_data){
           filter(batch == !!move_batch & control_uid == !!move_control_uid)
 
         # Just take one that exists and move it
-        control_batch_tube <- control_batch_tbl %>% 
+        control_batch_tube <- control_batch_tbl %>%
           filter(cryovial_boxname %in% source_box) %>%
           head(1)
 
