@@ -938,10 +938,24 @@ prepare_specimen_data_for_validation <- function(sample_type, user_data, file_ty
     stop_validation_error("There are duplicated rows.", error)
   }
 
-  if (sample_type %in% c("micronix", "cryovial")) {
+  if (sample_type %in% c("micronix", "cryovial", "static_plate")) {
     expected_position_column <- get_position_column_by_sample(sample_type, file_type)
 
-    dimensions <- c(ifelse(sample_type == "micronix", 8, 10), ifelse(sample_type == "micronix", 12, 10))
+    dimensions <- c(
+      switch(
+        sample_type,
+        "micronix" = 8,
+        "cryovial" = 10,
+        "static_plate" = 8
+      ),
+      switch(
+        sample_type,
+        "micronix" = 12,
+        "cryovial" = 10,
+        "static_plate" = 12
+      )
+    )
+
     user_data <- prepare_matrix_position_column(user_data, dimensions, expected_position_column, "Position")
   }
 

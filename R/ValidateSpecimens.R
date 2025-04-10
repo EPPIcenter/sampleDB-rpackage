@@ -41,7 +41,6 @@ validate_micronix_position <- function(data,
 #'
 #' @return An ErrorData object if Micronix position rules are violated, or NULL otherwise.
 validate_matrix_container <- function(con, user_data, row_number_col, container_name_col, container_position_col, matrix_tablename, container_tablename, error_if_exists) {
-
   # Directly define the join conditions using named vectors
   user_table_joins <- setNames(
     c("name", "position"),
@@ -1203,7 +1202,7 @@ validate_micronix <- function(user_data, action, file_type, database) {
 #' @param database The database connection or specification to use for validation.
 #' @return An ErrorDataList object containing validation errors, if any.
 #' @keywords validation, micronix
-validate_static_plate <- function(user_data, action, file_type, database) {
+validate_static_plate <- function(user_data, action, database) {
   errors <- list()
 
   result <- validate_micronix_position(user_data, "Position", "RowNumber")
@@ -1218,7 +1217,7 @@ validate_static_plate <- function(user_data, action, file_type, database) {
 
   errors <- c(
     errors,
-    perform_static_plate_db_validations(database, user_data, action, variable_colnames)
+    perform_static_plate_db_validations(database, user_data, action)
   )
 
   return(errors)
@@ -1234,7 +1233,7 @@ validate_static_plate <- function(user_data, action, file_type, database) {
 #' @param action The action being performed, either "upload" or "move".
 #' @return A list containing validation errors, if any.
 #' @keywords validation, micronix
-perform_static_plate_db_validations <- function(database, user_data, action, variable_colnames) {
+perform_static_plate_db_validations <- function(database, user_data, action) {
   con <- init_and_copy_to_db(database, user_data)
   on.exit(dbDisconnect(con), add = TRUE)
   errors <- list()
@@ -1526,12 +1525,12 @@ validate_cryovial_moves <- function(cryovial_test) {
 #' @return A list object containing validation errors, if any.
 #' @keywords validation
 validate_static_plate_uploads <- function(static_plate_test) {
-  static_plate_test(validate_matrix_container, "BoxName", "Position", "static_plate", "static_well", error_if_exists = TRUE)
+  static_plate_test(validate_matrix_container, "PlateName", "Position", "micronix_plate", "static_well", error_if_exists = TRUE)
   static_plate_test(check_longitudinal_study_dates, "StudyCode", "CollectionDate")
   static_plate_test(validate_longitudinal_study, "StudyCode", "StudySubject", "CollectionDate")
   static_plate_test(validate_study_reference_db, "StudyCode")
   static_plate_test(validate_specimen_type_db, "SpecimenType")
-  static_plate_test(validate_location_reference_db, "FreezerName", "RackName", "RackPosition")
+  static_plate_test(validate_location_reference_db, "FreezerName", "ShelfName", "BasketName")
 }
 
 #' Validate Micronix Uploads

@@ -358,6 +358,17 @@ upload_extracted_dna <- function(user_data, control_extraction, database = Sys.g
 
       df <- data.frame(id = eval.id, manifest_id = eval.plate_id, manifest_type = eval.manifest_type, label = eval.label)
       DBI::dbAppendTable(conn, "paper", df)
+    } else if(sample_type_id == "static_plate") {
+      # create a new housing (if it does not already exist)
+      if(!eval.container_name %in% CheckTableTx(conn = conn, "micronix_plate")$name){
+        eval.plate_id <- .UploadPlate(conn = conn, container_name = eval.container_name, container_barcode = eval.plate_barcode, freezer_address = eval.freezer_address, table = "micronix_plate")
+      }else{
+        eval.plate_id <- filter(CheckTableTx(conn = conn, "micronix_plate"), name == eval.container_name)$id
+      }
+
+      df <- data.frame(id = eval.id, manifest_id = eval.plate_id, position = eval.position)
+      DBI::dbAppendTable(conn, "static_well", df)
+
     } else {
       stop("No upload implementation for this sample type")
     }

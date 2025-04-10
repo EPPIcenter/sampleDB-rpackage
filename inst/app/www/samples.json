@@ -30,7 +30,9 @@
       "name": "Static Plate",
       "file_types": ["na"],
       "actions": ["upload"],
-      "location_key": "micronix_locations"
+      "location_key": "micronix_locations",
+      "container_key": "micronix_plate",
+      "container_barcode_key": "micronix_plate"
     }
   },
   "action_requirements": {
