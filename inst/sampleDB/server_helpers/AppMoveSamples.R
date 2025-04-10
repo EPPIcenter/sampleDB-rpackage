@@ -833,43 +833,64 @@ AppMoveSamples <- function(session, input, output, database) {
 
   # Download a complete upload template
   observe({
+
     output$MoveFileTemplatePlaceholder <- renderUI({
 
-      get_specific_move_type <- function() {
-        sample_types <- get_sample_types()
-        sample_file_types <- get_file_types_for_sample(input$MoveSampleType)
+      get_specific_move_type <- switch(input$MoveType, 
+        "samples" = function() { 
+          sample_types <- get_sample_types()
+          sample_file_types <- get_file_types_for_sample(input$MoveSampleType)
 
-        match_index <- match(input$MoveSampleType, sample_types)
-        sample_display_name <- names(sample_types[match_index])
+          match_index <- match(input$MoveSampleType, sample_types)
+          sample_display_name <- names(sample_types[match_index])
 
-        match_index <- match(input$MoveSampleType, sample_file_types)
-        file_type_display_name <- names(sample_file_types[match_index])
+          match_index <- match(input$MoveFileType, sample_file_types)
+          file_type_display_name <- names(sample_file_types[match_index])
 
-        sprintf("%s (FileType: '%s')", sample_display_name, file_type_display_name)
-      }
+          sprintf("%s (FileType: '%s')", sample_display_name, file_type_display_name)
+        },
+        "controls" = function() { 
+          control_types <- get_control_types()
+          control_action_types <- get_control_action_types(input$MoveControlType)
 
+          match_index <- match(input$MoveControlType, control_types)
+          control_display_name <- names(control_types[match_index])
+
+          sprintf("%s", control_display_name)
+        }
+      )
       downloadButton("MoveFileTemplate", label = paste("Download", get_specific_move_type(), "Move Template"))
     })
 
     # NOTE: Should add a case for controls when they are added.
     output$MoveFileTemplate <- downloadHandler(
       filename = function() {
-        filename_base <- paste(c(input$MoveSampleType, input$MoveFileType, "move", "template"), collapse = "_")
-        paste(filename_base, ".csv", sep = "")
+        if (input$MoveType == "samples") {
+          filename_base <- paste(c(input$MoveSampleType, input$MoveFileType, "upload", "template"), collapse = "_")
+          paste(filename_base, ".csv", sep = "")
+        } else {
+          paste(paste(c(input$MoveControlType, "move", "template"), collapse = "_"), ".csv", sep = "")
+        }
       },
       content = function(con) {
-        # Retrieve column data for samples based on selected sample type
-        column_data <- get_sample_file_columns(input$MoveSampleType, "move", input$MoveFileType)
+         # Check if the user is uploading samples or controls
+        if (input$MoveType == "samples") {
+          # Retrieve column data for samples based on selected sample type
+          column_data <- get_sample_file_columns(input$MoveSampleType, "upload", input$MoveFileType)
+        } else if (input$MoveType == "controls") {
+          # Retrieve column data for controls based on selected control type
+          column_data <- get_control_file_columns(input$MoveControlType, "move")  # Using action from the input
+        } else {
+          stop("Invalid upload type!!!")
+        }
         
         # Generate an empty data frame with the correct column names for downloading
         if (!is.null(column_data)) {
-          all_columns <- c(column_data$required)
-          move_template <- data.frame(matrix(ncol = length(all_columns), nrow = 0))
-          colnames(move_template) <- all_columns
-        } else {
-          stop("Column data is null!!!")
+          all_columns <- c(column_data$required, column_data$conditional, column_data$optional)
+          upload_template <- data.frame(matrix(ncol = length(all_columns), nrow = 0))
+          colnames(upload_template) <- all_columns
         }
-        write.csv(move_template, con, row.names = FALSE, quote = FALSE)
+        write.csv(upload_template, con, row.names = FALSE, quote = FALSE)
       }
     )
   })
