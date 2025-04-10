@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS "static_well" (
 	"id"			INTEGER NOT NULL,
 	"manifest_id"	INTEGER NOT NULL,
-	"position"		VARCHAR NOT NULL,
+	"position"		VARCHAR,
 
 	FOREIGN KEY("id") REFERENCES "storage_container"("id"),
 	FOREIGN KEY("manifest_id") REFERENCES "micronix_plate"("id"),

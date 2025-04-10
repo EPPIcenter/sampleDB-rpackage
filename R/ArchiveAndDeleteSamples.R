@@ -326,7 +326,8 @@ DeleteWholeBloodSamples <- function(whole_blood_tube_ids) {
   ids <- c(database.tables$table.micronix_tube$id,
            database.tables$table.cryovial_tube$id,
            database.tables$table.whole_blood_tube$id,
-           database.tables$table.dbs_sample_sheet$id)
+           database.tables$table.dbs_sample_sheet$id,
+           database.tables$table.static_well$id)
 
   if(eval.id %in% ids){
 
