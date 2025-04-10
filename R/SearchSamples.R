@@ -386,7 +386,7 @@ FilterByLocation <- function(con, sql, location) {
 SearchSamples <- function(sample_storage_type, filters = NULL, format = "na", database = Sys.getenv("SDB_PATH"), config_yml = Sys.getenv("SDB_CONFIG"), include_internal_sample_id = FALSE) {
   db.results <- NULL
 
-  if (is.null(sample_storage_type) || !sample_storage_type %in% c("micronix", "cryovial", "dbs_sample")) {
+  if (is.null(sample_storage_type) || !sample_storage_type %in% c("micronix", "cryovial", "dbs_sample", "static_plate")) {
     stop("No search implemenation available for this sample_storage_type")
   }
 
@@ -403,12 +403,14 @@ SearchSamples <- function(sample_storage_type, filters = NULL, format = "na", da
           "bag" = "bag",
           "box" = "box",
           "all" = "all"
-        )
+        ),
+        "static_plate" = "micronix_plate"
       ),
       "container_class" = switch(sample_storage_type,
         "micronix" = "micronix_tube",
         "cryovial" = "cryovial_tube",
-        "dbs_sample" = "paper"
+        "dbs_sample" = "paper",
+        "static_plate" = "static_well"
       )
     )
 
@@ -461,7 +463,7 @@ SearchSamples <- function(sample_storage_type, filters = NULL, format = "na", da
     }
 
     # Join manifest table
-    if (sample_storage_type %in% c("cryovial", "micronix")) {
+    if (sample_storage_type %in% c("cryovial", "micronix", "static_plate")) {
       sql <- inner_join(sql, tbl(con, container_tables[["manifest"]]) %>% dplyr::rename(manifest_id = id, manifest = name, manifest_barcode = barcode), by = c("manifest_id")) %>% collapse()
     } else if (sample_storage_type == "dbs_sample"){
       if (filters$container_type == "all") {
@@ -922,6 +924,8 @@ get_db_map <- function(sample_storage_type, format = "na", config = Sys.getenv("
         dbmap$manifest <- "Container Name"
         dbmap$manifest_type <- "Container Type"
       }
+    } else if (sample_storage_type == "static_plate") {
+      dbmap$position <- "Static Position"
     } else {
       stop("Invalid sample type!!!")
     }
@@ -948,7 +952,12 @@ get_db_map <- function(sample_storage_type, format = "na", config = Sys.getenv("
       dbmap$location_root <- "Freezer Name"
       dbmap$level_I <- "Shelf Name"
       dbmap$level_II <- "Basket Name"
-
+    } else if (sample_storage_type == "static_plate") {
+      dbmap$location_root <- "Freezer Name"
+      dbmap$level_I <- "Shelf Name"
+      dbmap$level_II <- "Basket Name"
+      dbmap$manifest <- "Plate Name"
+      dbmap$manifest_barcode <- "Plate Barcode"
     } else {
       stop("Invalid container type!!!")
     }

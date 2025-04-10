@@ -426,6 +426,7 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
       input$DelArchSearchBySampleType,
       "micronix" = "micronix_plate",
       "cryovial" = "cryovial_box",
+      "static_plate" = "micronix_plate",
       NULL
     )
 
@@ -436,7 +437,14 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
         tbl(con, "cryovial_box") %>% pull(name)
       ))
     } else {
-      unique(tbl(con, manifest_name) %>% pull(name))
+      manifest_tbl <- tbl(con, manifest_name)
+      if (input$DelArchSearchBySampleType == "static_plate") {
+        tbl(con, "static_well") %>%
+          inner_join(manifest_tbl, by = c("manifest_id" = "id")) %>%
+          pull(name)
+      } else {
+        manifest_tbl %>% pull(name)
+      }
     }
 
     # Fetch other data from database in a single set of calls
@@ -457,6 +465,7 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
         input$DelArchSearchBySampleType,
         "micronix" = "Plate Name",
         "cryovial" = "Box Name",
+        "static_plate" = "Plate Name",
         "all" = "All Containers"
       ),
       choices = manifests,
@@ -1764,7 +1773,8 @@ UpdateSampleSelections <- function(session, input, keepCurrentSelection = FALSE)
     "micronix" = list(name = "micronix_plate", label = "Plate Name"),
     "cryovial" = list(name = "cryovial_box", label = "Box Name"),
     "dbs_sample" = list(name = input$SearchDBSSampleManifest, label = switch(
-      input$SearchDBSSampleManifest, "all" = "All", "box" = "Box Name", "bag" = "Bag Name"))
+      input$SearchDBSSampleManifest, "all" = "All", "box" = "Box Name", "bag" = "Bag Name")),
+    "static_plate" = list(name = "micronix_plate", label = "Static Plate")
   )
   
   if (is.null(manifest_types)) {
@@ -1778,7 +1788,14 @@ UpdateSampleSelections <- function(session, input, keepCurrentSelection = FALSE)
       unique(tbl(con, "bag") %>% pull(name))
     )
   } else {
-    manifest_choices <- unique(tbl(con, manifest_types[[input$DelArchSearchBySampleType]]$name) %>% pull(name))
+    manifest_tbl <- tbl(con, manifest_types[[input$DelArchSearchBySampleType]]$name)
+    manifest_choices <- if (input$DelArchSearchBySampleType == "static_plate") {
+      tbl(con, "static_well") %>%
+        inner_join(manifest_tbl, by = c("manifest_id" = "id")) %>%
+        pull(name)
+    } else {
+      manifest_tbl %>% pull(name)
+    }
   }
   
   choices_list <- list(

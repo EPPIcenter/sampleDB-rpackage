@@ -8,7 +8,7 @@
 
 RenameContainers <- function(sample_type, new_container_name, current_container_name, conn){
 
-  stopifnot("ERROR: Sample Type is not valid" = sample_type %in% c("micronix", "cryovial", "dbs_sheet", "whole_blood", "bag", "box"))
+  stopifnot("ERROR: Sample Type is not valid" = sample_type %in% c("micronix", "cryovial", "dbs_sheet", "whole_blood", "bag", "box", "static_plate"))
 
   if (new_container_name == "") {
     warning("Container name cannot be empty!")
@@ -21,7 +21,8 @@ RenameContainers <- function(sample_type, new_container_name, current_container_
     "dbs_sheet" = "dbs_bag",
     "whole_blood" = "cryovial_box",
     "box" = "box",
-    "bag" = "bag"
+    "bag" = "bag",
+    "static_plate" = "micronix_plate"
   )
 
   if (!current_container_name %in% (tbl(conn, manifest) %>% pull(name))) {

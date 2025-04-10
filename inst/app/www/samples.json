@@ -22,8 +22,17 @@
       "id": 3,
       "name": "DBS",
       "file_types": ["na"],
-      "actions": ["upload"],
+      "actions": ["upload", "move"],
       "location_key": "micronix_locations"
+    },
+    "static_plate": {
+      "id": 4,
+      "name": "Static Plate",
+      "file_types": ["na"],
+      "actions": ["upload"],
+      "location_key": "micronix_locations",
+      "container_key": "micronix_plate",
+      "container_barcode_key": "micronix_plate"
     }
   },
   "action_requirements": {

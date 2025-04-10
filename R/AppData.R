@@ -533,6 +533,10 @@ get_sample_file_columns <- function(sample_type, action, file_type = "na", confi
     required_vals <- c(required_vals, "Label", "ContainerName", "ContainerType")
   }
 
+  if (sample_type == "static_plate") {
+    required_vals <- c(required_vals, "Row", "Column")
+  }
+
   return(ColumnData(
     required = required_vals,
     conditional = conditional_vals,

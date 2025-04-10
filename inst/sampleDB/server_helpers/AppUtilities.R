@@ -892,8 +892,8 @@ collate_user_input_sample_data <- function(sample_type,
                                            sample_file = "samples.json", 
                                            app_file = "app.json") {
 
-  if (sample_type == "dbs_sample") {
-    message("NOTE: Special columns do not apply for DBS Samples and will need added to the CSV.")
+  if (sample_type %in% c("dbs_sample", "static_plate")) {
+    message("NOTE: Special columns do not apply for DBS Samples or Static Plates and will need added to the CSV.")
     return(NULL)
   }
 
