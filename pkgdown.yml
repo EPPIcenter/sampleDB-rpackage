@@ -3,6 +3,7 @@ pkgdown: 2.1.1
 pkgdown_sha: ~
 articles:
   Delete--Archive-Samples: Delete--Archive-Samples.html
+  How-to-Move-Controls: How-to-Move-Controls.html
   How-to-Move-Micronix-Samples: How-to-Move-Micronix-Samples.html
   How-to-Upload-Controls: How-to-Upload-Controls.html
   How-to-Upload-Extracted-Controls: How-to-Upload-Extracted-Controls.html
@@ -13,7 +14,7 @@ articles:
   Uploading-Cryovial-Specimens: Uploading-Cryovial-Specimens.html
   Uploading-Micronix-Specimens: Uploading-Micronix-Specimens.html
   Validation: Validation.html
-last_built: 2025-04-10T20:25Z
+last_built: 2025-04-11T22:41Z
 urls:
   reference: https://eppicenter.github.io/sampleDB/reference
   article: https://eppicenter.github.io/sampleDB/articles
