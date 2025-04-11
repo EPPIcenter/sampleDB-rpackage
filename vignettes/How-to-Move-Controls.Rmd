@@ -1,0 +1,42 @@
+---
+title: 'How to Move Controls'
+output: rmarkdown::html_document
+vignette: >
+  %\VignetteIndexEntry{How to Move Controls}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+[Purpose:]{.underline} To move batches of dry blood spots and whole
+blood controls. Controls and samples have separate processes for uploads
+and searches, and require different reference information. All control
+uploads require metadata about the control being uploaded as well as
+logistical information, such as what freezer the control is located in.
+
+## How to move DBS Control Sheets
+
+When you move DBS control sheets, you need to provide the following information
+
+* SheetName - The label on the control sheet
+* SourceBagName - Name of the bag that the sheet was in
+* DestBagName - Name of the bag that the sheet was moved to
+* Batch - The control batch
+* ControlUID - The control UID for the controls on the sheet
+* Exhausted - The number of exhausted spots
+
+
+All of this information can be found using the search functionality in the search panel. 
+
+**NOTE:** The current implementation will only allow you to move sheets that have blood spots with the same control UID from a single batch. This can be updated so that a sheet with multiple control UIDs can be moved.
+
+## How to update Whole Blood
+
+Moving a whole blood tube is similar to moving a cryovial tube, just with the addition of metadata that is specific for controls.
+
+* Batch
+* ControlUID
+* BoxRow
+* BoxColumn
+* SourceBox
+
+**Note:** This potentially could be updated to include barcodes if they exist.
