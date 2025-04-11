@@ -19,6 +19,8 @@ navbar:
           href: "articles/How-to-Upload-Controls.html"
         - text: "How to Upload Extracted Controls"
           href: "articles/How-to-Upload-Extracted-Controls.html"
+        - text: "How to Move Controls"
+          href: "articles/How-to-Move-Controls.html"
         - text: "Preferences"
           href: "articles/Preferences.html"
         - text: "Searching SampleDB"

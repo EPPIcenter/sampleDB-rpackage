@@ -7,9 +7,6 @@ vignette: >
   %\VignetteEncoding{UTF-8}
 ---
 
-> Release note: There is currently no way to move controls. This
-> may be updated in a new version.
-
 [Purpose:]{.underline} The Move Samples function updates the locations
 of samples that already exist in SampleDB. (If they do not already exist
 in SampleDB, they will need to be uploaded before they can be moved!)
