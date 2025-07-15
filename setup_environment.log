@@ -1,0 +1,84 @@
+[INFO] setup_environment() called
+[INFO] Initial Variables - site_install: FALSE, pkgname: sampleDB, config: /Users/ericwatyekele/Library/Application Support/sampleDB/config.yml, database: /Users/ericwatyekele/Library/Application Support/sampleDB/sampledb_database.sqlite
+[INFO] Config location already set to: /Users/ericwatyekele/Library/Application Support/sampleDB/config.yml
+[INFO] update_configuration_file() called
+[INFO] Initial Variables - pkgname: sampleDB, expected_config_version: 1.0.0, config: /Users/ericwatyekele/Library/Application Support/sampleDB/config.yml
+[INFO] Reading new and current configurations
+[INFO] Configuration file already exists at: /Users/ericwatyekele/Library/Application Support/sampleDB/config.yml
+[INFO] update_configuration_file() completed
+[INFO] Setting up database
+[INFO] Database location already set to: /Users/ericwatyekele/Library/Application Support/sampleDB/sampledb_database.sqlite
+[INFO] Subdirectory exists: /Users/ericwatyekele/Library/Application Support/sampleDB/backups
+[INFO] Subdirectory exists: /Users/ericwatyekele/Library/Application Support/sampleDB/upload_files
+[INFO] Subdirectory exists: /Users/ericwatyekele/Library/Application Support/sampleDB/move_files
+[INFO] setup_environment() completed
+[INFO] setup_environment() called
+[INFO] Initial Variables - site_install: FALSE, pkgname: sampleDB, config: /Users/ericwatyekele/Library/Application Support/sampleDB/config.yml, database: /Users/ericwatyekele/Library/Application Support/sampleDB/sampledb_database.sqlite
+[INFO] Config location already set to: /Users/ericwatyekele/Library/Application Support/sampleDB/config.yml
+[INFO] update_configuration_file() called
+[INFO] Initial Variables - pkgname: sampleDB, expected_config_version: 1.0.0, config: /Users/ericwatyekele/Library/Application Support/sampleDB/config.yml
+[INFO] Reading new and current configurations
+[INFO] Configuration file already exists at: /Users/ericwatyekele/Library/Application Support/sampleDB/config.yml
+[INFO] update_configuration_file() completed
+[INFO] Setting up database
+[INFO] Database location already set to: /Users/ericwatyekele/Library/Application Support/sampleDB/sampledb_database.sqlite
+[INFO] Subdirectory exists: /Users/ericwatyekele/Library/Application Support/sampleDB/backups
+[INFO] Subdirectory exists: /Users/ericwatyekele/Library/Application Support/sampleDB/upload_files
+[INFO] Subdirectory exists: /Users/ericwatyekele/Library/Application Support/sampleDB/move_files
+[INFO] setup_environment() completed
+[INFO] setup_environment() called
+[INFO] Initial Variables - site_install: FALSE, pkgname: sampleDB, config: /Users/ericwatyekele/Library/Application Support/sampleDB/config.yml, database: /Users/ericwatyekele/Library/Application Support/sampleDB/sampledb_database.sqlite
+[INFO] Config location already set to: /Users/ericwatyekele/Library/Application Support/sampleDB/config.yml
+[INFO] update_configuration_file() called
+[INFO] Initial Variables - pkgname: sampleDB, expected_config_version: 1.0.0, config: /Users/ericwatyekele/Library/Application Support/sampleDB/config.yml
+[INFO] Reading new and current configurations
+[INFO] Configuration file already exists at: /Users/ericwatyekele/Library/Application Support/sampleDB/config.yml
+[INFO] update_configuration_file() completed
+[INFO] Setting up database
+[INFO] Database location already set to: /Users/ericwatyekele/Library/Application Support/sampleDB/sampledb_database.sqlite
+[INFO] Subdirectory exists: /Users/ericwatyekele/Library/Application Support/sampleDB/backups
+[INFO] Subdirectory exists: /Users/ericwatyekele/Library/Application Support/sampleDB/upload_files
+[INFO] Subdirectory exists: /Users/ericwatyekele/Library/Application Support/sampleDB/move_files
+[INFO] setup_environment() completed
+[INFO] setup_environment() called
+[INFO] Initial Variables - site_install: FALSE, pkgname: sampleDB, config: /Users/ericwatyekele/Library/Application Support/sampleDB/config.yml, database: /Users/ericwatyekele/Library/Application Support/sampleDB/sampledb_database.sqlite
+[INFO] Config location already set to: /Users/ericwatyekele/Library/Application Support/sampleDB/config.yml
+[INFO] update_configuration_file() called
+[INFO] Initial Variables - pkgname: sampleDB, expected_config_version: 1.0.0, config: /Users/ericwatyekele/Library/Application Support/sampleDB/config.yml
+[INFO] Reading new and current configurations
+[INFO] Configuration file already exists at: /Users/ericwatyekele/Library/Application Support/sampleDB/config.yml
+[INFO] update_configuration_file() completed
+[INFO] Setting up database
+[INFO] Database location already set to: /Users/ericwatyekele/Library/Application Support/sampleDB/sampledb_database.sqlite
+[INFO] Subdirectory exists: /Users/ericwatyekele/Library/Application Support/sampleDB/backups
+[INFO] Subdirectory exists: /Users/ericwatyekele/Library/Application Support/sampleDB/upload_files
+[INFO] Subdirectory exists: /Users/ericwatyekele/Library/Application Support/sampleDB/move_files
+[INFO] setup_environment() completed
+[INFO] setup_environment() called
+[INFO] Initial Variables - site_install: FALSE, pkgname: sampleDB, config: /Users/ericwatyekele/Library/Application Support/sampleDB/config.yml, database: /Users/ericwatyekele/Library/Application Support/sampleDB/sampledb_database.sqlite
+[INFO] Config location already set to: /Users/ericwatyekele/Library/Application Support/sampleDB/config.yml
+[INFO] update_configuration_file() called
+[INFO] Initial Variables - pkgname: sampleDB, expected_config_version: 1.0.0, config: /Users/ericwatyekele/Library/Application Support/sampleDB/config.yml
+[INFO] Reading new and current configurations
+[INFO] Configuration file already exists at: /Users/ericwatyekele/Library/Application Support/sampleDB/config.yml
+[INFO] update_configuration_file() completed
+[INFO] Setting up database
+[INFO] Database location already set to: /Users/ericwatyekele/Library/Application Support/sampleDB/sampledb_database.sqlite
+[INFO] Subdirectory exists: /Users/ericwatyekele/Library/Application Support/sampleDB/backups
+[INFO] Subdirectory exists: /Users/ericwatyekele/Library/Application Support/sampleDB/upload_files
+[INFO] Subdirectory exists: /Users/ericwatyekele/Library/Application Support/sampleDB/move_files
+[INFO] setup_environment() completed
+[INFO] setup_environment() called
+[INFO] Initial Variables - site_install: FALSE, pkgname: sampleDB, config: /Users/ericwatyekele/Library/Application Support/sampleDB/config.yml, database: /Users/ericwatyekele/Library/Application Support/sampleDB/sampledb_database.sqlite
+[INFO] Config location already set to: /Users/ericwatyekele/Library/Application Support/sampleDB/config.yml
+[INFO] update_configuration_file() called
+[INFO] Initial Variables - pkgname: sampleDB, expected_config_version: 1.0.0, config: /Users/ericwatyekele/Library/Application Support/sampleDB/config.yml
+[INFO] Reading new and current configurations
+[INFO] Configuration file already exists at: /Users/ericwatyekele/Library/Application Support/sampleDB/config.yml
+[INFO] update_configuration_file() completed
+[INFO] Setting up database
+[INFO] Database location already set to: /Users/ericwatyekele/Library/Application Support/sampleDB/sampledb_database.sqlite
+[INFO] Subdirectory exists: /Users/ericwatyekele/Library/Application Support/sampleDB/backups
+[INFO] Subdirectory exists: /Users/ericwatyekele/Library/Application Support/sampleDB/upload_files
+[INFO] Subdirectory exists: /Users/ericwatyekele/Library/Application Support/sampleDB/move_files
+[INFO] setup_environment() completed

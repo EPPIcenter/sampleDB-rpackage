@@ -49,6 +49,23 @@ UICSS <- function(){
         .dropdown-menu {
             padding: 0;
         }
+        .navbar {
+            --bslib-navbar-light-bg: #212529 !important;
+        }
+        .navbar .nav-link,
+        .navbar .nav-item > .nav-link,
+        .navbar-nav > li > a {
+            color: #fff !important; /* All tabs white by default */
+        }
+
+        .navbar .nav-link.active,
+        .navbar .nav-item.active > .nav-link,
+        .navbar-nav > .active > a,
+        .navbar-nav > .active > a:focus,
+        .navbar-nav > .active > a:hover {
+            color: #FF4B4B !important; /* Active tab red */
+            background-color: transparent !important;
+        }
       ")
     )
   )
