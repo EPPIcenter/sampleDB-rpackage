@@ -1213,11 +1213,12 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
     )
   })
 
+  # QuantStudio qPCR Download Handler
   observe({
     output$download_qpcr_csv <- downloadHandler(
       filename = function() {
         plate_name <- qpcr_final_data()$PlateName
-        paste0("qPCR_", plate_name, "_", Sys.Date(), ".txt")
+        paste0("qPCR_QuantStudio_", plate_name, "_", Sys.Date(), ".txt")
       },
       content = function(file) {
         output_header <- matrix(
@@ -1252,6 +1253,44 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
     )
   })
 
+  # BioRad qPCR Download Handler
+  output$download_qpcr_biorad_csv <- downloadHandler(
+    filename = function() {
+      plate_name <- qpcr_final_data()$PlateName
+      paste0("qPCR_BioRad_", plate_name, "_", Sys.Date(), ".txt")
+    },
+    content = function(file) {
+      output_header <- matrix(
+        c(
+          "[Sample Setup]"          
+        ),
+        byrow = TRUE
+      )
+
+      qpcr_names <- matrix(colnames(qpcr_final_data()$FinalData), byrow = FALSE, nrow = 1)
+      final_data <- qpcr_final_data()$FinalData
+      colnames(final_data) <- NULL
+
+      output_header_tbl <- as.matrix(output_header)
+      qpcr_names <- as.matrix(qpcr_names)
+      final_data_tbl <- as.matrix(final_data)
+
+      # Determine the maximum number of columns needed
+      max_cols <- max(ncol(output_header_tbl), ncol(qpcr_names), ncol(final_data_tbl))
+
+      # Create a matrix with enough rows and columns, fill with NA initially
+      final_matrix <- matrix(NA, nrow = nrow(output_header_tbl) + nrow(qpcr_names) + nrow(final_data_tbl), ncol = max_cols)
+
+      # Copy each matrix into the final matrix
+      final_matrix[1:nrow(output_header_tbl), 1:ncol(output_header_tbl)] <- output_header_tbl
+      final_matrix[(nrow(output_header_tbl) + 1):(nrow(output_header_tbl) + nrow(qpcr_names)), 1:ncol(qpcr_names)] <- qpcr_names
+      final_matrix[(nrow(output_header_tbl) + nrow(qpcr_names) + 1):nrow(final_matrix), 1:ncol(final_data_tbl)] <- final_data_tbl
+
+      # Write the matrix to a text file with tab delimitations
+      write.table(final_matrix, file=file, row.names=FALSE, col.names=FALSE, na = "", quote = FALSE, sep = "\t")
+    }
+  )
+
   # Define standard values globally or inside a reactive expression
   standard_values <- reactive({
     data.frame(
@@ -1266,50 +1305,7 @@ AppSearchDelArchSamples <- function(session, input, database, output, dbUpdateEv
   qpcr_final_data <- reactiveVal()
   linked_samples <- reactiveVal(NULL)
 
-  observeEvent(input$download_qpcr, ignoreInit = TRUE, {
-    message(sprintf("Starting qPCR template download process..."))
-    showNotification("Fetching data for qPCR template...", id = "qPCRNotification", type = "message", duration = 5, closeButton = FALSE)
 
-    # Assuming `filtered_data` is a reactive expression returning the filtered data
-    user.filtered.rows <- filtered_data()
-    user.selected.rows <- if (length(selected() > 0)) user.filtered.rows[selected(), ] else user.filtered.rows
-
-    # Group by platename and check for samples in wells A1-E10
-    unique_plates <- unique(user.selected.rows$`Plate Name`)
-    num_unique_plates <- length(unique_plates)
-
-    # If we have more than one plate selected, raise an error
-    if (num_unique_plates > 1) {
-      showModal(modalDialog(
-        title = "Too many plates selected!",
-        sprintf("Only one plate is allowed at a time! There were %d plates found in the search table.", num_unique_plates),
-        easyClose = TRUE,
-        footer = modalButton("OK")
-      ))
-      return(NULL)
-    }
-
-    # Check for missing wells in user data (modify as per your criteria)
-    required_wells <- paste0(rep(LETTERS[1:8], each = 10), sprintf("%02d", rep(1:10, times = 8)))
-    user_wells <- unique(user.selected.rows$Position)
-    missing_wells <- setdiff(required_wells, user_wells)
-    
-    if (length(missing_wells) > 0) {
-      # Show modal with missing wells information
-      showModal(modalDialog(
-        title = "Missing Wells Detected",
-        paste("The following wells are missing samples:", paste(missing_wells, collapse = ", ")),
-        paste("Is this okay?"),
-        easyClose = TRUE,
-        footer = tagList(
-          actionButton("qpcr_check_conflicts", "Yes, continue!"),
-          modalButton("qpcr_exit")
-        )
-      ))
-    } else {
-      check_conflicts(user.selected.rows, standard_values(), output)
-    }
-})
 
 observeEvent(input$qpcr_check_conflicts, {
     user.filtered.rows <- filtered_data()
@@ -1747,6 +1743,94 @@ check_conflicts <- function(user_selected_rows, standard_values_data, output) {
 
   ## Reactivate the filter observer when at the end of initialization
   filter_observer_state(TRUE)
+
+  # QuantStudio qPCR Download Logic
+  observeEvent(input$download_qpcr_quantstudio, ignoreInit = TRUE, {
+    message(sprintf("Starting qPCR template download process (QuantStudio)..."))
+    showNotification("Fetching data for qPCR template...", id = "qPCRNotification", type = "message", duration = 5, closeButton = FALSE)
+
+    user.filtered.rows <- filtered_data()
+    user.selected.rows <- if (length(selected() > 0)) user.filtered.rows[selected(), ] else user.filtered.rows
+
+    unique_plates <- unique(user.selected.rows$`Plate Name`)
+    num_unique_plates <- length(unique_plates)
+
+    if (num_unique_plates > 1) {
+      showModal(modalDialog(
+        title = "Too many plates selected!",
+        sprintf("Only one plate is allowed at a time! There were %d plates found in the search table.", num_unique_plates),
+        easyClose = TRUE,
+        footer = modalButton("OK")
+      ))
+      return(NULL)
+    }
+
+    required_wells <- paste0(rep(LETTERS[1:8], each = 10), sprintf("%02d", rep(1:10, times = 8)))
+    user_wells <- unique(user.selected.rows$Position)
+    missing_wells <- setdiff(required_wells, user_wells)
+    
+    if (length(missing_wells) > 0) {
+      showModal(modalDialog(
+        title = "Missing Wells Detected",
+        paste("The following wells are missing samples:", paste(missing_wells, collapse = ", ")),
+        paste("Is this okay?"),
+        easyClose = TRUE,
+        footer = tagList(
+          actionButton("qpcr_check_conflicts", "Yes, continue!"),
+          modalButton("qpcr_exit")
+        )
+      ))
+    } else {
+      check_conflicts(user.selected.rows, standard_values(), output)
+    }
+  })
+
+  # BioRad qPCR Download Logic
+  observeEvent(input$download_qpcr_biorad, ignoreInit = TRUE, {
+    message(sprintf("Starting qPCR template download process (BioRad)..."))
+    showNotification("Fetching data for qPCR template (BioRad)...", id = "qPCRNotification", type = "message", duration = 5, closeButton = FALSE)
+
+    user.filtered.rows <- filtered_data()
+    user.selected.rows <- if (length(selected() > 0)) user.filtered.rows[selected(), ] else user.filtered.rows
+
+    unique_plates <- unique(user.selected.rows$`Plate Name`)
+    num_unique_plates <- length(unique_plates)
+
+    if (num_unique_plates > 1) {
+      showModal(modalDialog(
+        title = "Too many plates selected!",
+        sprintf("Only one plate is allowed at a time! There were %d plates found in the search table.", num_unique_plates),
+        easyClose = TRUE,
+        footer = modalButton("OK")
+      ))
+      return(NULL)
+    }
+
+    required_wells <- paste0(rep(LETTERS[1:8], each = 12), sprintf("%02d", rep(1:12, times = 8)))
+    user_wells <- unique(user.selected.rows$Position)
+    missing_wells <- setdiff(required_wells, user_wells)
+    
+    if (length(missing_wells) > 0) {
+      showModal(modalDialog(
+        title = "Missing Wells Detected",
+        paste("The following wells are missing samples:", paste(missing_wells, collapse = ", ")),
+        paste("Is this okay?"),
+        easyClose = TRUE,
+        footer = tagList(
+          actionButton("biorad_check_conflicts", "Yes, continue!"),
+          modalButton("biorad_exit")
+        )
+      ))
+    } else {
+      check_conflicts(user.selected.rows, standard_values(), output)
+    }
+  })
+
+  observeEvent(input$biorad_check_conflicts, {
+    user.filtered.rows <- filtered_data()
+    user.selected.rows <- if (length(selected() > 0)) user.filtered.rows[selected(), ] else user.filtered.rows
+    check_conflicts(user.selected.rows, standard_values(), output)
+  })
 }
 
 UpdateSelections <- function(session, input, keepCurrentSelection = FALSE, ignoreStateAndStatus = FALSE) {
